@@ -164,6 +164,10 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         for i, chunk in enumerate(source_chunks, 1):
             print(f"🔄 Processing chunk {i}/{total_chunks}...")
 
+            if chunk is None or chunk.shape[-1] == 0:
+                print(f"⚠️ Skipping empty RVC chunk {i}/{total_chunks}")
+                continue
+
             # Wrap chunk in AUDIO dict format
             chunk_audio_dict = {
                 "waveform": chunk,
@@ -198,11 +202,17 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                     hubert_path=config.get('hubert_path'),
                 )
 
+                if converted_audio_np is None:
+                    raise RuntimeError(f"RVC conversion returned no audio for chunk {i}/{total_chunks}, pass {iteration_num}/{refinement_passes}")
+
                 current_audio_np = converted_audio_np
 
             # Convert final result back to tensor
             converted_audio_dict = self._convert_audio_from_rvc(converted_audio_np, output_sample_rate)
             converted_chunks.append(converted_audio_dict["waveform"])
+
+        if not converted_chunks:
+            raise RuntimeError("RVC chunked conversion produced no usable audio chunks")
 
         # Keep exact duration across chunk boundaries for downstream sync-sensitive workflows
         # (e.g., RVC training datasets). Crossfade removes overlap and shortens total runtime.
@@ -412,14 +422,15 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             else:
                 audio_np = waveform
             
+            # Collapse singleton dimensions first. Chunked audio commonly arrives as [1, 1, samples].
+            audio_np = np.squeeze(audio_np)
+
             # Ensure mono audio - RVC expects 1D audio
             if audio_np.ndim > 1:
-                if audio_np.shape[0] == 1:  # (1, samples)
-                    audio_np = audio_np[0]
-                elif audio_np.shape[1] == 1:  # (samples, 1)
-                    audio_np = audio_np[:, 0]
-                else:  # Multiple channels
-                    audio_np = audio_np.mean(axis=0 if audio_np.shape[0] < audio_np.shape[1] else 1)
+                audio_np = audio_np.mean(axis=0 if audio_np.shape[0] < audio_np.shape[1] else 1)
+
+            if audio_np.ndim == 0 or audio_np.size == 0:
+                raise ValueError("Source audio chunk is empty after normalization for RVC conversion")
             
             return (audio_np, sample_rate)
             
@@ -432,6 +443,9 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             # Ensure numpy array
             if not isinstance(audio_np, np.ndarray):
                 audio_np = np.array(audio_np)
+
+            if audio_np.size == 0:
+                raise ValueError("RVC returned empty audio")
             
             # Ensure float32 in range [-1, 1]
             if audio_np.dtype != np.float32:
@@ -709,6 +723,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 chunks[-2] = torch.cat([chunks[-2], chunks[-1]], dim=-1)
                 chunks.pop()
 
+        chunks = [chunk for chunk in chunks if chunk is not None and chunk.shape[-1] > 0]
         print(f"📦 Created {len(chunks)} smart chunks")
         return chunks
 
@@ -735,6 +750,9 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         for start_sample in range(0, total_samples, chunk_samples):
             end_sample = min(start_sample + chunk_samples, total_samples)
             chunk = audio[:, :, start_sample:end_sample]
+
+            if chunk.shape[-1] == 0:
+                continue
 
             # Check if this is the last chunk and it's too small
             chunk_duration = chunk.shape[-1] / sample_rate
