@@ -6,7 +6,9 @@ For related topics, also see:
 
 - [Character Switching Guide](CHARACTER_SWITCHING_GUIDE.md)
 - [Parameter Switching Guide](PARAMETER_SWITCHING_GUIDE.md)
-- [Inline Edit Tags User Guide](INLINE_EDIT_TAGS_USER_GUIDE.md)
+- [Step Audio EditX Inline Tags User Guide](INLINE_EDIT_TAGS_USER_GUIDE.md)
+- [Higgs Audio v3 Inline Tags](HIGGS_AUDIO_V3_INLINE_TAGS.md)
+- [CosyVoice3 Tags Guide](COSYVOICE3_TAGS_GUIDE.md)
 
 ## What This Editor Is For
 
@@ -17,7 +19,7 @@ It supports:
 - Character switching tags
 - Language switching tags
 - Per-segment parameter overrides
-- Inline Step Audio EditX tags
+- Engine-aware inline tags for Step Audio EditX, Higgs Audio v3, and CosyVoice3
 - Presets and edit history
 - SRT-aware highlighting and timing editing
 
@@ -50,9 +52,11 @@ Useful behavior:
 - Parameters can be stacked with `|`
 - Presets can store either quick snippets or reusable speaker setups
 
-## Inline Edit Tags
+## Inline Tags
 
-The editor also supports inline Step Audio EditX tags such as:
+The editor has an engine-aware `Inline Tags` panel.
+
+Step Audio EditX examples:
 
 ```text
 <Laughter>
@@ -61,7 +65,22 @@ The editor also supports inline Step Audio EditX tags such as:
 <restore:1@2>
 ```
 
-Use the dedicated inline-edit controls in the sidebar when you do not want to type these by hand.
+Higgs Audio v3 examples:
+
+```text
+<|emotion:amusement|>
+<|style:whispering|>
+<|prosody:pause|>
+```
+
+CosyVoice3 examples:
+
+```text
+<breath>
+<laughing>that was funny</laughing>
+```
+
+Use the dedicated inline tag controls in the sidebar when you do not want to type these by hand.
 
 ## SRT Editing
 

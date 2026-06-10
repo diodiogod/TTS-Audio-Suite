@@ -1,4 +1,15 @@
-# Inline Edit Tags - User Guide
+# Step Audio EditX Inline Tags - User Guide
+
+## Scope
+
+This guide is specifically for **Step Audio EditX** inline post-processing tags.
+
+The multiline TTS tag editor now has an engine-aware `Inline Tags` panel with separate modes for:
+- `Step Audio EditX`
+- `Higgs Audio v3`
+- `CosyVoice3`
+
+Use the Step mode when you want post-process editing tags. Use the Higgs or Cosy modes when you want those engines' native generation tags.
 
 ## 💡 Inline vs Manual Node Workflow
 
@@ -15,7 +26,7 @@
 
 ## Overview
 
-Inline edit tags allow you to apply **Step Audio EditX** post-processing effects to TTS-generated audio from ANY engine (F5-TTS, ChatterBox, Higgs Audio, VibeVoice, etc.). These tags are automatically stripped before TTS generation and applied as a second processing pass.
+Inline edit tags allow you to apply **Step Audio EditX** post-processing effects to TTS-generated audio from engines that support the Step inline workflow. These tags are automatically stripped before TTS generation and applied as a second processing pass.
 
 **Example:**
 ```
@@ -660,6 +671,10 @@ A: Just remove them from your text. No special setting needed.
 ---
 
 ## Support
+
+Related guides:
+- `docs/HIGGS_AUDIO_V3_INLINE_TAGS.md` for Higgs Audio v3 native tags
+- `docs/COSYVOICE3_TAGS_GUIDE.md` for CosyVoice3 native tags
 
 For issues, feature requests, or questions:
 - GitHub Issues: https://github.com/diodiogod/TTS-Audio-Suite/issues

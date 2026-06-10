@@ -1,6 +1,6 @@
 /**
  * 🏷️ Widget Tabs System
- * Creates tabbed interface for Character/Parameters and Inline Edit sections
+ * Creates tabbed interface for Character/Parameters and Inline Tags sections
  */
 
 export function buildTabSystem(state, storageKey) {
@@ -37,7 +37,7 @@ export function buildTabSystem(state, storageKey) {
     charParamTab.dataset.tab = "char-param";
 
     const inlineEditTab = document.createElement("div");
-    inlineEditTab.textContent = "Inline Edit";
+    inlineEditTab.textContent = "Inline Tags";
     inlineEditTab.style.flex = "1";
     inlineEditTab.style.padding = "8px 10px 6px 10px";
     inlineEditTab.style.textAlign = "center";

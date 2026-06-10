@@ -13,14 +13,35 @@ export function attachAllEventHandlers(
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize, setFontFamily,
     showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
-    // Inline edit controls
-    paraSelect, paraIterSlider, addParaBtn,
-    emotionSelect, emotionIterSlider, addEmotionBtn,
-    styleSelect, styleIterSlider, addStyleBtn,
-    speedSelect, speedIterSlider, addSpeedBtn,
-    restorePassSlider, restoreRefInput, addRestoreBtn,
+    inlineTagControls,
     openFindReplace, focusNextFindMatch, focusPreviousFindMatch
 ) {
+    const {
+        step: {
+            paraSelect, paraIterSlider, addParaBtn,
+            emotionSelect, emotionIterSlider, addEmotionBtn,
+            styleSelect, styleIterSlider, addStyleBtn,
+            speedSelect, speedIterSlider, addSpeedBtn,
+            restorePassSlider, restoreRefInput, addRestoreBtn,
+        },
+        higgs: {
+            emotionSelect: higgsEmotionSelect,
+            addEmotionBtn: addHiggsEmotionBtn,
+            styleSelect: higgsStyleSelect,
+            addStyleBtn: addHiggsStyleBtn,
+            prosodySelect: higgsProsodySelect,
+            addProsodyBtn: addHiggsProsodyBtn,
+            sfxSelect: higgsSfxSelect,
+            addSfxBtn: addHiggsSfxBtn,
+        },
+        cosy: {
+            singleTagSelect: cosySingleTagSelect,
+            addSingleTagBtn,
+            wrapperTagSelect: cosyWrapperTagSelect,
+            addWrapperTagBtn,
+        },
+    } = inlineTagControls;
+
     // Block ComfyUI shortcuts when editor is focused, but allow Enter, Alt, and Ctrl combinations
     editor.addEventListener("keydown", (e) => {
         // Don't block Enter, Alt, or Ctrl key combinations (allow copy/paste/cut)
@@ -845,8 +866,41 @@ export function attachAllEventHandlers(
         return { modified: false };
     };
 
-    // Helper function to insert inline edit tag (with pipe-separator support)
-    const insertInlineTag = (tagPart) => {
+    const insertTextSnippet = (snippet, {
+        caretOffset = snippet.length,
+        notification = `✓ Inserted: ${snippet}`,
+    } = {}) => {
+        const selection = getSelection();
+        const plainText = getPlainText();
+        const insertStart = selection ? selection.start : getCaretPos();
+        const insertEnd = selection ? selection.end : insertStart;
+        const newText = plainText.substring(0, insertStart) + snippet + plainText.substring(insertEnd);
+        commitEditorTextChange(newText, insertStart + caretOffset);
+        showNotification(notification, 1500);
+    };
+
+    const wrapSelectionWithTag = (tagName) => {
+        const selection = getSelection();
+        if (selection) {
+            const wrappedText = `<${tagName}>${selection.text}</${tagName}>`;
+            const plainText = getPlainText();
+            const newText = plainText.substring(0, selection.start) + wrappedText + plainText.substring(selection.end);
+            commitEditorTextChange(newText, selection.start + wrappedText.length);
+            showNotification(`✓ Wrapped with <${tagName}>`, 1500);
+            return;
+        }
+
+        const placeholder = "text";
+        const snippet = `<${tagName}>${placeholder}</${tagName}>`;
+        const caretOffset = tagName.length + 2;
+        insertTextSnippet(snippet, {
+            caretOffset,
+            notification: `✓ Inserted: ${snippet}`,
+        });
+    };
+
+    // Helper function to insert Step Audio EditX inline tag (with pipe-separator support)
+    const insertStepInlineTag = (tagPart) => {
         const caretPos = getCaretPos();
         const plainText = getPlainText();
 
@@ -899,7 +953,7 @@ export function attachAllEventHandlers(
 
         const iterations = paraIterSlider.value;
         const tagPart = iterations === "1" ? type : `${type}:${iterations}`;
-        insertInlineTag(tagPart);
+        insertStepInlineTag(tagPart);
     });
 
     // Emotion tag insertion
@@ -912,7 +966,7 @@ export function attachAllEventHandlers(
 
         const iterations = emotionIterSlider.value;
         const tagPart = iterations === "1" ? `emotion:${emotion}` : `emotion:${emotion}:${iterations}`;
-        insertInlineTag(tagPart);
+        insertStepInlineTag(tagPart);
     });
 
     // Style tag insertion
@@ -925,7 +979,7 @@ export function attachAllEventHandlers(
 
         const iterations = styleIterSlider.value;
         const tagPart = iterations === "1" ? `style:${style}` : `style:${style}:${iterations}`;
-        insertInlineTag(tagPart);
+        insertStepInlineTag(tagPart);
     });
 
     // Speed tag insertion
@@ -938,7 +992,7 @@ export function attachAllEventHandlers(
 
         const iterations = speedIterSlider.value;
         const tagPart = iterations === "1" ? `speed:${speed}` : `speed:${speed}:${iterations}`;
-        insertInlineTag(tagPart);
+        insertStepInlineTag(tagPart);
     });
 
     // Restore tag insertion
@@ -958,6 +1012,45 @@ export function attachAllEventHandlers(
             tagPart = `restore:${passes}`;
         }
 
-        insertInlineTag(tagPart);
+        insertStepInlineTag(tagPart);
+    });
+
+    const bindHiggsTagInsert = (category, select, button, missingMessage) => {
+        button.addEventListener("click", () => {
+            const value = select.value;
+            if (!value) {
+                showNotification(missingMessage, 2000);
+                return;
+            }
+
+            const tag = `<|${category}:${value}|>`;
+            insertTextSnippet(tag);
+        });
+    };
+
+    bindHiggsTagInsert("emotion", higgsEmotionSelect, addHiggsEmotionBtn, "⚠️ Select a Higgs emotion first");
+    bindHiggsTagInsert("style", higgsStyleSelect, addHiggsStyleBtn, "⚠️ Select a Higgs style first");
+    bindHiggsTagInsert("prosody", higgsProsodySelect, addHiggsProsodyBtn, "⚠️ Select a Higgs prosody tag first");
+    bindHiggsTagInsert("sfx", higgsSfxSelect, addHiggsSfxBtn, "⚠️ Select a Higgs SFX tag first");
+
+    addSingleTagBtn.addEventListener("click", () => {
+        const tagName = cosySingleTagSelect.value;
+        if (!tagName) {
+            showNotification("⚠️ Select a CosyVoice3 tag first", 2000);
+            return;
+        }
+
+        const tag = `<${tagName}>`;
+        insertTextSnippet(tag);
+    });
+
+    addWrapperTagBtn.addEventListener("click", () => {
+        const tagName = cosyWrapperTagSelect.value;
+        if (!tagName) {
+            showNotification("⚠️ Select a CosyVoice3 wrapper tag first", 2000);
+            return;
+        }
+
+        wrapSelectionWithTag(tagName);
     });
 }

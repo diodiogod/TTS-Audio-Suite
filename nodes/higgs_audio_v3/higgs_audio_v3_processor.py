@@ -35,6 +35,17 @@ DELIVERY_PROSODY_VALUES = {
 }
 
 
+def _normalize_higgs_native_tag_aliases(text: str) -> str:
+    """Accept `<emotion:...>` style aliases and rewrite them to native Higgs `<|...|>` tags."""
+
+    def _replace(match: re.Match[str]) -> str:
+        category = match.group(1)
+        value = match.group(2).strip()
+        return f"<|{category}:{value}|>"
+
+    return re.sub(r"<(emotion|style|prosody|sfx):([^<>]+)>", _replace, text)
+
+
 def _delivery_state_from_prefix(prefix: str) -> dict[str, str]:
     state: dict[str, str] = {}
     for kind, value in re.findall(r"<\|(emotion|style|prosody):([^|]+)\|>", prefix):
@@ -227,6 +238,7 @@ class HiggsAudioV3Processor:
         enable_chunking: bool = True,
         max_chars_per_chunk: int = 400,
     ) -> List[Dict]:
+        text = _normalize_higgs_native_tag_aliases(text)
         params = self.config.copy()
         params["seed"] = seed
 

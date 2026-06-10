@@ -4,11 +4,19 @@ Higgs Audio v3 uses native inline control tokens in the text prompt. Type these 
 
 ## Syntax
 
-All native tags use:
+Canonical native tags use:
 
 ```text
 <|category:value|>
 ```
+
+TTS Audio Suite also accepts a convenience alias form without the bars:
+
+```text
+<category:value>
+```
+
+Aliases are normalized internally to the canonical Higgs syntax. The editor inserts the canonical `<|...|>` form on purpose.
 
 Examples:
 
@@ -54,11 +62,16 @@ cough, laughter, crying, screaming, burping, humming, sigh, sniff, sneeze
 - Put delivery-wide tags like emotion, style, speed, pitch, and expressiveness at the start of the sentence or turn.
 - Put positional tags like `<|prosody:pause|>`, `<|prosody:long_pause|>`, and `<|sfx:...|>` exactly where they should happen.
 - Pair SFX tags with written sound text, for example `<|sfx:laughter|>Haha` or `<|sfx:sigh|>Ahh`.
-- Do not use Step Audio EditX tags like `<emotion:happy>` for native Higgs v3 control. Higgs v3 native tags include the vertical bars: `<|emotion:amusement|>`.
+- Canonical Higgs syntax is `<|...|>`. Alias input like `<emotion:amusement>` is accepted by TTS Audio Suite for convenience, but the official form stays `<|emotion:amusement|>`.
+- Higgs Audio v3 does not use Step Audio EditX second-pass inline processing here. Use Higgs native tags instead of Step semantics when targeting Higgs.
 
 ## Character Voices
 
 Higgs Audio v3 supports reference audio cloning. A transcript of the reference audio strongly improves cloning quality. Character voice `.txt` files are passed as reference transcripts when available.
+
+## Multiline Editor
+
+The multiline TTS tag editor has an `Inline Tags` panel with a dedicated `Higgs Audio v3` mode. That panel inserts canonical native Higgs tags directly.
 
 ## License
 

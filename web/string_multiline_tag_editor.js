@@ -1589,14 +1589,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Build inline edit section
     const inlineEditData = buildInlineEditSection(state, storageKey);
-    const {
-        inlineEditSection,
-        paraSelect, paraIterSlider, addParaBtn,
-        emotionSelect, emotionIterSlider, addEmotionBtn,
-        styleSelect, styleIterSlider, addStyleBtn,
-        speedSelect, speedIterSlider, addSpeedBtn,
-        restorePassSlider, restoreRefInput, addRestoreBtn
-    } = inlineEditData;
+    const { inlineEditSection, inlineTagControls } = inlineEditData;
     inlineEditSection.classList.add("string-multiline-tag-editor-inline-section");
 
     // Build tab system
@@ -1612,7 +1605,7 @@ function addStringMultilineTagEditorWidget(node) {
     charParamContent.appendChild(paramSection);
     charParamContent.appendChild(presetSection);
 
-    // Assemble Inline Edit tab
+    // Assemble Inline Tags tab
     inlineEditContent.appendChild(inlineEditSection);
 
     // Assemble header and shell
@@ -1671,12 +1664,7 @@ function addStringMultilineTagEditorWidget(node) {
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
         formatBtn, validateBtn, fontFamilySelect, fontSizeInput, null, setFontSize, setFontFamily,
         showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
-        // Inline edit controls
-        paraSelect, paraIterSlider, addParaBtn,
-        emotionSelect, emotionIterSlider, addEmotionBtn,
-        styleSelect, styleIterSlider, addStyleBtn,
-        speedSelect, speedIterSlider, addSpeedBtn,
-        restorePassSlider, restoreRefInput, addRestoreBtn,
+        inlineTagControls,
         openFindReplace, focusNextFindMatch, focusPreviousFindMatch
     );
 
@@ -2026,32 +2014,23 @@ function addStringMultilineTagEditorWidget(node) {
             {
                 key: "inline-tags",
                 tabLabel: "Inline Tags",
-                title: "Inline Edit Tags Guide",
-                intro: "These tags are for convenience when you want segment-level Step Audio EditX processing without building separate TTS -> Edit chains.",
+                title: "Inline Tags Guide",
+                intro: "This panel is engine-aware. Step Audio EditX uses post-process tags, while Higgs Audio v3 and CosyVoice3 use native generation tags.",
                 rows: [
-                    { syntax: "<Laughter> / <Laughter:2>", purpose: "Insert laughter", notes: "Paralinguistic insertion. Position matters because the sound is inserted where the tag appears." },
-                    { syntax: "<Breathing>", purpose: "Insert breathing", notes: "Useful for pauses, fatigue, or realism between spoken phrases." },
-                    { syntax: "<Sigh>", purpose: "Insert sigh", notes: "Good for resignation, frustration, or relief beats." },
-                    { syntax: "<Uhm>", purpose: "Insert hesitation", notes: "Adds an 'uhm' hesitation sound at the tag position." },
-                    { syntax: "<Surprise-oh> / <Surprise-ah> / <Surprise-wa>", purpose: "Insert surprise reactions", notes: "Three surprise variants for different expressive tones." },
-                    { syntax: "<Confirmation-en>", purpose: "Insert confirmation sound", notes: "Short confirming reaction inserted inline." },
-                    { syntax: "<Question-ei>", purpose: "Insert questioning sound", notes: "Useful before or around uncertain dialogue." },
-                    { syntax: "<Dissatisfaction-hnn>", purpose: "Insert dissatisfied reaction", notes: "Adds a disapproving or displeased 'hnn' sound." },
-                    { syntax: "<emotion:VALUE> / <emotion:VALUE:ITERATIONS>", purpose: "Apply whole-segment emotion", notes: "Available values: happy, sad, angry, excited, calm, fearful, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration." },
-                    { syntax: "<style:VALUE> / <style:VALUE:ITERATIONS>", purpose: "Apply whole-segment style", notes: "Available values include whisper, serious, child, older, pure, sister, sweet, exaggerated, ethereal, warm, comfort, authority, chat, radio, soulful, gentle, story, vivid, program, news, advertising, roar, murmur, shout, deeply, loudly, arrogant, friendly." },
-                    { syntax: "<speed:faster> / <speed:slower> / <speed:more_faster> / <speed:more_slower>", purpose: "Adjust whole-segment speed", notes: "Speed tags affect the full segment, not a point insertion." },
-                    { syntax: "<restore>", purpose: "Basic voice restoration", notes: "Runs 1 voice-conversion restore pass using the original pre-edit audio as the reference." },
-                    { syntax: "<restore:2>", purpose: "Stronger restoration", notes: "Runs 2 restore passes using the original clean pre-edit audio as the reference." },
-                    { syntax: "<restore:1@2>", purpose: "Restore from an intermediate edit-step reference", notes: "`N@M` means: run N restore passes using edit-step M as the reference audio, not restore pass M. Example timeline: `<style:whisper:2> <Laughter:3> <restore:1@2>` means whisper creates edit steps 1-2, laughter creates edit steps 3-5, then restore runs last using edit step 2 as reference so it keeps the whisper character but removes later degradation." },
-                    { syntax: "<A|B|C> or <A><B><C>", purpose: "Combine multiple inline tags", notes: "Both pipe-separated and separate-tag forms work. Processing order is emotion/style/speed first, paralinguistics second, restore last." }
+                    { syntax: "Step: <Laughter> / <Laughter:2>", purpose: "Post-process paralinguistic insertion", notes: "Step Audio EditX runs after TTS. Position matters because the sound is inserted where the tag appears." },
+                    { syntax: "Step: <emotion:happy> / <style:whisper> / <speed:faster>", purpose: "Whole-segment post-process controls", notes: "Use the Step mode in the inline panel when you want convenience editing without chaining a separate Audio Editor node." },
+                    { syntax: "Step: <restore> / <restore:2> / <restore:1@2>", purpose: "Voice restoration after Step edits", notes: "Restore always runs last and can aim back at the original voice or at an earlier edit step." },
+                    { syntax: "Higgs: <|emotion:amusement|>", purpose: "Native Higgs emotion control", notes: "Editor inserts canonical Higgs syntax. TTS Audio Suite also accepts alias input like <emotion:amusement>, but canonical output stays <|...|>." },
+                    { syntax: "Higgs: <|style:whispering|> / <|prosody:pause|> / <|sfx:laughter|>", purpose: "Native Higgs style, timing, and SFX tags", notes: "These affect generation directly. Higgs does not use Step post-process tags in this panel." },
+                    { syntax: "Cosy: <breath> / <laughter> / <cough>", purpose: "Native CosyVoice3 single tags", notes: "These are native generation tags, not Step Audio EditX tags." },
+                    { syntax: "Cosy: <laughing>text</laughing> / <strong>text</strong>", purpose: "Native CosyVoice3 wrapper tags", notes: "If text is selected, the editor can wrap the selection with the chosen Cosy wrapper tag." }
                 ],
                 bullets: [
-                    "Use inline tags for convenience and selective segment editing. Use the separate Audio Editor node for maximum manual control.",
-                    "Processing order is emotion/style/speed first, then paralinguistic insertion, then restore last.",
-                    "Position matters for paralinguistic tags like `<Laughter>` and `<Breathing>`, but not for whole-segment tags like emotion, style, speed, and restore.",
-                    "`<restore>` and `<restore:N>` use the original clean pre-edit audio as reference. `<restore:N@M>` switches the reference to edit step M, not restore pass M.",
-                    "Example: `<style:whisper:2> <Laughter:3> <restore:1@2>` means restore runs after everything else, but it aims back at the audio from whisper step 2 so you keep the whisper feel and drop the later laughter damage.",
-                    "If you want stronger laughter or reaction effects, include supporting spoken text too, not just the tag."
+                    "Pick the tag engine inside the Inline Tags panel instead of mixing syntaxes blindly.",
+                    "Step Audio EditX tags are post-process controls. Higgs Audio v3 and CosyVoice3 tags are native generation controls.",
+                    "Higgs editor insertion always uses canonical `<|...|>` syntax even though alias forms like `<emotion:amusement>` are accepted on input.",
+                    "CosyVoice3 does not run Step Audio EditX post-processing here. Use native Cosy tags instead.",
+                    "Use the separate Audio Editor node when you want full manual Step Audio EditX workflows across generated audio."
                 ]
             },
             {

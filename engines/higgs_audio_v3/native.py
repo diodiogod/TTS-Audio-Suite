@@ -5,6 +5,7 @@ from __future__ import annotations
 import gc
 import json
 import logging
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -64,10 +65,11 @@ class HiggsGenerationProgress:
         self.start_time = time.time()
         self.last_print_time = self.start_time
         self.last_print_step = 0
+        self._last_render = ""
 
     def update(self, current_step: int, *, force: bool = False) -> None:
         current_time = time.time()
-        if not force and (current_time - self.last_print_time) < 0.5:
+        if not force and (current_time - self.last_print_time) < 1.0:
             return
 
         steps_since_print = max(0, int(current_step) - self.last_print_step)
@@ -77,23 +79,28 @@ class HiggsGenerationProgress:
         remaining_steps = max(0, self.total_steps - int(current_step))
         eta_seconds = remaining_steps / its if its > 1e-6 else 0.0
 
-        bar = _text_progress_bar(int(current_step), self.total_steps, width=12)
-        print(
-            f"\r   Progress: {bar} {int(current_step)}/{self.total_steps} | "
-            f"{its:.1f} it/s | {elapsed:.0f}s | ETA {eta_seconds:.0f}s      ",
-            end="",
-            flush=True,
+        bar_width = 12
+        filled = int(bar_width * int(current_step) / self.total_steps) if self.total_steps > 0 else 0
+        filled = min(filled, bar_width)
+        progress_bar_str = f"[{'█' * filled}{'░' * (bar_width - filled)}] {int(current_step)}/{self.total_steps}"
+        render = (
+            f"   Progress: {progress_bar_str} | "
+            f"{its:.1f} it/s | {elapsed:.0f}s | ETA {eta_seconds:.0f}s"
         )
+        padding = " " * max(0, len(self._last_render) - len(render))
+        sys.stdout.write("\r" + render + padding)
+        sys.stdout.flush()
+        self._last_render = render
         self.last_print_time = current_time
         self.last_print_step = int(current_step)
 
     def end(self, final_step: int) -> None:
         total_time = max(1e-6, time.time() - self.start_time)
         avg_its = int(final_step) / total_time
-        print(
-            f"\r   Complete: {int(final_step)} tokens in {total_time:.1f}s "
-            f"(avg {avg_its:.1f} it/s)" + " " * 30
-        )
+        render = f"   Complete: {int(final_step)} tokens in {total_time:.1f}s (avg {avg_its:.1f} it/s)"
+        padding = " " * max(0, len(self._last_render) - len(render))
+        sys.stdout.write("\r" + render + padding + "\n")
+        sys.stdout.flush()
 
 
 class HiggsFusedMultiTextEmbedding(nn.Module):

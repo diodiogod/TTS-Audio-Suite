@@ -1,417 +1,242 @@
 /**
- * 🏷️ Widget Inline Edit Section
- * Builds the inline edit tag controls for Step Audio EditX post-processing
- * Provides UI for paralinguistic, emotion, style, speed, and restore tags
+ * 🏷️ Widget Inline Tags Section
+ * Builds an engine-aware inline tag panel for Step Audio EditX, Higgs Audio v3, and CosyVoice3.
  */
 
-export function buildInlineEditSection(state, storageKey) {
-    const container = document.createElement("div");
-    container.style.display = "flex";
-    container.style.flexDirection = "column";
-    container.style.gap = "8px";
-    container.style.overflowY = "visible";
-    container.style.flex = "0 0 auto";
-    container.style.paddingRight = "0";
+const HIGGS_TAGS = {
+    emotion: [
+        "elation", "amusement", "enthusiasm", "determination", "pride", "contentment", "affection",
+        "relief", "contemplation", "confusion", "surprise", "awe", "longing", "arousal", "anger",
+        "fear", "disgust", "bitterness", "sadness", "shame", "helplessness"
+    ],
+    style: ["singing", "shouting", "whispering"],
+    prosody: [
+        "speed_very_slow", "speed_slow", "speed_fast", "speed_very_fast",
+        "pitch_low", "pitch_high", "pause", "long_pause", "expressive_high", "expressive_low"
+    ],
+    sfx: ["cough", "laughter", "crying", "screaming", "burping", "humming", "sigh", "sniff", "sneeze"],
+};
 
-    // ==================== PARALINGUISTIC TAGS ====================
-    const paraSection = document.createElement("div");
-    paraSection.style.marginBottom = "8px";
-    paraSection.style.paddingBottom = "8px";
-    paraSection.style.borderBottom = "1px solid #444";
+const COSY_SINGLE_TAGS = [
+    "breath", "quick_breath", "laughter", "cough", "sigh", "gasp", "noise",
+    "hissing", "vocalized-noise", "lipsmack", "mn", "clucking", "accent"
+];
 
-    const paraLabel = document.createElement("div");
-    paraLabel.textContent = "Paralinguistic";
-    paraLabel.style.fontWeight = "bold";
-    paraLabel.style.marginBottom = "5px";
-    paraLabel.style.fontSize = "11px";
-    paraLabel.style.color = "#00ffff";
+const COSY_WRAPPER_TAGS = ["laughing", "strong"];
 
-    const paraSelect = document.createElement("select");
-    paraSelect.style.width = "100%";
-    paraSelect.style.marginBottom = "4px";
-    paraSelect.style.padding = "3px";
-    paraSelect.style.fontSize = "10px";
-    paraSelect.style.background = "#2a2a2a";
-    paraSelect.style.color = "#eee";
-    paraSelect.style.border = "1px solid #444";
-    paraSelect.innerHTML = `
-        <option value="">Select sound...</option>
-        <option value="Laughter">Laughter</option>
-        <option value="Breathing">Breathing</option>
-        <option value="Sigh">Sigh</option>
-        <option value="Uhm">Uhm</option>
-        <option value="Surprise-oh">Surprise (oh)</option>
-        <option value="Surprise-ah">Surprise (ah)</option>
-        <option value="Surprise-wa">Surprise (wa)</option>
-        <option value="Confirmation-en">Confirmation (en)</option>
-        <option value="Question-ei">Question (ei)</option>
-        <option value="Dissatisfaction-hnn">Dissatisfaction (hnn)</option>
-    `;
-
-    // Restore saved selection
-    if (state.lastParalinguisticType) {
-        paraSelect.value = state.lastParalinguisticType;
+function stylePanelContainer(element, { separated = true } = {}) {
+    element.style.marginBottom = "8px";
+    if (separated) {
+        element.style.paddingBottom = "8px";
+        element.style.borderBottom = "1px solid #444";
     }
+}
 
+function createPanelLabel(text, color, title = "") {
+    const label = document.createElement("div");
+    label.textContent = text;
+    label.style.fontWeight = "bold";
+    label.style.marginBottom = "5px";
+    label.style.fontSize = "11px";
+    label.style.color = color;
+    if (title) {
+        label.title = title;
+    }
+    return label;
+}
+
+function createSelect(options, placeholder, value = "") {
+    const select = document.createElement("select");
+    select.style.width = "100%";
+    select.style.marginBottom = "4px";
+    select.style.padding = "3px";
+    select.style.fontSize = "10px";
+    select.style.background = "#2a2a2a";
+    select.style.color = "#eee";
+    select.style.border = "1px solid #444";
+    select.innerHTML = `<option value="">${placeholder}</option>${options.map(({ value: optionValue, label }) => `<option value="${optionValue}">${label}</option>`).join("")}`;
+    if (value) {
+        select.value = value;
+    }
+    return select;
+}
+
+function createInfoText(text, title = "") {
+    const label = document.createElement("div");
+    label.textContent = text;
+    label.style.fontSize = "9px";
+    label.style.marginBottom = "4px";
+    label.style.color = "#999";
+    if (title) {
+        label.title = title;
+    }
+    return label;
+}
+
+function createRangeControl(state, storageKey, {
+    stateValueKey,
+    labelPrefix,
+    min = "1",
+    max = "5",
+    title = "",
+}) {
+    const value = state[stateValueKey] || "1";
+    const label = createInfoText(`${labelPrefix}: ${value}`, title);
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = min;
+    slider.max = max;
+    slider.value = value;
+    slider.style.width = "100%";
+    slider.style.marginBottom = "4px";
+    if (title) {
+        slider.title = title;
+    }
+    slider.addEventListener("input", () => {
+        label.textContent = `${labelPrefix}: ${slider.value}`;
+        state[stateValueKey] = slider.value;
+        state.saveToLocalStorage(storageKey);
+    });
+    return { label, slider };
+}
+
+function createButton(text, title) {
+    const button = document.createElement("button");
+    button.textContent = text;
+    button.title = title;
+    button.style.width = "100%";
+    button.style.padding = "4px";
+    button.style.cursor = "pointer";
+    button.style.fontSize = "10px";
+    button.style.background = "#3a3a3a";
+    button.style.color = "#eee";
+    button.style.border = "1px solid #555";
+    button.style.borderRadius = "2px";
+    return button;
+}
+
+function buildStepSection(state, storageKey) {
+    const section = document.createElement("div");
+    section.style.display = "flex";
+    section.style.flexDirection = "column";
+    section.style.gap = "8px";
+
+    const paraSection = document.createElement("div");
+    stylePanelContainer(paraSection);
+    const paraSelect = createSelect([
+        { value: "Laughter", label: "Laughter" },
+        { value: "Breathing", label: "Breathing" },
+        { value: "Sigh", label: "Sigh" },
+        { value: "Uhm", label: "Uhm" },
+        { value: "Surprise-oh", label: "Surprise (oh)" },
+        { value: "Surprise-ah", label: "Surprise (ah)" },
+        { value: "Surprise-wa", label: "Surprise (wa)" },
+        { value: "Confirmation-en", label: "Confirmation (en)" },
+        { value: "Question-ei", label: "Question (ei)" },
+        { value: "Dissatisfaction-hnn", label: "Dissatisfaction (hnn)" },
+    ], "Select sound...", state.lastParalinguisticType || "");
     paraSelect.addEventListener("change", () => {
         state.lastParalinguisticType = paraSelect.value;
         state.saveToLocalStorage(storageKey);
     });
-
-    const paraIterLabel = document.createElement("div");
-    const paraIterValue = state.lastParalinguisticIter || "1";
-    paraIterLabel.textContent = `Iterations: ${paraIterValue}`;
-    paraIterLabel.style.fontSize = "9px";
-    paraIterLabel.style.marginBottom = "2px";
-    paraIterLabel.style.color = "#999";
-
-    const paraIterSlider = document.createElement("input");
-    paraIterSlider.type = "range";
-    paraIterSlider.min = "1";
-    paraIterSlider.max = "5";
-    paraIterSlider.value = paraIterValue;
-    paraIterSlider.style.width = "100%";
-    paraIterSlider.style.marginBottom = "4px";
-
-    paraIterSlider.addEventListener("input", () => {
-        paraIterLabel.textContent = `Iterations: ${paraIterSlider.value}`;
-        state.lastParalinguisticIter = paraIterSlider.value;
-        state.saveToLocalStorage(storageKey);
+    const { label: paraIterLabel, slider: paraIterSlider } = createRangeControl(state, storageKey, {
+        stateValueKey: "lastParalinguisticIter",
+        labelPrefix: "Iterations",
     });
+    const addParaBtn = createButton("Add Paralinguistic", "Insert paralinguistic tag at cursor");
+    paraSection.append(
+        createPanelLabel("Paralinguistic", "#00ffff"),
+        paraSelect,
+        paraIterLabel,
+        paraIterSlider,
+        addParaBtn
+    );
 
-    const addParaBtn = document.createElement("button");
-    addParaBtn.textContent = "Add Paralinguistic";
-    addParaBtn.title = "Insert paralinguistic tag at cursor";
-    addParaBtn.style.width = "100%";
-    addParaBtn.style.padding = "4px";
-    addParaBtn.style.cursor = "pointer";
-    addParaBtn.style.fontSize = "10px";
-    addParaBtn.style.background = "#3a3a3a";
-    addParaBtn.style.color = "#eee";
-    addParaBtn.style.border = "1px solid #555";
-    addParaBtn.style.borderRadius = "2px";
-
-    paraSection.appendChild(paraLabel);
-    paraSection.appendChild(paraSelect);
-    paraSection.appendChild(paraIterLabel);
-    paraSection.appendChild(paraIterSlider);
-    paraSection.appendChild(addParaBtn);
-
-    // ==================== EMOTION TAGS ====================
     const emotionSection = document.createElement("div");
-    emotionSection.style.marginBottom = "8px";
-    emotionSection.style.paddingBottom = "8px";
-    emotionSection.style.borderBottom = "1px solid #444";
-
-    const emotionLabel = document.createElement("div");
-    emotionLabel.textContent = "Emotion";
-    emotionLabel.style.fontWeight = "bold";
-    emotionLabel.style.marginBottom = "5px";
-    emotionLabel.style.fontSize = "11px";
-    emotionLabel.style.color = "#ffaa00";
-
-    const emotionSelect = document.createElement("select");
-    emotionSelect.style.width = "100%";
-    emotionSelect.style.marginBottom = "4px";
-    emotionSelect.style.padding = "3px";
-    emotionSelect.style.fontSize = "10px";
-    emotionSelect.style.background = "#2a2a2a";
-    emotionSelect.style.color = "#eee";
-    emotionSelect.style.border = "1px solid #444";
-    emotionSelect.innerHTML = `
-        <option value="">Select emotion...</option>
-        <option value="happy">Happy</option>
-        <option value="sad">Sad</option>
-        <option value="angry">Angry</option>
-        <option value="excited">Excited</option>
-        <option value="calm">Calm</option>
-        <option value="fearful">Fearful</option>
-        <option value="surprised">Surprised</option>
-        <option value="disgusted">Disgusted</option>
-        <option value="confusion">Confusion</option>
-        <option value="empathy">Empathy</option>
-        <option value="embarrass">Embarrass</option>
-        <option value="depressed">Depressed</option>
-        <option value="coldness">Coldness</option>
-        <option value="admiration">Admiration</option>
-    `;
-
-    // Restore saved selection
-    if (state.lastEmotionType) {
-        emotionSelect.value = state.lastEmotionType;
-    }
-
+    stylePanelContainer(emotionSection);
+    const emotionSelect = createSelect([
+        "happy", "sad", "angry", "excited", "calm", "fearful", "surprised",
+        "disgusted", "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration"
+    ].map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })), "Select emotion...", state.lastEmotionType || "");
     emotionSelect.addEventListener("change", () => {
         state.lastEmotionType = emotionSelect.value;
         state.saveToLocalStorage(storageKey);
     });
-
-    const emotionIterLabel = document.createElement("div");
-    const emotionIterValue = state.lastEmotionIter || "1";
-    emotionIterLabel.textContent = `Iterations: ${emotionIterValue}`;
-    emotionIterLabel.style.fontSize = "9px";
-    emotionIterLabel.style.marginBottom = "2px";
-    emotionIterLabel.style.color = "#999";
-
-    const emotionIterSlider = document.createElement("input");
-    emotionIterSlider.type = "range";
-    emotionIterSlider.min = "1";
-    emotionIterSlider.max = "5";
-    emotionIterSlider.value = emotionIterValue;
-    emotionIterSlider.style.width = "100%";
-    emotionIterSlider.style.marginBottom = "4px";
-
-    emotionIterSlider.addEventListener("input", () => {
-        emotionIterLabel.textContent = `Iterations: ${emotionIterSlider.value}`;
-        state.lastEmotionIter = emotionIterSlider.value;
-        state.saveToLocalStorage(storageKey);
+    const { label: emotionIterLabel, slider: emotionIterSlider } = createRangeControl(state, storageKey, {
+        stateValueKey: "lastEmotionIter",
+        labelPrefix: "Iterations",
     });
+    const addEmotionBtn = createButton("Add Emotion", "Insert emotion tag at cursor");
+    emotionSection.append(
+        createPanelLabel("Emotion", "#ffaa00"),
+        emotionSelect,
+        emotionIterLabel,
+        emotionIterSlider,
+        addEmotionBtn
+    );
 
-    const addEmotionBtn = document.createElement("button");
-    addEmotionBtn.textContent = "Add Emotion";
-    addEmotionBtn.title = "Insert emotion tag at cursor";
-    addEmotionBtn.style.width = "100%";
-    addEmotionBtn.style.padding = "4px";
-    addEmotionBtn.style.cursor = "pointer";
-    addEmotionBtn.style.fontSize = "10px";
-    addEmotionBtn.style.background = "#3a3a3a";
-    addEmotionBtn.style.color = "#eee";
-    addEmotionBtn.style.border = "1px solid #555";
-    addEmotionBtn.style.borderRadius = "2px";
-
-    emotionSection.appendChild(emotionLabel);
-    emotionSection.appendChild(emotionSelect);
-    emotionSection.appendChild(emotionIterLabel);
-    emotionSection.appendChild(emotionIterSlider);
-    emotionSection.appendChild(addEmotionBtn);
-
-    // ==================== STYLE TAGS ====================
     const styleSection = document.createElement("div");
-    styleSection.style.marginBottom = "8px";
-    styleSection.style.paddingBottom = "8px";
-    styleSection.style.borderBottom = "1px solid #444";
-
-    const styleLabel = document.createElement("div");
-    styleLabel.textContent = "Style";
-    styleLabel.style.fontWeight = "bold";
-    styleLabel.style.marginBottom = "5px";
-    styleLabel.style.fontSize = "11px";
-    styleLabel.style.color = "#ff5555";
-
-    const styleSelect = document.createElement("select");
-    styleSelect.style.width = "100%";
-    styleSelect.style.marginBottom = "4px";
-    styleSelect.style.padding = "3px";
-    styleSelect.style.fontSize = "10px";
-    styleSelect.style.background = "#2a2a2a";
-    styleSelect.style.color = "#eee";
-    styleSelect.style.border = "1px solid #444";
-    styleSelect.innerHTML = `
-        <option value="">Select style...</option>
-        <option value="whisper">Whisper</option>
-        <option value="serious">Serious</option>
-        <option value="child">Child</option>
-        <option value="older">Older</option>
-        <option value="girl">Girl</option>
-        <option value="pure">Pure</option>
-        <option value="sister">Sister</option>
-        <option value="sweet">Sweet</option>
-        <option value="exaggerated">Exaggerated</option>
-        <option value="ethereal">Ethereal</option>
-        <option value="generous">Generous</option>
-        <option value="recite">Recite</option>
-        <option value="act_coy">Act Coy</option>
-        <option value="warm">Warm</option>
-        <option value="shy">Shy</option>
-        <option value="comfort">Comfort</option>
-        <option value="authority">Authority</option>
-        <option value="chat">Chat</option>
-        <option value="radio">Radio</option>
-        <option value="soulful">Soulful</option>
-        <option value="gentle">Gentle</option>
-        <option value="story">Story</option>
-        <option value="vivid">Vivid</option>
-        <option value="program">Program</option>
-        <option value="news">News</option>
-        <option value="advertising">Advertising</option>
-        <option value="roar">Roar</option>
-        <option value="murmur">Murmur</option>
-        <option value="shout">Shout</option>
-        <option value="deeply">Deeply</option>
-        <option value="loudly">Loudly</option>
-        <option value="arrogant">Arrogant</option>
-        <option value="friendly">Friendly</option>
-    `;
-
-    // Restore saved selection
-    if (state.lastStyleType) {
-        styleSelect.value = state.lastStyleType;
-    }
-
+    stylePanelContainer(styleSection);
+    const styleSelect = createSelect([
+        "whisper", "serious", "child", "older", "girl", "pure", "sister", "sweet",
+        "exaggerated", "ethereal", "generous", "recite", "act_coy", "warm", "shy",
+        "comfort", "authority", "chat", "radio", "soulful", "gentle", "story", "vivid",
+        "program", "news", "advertising", "roar", "murmur", "shout", "deeply", "loudly",
+        "arrogant", "friendly"
+    ].map((value) => ({ value, label: value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) })), "Select style...", state.lastStyleType || "");
     styleSelect.addEventListener("change", () => {
         state.lastStyleType = styleSelect.value;
         state.saveToLocalStorage(storageKey);
     });
-
-    const styleIterLabel = document.createElement("div");
-    const styleIterValue = state.lastStyleIter || "1";
-    styleIterLabel.textContent = `Iterations: ${styleIterValue}`;
-    styleIterLabel.style.fontSize = "9px";
-    styleIterLabel.style.marginBottom = "2px";
-    styleIterLabel.style.color = "#999";
-
-    const styleIterSlider = document.createElement("input");
-    styleIterSlider.type = "range";
-    styleIterSlider.min = "1";
-    styleIterSlider.max = "5";
-    styleIterSlider.value = styleIterValue;
-    styleIterSlider.style.width = "100%";
-    styleIterSlider.style.marginBottom = "4px";
-
-    styleIterSlider.addEventListener("input", () => {
-        styleIterLabel.textContent = `Iterations: ${styleIterSlider.value}`;
-        state.lastStyleIter = styleIterSlider.value;
-        state.saveToLocalStorage(storageKey);
+    const { label: styleIterLabel, slider: styleIterSlider } = createRangeControl(state, storageKey, {
+        stateValueKey: "lastStyleIter",
+        labelPrefix: "Iterations",
     });
+    const addStyleBtn = createButton("Add Style", "Insert style tag at cursor");
+    styleSection.append(
+        createPanelLabel("Style", "#ff5555"),
+        styleSelect,
+        styleIterLabel,
+        styleIterSlider,
+        addStyleBtn
+    );
 
-    const addStyleBtn = document.createElement("button");
-    addStyleBtn.textContent = "Add Style";
-    addStyleBtn.title = "Insert style tag at cursor";
-    addStyleBtn.style.width = "100%";
-    addStyleBtn.style.padding = "4px";
-    addStyleBtn.style.cursor = "pointer";
-    addStyleBtn.style.fontSize = "10px";
-    addStyleBtn.style.background = "#3a3a3a";
-    addStyleBtn.style.color = "#eee";
-    addStyleBtn.style.border = "1px solid #555";
-    addStyleBtn.style.borderRadius = "2px";
-
-    styleSection.appendChild(styleLabel);
-    styleSection.appendChild(styleSelect);
-    styleSection.appendChild(styleIterLabel);
-    styleSection.appendChild(styleIterSlider);
-    styleSection.appendChild(addStyleBtn);
-
-    // ==================== SPEED TAGS ====================
     const speedSection = document.createElement("div");
-    speedSection.style.marginBottom = "8px";
-    speedSection.style.paddingBottom = "8px";
-    speedSection.style.borderBottom = "1px solid #444";
-
-    const speedLabel = document.createElement("div");
-    speedLabel.textContent = "Speed";
-    speedLabel.style.fontWeight = "bold";
-    speedLabel.style.marginBottom = "5px";
-    speedLabel.style.fontSize = "11px";
-    speedLabel.style.color = "#66ff66";
-
-    const speedSelect = document.createElement("select");
-    speedSelect.style.width = "100%";
-    speedSelect.style.marginBottom = "4px";
-    speedSelect.style.padding = "3px";
-    speedSelect.style.fontSize = "10px";
-    speedSelect.style.background = "#2a2a2a";
-    speedSelect.style.color = "#eee";
-    speedSelect.style.border = "1px solid #444";
-    speedSelect.innerHTML = `
-        <option value="">Select speed...</option>
-        <option value="faster">Faster</option>
-        <option value="slower">Slower</option>
-        <option value="more_faster">More Faster</option>
-        <option value="more_slower">More Slower</option>
-    `;
-
-    // Restore saved selection
-    if (state.lastSpeedType) {
-        speedSelect.value = state.lastSpeedType;
-    }
-
+    stylePanelContainer(speedSection);
+    const speedSelect = createSelect([
+        { value: "faster", label: "Faster" },
+        { value: "slower", label: "Slower" },
+        { value: "more_faster", label: "More Faster" },
+        { value: "more_slower", label: "More Slower" },
+    ], "Select speed...", state.lastSpeedType || "");
     speedSelect.addEventListener("change", () => {
         state.lastSpeedType = speedSelect.value;
         state.saveToLocalStorage(storageKey);
     });
-
-    const speedIterLabel = document.createElement("div");
-    const speedIterValue = state.lastSpeedIter || "1";
-    speedIterLabel.textContent = `Iterations: ${speedIterValue}`;
-    speedIterLabel.style.fontSize = "9px";
-    speedIterLabel.style.marginBottom = "2px";
-    speedIterLabel.style.color = "#999";
-
-    const speedIterSlider = document.createElement("input");
-    speedIterSlider.type = "range";
-    speedIterSlider.min = "1";
-    speedIterSlider.max = "5";
-    speedIterSlider.value = speedIterValue;
-    speedIterSlider.style.width = "100%";
-    speedIterSlider.style.marginBottom = "4px";
-
-    speedIterSlider.addEventListener("input", () => {
-        speedIterLabel.textContent = `Iterations: ${speedIterSlider.value}`;
-        state.lastSpeedIter = speedIterSlider.value;
-        state.saveToLocalStorage(storageKey);
+    const { label: speedIterLabel, slider: speedIterSlider } = createRangeControl(state, storageKey, {
+        stateValueKey: "lastSpeedIter",
+        labelPrefix: "Iterations",
     });
+    const addSpeedBtn = createButton("Add Speed", "Insert speed tag at cursor");
+    speedSection.append(
+        createPanelLabel("Speed", "#66ff66"),
+        speedSelect,
+        speedIterLabel,
+        speedIterSlider,
+        addSpeedBtn
+    );
 
-    const addSpeedBtn = document.createElement("button");
-    addSpeedBtn.textContent = "Add Speed";
-    addSpeedBtn.title = "Insert speed tag at cursor";
-    addSpeedBtn.style.width = "100%";
-    addSpeedBtn.style.padding = "4px";
-    addSpeedBtn.style.cursor = "pointer";
-    addSpeedBtn.style.fontSize = "10px";
-    addSpeedBtn.style.background = "#3a3a3a";
-    addSpeedBtn.style.color = "#eee";
-    addSpeedBtn.style.border = "1px solid #555";
-    addSpeedBtn.style.borderRadius = "2px";
-
-    speedSection.appendChild(speedLabel);
-    speedSection.appendChild(speedSelect);
-    speedSection.appendChild(speedIterLabel);
-    speedSection.appendChild(speedIterSlider);
-    speedSection.appendChild(addSpeedBtn);
-
-    // ==================== RESTORE TAGS ====================
     const restoreSection = document.createElement("div");
-    restoreSection.style.marginBottom = "8px";
-
-    const restoreLabel = document.createElement("div");
-    restoreLabel.textContent = "Voice Restoration";
-    restoreLabel.style.fontWeight = "bold";
-    restoreLabel.style.marginBottom = "5px";
-    restoreLabel.style.fontSize = "11px";
-    restoreLabel.style.color = "#ffcc33";
-    restoreLabel.title = "Restore runs after all other inline edits. It uses voice conversion to pull the final result back toward either the original clean voice or a chosen earlier edit step.";
-
-    const restorePassLabel = document.createElement("div");
-    const restorePassValue = state.lastRestorePasses || "1";
-    restorePassLabel.textContent = `VC Passes: ${restorePassValue}`;
-    restorePassLabel.style.fontSize = "9px";
-    restorePassLabel.style.marginBottom = "2px";
-    restorePassLabel.style.color = "#999";
-    restorePassLabel.title = "How many restoration passes to run. More passes push harder toward the chosen reference voice.";
-
-    const restorePassSlider = document.createElement("input");
-    restorePassSlider.type = "range";
-    restorePassSlider.min = "1";
-    restorePassSlider.max = "5";
-    restorePassSlider.value = restorePassValue;
-    restorePassSlider.style.width = "100%";
-    restorePassSlider.style.marginBottom = "4px";
-    restorePassSlider.title = "Choose 1 to 5 restoration passes. Example: <restore:2> runs 2 passes using the original clean voice as reference.";
-
-    restorePassSlider.addEventListener("input", () => {
-        restorePassLabel.textContent = `VC Passes: ${restorePassSlider.value}`;
-        state.lastRestorePasses = restorePassSlider.value;
-        state.saveToLocalStorage(storageKey);
+    stylePanelContainer(restoreSection, { separated: false });
+    const { label: restorePassLabel, slider: restorePassSlider } = createRangeControl(state, storageKey, {
+        stateValueKey: "lastRestorePasses",
+        labelPrefix: "VC Passes",
+        title: "How many restoration passes to run. More passes push harder toward the chosen reference voice.",
     });
-
-    const restoreRefLabel = document.createElement("div");
-    restoreRefLabel.textContent = "Reference Iteration (optional)";
-    restoreRefLabel.style.fontSize = "9px";
-    restoreRefLabel.style.marginBottom = "2px";
-    restoreRefLabel.style.color = "#999";
-    restoreRefLabel.title = "Optional edit-step reference. This is not a restore pass number. Example: in <restore:1@2>, the @2 points to edit step 2 from earlier inline edits.";
-
+    const restoreRefLabel = createInfoText(
+        "Reference Iteration (optional)",
+        "Optional edit-step reference. In <restore:1@2>, the @2 points to edit step 2 from earlier inline edits."
+    );
     const restoreRefInput = document.createElement("input");
     restoreRefInput.type = "number";
     restoreRefInput.placeholder = "Leave empty for original";
@@ -426,54 +251,225 @@ export function buildInlineEditSection(state, storageKey) {
     restoreRefInput.style.border = "1px solid #444";
     restoreRefInput.style.marginBottom = "4px";
     restoreRefInput.title = "Leave empty to use the original clean pre-edit audio. Enter an edit step number to use that earlier edited snapshot as the reference voice.";
-
     restoreRefInput.addEventListener("change", () => {
         state.lastRestoreRefIter = restoreRefInput.value;
         state.saveToLocalStorage(storageKey);
     });
+    const addRestoreBtn = createButton("Add Restore", "Insert <restore>, <restore:2>, or <restore:1@2>.");
+    restoreSection.append(
+        createPanelLabel("Voice Restoration", "#ffcc33", "Restore runs after all other inline edits."),
+        restorePassLabel,
+        restorePassSlider,
+        restoreRefLabel,
+        restoreRefInput,
+        addRestoreBtn
+    );
 
-    const addRestoreBtn = document.createElement("button");
-    addRestoreBtn.textContent = "Add Restore";
-    addRestoreBtn.title = "Insert a restore tag at the cursor. Examples: <restore>, <restore:2>, <restore:1@2>.";
-    addRestoreBtn.style.width = "100%";
-    addRestoreBtn.style.padding = "4px";
-    addRestoreBtn.style.cursor = "pointer";
-    addRestoreBtn.style.fontSize = "10px";
-    addRestoreBtn.style.background = "#3a3a3a";
-    addRestoreBtn.style.color = "#eee";
-    addRestoreBtn.style.border = "1px solid #555";
-    addRestoreBtn.style.borderRadius = "2px";
+    section.append(paraSection, emotionSection, styleSection, speedSection, restoreSection);
 
-    restoreSection.appendChild(restoreLabel);
-    restoreSection.appendChild(restorePassLabel);
-    restoreSection.appendChild(restorePassSlider);
-    restoreSection.appendChild(restoreRefLabel);
-    restoreSection.appendChild(restoreRefInput);
-    restoreSection.appendChild(addRestoreBtn);
+    return {
+        panel: section,
+        controls: {
+            paraSelect, paraIterSlider, addParaBtn,
+            emotionSelect, emotionIterSlider, addEmotionBtn,
+            styleSelect, styleIterSlider, addStyleBtn,
+            speedSelect, speedIterSlider, addSpeedBtn,
+            restorePassSlider, restoreRefInput, addRestoreBtn,
+        },
+    };
+}
 
-    // Assemble all sections
-    container.appendChild(paraSection);
-    container.appendChild(emotionSection);
-    container.appendChild(styleSection);
-    container.appendChild(speedSection);
-    container.appendChild(restoreSection);
+function buildHiggsSection(state, storageKey) {
+    const section = document.createElement("div");
+    section.style.display = "flex";
+    section.style.flexDirection = "column";
+    section.style.gap = "8px";
+
+    state.lastHiggsInlineValues = state.lastHiggsInlineValues || {};
+
+    const buildHiggsTagSubsection = ({ category, label, color, separated = true }) => {
+        const subsection = document.createElement("div");
+        stylePanelContainer(subsection, { separated });
+        const savedValue = state.lastHiggsInlineValues[category] || HIGGS_TAGS[category][0] || "";
+        const select = createSelect(
+            HIGGS_TAGS[category].map((value) => ({ value, label: value })),
+            `Select ${label.toLowerCase()}...`,
+            savedValue
+        );
+        select.addEventListener("change", () => {
+            state.lastHiggsInlineValues[category] = select.value;
+            state.saveToLocalStorage(storageKey);
+        });
+        const addBtn = createButton(`Add ${label}`, `Insert canonical Higgs ${label.toLowerCase()} tag at cursor`);
+        subsection.append(
+            createPanelLabel(label, color),
+            select,
+            addBtn
+        );
+        return { subsection, select, addBtn };
+    };
+
+    const emotionSection = buildHiggsTagSubsection({
+        category: "emotion",
+        label: "Emotion",
+        color: "#64d7ff",
+    });
+    const styleSection = buildHiggsTagSubsection({
+        category: "style",
+        label: "Style",
+        color: "#8fcbff",
+    });
+    const prosodySection = buildHiggsTagSubsection({
+        category: "prosody",
+        label: "Prosody",
+        color: "#b5a3ff",
+    });
+    const sfxSection = buildHiggsTagSubsection({
+        category: "sfx",
+        label: "SFX",
+        color: "#ff9e7a",
+        separated: false,
+    });
+
+    const introSection = document.createElement("div");
+    stylePanelContainer(introSection);
+    introSection.append(
+        createPanelLabel("Higgs Native Tags", "#64d7ff")
+    );
+
+    section.append(
+        introSection,
+        emotionSection.subsection,
+        styleSection.subsection,
+        prosodySection.subsection,
+        sfxSection.subsection
+    );
+
+    return {
+        panel: section,
+        controls: {
+            emotionSelect: emotionSection.select,
+            addEmotionBtn: emotionSection.addBtn,
+            styleSelect: styleSection.select,
+            addStyleBtn: styleSection.addBtn,
+            prosodySelect: prosodySection.select,
+            addProsodyBtn: prosodySection.addBtn,
+            sfxSelect: sfxSection.select,
+            addSfxBtn: sfxSection.addBtn,
+        },
+    };
+}
+
+function buildCosySection(state, storageKey) {
+    const section = document.createElement("div");
+    section.style.display = "flex";
+    section.style.flexDirection = "column";
+    section.style.gap = "8px";
+
+    const singleSection = document.createElement("div");
+    stylePanelContainer(singleSection);
+    const singleTagSelect = createSelect(
+        COSY_SINGLE_TAGS.map((value) => ({ value, label: value })),
+        "Select single tag...",
+        state.lastCosyInlineSingleTag || "breath"
+    );
+    singleTagSelect.addEventListener("change", () => {
+        state.lastCosyInlineSingleTag = singleTagSelect.value;
+        state.saveToLocalStorage(storageKey);
+    });
+    const addSingleTagBtn = createButton("Add Single Tag", "Insert native CosyVoice3 single tag like <breath>");
+    singleSection.append(
+        createPanelLabel("Single Tags", "#8cff9d"),
+        singleTagSelect,
+        addSingleTagBtn
+    );
+
+    const wrapperSection = document.createElement("div");
+    stylePanelContainer(wrapperSection, { separated: false });
+    const wrapperTagSelect = createSelect(
+        COSY_WRAPPER_TAGS.map((value) => ({ value, label: value })),
+        "Select wrapper tag...",
+        state.lastCosyInlineWrapperTag || "laughing"
+    );
+    wrapperTagSelect.addEventListener("change", () => {
+        state.lastCosyInlineWrapperTag = wrapperTagSelect.value;
+        state.saveToLocalStorage(storageKey);
+    });
+    const wrapperHint = createInfoText("If text is selected, the wrapper will surround it. Otherwise it inserts an example pair.");
+    const addWrapperTagBtn = createButton("Add Wrapper Tag", "Insert wrapper tag pair like <laughing>text</laughing>");
+    wrapperSection.append(
+        createPanelLabel("Wrapper Tags", "#f6c95b"),
+        wrapperTagSelect,
+        wrapperHint,
+        addWrapperTagBtn
+    );
+
+    section.append(singleSection, wrapperSection);
+
+    return {
+        panel: section,
+        controls: {
+            singleTagSelect,
+            addSingleTagBtn,
+            wrapperTagSelect,
+            addWrapperTagBtn,
+        },
+    };
+}
+
+export function buildInlineEditSection(state, storageKey) {
+    const container = document.createElement("div");
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.gap = "8px";
+    container.style.overflowY = "visible";
+    container.style.flex = "0 0 auto";
+    container.style.paddingRight = "0";
+
+    const engineSection = document.createElement("div");
+    stylePanelContainer(engineSection);
+    const inlineEngineSelect = createSelect([
+        { value: "step_audio_editx", label: "Step Audio EditX" },
+        { value: "higgs_audio_v3", label: "Higgs Audio v3" },
+        { value: "cosyvoice3", label: "CosyVoice3" },
+    ], "Select inline tag engine...", state.activeInlineTagEngine || "step_audio_editx");
+    inlineEngineSelect.addEventListener("change", () => {
+        state.activeInlineTagEngine = inlineEngineSelect.value;
+        updateVisiblePanel();
+        state.saveToLocalStorage(storageKey);
+    });
+    engineSection.append(
+        createPanelLabel("Tag Engine", "#d0d0d0"),
+        inlineEngineSelect
+    );
+
+    const stepSection = buildStepSection(state, storageKey);
+    const higgsSection = buildHiggsSection(state, storageKey);
+    const cosySection = buildCosySection(state, storageKey);
+
+    const panels = {
+        step_audio_editx: stepSection.panel,
+        higgs_audio_v3: higgsSection.panel,
+        cosyvoice3: cosySection.panel,
+    };
+
+    const updateVisiblePanel = () => {
+        const activeEngine = inlineEngineSelect.value || "step_audio_editx";
+        Object.entries(panels).forEach(([engineKey, panel]) => {
+            panel.style.display = engineKey === activeEngine ? "flex" : "none";
+        });
+    };
+
+    container.append(engineSection, stepSection.panel, higgsSection.panel, cosySection.panel);
+    updateVisiblePanel();
 
     return {
         inlineEditSection: container,
-        paraSelect,
-        paraIterSlider,
-        addParaBtn,
-        emotionSelect,
-        emotionIterSlider,
-        addEmotionBtn,
-        styleSelect,
-        styleIterSlider,
-        addStyleBtn,
-        speedSelect,
-        speedIterSlider,
-        addSpeedBtn,
-        restorePassSlider,
-        restoreRefInput,
-        addRestoreBtn
+        inlineTagControls: {
+            inlineEngineSelect,
+            step: stepSection.controls,
+            higgs: higgsSection.controls,
+            cosy: cosySection.controls,
+        },
     };
 }
