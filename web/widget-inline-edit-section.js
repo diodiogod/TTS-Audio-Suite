@@ -331,14 +331,7 @@ function buildHiggsSection(state, storageKey) {
         separated: false,
     });
 
-    const introSection = document.createElement("div");
-    stylePanelContainer(introSection);
-    introSection.append(
-        createPanelLabel("Higgs Native Tags", "#64d7ff")
-    );
-
     section.append(
-        introSection,
         emotionSection.subsection,
         styleSection.subsection,
         prosodySection.subsection,

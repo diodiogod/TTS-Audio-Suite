@@ -256,7 +256,7 @@ class HiggsAudioV3Processor:
 
         character_parser.set_available_characters(list(all_available))
         character_parser.reset_session_cache()
-        segment_objects = character_parser.parse_text_segments(text)
+        segment_objects = character_parser.parse_text_segments(text, engine_type="higgs_audio_v3")
         return self._process_character_switching(
             segment_objects,
             voice_mapping,

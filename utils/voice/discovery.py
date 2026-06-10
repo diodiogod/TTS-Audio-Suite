@@ -539,7 +539,7 @@ class VoiceDiscovery:
         
         # For reference-only engines (ChatterBox, MOSS-TTS, VibeVoice, Higgs), we don't require text files
         # Return full character_info (includes text_content which may be empty string)
-        if engine_type in ("audio_only", "chatterbox", "moss_tts"):  # Keep backward compatibility
+        if engine_type in ("audio_only", "chatterbox", "moss_tts", "higgs_audio_v3"):  # Keep backward compatibility
             return character_info
         
         # For audio+text engines (F5-TTS, Step Audio EditX, CosyVoice, Qwen3-TTS), we need both audio and text

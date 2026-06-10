@@ -1327,7 +1327,7 @@ The audio will match these exact timings.""",
                                 processed_text, char_voice, current_exag, current_temp, current_cfg, lang,
                                 True, character=char, seed=current_seed, enable_cache=enable_audio_cache,
                                 crash_protection_template=crash_protection_template,
-                                stable_audio_component=stable_audio_component
+                                stable_audio_component=stable_audio_prompt_component
                             )
                             segment_audio_parts.append(segment_wav)
 

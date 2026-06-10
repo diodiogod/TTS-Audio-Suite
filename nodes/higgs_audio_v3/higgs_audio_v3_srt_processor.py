@@ -16,7 +16,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.text.character_parser import CharacterParser
-from utils.voice.discovery import get_character_mapping, voice_discovery
+from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
 
 processor_path = os.path.join(current_dir, "higgs_audio_v3_processor.py")
 processor_spec = importlib.util.spec_from_file_location("higgs_audio_v3_processor_module", processor_path)
@@ -130,6 +130,22 @@ class HiggsAudioV3SRTProcessor:
     def _process_all_subtitles(self, subtitles: List, voice_mapping: Dict[str, Any], seed: int):
         audio_segments = []
         adjustments = []
+
+        character_aliases = voice_discovery.get_character_aliases()
+        available_chars = get_available_characters()
+        all_available = {"narrator"}
+        if available_chars:
+            all_available.update(available_chars)
+        for alias, target in character_aliases.items():
+            all_available.add(alias.lower())
+            all_available.add(target.lower())
+        for sub in subtitles:
+            for tag in self.character_parser.CHARACTER_TAG_PATTERN.findall(sub.text):
+                if not tag.startswith("pause:"):
+                    all_available.add(tag.split("|")[0].strip().lower())
+
+        self.character_parser.set_available_characters(list(all_available))
+        self.character_parser.reset_session_cache()
 
         unique_characters = set()
         for sub in subtitles:
