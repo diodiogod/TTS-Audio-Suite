@@ -100,20 +100,18 @@ def generate_engine_comparison(data):
     output.append("| ------------------ | --------- | ----------------------------------------- | ------------ | :-: | :-: | :-: | :-: | :------: | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
 
     for e in engines:
-        # Extract flags from languages
-        # Use Zero Width Space to prevent flag ligature issues
-        flags = "\u200B".join(
-            lang_data["flag"]
+        supported_language_count = sum(
+            1
             for lang_key, lang_data in e["languages"].items()
             if lang_key != "_default" and lang_data["supported"]
         )
+        if e["id"] == "rvc":
+            language_summary = "Any"
+        else:
+            language_summary = str(supported_language_count)
 
         # Format special features with proper spacing
         features = ", ".join(e.get("special_features", []))
-
-        # Handle ChatterBox 23L special case for languages display
-        if e["id"] == "chatterbox-23l":
-            flags += "(+9)"
 
         row = [
             f"**{e['name']}**".ljust(18),
@@ -127,7 +125,7 @@ def generate_engine_comparison(data):
             format_support(e["capabilities"].get("training", False)),
             e.get("license", "Unknown").ljust(24),
             features.ljust(88),
-            flags.ljust(88)
+            language_summary.ljust(88)
         ]
 
         output.append("| " + " | ".join(row) + " |")
