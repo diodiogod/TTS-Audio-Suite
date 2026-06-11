@@ -84,10 +84,6 @@ class HiggsAudioV3EngineNode(BaseTTSNode):
                     "default": 45, "min": 20, "max": 300, "step": 5,
                     "tooltip": "Target chunk size for longform Higgs v3 generation. Chunking preserves <|...|> inline tags.",
                 }),
-                "pause_between_chunks": ("FLOAT", {
-                    "default": 0.15, "min": 0.0, "max": 2.0, "step": 0.05,
-                    "tooltip": "Seconds of silence between longform chunks. Does not replace native <|prosody:pause|> tags.",
-                }),
             },
         }
 
@@ -111,7 +107,6 @@ class HiggsAudioV3EngineNode(BaseTTSNode):
         top_k,
         max_new_tokens,
         words_per_chunk,
-        pause_between_chunks,
     ):
         config = {
             "engine_type": "higgs_audio_v3",
@@ -124,7 +119,6 @@ class HiggsAudioV3EngineNode(BaseTTSNode):
             "top_k": max(0, min(1026, int(top_k))),
             "max_new_tokens": max(32, min(8192, int(max_new_tokens))),
             "words_per_chunk": max(20, min(300, int(words_per_chunk))),
-            "pause_between_chunks": max(0.0, min(2.0, float(pause_between_chunks))),
             "adapter_class": "HiggsAudioV3EngineAdapter",
         }
         print(f"✅ Higgs Audio v3 engine config created: {model} on {device}")

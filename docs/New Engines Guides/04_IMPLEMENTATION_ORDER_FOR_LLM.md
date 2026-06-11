@@ -69,6 +69,7 @@ Use VibeVoice when the target engine is long-form and needs duration-aware segme
 
 - Prefer model-appropriate duration/minute-based segmentation when required.
 - Do not force short-form `max_chars_per_chunk` behavior if it conflicts with native long-form generation strategy.
+- If the suite already provides chunk splitting / chunk combination controls in the unified node, reuse those. Do not add engine-local chunk-silence or chunk-combination controls unless the official model has a clearly separate native long-form mechanism.
 
 ## Implementation Order
 
@@ -125,6 +126,15 @@ The SRT processor should not:
 - Call the raw model directly through a separate generation path.
 - Reimplement character switching, pause tags, parameter switching, cache, or reference-audio handling differently from the TTS processor.
 - Add separate fake SRT-only parameters that do not exist in the normal TTS path or the suite timing layer.
+
+## Chunking Rule
+
+If an engine needs long-text chunking, prefer the suite chunking and shared chunk combiner unless the official model exposes a real native long-form/chunking system that is materially different.
+
+Do not:
+
+- Add duplicate engine-node controls for silence between chunks, chunk combination method, or similar suite-owned chunk-assembly behavior.
+- Bypass the shared chunk combiner with a custom engine-local join path unless there is a documented official reason.
 
 ## Registration Areas To Check
 

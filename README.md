@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 13 Engines
+## Quick Engine Comparison — 14 Engines
 
 | Engine | Isolation | Languages | Size | Key Features |
 |--------|-----------|-----------|------|--------------|
@@ -32,6 +32,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **ChatterBox 23L** | Main | 🌐 24 languages | ~4.3GB | 24 languages in single model, emotion tokens (v2 - doesn't work) |
 | **VibeVoice** | Shared | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +21 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker (Base models) |
 | **Higgs Audio 2** | Shared | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
+| **Higgs Audio v3** | Main | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +21 | ~8GB | Native inline emotion/style/prosody/SFX tags, Zero-shot voice cloning |
 | **IndexTTS-2** | Main | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | Main | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
 | **Qwen3-TTS** | Shared | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
@@ -1394,6 +1395,7 @@ For offline/manual setup:
 | ChatterBox 23-Lang | `ComfyUI/models/TTS/chatterbox_official_23lang/` | ✅ | v1/v2 coexist in same folder |
 | F5-TTS | `ComfyUI/models/TTS/F5-TTS/` | ✅ | Optional Vocos and voice refs |
 | Higgs Audio 2 | `ComfyUI/models/TTS/HiggsAudio/` | ✅ | Generation + tokenizer |
+| Higgs Audio v3 | `ComfyUI/models/TTS/higgs_audio_v3/` | ✅ | Official 4B multilingual TTS model |
 | VibeVoice | `ComfyUI/models/TTS/VibeVoice/` | ✅ | 1.5B and 7B variants |
 | RVC | `ComfyUI/models/TTS/RVC/` | ✅* | Base models auto; character `.pth` can be user-provided |
 | IndexTTS-2 | `ComfyUI/models/TTS/IndexTTS/` | ✅ | Emotion components included |

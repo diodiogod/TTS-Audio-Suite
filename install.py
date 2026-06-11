@@ -688,7 +688,7 @@ class TTSAudioInstaller:
             "pypinyin", 
             "unidecode",
             "omegaconf>=2.3.0",
-            "transformers>=4.51.3,<=4.57.3",  # Required for VibeVoice compatibility. 5.0.0 breaks Qwen3-TTS tokenizers.
+            "transformers>=5.3.0,<6.0.0",  # Main environment for Higgs Audio v3 / Step Audio EditX / MOSS-TTS. Legacy T4 engines use isolated runtimes.
             
             # Bundled engine dependencies (safe)
             "conformer>=0.3.2",      # ChatterBox engine

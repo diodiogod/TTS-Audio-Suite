@@ -21,15 +21,14 @@ import folder_paths
 
 # NOTE:
 # Boson changed the live Hugging Face Higgs v2 repos on 2026-04-04 ("trfms-support")
-# to native transformers>=5.3.0 layouts. TTS Audio Suite is still pinned below
-# transformers 5 for cross-engine compatibility, so the official managed Higgs entry
-# intentionally pins the last pre-migration Higgs v2 snapshots below. When repo-wide
-# transformers 5.3+ support lands, revisit these revisions and add an explicit
-# native/latest Higgs path instead of silently changing the default users rely on.
+# to native transformers>=5.3.0 layouts. TTS Audio Suite now keeps the main
+# environment on Transformers 5, but Higgs Audio 2 still relies on the shared
+# isolated legacy T4 runtime for stable operation. The official managed Higgs v2
+# entry therefore intentionally pins the last pre-migration snapshots below
+# instead of silently switching users onto the newer incompatible layout.
 HIGGS_AUDIO_STABLE_COMPAT_NOTE = (
     "Pinned pre-2026-04-04 Higgs Audio v2 snapshot compatible with "
-    "TTS Audio Suite transformers<=4.57.3. Revisit when repo-wide "
-    "transformers 5.3+ support exists."
+    "the shared legacy Transformers 4 runtime used by Higgs Audio 2."
 )
 HIGGS_AUDIO_REVISION_MARKER = ".tts_audio_suite_higgs_snapshot.json"
 

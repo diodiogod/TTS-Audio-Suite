@@ -17,6 +17,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from engines.adapters.higgs_audio_v3_adapter import HiggsAudioV3EngineAdapter
+from utils.audio.chunk_combiner import ChunkCombiner
 from utils.audio.processing import AudioProcessingUtils
 from utils.text.character_parser import character_parser
 from utils.text.segment_parameters import apply_segment_parameters
@@ -368,6 +369,7 @@ class HiggsAudioV3Processor:
             return (empty, {}) if return_info else empty
 
         audio_tensors = []
+        text_chunks = []
         for segment in segments:
             tensor = segment["waveform"]
             if tensor.dim() == 1:
@@ -375,26 +377,24 @@ class HiggsAudioV3Processor:
             elif tensor.dim() == 3:
                 tensor = tensor.squeeze(0)
             audio_tensors.append(tensor)
+            text_chunks.append(segment.get("text", ""))
 
-        if len(audio_tensors) == 1:
-            combined = audio_tensors[0]
-        else:
-            silence_samples = int(self.SAMPLE_RATE * max(0, silence_ms) / 1000)
-            silence = torch.zeros(1, silence_samples) if silence_samples > 0 else None
-            parts = []
-            for idx, tensor in enumerate(audio_tensors):
-                if idx > 0 and silence is not None:
-                    parts.append(silence)
-                parts.append(tensor)
-            combined = torch.cat(parts, dim=-1)
+        result = ChunkCombiner.combine_chunks(
+            audio_tensors,
+            method=method,
+            silence_ms=silence_ms,
+            sample_rate=self.SAMPLE_RATE,
+            text_length=text_length or 0,
+            original_text=" ".join(chunk for chunk in text_chunks if chunk).strip(),
+            text_chunks=text_chunks,
+            return_info=return_info,
+        )
 
-        chunk_info = {
-            "total_chunks": len(segments),
-            "method": method,
-            "sample_rate": self.SAMPLE_RATE,
-            "text_length": text_length,
-        }
-        return (combined, chunk_info) if return_info else combined
+        if return_info:
+            combined, chunk_info = result
+            chunk_info["sample_rate"] = self.SAMPLE_RATE
+            return combined, chunk_info
+        return result
 
     def format_for_comfyui(self, audio_tensor: torch.Tensor) -> Dict[str, Any]:
         return AudioProcessingUtils.format_for_comfyui(audio_tensor, self.SAMPLE_RATE)

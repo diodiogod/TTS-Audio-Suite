@@ -1389,7 +1389,7 @@ Back to the main narrator voice for the conclusion.""",
                 audio_result, chunk_info = engine_instance.processor.combine_audio_segments(
                     segments=audio_segments,
                     method=chunk_combination_method,
-                    silence_ms=int(config.get("pause_between_chunks", 0.15) * 1000),
+                    silence_ms=silence_between_chunks_ms,
                     text_length=len(text),
                     return_info=True,
                 )

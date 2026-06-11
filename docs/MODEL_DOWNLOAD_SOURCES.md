@@ -59,6 +59,12 @@ Use this as the canonical list of model repositories/links for offline setup.
 | higgs-audio-v2-3B | [bosonai/higgs-audio-v2-generation-3B-base](https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base) | ~9GB | ✅ | Generation model |
 | Audio tokenizer | [bosonai/higgs-audio-v2-tokenizer](https://huggingface.co/bosonai/higgs-audio-v2-tokenizer) | ~200MB | ✅ | Tokenizer model |
 
+## Higgs Audio v3
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| higgs-audio-v3-tts-4b | [bosonai/higgs-audio-v3-tts-4b](https://huggingface.co/bosonai/higgs-audio-v3-tts-4b) | ~8GB | ✅ | Official 4B multilingual controllable TTS model |
+
 ## IndexTTS-2
 
 | Component | Source | Size | Auto-Download | Notes |

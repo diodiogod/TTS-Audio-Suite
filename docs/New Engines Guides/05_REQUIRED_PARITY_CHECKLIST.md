@@ -46,6 +46,7 @@ Text features:
 - Did you wire parameter switching for real native parameters?
 - Did you avoid adding fake unsupported parameters?
 - Did you remove misleading controls like language selection if unsupported?
+- Did you reuse the suite chunking/chunk-combination controls instead of inventing duplicate engine-local chunk UI or chunk-silence parameters?
 
 SRT features:
 - If this is a TTS engine, did you implement the SRT path?

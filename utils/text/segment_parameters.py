@@ -71,12 +71,12 @@ PARAMETER_ALIASES = {
 PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
-        'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
+        'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
         'echo_tts', 'moss_tts'
     },
     'temperature': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
-        'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts'
+        'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts'
     },
     'cfg': {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang'
@@ -124,10 +124,10 @@ PARAMETER_ENGINES = {
         'f5tts', 'cosyvoice'
     },
     'top_p': {
-        'higgs_audio', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts'
+        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts'
     },
     'top_k': {
-        'higgs_audio', 'index_tts', 'qwen3_tts', 'moss_tts'
+        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts'
     },
     'audio_temperature': {
         'moss_tts'
@@ -148,7 +148,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'max_new_tokens': {
-        'moss_tts'
+        'higgs_audio_v3', 'moss_tts'
     },
     'n_vq_for_inference': {
         'moss_tts'

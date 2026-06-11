@@ -525,6 +525,73 @@ engines:
       vram_efficient: { supported: "partial", notes: "(9GB)" }
       speed_performance: { supported: "partial", notes: "" }
 
+  - id: higgs-audio-v3
+    name: Higgs Audio v3
+    models: "4B"
+    size: "~8GB"
+    license: "Boson Higgs Audio v3 Research and Non-Commercial License"
+    commercial: false
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    special_features:
+      - "Native inline emotion/style/prosody/SFX tags"
+      - "Zero-shot voice cloning"
+      - "100+ language support"
+
+    model_sources:
+      - component: "higgs-audio-v3-tts-4b"
+        source_name: "bosonai/higgs-audio-v3-tts-4b"
+        source_url: "https://huggingface.co/bosonai/higgs-audio-v3-tts-4b"
+        size: "~8GB"
+        auto_download: true
+        notes: "Official 4B multilingual controllable TTS model"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇧🇷", notes: "" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇪🇬", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "" }
+      hy: { supported: true, flag: "🇦🇲", notes: "" }
+      ka: { supported: true, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: true, flag: "🇮🇱", notes: "" }
+      ms: { supported: true, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: true, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: true, notes: "(native inline tags)" }
+      native_long_form: { supported: false, notes: "(chunked best-effort)" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(~8-10GB)" }
+      speed_performance: { supported: "partial", notes: "CUDA recommended" }
+
   - id: indextts-2
     name: IndexTTS-2
     models: "IndexTTS-2"
@@ -1228,6 +1295,7 @@ table_notes:
   language_support:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
     - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"
+    - "**Higgs Audio v3**: Officially positioned as 100+ language multilingual TTS; this matrix only shows the suite's common language columns."
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
     - "**MOSS-TTS**: Official list includes ZH, EN, DE, ES, FR, JA, IT, HU, KO, RU, FA, AR, PL, PT, CS, DA, SV, EL, TR; HU/FA/CS are not separate columns in this matrix."
     - "**RVC**: Language-independent (work as post-processors VC with any TTS output)"
@@ -1250,6 +1318,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/HiggsAudio/"
     auto_download: "✅"
     notes: "Generation + tokenizer"
+  - engine: "Higgs Audio v3"
+    primary_model_path: "ComfyUI/models/TTS/higgs_audio_v3/"
+    auto_download: "✅"
+    notes: "Official 4B multilingual TTS model"
   - engine: "VibeVoice"
     primary_model_path: "ComfyUI/models/TTS/VibeVoice/"
     auto_download: "✅"
@@ -1481,7 +1553,7 @@ model_layouts_markdown: |
   - Emotion components and semantic feature models auto-download.
   
   ## Step Audio EditX
-  
+
   ```text
   ComfyUI/models/TTS/step_audio_editx/
   ├── Step-Audio-EditX/
@@ -1492,7 +1564,27 @@ model_layouts_markdown: |
   Notes:
   
   - Main model, tokenizer assets, and speech stack auto-download.
-  
+
+  ## Higgs Audio v3
+
+  ```text
+  ComfyUI/models/TTS/higgs_audio_v3/
+  └── higgs-audio-v3-tts-4b/
+      ├── config.json
+      ├── tokenizer.json
+      ├── tokenizer_config.json
+      ├── chat_template.jinja
+      ├── model.safetensors
+      ├── model.safetensors.index.json
+      └── LICENSE
+  ```
+
+  Notes:
+
+  - Downloads into its own `higgs_audio_v3` folder.
+  - Requires the main Transformers 5 environment.
+  - Reference transcript `.txt` files are optional but improve cloning quality.
+
   ## CosyVoice3
   
   ```text
