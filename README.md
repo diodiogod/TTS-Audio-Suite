@@ -133,30 +133,30 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - [🧩 Adding New Engines](#-adding-new-engines)
 - [🎥 Demo Videos](#-demo-videos)
 - [Features](#features)
-- [🆕 What's New in my Project?](#-whats-new-in-my-project)
+- [What's New in this Project?](#whats-new-in-this-project)
   - [SRT Timing and TTS Node](#srt-timing-and-tts-node)
-  - [🆕 F5-TTS Integration and 🆕 Audio Analyzer](#-f5-tts-integration-and--audio-analyzer)
-  - [🗣️ Silent Speech Analyzer](#️-silent-speech-analyzer)
-  - [🧱 Runtime Isolation + Transformers 5 Main Environment](#-runtime-isolation--transformers-5-main-environment)
-  - [🎭 Character & Narrator Switching](#-character--narrator-switching)
-  - [🌍 Language Switching with Bracket Syntax](#-language-switching-with-bracket-syntax)
-  - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
-  - [🎵 RVC Voice Conversion Integration](#-rvc-voice-conversion-integration)
-  - [🎓 RVC Model Training](#-rvc-model-training)
-  - [⏸️ Pause Tags System](#️-pause-tags-system)
-  - [🌍 Multi-language ChatterBox Community Models](#-multi-language-chatterbox-community-models)
-  - [🌐 Chatterbox Multilingual TTS (Official 23-Lang)](#-chatterbox-multilingual-tts-official-23-lang)
-  - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
-  - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
-  - [🎙️ Higgs Audio v3 Native Inline Tags & Voice Cloning](#️-higgs-audio-v3-native-inline-tags--voice-cloning)
-  - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
-  - [ IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
-  - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
-  - [🗣️ CosyVoice3 Multilingual Voice Cloning](#️-cosyvoice3-multilingual-voice-cloning)
-  - [🎤 Qwen3-TTS - 3 Model Types with Text-to-Voice Design](#-qwen3-tts---3-model-types-with-text-to-voice-design)
-  - [🎧 Echo-TTS Voice Cloning](#-echo-tts-voice-cloning)
-  - [📝 Phoneme Text Normalizer](#-phoneme-text-normalizer)
-  - [🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching](#️-multiline-tts-tag-editor--per-segment-parameter-switching)
+  - [Runtime Isolation + Transformers 5 Main Environment](#runtime-isolation--transformers-5-main-environment)
+  - [F5-TTS Integration and Audio Analyzer](#f5-tts-integration-and-audio-analyzer)
+  - [Silent Speech Analyzer](#silent-speech-analyzer)
+  - [Higgs Audio 2 Voice Cloning](#higgs-audio-2-voice-cloning)
+  - [Higgs Audio v3 Native Inline Tags and Voice Cloning](#higgs-audio-v3-native-inline-tags-and-voice-cloning)
+  - [VibeVoice Long-Form Generation](#vibevoice-long-form-generation)
+  - [Character and Narrator Switching](#character-and-narrator-switching)
+  - [Language Switching with Bracket Syntax](#language-switching-with-bracket-syntax)
+  - [Iterative Voice Conversion](#iterative-voice-conversion)
+  - [RVC Voice Conversion Integration](#rvc-voice-conversion-integration)
+  - [RVC Model Training](#rvc-model-training)
+  - [Pause Tags System](#pause-tags-system)
+  - [Multi-language ChatterBox Community Models](#multi-language-chatterbox-community-models)
+  - [ChatterBox Multilingual TTS (Official 23-Lang)](#chatterbox-multilingual-tts-official-23-lang)
+  - [Universal Streaming Architecture](#universal-streaming-architecture)
+  - [IndexTTS-2 With Emotion Control](#indextts-2-with-emotion-control)
+  - [Step Audio EditX - LLM Audio Editing](#step-audio-editx---llm-audio-editing)
+  - [CosyVoice3 Multilingual Voice Cloning](#cosyvoice3-multilingual-voice-cloning)
+  - [Qwen3-TTS - 4 Model Types with Text-to-Voice Design](#qwen3-tts---4-model-types-with-text-to-voice-design)
+  - [Echo-TTS Voice Cloning](#echo-tts-voice-cloning)
+  - [Phoneme Text Normalizer](#phoneme-text-normalizer)
+  - [Multiline TTS Tag Editor and Per-Segment Parameter Switching](#multiline-tts-tag-editor-and-per-segment-parameter-switching)
 - [🚀 Quick Start](#-quick-start)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
@@ -218,33 +218,24 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, **Higgs Audio 2**, **Higgs Audio v3**, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, **MOSS-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
-- ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
-- 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
-- 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
-- 🔄 **Voice Conversion** - ChatterBox VC with iterative refinement + RVC real-time conversion using .pth character models
-- 🎓 **Integrated Model Training** - Unified `🎓 Model Training` pipeline with `📦 RVC Dataset Prep`, `🎛️ RVC Training Config`, resumable checkpoints, interrupt-save safety, and a live dashboard for RVC voice model training
-- 🎙️ **Voice Capture & Recording** - Smart silence detection and voice input recording
-- 🎭 **Character & Language Switching** - Multi-character TTS with `[CharacterName]` tags, alias system, and `[language:character]` syntax for seamless model switching
-- 🏷️ **Multiline TTS Tag Editor & Per-Segment Parameter Switching** - Override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using a new multiline string editor node that makes building complex tags easier and more visual, with character/language/parameter dropdowns for quick selection, preset management, tag validation, and SRT-aware editing tools → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
-- 🌍 **Multi-language Support** - **Chatterbox Multilingual TTS (Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese)** + ChatterBox community models (English, German, Italian, French, Russian, Armenian, Georgian, Japanese, Korean, Norwegian) + F5-TTS (English, German, Spanish, French, Japanese, Hindi, and more)
-- 📝 **Multilingual Text Processing** - Universal Phoneme Text Normalizer with IPA phonemization, Unicode decomposition, and character mapping for improved pronunciation quality across languages (Experimental)
-- 😤 **Emotion Control** - ChatterBox exaggeration parameter for expressive speech + IndexTTS-2 advanced emotion control with dynamic text analysis, character tags, and 8-emotion vectors → **[📖 IndexTTS-2 Guide](docs/IndexTTS2_Emotion_Control_Guide.md)**
-- 📝 **Enhanced Chunking** - Intelligent text splitting for long content with multiple combination methods
-- 🎵 **Advanced Audio Processing** - Optional FFmpeg support for premium audio quality with graceful fallback
-- 🤐 **Vocal/Noise Removal** - AI-powered vocal separation, noise reduction, and echo removal with GPU acceleration → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
-- 🌊 **Audio Wave Analyzer** - Interactive waveform visualization and precise timing extraction for F5-TTS workflows → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
-- 🗣️ **Silent Speech Analyzer** - Video analysis with experimental viseme detection, mouth movement tracking, and base SRT timing generation from silent video using MediaPipe
-- ⚙️ **Parallel Processing** - Configurable worker-based processing via `batch_size` parameter (Note: sequential processing with `batch_size=0` remains optimal for performance)
-- ⚡ **Performance Optimizations** - Qwen3-TTS supports torch.compile for ~1.7x speedup (requires PyTorch 2.10+ and triton-windows 3.6+) → **[📖 Optimization Guide](docs/qwen3_tts_optimizations.md)**
-- 🧱 **Runtime Isolation + Modern Main Stack** - Fragile legacy engines can stay on isolated shared/dedicated Transformers 4 runtimes while modern engines run in the main Transformers 5 environment without dragging the whole suite backward
+- 🎤 **Multi-Engine TTS**
+- 🔄 **Voice Conversion**
+- ✏️ **ASR Transcription**
+- 📺 **Text to SRT Builder**
+- 🎓 **Integrated Model Training**
+- 🎨 **Audio Post-Processing** → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
+- 🎭 **Character and Language Switching** → **[📖 Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
+- 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
+- 📝 **Intelligent Text Chunking**
+- 🤐 **Vocal/Noise Removal** → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
+- 🌊 **Audio Wave Analyzer** → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
-<summary><h2>🆕 What's New in my Project? (click to expand)</h2></summary>
+<summary><h2>What's New in this Project? (click to expand)</h2></summary>
 
 <details>
-<summary><h3>📺 SRT Timing and TTS Node</h3></summary>
+<summary><h3>SRT Timing and TTS Node</h3></summary>
 
 <img title="" src="images/srt.png" alt="SRT Node Screenshot" width="500" data-align="center">
 
@@ -262,7 +253,7 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 </details>
 
 <details>
-<summary><h3>🧱 Runtime Isolation + Transformers 5 Main Environment</h3></summary>
+<summary><h3>Runtime Isolation + Transformers 5 Main Environment</h3></summary>
 
 This is the new architectural baseline for the suite.
 
@@ -279,7 +270,7 @@ This matters because the suite now has a clearer split:
 </details>
 
 <details>
-<summary><h3>🆕 F5-TTS Integration and 🆕 Audio Analyzer</h3></summary>
+<summary><h3>F5-TTS Integration and Audio Analyzer</h3></summary>
 
 <img title="" src="images/waveanalgif.gif" alt="Audio Wave gif" width="500" data-align="center">
 
@@ -291,7 +282,7 @@ This matters because the suite now has a clearer split:
 </details>
 
 <details>
-<summary><h3>🗣️ Silent Speech Analyzer</h3></summary>
+<summary><h3>Silent Speech Analyzer</h3></summary>
 
 **NEW in v4.4.0**: Video analysis and mouth movement detection for silent video processing!
 
@@ -322,7 +313,7 @@ This matters because the suite now has a clearer split:
 </details>
 
 <details>
-<summary><h3>🎙️ Higgs Audio 2 Voice Cloning</h3></summary>
+<summary><h3>Higgs Audio 2 Voice Cloning</h3></summary>
 
 **NEW in v4.5.0**: State-of-the-art voice cloning technology with advanced neural voice replication!
 
@@ -364,7 +355,7 @@ This matters because the suite now has a clearer split:
 </details>
 
 <details>
-<summary><h3>🎙️ Higgs Audio v3 Native Inline Tags & Voice Cloning</h3></summary>
+<summary><h3>Higgs Audio v3 Native Inline Tags and Voice Cloning</h3></summary>
 
 **NEW**: Higgs Audio v3 is now integrated as a native main-environment engine on the modern Transformers 5 stack.
 
@@ -388,7 +379,7 @@ This matters because the suite now has a clearer split:
 </details>
 
 <details>
-<summary><h3>🎵 VibeVoice Long-Form Generation</h3></summary>
+<summary><h3>VibeVoice Long-Form Generation</h3></summary>
 
 - **Custom Character Switching**: Use `[Alice]`, `[Bob]` character tags with voice files from the voices folder - supports unlimited characters with pause tags and per-character control
 - **Native Multi-Speaker**: Efficient single-pass generation supporting both `[Character]` tag auto-conversion and manual "Speaker 1: Hello" format for up to 4 speakers  
@@ -423,7 +414,7 @@ This matters because the suite now has a clearer split:
 </details>
 
 <details>
-<summary><h3>🎭 Character & Narrator Switching</h3></summary>
+<summary><h3>Character and Narrator Switching</h3></summary>
 
 **NEW in v3.1.0**: Seamless character switching for both F5TTS and ChatterBox engines!
 
@@ -449,7 +440,7 @@ Back to the narrator for the conclusion.
 </details>
 
 <details>
-<summary><h3>🌍 Language Switching with Bracket Syntax</h3></summary>
+<summary><h3>Language Switching with Bracket Syntax</h3></summary>
 
 **NEW in v3.4.0**: Seamless language switching using simple bracket notation!
 
@@ -497,7 +488,7 @@ Hello! Welcome to our multilingual show.
 </details>
 
 <details>
-<summary><h3>🔄 Iterative Voice Conversion</h3></summary>
+<summary><h3>Iterative Voice Conversion</h3></summary>
 
 **NEW**: Progressive voice refinement with intelligent caching for instant experimentation!
 
@@ -508,7 +499,7 @@ Hello! Welcome to our multilingual show.
 </details>
 
 <details>
-<summary><h3>🎵 RVC Voice Conversion Integration</h3></summary>
+<summary><h3>RVC Voice Conversion Integration</h3></summary>
 
 **NEW in v4.1.0**: Professional-grade Real-time Voice Conversion with .pth character models!
 
@@ -532,7 +523,7 @@ Hello! Welcome to our multilingual show.
 </details>
 
 <details>
-<summary><h3>🎓 RVC Model Training</h3></summary>
+<summary><h3>RVC Model Training</h3></summary>
 
 **NEW**: Integrated RVC training inside the suite, using the same unified node style as the rest of the project instead of a detached external workflow.
 
@@ -566,7 +557,7 @@ Hello! Welcome to our multilingual show.
 </details>
 
 <details>
-<summary><h3>⏸️ Pause Tags System</h3></summary>
+<summary><h3>Pause Tags System</h3></summary>
 
 **NEW**: Intelligent pause insertion for natural speech timing control!
 
@@ -591,7 +582,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 </details>
 
 <details>
-<summary><h3>🌍 Multi-language ChatterBox Community Models</h3></summary>
+<summary><h3>Multi-language ChatterBox Community Models</h3></summary>
 
 **NEW in v4.6.29**: ChatterBox TTS now supports 11 languages with community-finetuned models and automatic model management!
 
@@ -624,7 +615,7 @@ Welcome to our show! [pause:1s] Today we'll discuss exciting topics.
 </details>
 
 <details>
-<summary><h3>🌐 Chatterbox Multilingual TTS (Official 23-Lang)</h3></summary>
+<summary><h3>ChatterBox Multilingual TTS (Official 23-Lang)</h3></summary>
 
 **NEW in v4.8.0**: Official ResembleAI Chatterbox Multilingual TTS model with native support for 23 languages!
 
@@ -703,7 +694,7 @@ Both versions fully support character switching, language switching, and pause t
 </details>
 
 <details>
-<summary><h3>⚙️ Universal Streaming Architecture</h3></summary>
+<summary><h3>Universal Streaming Architecture</h3></summary>
 
 **NEW in v4.3.0**: Complete architectural overhaul implementing universal streaming system with parallel processing capabilities!
 
@@ -725,7 +716,7 @@ Both versions fully support character switching, language switching, and pause t
 </details>
 
 <details>
-<summary><h3>🌈 IndexTTS-2 With Emotion Control</h3></summary>
+<summary><h3>IndexTTS-2 With Emotion Control</h3></summary>
 
 **NEW in v4.9.0**: Revolutionary IndexTTS-2 engine with advanced emotion control and unified emotion architecture!
 
@@ -764,7 +755,7 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 </details>
 
 <details>
-<summary><h3>🎨 Step Audio EditX - LLM Audio Editing</h3></summary>
+<summary><h3>Step Audio EditX - LLM Audio Editing</h3></summary>
 
 **NEW in v4.15**: Revolutionary LLM-based audio post-processing with emotion, style, and paralinguistic control!
 
@@ -813,7 +804,7 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 </details>
 
 <details>
-<summary><h3>🗣️ CosyVoice3 Multilingual Voice Cloning</h3></summary>
+<summary><h3>CosyVoice3 Multilingual Voice Cloning</h3></summary>
 
 **NEW in v4.16**: Alibaba's fast multilingual voice cloning with native paralinguistic tags, instruct mode, and zero-shot voice conversion!
 
@@ -863,7 +854,7 @@ Instruct: 用兴奋的语气说话。
 </details>
 
 <details>
-<summary><h3>🎤 Qwen3-TTS - 4 Model Types with Text-to-Voice Design</h3></summary>
+<summary><h3>Qwen3-TTS - 4 Model Types with Text-to-Voice Design</h3></summary>
 
 **NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct TTS model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning! A **single engine** automatically selects and downloads the correct model based on your settings — no manual model management needed.
 **NEW**: ✏️ Unified ASR Transcribe support now includes **Qwen3-ASR** and **Granite ASR**, giving the suite a second ASR engine option with optional custom timestamps/SRT for Granite via the reused Qwen forced aligner.
@@ -920,7 +911,7 @@ Description: "A deep, authoritative male voice with clear articulation"
 </details>
 
 <details>
-<summary><h3>🎙️ MOSS-TTS - Local/Delay/TTSD Engine Family</h3></summary>
+<summary><h3>MOSS-TTS - Local/Delay/TTSD Engine Family</h3></summary>
 
 **NEW in v4.26**: OpenMOSS engine family integration with unified support for single-speaker TTS and native multi-speaker dialogue.
 
@@ -977,7 +968,7 @@ Per-segment overrides are supported with `[]` parameter syntax for whole-segment
 </details>
 
 <details>
-<summary><h3>📺 Modular ASR + Text to SRT Builder</h3></summary>
+<summary><h3>Modular ASR + Text to SRT Builder</h3></summary>
 
 **NEW in v4.23**: ASR subtitle generation is now modular instead of being buried inside the transcriber.
 
@@ -1008,7 +999,7 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 </details>
 
 <details>
-<summary><h3>🎧 Echo-TTS Voice Cloning</h3></summary>
+<summary><h3>Echo-TTS Voice Cloning</h3></summary>
 
 **NEW in v4.22**: Echo-TTS DiT-based voice cloning with reference audio support.
 
@@ -1028,7 +1019,7 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 </details>
 
 <details>
-<summary><h3>📝 Phoneme Text Normalizer</h3></summary>
+<summary><h3>Phoneme Text Normalizer</h3></summary>
 
 **NEW in v4.10.0**: Universal multilingual text preprocessing node for improved TTS pronunciation quality across languages!
 
@@ -1057,7 +1048,7 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 </details>
 
 <details>
-<summary><h3>🏷️ Multiline TTS Tag Editor & Per-Segment Parameter Switching</h3></summary>
+<summary><h3>Multiline TTS Tag Editor and Per-Segment Parameter Switching</h3></summary>
 
 **NEW in v4.12.0**: Fine-grained per-segment control over TTS generation parameters across all engines with an interactive tag editor!
 
