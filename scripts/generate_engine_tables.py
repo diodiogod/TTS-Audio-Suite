@@ -318,8 +318,15 @@ def generate_language_support(data):
     # Build rows for each language
     for lang_code in lang_codes:
         lang_info = lang_meta[lang_code]
-        # Get flag from first engine's language data (all have same flag)
-        flag = engines[0]["languages"][lang_code]["flag"]
+        flag = lang_info.get("flag")
+        if not flag:
+            for engine in engines:
+                engine_lang = engine.get("languages", {}).get(lang_code)
+                if engine_lang and engine_lang.get("flag"):
+                    flag = engine_lang["flag"]
+                    break
+        if not flag:
+            flag = "🌐"
 
         row = [
             f"{flag} **{lang_info['name']}**".ljust(14),
@@ -327,7 +334,10 @@ def generate_language_support(data):
         ]
 
         for e in engines:
-            lang_support = e["languages"][lang_code]
+            lang_support = e.get("languages", {}).get(
+                lang_code,
+                {"supported": False, "notes": ""}
+            )
             cell = format_support(lang_support["supported"], lang_support["notes"])
             row.append(cell)
 
