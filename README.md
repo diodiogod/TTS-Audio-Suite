@@ -17,7 +17,7 @@
   <img src="images/AllNodesShowcase.jpg" alt="TTS Audio Suite Nodes Showcase" />
 </div>
 
-A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conversion, Audio Editing, and now integrated RVC model training through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, Step Audio EditX, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility and future engine integrations.
+A comprehensive ComfyUI extension providing unified Text-to-Speech, Voice Conversion, Audio Editing, and integrated RVC model training through multiple engines including ChatterboxTTS, F5-TTS, Higgs Audio 2, Higgs Audio v3, Step Audio EditX, MOSS-TTS, Echo-TTS, and RVC (Real-time Voice Conversion), with modular architecture designed for extensibility, runtime isolation for fragile legacy stacks, and a modern Transformers 5 main environment.
 
 Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebuild subtitles from edited transcripts, or estimate fresh SRT timing from plain text using the same advanced readability rules, while preserving project control tags for downstream TTS.
 
@@ -108,6 +108,17 @@ Apr 26                May 26
 │                     │
 RVC                   MOSS-TTS
 Model Training 
+|
+|─── 🧱 Runtime Isolation + T5 Era
+▼
+v4.27 ──────────────►
+Jun 26
+│
+Shared legacy T4
+runtime isolation
++ Higgs Audio v3
++ Main env on
+Transformers 5
 ```
 
 ## 🧩 Adding New Engines
@@ -126,6 +137,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   - [SRT Timing and TTS Node](#srt-timing-and-tts-node)
   - [🆕 F5-TTS Integration and 🆕 Audio Analyzer](#-f5-tts-integration-and--audio-analyzer)
   - [🗣️ Silent Speech Analyzer](#️-silent-speech-analyzer)
+  - [🧱 Runtime Isolation + Transformers 5 Main Environment](#-runtime-isolation--transformers-5-main-environment)
   - [🎭 Character & Narrator Switching](#-character--narrator-switching)
   - [🌍 Language Switching with Bracket Syntax](#-language-switching-with-bracket-syntax)
   - [🔄 Iterative Voice Conversion](#-iterative-voice-conversion)
@@ -136,6 +148,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   - [🌐 Chatterbox Multilingual TTS (Official 23-Lang)](#-chatterbox-multilingual-tts-official-23-lang)
   - [⚙️ Universal Streaming Architecture](#️-universal-streaming-architecture)
   - [🎙️ Higgs Audio 2 Voice Cloning](#️-higgs-audio-2-voice-cloning)
+  - [🎙️ Higgs Audio v3 Native Inline Tags & Voice Cloning](#️-higgs-audio-v3-native-inline-tags--voice-cloning)
   - [🎵 VibeVoice Long-Form Generation](#-vibevoice-long-form-generation)
   - [ IndexTTS-2 With Emotion Control](#-indextts-2-with-emotion-control)
   - [🎨 Step Audio EditX - LLM Audio Editing](#-step-audio-editx---llm-audio-editing)
@@ -205,7 +218,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 
 ## Features
 
-- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, Higgs Audio 2, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, **MOSS-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
+- 🎤 **Multi-Engine TTS** - ChatterBox TTS, **Chatterbox Multilingual TTS**, F5-TTS, **Higgs Audio 2**, **Higgs Audio v3**, VibeVoice, **IndexTTS-2**, **CosyVoice3**, **Qwen3-TTS**, **MOSS-TTS**, and **Echo-TTS** with voice cloning, reference audio synthesis, and production-grade quality
 - ✏️ **ASR Transcription** - Unified ✏️ ASR Transcribe node with **Qwen3-ASR** and **Granite ASR**, plus optional custom timestamps/SRT for Granite via the reused Qwen forced aligner
 - 📺 **Text to SRT Builder** - Core modular subtitle pipeline with `📺 Text to SRT Builder` and `🔧 SRT Advanced Options`: rebuild SRT from edited transcripts, estimate timings from plain text using subtitle heuristics, and preserve project control tags for TTS-safe subtitle output
 - 🎨 **Audio Post-Processing** - **Step Audio EditX** LLM-based audio editing with paralinguistic effects (laughter, breathing, sigh), emotion control (14 emotions), speaking styles (32 styles), speed adjustment, and voice restoration → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
@@ -224,6 +237,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - 🗣️ **Silent Speech Analyzer** - Video analysis with experimental viseme detection, mouth movement tracking, and base SRT timing generation from silent video using MediaPipe
 - ⚙️ **Parallel Processing** - Configurable worker-based processing via `batch_size` parameter (Note: sequential processing with `batch_size=0` remains optimal for performance)
 - ⚡ **Performance Optimizations** - Qwen3-TTS supports torch.compile for ~1.7x speedup (requires PyTorch 2.10+ and triton-windows 3.6+) → **[📖 Optimization Guide](docs/qwen3_tts_optimizations.md)**
+- 🧱 **Runtime Isolation + Modern Main Stack** - Fragile legacy engines can stay on isolated shared/dedicated Transformers 4 runtimes while modern engines run in the main Transformers 5 environment without dragging the whole suite backward
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
@@ -244,6 +258,23 @@ The **"ChatterBox SRT Voice TTS"** node allows TTS generation by processing SRT 
 * **Segment-Level Caching**: Only regenerates modified segments, significantly speeding up workflows
 
 For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](docs/Dev%20reports/SRT_IMPLEMENTATION.md) file.
+
+</details>
+
+<details>
+<summary><h3>🧱 Runtime Isolation + Transformers 5 Main Environment</h3></summary>
+
+This is the new architectural baseline for the suite.
+
+* **Main environment moved forward**: the primary ComfyUI environment is now meant to run on **Transformers 5**
+* **Isolation for fragile engines**: engines that still behave better on the older stack can use **shared** or **dedicated** legacy runtimes instead of forcing the whole suite backward
+* **Cleaner engine strategy**: modern engines such as **Higgs Audio v3**, **Step Audio EditX**, **MOSS-TTS**, and other compatible stacks can stay native in the main environment
+* **Less dependency deadlock**: adding new engines no longer has to mean globally freezing the entire project to one old Transformers version
+
+This matters because the suite now has a clearer split:
+
+- **Main environment** for engines that are healthy on the current stack
+- **Isolated runtimes** for engines that are still strategically important but fragile on the modern stack
 
 </details>
 
@@ -329,6 +360,30 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 - Audiobook narration with consistent voice characteristics
 - Multi-speaker content with distinct voice personalities
 - Professional voice replication for content creation
+
+</details>
+
+<details>
+<summary><h3>🎙️ Higgs Audio v3 Native Inline Tags & Voice Cloning</h3></summary>
+
+**NEW**: Higgs Audio v3 is now integrated as a native main-environment engine on the modern Transformers 5 stack.
+
+* **Native inline controls**: official Higgs tags like `<|emotion:amusement|>`, `<|style:whispering|>`, `<|prosody:pause|>`, and `<|sfx:laughter|>`
+* **Alias convenience support**: the suite also accepts `<emotion:amusement>`-style input and normalizes it internally to the official Higgs format
+* **Zero-shot voice cloning**: reference audio cloning works in both **TTS Text** and **TTS SRT**
+* **Unified character workflows**: supports narrator/character switching, SRT timing, pause tags, caching, and multiline tag editor integration
+* **Engine-aware inline editor**: the multiline editor now has a dedicated `Higgs Audio v3` inline tags mode instead of pretending all inline systems are Step Audio EditX
+
+**Important behavior note:**
+
+- Higgs Audio v3 does **not** use an explicit language parameter in the official TTS flow
+- language is inferred primarily from the text prompt and reinforced by reference context when available
+
+**Good fit for:**
+
+- expressive TTS with official inline emotion/style/prosody/SFX controls
+- multilingual zero-shot cloning
+- character-driven SRT generation without leaving the unified pipeline
 
 </details>
 
