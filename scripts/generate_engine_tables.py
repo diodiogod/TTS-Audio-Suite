@@ -104,8 +104,8 @@ def generate_engine_comparison(data):
         # Use Zero Width Space to prevent flag ligature issues
         flags = "\u200B".join(
             lang_data["flag"]
-            for lang_data in e["languages"].values()
-            if lang_data["supported"]
+            for lang_key, lang_data in e["languages"].items()
+            if lang_key != "_default" and lang_data["supported"]
         )
 
         # Format special features with proper spacing
@@ -159,7 +159,7 @@ def generate_readme_condensed_table(data):
         flags = []
         count = 0
         for lang_data in e["languages"].values():
-            if lang_data["supported"]:
+            if isinstance(lang_data, dict) and lang_data.get("supported") and lang_data.get("flag"):
                 flags.append(lang_data["flag"])
                 count += 1
                 if count >= 6:  # Limit to 6 flags for readability
@@ -334,10 +334,14 @@ def generate_language_support(data):
         ]
 
         for e in engines:
-            lang_support = e.get("languages", {}).get(
-                lang_code,
-                {"supported": False, "notes": ""}
-            )
+            engine_languages = e.get("languages", {})
+            if e.get("id") == "rvc" and lang_code not in engine_languages:
+                lang_support = {"supported": True, "notes": ""}
+            else:
+                lang_support = engine_languages.get(
+                    lang_code,
+                    {"supported": False, "notes": ""}
+                )
             cell = format_support(lang_support["supported"], lang_support["notes"])
             row.append(cell)
 
