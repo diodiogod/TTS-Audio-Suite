@@ -2,7 +2,6 @@ import { app } from "../../scripts/app.js";
 
 const TARGET_CLASSES = new Set([
     "MossClipStagingNode",
-    "MossManifestBuilderNode",
 ]);
 
 const AUDIO_INPUT_PREFIX = "opt_audio";

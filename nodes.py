@@ -420,14 +420,6 @@ except Exception as e:
     MOSS_TRAINING_CONFIG_AVAILABLE = False
 
 try:
-    moss_manifest_builder_module = load_node_module("moss_manifest_builder_node", "training/moss_manifest_builder_node.py")
-    MossManifestBuilderNode = moss_manifest_builder_module.MossManifestBuilderNode
-    MOSS_MANIFEST_BUILDER_AVAILABLE = True
-except Exception as e:
-    print(f"❌ MOSS Manifest Builder failed: {e}")
-    MOSS_MANIFEST_BUILDER_AVAILABLE = False
-
-try:
     moss_clip_staging_module = load_node_module("moss_clip_staging_node", "training/moss_clip_staging_node.py")
     MossClipStagingNode = moss_clip_staging_module.MossClipStagingNode
     MOSS_CLIP_STAGING_AVAILABLE = True
@@ -747,10 +739,6 @@ if MOSS_DATASET_PREP_AVAILABLE:
 if MOSS_TRAINING_CONFIG_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossTrainingConfigNode"] = MossTrainingConfigNode
     NODE_DISPLAY_NAME_MAPPINGS["MossTrainingConfigNode"] = "🎛️ MOSS Training Config"
-
-if MOSS_MANIFEST_BUILDER_AVAILABLE:
-    NODE_CLASS_MAPPINGS["MossManifestBuilderNode"] = MossManifestBuilderNode
-    NODE_DISPLAY_NAME_MAPPINGS["MossManifestBuilderNode"] = "📝 MOSS Manifest Builder"
 
 if MOSS_CLIP_STAGING_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossClipStagingNode"] = MossClipStagingNode
