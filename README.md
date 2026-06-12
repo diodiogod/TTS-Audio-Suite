@@ -163,12 +163,6 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   - [Installation Methods](#installation-methods)
   - [Troubleshooting Dependency Issues](#troubleshooting-dependency-issues)
   - [Updating the Node](#updating-the-node)
-- [Enhanced Features](#enhanced-features)
-- [Usage](#usage)
-  - [Voice Recording](#voice-recording)
-  - [Enhanced Text-to-Speech](#enhanced-text-to-speech)
-  - [F5-TTS Voice Synthesis](#f5-tts-voice-synthesis)
-  - [Voice Conversion with Iterative Refinement](#voice-conversion-with-iterative-refinement)
 - [📁 Example Workflows](#-example-workflows)
 - [Settings Guide](#settings-guide)
 - [Text Processing Capabilities](#text-processing-capabilities)
@@ -226,7 +220,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - 🎨 **Audio Post-Processing** → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🎭 **Character and Language Switching** → **[📖 Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
 - 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
-- 📝 **Intelligent Text Chunking**
+- 📝 **Intelligent Text Chunking** → **[📖 Text Chunking Guide](docs/TEXT_CHUNKING_GUIDE.md)**
 - 🤐 **Vocal/Noise Removal** → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
 - 🌊 **Audio Wave Analyzer** → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
 
@@ -495,6 +489,25 @@ Hello! Welcome to our multilingual show.
 * **Refinement Passes**: Multiple conversion iterations (1-30, recommended 1-5)
 * **Smart Caching**: Results cached up to 5 iterations - change from 5→3→4 passes instantly
 * **Progressive Quality**: Each pass refines output to sound more like target voice
+
+**How it works:**
+
+1. Add **"🔄 ChatterBox Voice Conversion"** node
+2. Connect source audio (voice to convert)
+3. Connect target audio (voice style to copy)
+4. Configure refinement settings:
+   - **Refinement Passes**: Number of conversion iterations (1-30, recommended 1-5)
+   - Each pass refines the output to sound more like the target
+   - **Smart Caching**: Results cached up to 5 iterations for instant experimentation
+
+**Intelligent caching examples:**
+
+- Run **3 passes** → caches iterations 1, 2, 3
+- Change to **5 passes** → resumes from cached 3, runs 4, 5
+- Change to **2 passes** → returns cached iteration 2 instantly
+- Change to **4 passes** → resumes from cached 3, runs 4
+
+**Practical tip**: Start with 1 pass, then test 2-5 passes to find the sweet spot for your audio. More passes can improve voice similarity, but there is no universal best value.
 
 </details>
 
@@ -1467,128 +1480,6 @@ If TTS Audio Suite has been helpful for your projects, consider supporting its d
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
 Your support helps maintain and improve this project for the entire community!
-
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
-
-## Enhanced Features
-
-### 📝 Intelligent Text Chunking (NEW!)
-
-**Long text support with smart processing:**
-
-- **Character-based limits** (100-1000 chars per chunk)
-- **Sentence boundary preservation** - won't cut mid-sentence
-- **Multiple combination methods**:
-  - `auto` - Smart selection based on text length
-  - `concatenate` - Simple joining
-  - `silence_padding` - Add configurable silence between chunks
-  - `crossfade` - Smooth audio blending
-- **Comma-based splitting** for very long sentences
-- **Backward compatible** - works with existing workflows
-
-**Chunking Controls (all optional):**
-
-- `enable_chunking` - Enable/disable smart chunking (default: True)
-- `max_chars_per_chunk` - Chunk size limit (default: 400)
-- `chunk_combination_method` - How to join audio (default: auto)
-- `silence_between_chunks_ms` - Silence duration (default: 100ms)
-
-**Auto-selection logic:**
-
-- **Text > 1000 chars** → silence_padding (natural pauses)
-- **Text > 500 chars** → crossfade (smooth blending)
-- **Text < 500 chars** → concatenate (simple joining)
-
-### 📦 Smart Model Loading
-
-**Priority-based model detection:**
-
-1. **Bundled models** in node folder (self-contained)
-2. **ComfyUI models** in standard location
-3. **HuggingFace download** with authentication
-
-**Console output shows source:**
-
-```
-📦 Using BUNDLED ChatterBox (self-contained)
-📦 Loading from bundled models: ./models/chatterbox
-✅ ChatterboxTTS model loaded from bundled!
-```
-
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
-
-## Usage
-
-### Voice Recording
-
-1. Add **"🎤 ChatterBox Voice Capture"** node
-2. Select your microphone from the dropdown
-3. Adjust recording settings:
-   - **Silence Threshold**: How quiet to consider "silence" (0.001-0.1)
-   - **Silence Duration**: How long to wait before stopping (0.5-5.0 seconds)
-   - **Sample Rate**: Audio quality (8000-96000 Hz, default 44100)
-4. Change the **Trigger** value to start a new recording
-5. Connect output to TTS (for voice cloning) or VC nodes
-
-### Enhanced Text-to-Speech
-
-1. Add **"🎤 ChatterBox Voice TTS"** node
-2. Enter your text (any length - automatic chunking)
-3. Optionally connect reference audio for voice cloning
-4. Adjust TTS settings:
-   - **Exaggeration**: Emotion intensity (0.25-2.0)
-   - **Temperature**: Randomness (0.05-5.0)
-   - **CFG Weight**: Guidance strength (0.0-1.0)
-
-### F5-TTS Voice Synthesis
-
-1. Add **"🎤 F5-TTS Voice Generation"** node
-2. Enter your target text (any length - automatic chunking)
-3. **Required**: Connect reference audio for voice cloning
-4. **Required**: Enter reference text that matches the reference audio exactly
-
-<details>
-<summary>📖 Voice Reference Setup Options</summary>
-
-**Two ways to provide voice references:**
-
-1. **Easy Method**: Select voice from `reference_audio_file` dropdown → text auto-detected from companion `.txt` file
-2. **Manual Method**: Set `reference_audio_file` to "none" → connect `opt_reference_audio` + `opt_reference_text` inputs
-
-</details>
-
-5. Select F5-TTS model:
-   - **F5TTS_Base**: English base model (recommended)
-   - **F5TTS_v1_Base**: English v1 model
-   - **E2TTS_Base**: E2-TTS model
-   - **F5-DE**: German model
-   - **F5-ES**: Spanish model
-   - **F5-FR**: French model
-   - **F5-JP**: Japanese model
-6. Adjust F5-TTS settings:
-   - **Temperature**: Voice variation (0.1-2.0, default: 0.8)
-   - **Speed**: Speech speed (0.5-2.0, default: 1.0)
-   - **CFG Strength**: Guidance strength (0.0-10.0, default: 2.0)
-   - **NFE Step**: Quality vs speed (1-100, default: 32)
-
-### Voice Conversion with Iterative Refinement
-
-1. Add **"🔄 ChatterBox Voice Conversion"** node
-2. Connect source audio (voice to convert)
-3. Connect target audio (voice style to copy)
-4. Configure refinement settings:
-   - **Refinement Passes**: Number of conversion iterations (1-30, recommended 1-5)
-   - Each pass refines the output to sound more like the target
-   - **Smart Caching**: Results cached up to 5 iterations for instant experimentation
-
-**🧠 Intelligent Caching Examples:**
-
-- Run **3 passes** → caches iterations 1, 2, 3
-- Change to **5 passes** → resumes from cached 3, runs 4, 5  
-- Change to **2 passes** → returns cached iteration 2 instantly
-- Change to **4 passes** → resumes from cached 3, runs 4
-
-**💡 Pro Tip**: Start with 1 pass, then experiment with 2-5 passes to find the sweet spot for your audio. Each iteration can improves voice similarity!
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 

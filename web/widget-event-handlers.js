@@ -17,6 +17,7 @@ export function attachAllEventHandlers(
     openFindReplace, focusNextFindMatch, focusPreviousFindMatch
 ) {
     const {
+        inlineEngineSelect,
         step: {
             paraSelect, paraIterSlider, addParaBtn,
             emotionSelect, emotionIterSlider, addEmotionBtn,
@@ -50,6 +51,11 @@ export function attachAllEventHandlers(
             e.stopImmediatePropagation();
         }
     }, true); // Use capture phase to intercept before other handlers
+
+    inlineEngineSelect?.addEventListener("change", () => {
+        const plainText = getPlainText();
+        setEditorText(plainText);
+    });
 
     // Manually handle Enter key to insert newline
     editor.addEventListener("keydown", (e) => {
@@ -609,12 +615,58 @@ export function attachAllEventHandlers(
 
     // Validate button
     validateBtn.addEventListener("click", () => {
-        const validation = TagUtilities.validateTagSyntax(getPlainText());
-        if (validation.valid) {
-            showNotification("✅ Tag syntax is valid!");
-        } else {
-            showNotification("❌ " + validation.error);
+        const text = getPlainText();
+        const bracketValidation = TagUtilities.validateTagSyntax(text);
+        if (!bracketValidation.valid) {
+            showNotification("❌ " + bracketValidation.error);
+            return;
         }
+
+        const inlineSyntaxValidation = TagUtilities.validateInlineSyntax(text);
+        if (!inlineSyntaxValidation.valid) {
+            showNotification("❌ " + inlineSyntaxValidation.error, 3000);
+            return;
+        }
+
+        const targetEngine = inlineEngineSelect?.value || state.activeInlineTagEngine || "step_audio_editx";
+        const inlineValidation = TagUtilities.validateInlineTags(text, targetEngine);
+
+        if (inlineValidation.unknownTags.length > 0) {
+            showNotification(`❌ Found ${inlineValidation.unknownTags.length} unrecognized inline tag(s)`, 3000);
+            return;
+        }
+
+        if (inlineValidation.foreignTags.length > 0) {
+            const engineLabel = inlineEngineSelect?.selectedOptions?.[0]?.textContent || targetEngine;
+            const convertibleCount = inlineValidation.convertibleTags.length;
+            const skippedCount = inlineValidation.foreignTags.length - convertibleCount;
+
+            const baseMessage = `Found ${inlineValidation.foreignTags.length} inline tag(s) that do not belong to ${engineLabel}.`;
+
+            if (convertibleCount > 0) {
+                let message = baseMessage;
+                message += `\n\nConvert ${convertibleCount} safe tag(s) now?`;
+                if (skippedCount > 0) {
+                    message += `\n${skippedCount} tag(s) have no safe equivalent and will stay unchanged.`;
+                }
+                if (window.confirm(message)) {
+                    const conversion = TagUtilities.convertInlineTagsForEngine(text, targetEngine);
+                    if (conversion.converted > 0 && conversion.text !== text) {
+                        commitEditorTextChange(conversion.text, getCaretPos());
+                        showNotification(`✓ Converted ${conversion.converted} inline tag(s)${conversion.skipped ? `, skipped ${conversion.skipped}` : ""}`, 3000);
+                        return;
+                    }
+                }
+
+                showNotification(`⚠️ Found ${inlineValidation.foreignTags.length} foreign inline tag(s) for ${engineLabel}. ${convertibleCount} can be auto-converted, ${skippedCount} cannot.`, 4000);
+                return;
+            }
+
+            showNotification(`⚠️ Found ${inlineValidation.foreignTags.length} foreign inline tag(s) for ${engineLabel}; no safe auto-conversion is defined yet`, 4000);
+            return;
+        }
+
+        showNotification("✅ Tags match the selected engine!", 2000);
     });
 
     // Preset buttons
@@ -899,6 +951,51 @@ export function attachAllEventHandlers(
         });
     };
 
+    const replaceTagAroundCaret = (text, caretPos, matcher, replacement) => {
+        matcher.lastIndex = 0;
+        let match;
+        while ((match = matcher.exec(text)) !== null) {
+            const start = match.index;
+            const end = start + match[0].length;
+            if (caretPos < start || caretPos > end) {
+                continue;
+            }
+
+            return {
+                modified: true,
+                newText: text.substring(0, start) + replacement + text.substring(end),
+                newCaretPos: start + replacement.length,
+            };
+        }
+        return { modified: false };
+    };
+
+    const insertOrReplaceHiggsTag = (category, value) => {
+        const caretPos = getCaretPos();
+        const plainText = getPlainText();
+        const replacement = `<|${category}:${value}|>`;
+
+        const result = replaceTagAroundCaret(
+            plainText,
+            caretPos,
+            new RegExp(
+                `<\\|(?:emotion|style|prosody|sfx):[^|>]+\\|>|<(?:emotion|style|prosody|sfx):[^>]+>|<(?:Laughter|Breathing|Sigh|Uhm|Surprise-oh|Surprise-ah|Surprise-wa|Confirmation-en|Question-ei|Dissatisfaction-hnn)(?::\\d+)?>`,
+                "g"
+            ),
+            replacement
+        );
+
+        if (result.modified) {
+            commitEditorTextChange(result.newText, result.newCaretPos);
+            showNotification("✓ Updated inline tag", 1500);
+            return;
+        }
+
+        insertTextSnippet(replacement, {
+            notification: `✓ Inserted: ${replacement}`,
+        });
+    };
+
     // Helper function to insert Step Audio EditX inline tag (with pipe-separator support)
     const insertStepInlineTag = (tagPart) => {
         const caretPos = getCaretPos();
@@ -1023,8 +1120,7 @@ export function attachAllEventHandlers(
                 return;
             }
 
-            const tag = `<|${category}:${value}|>`;
-            insertTextSnippet(tag);
+            insertOrReplaceHiggsTag(category, value);
         });
     };
 

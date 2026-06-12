@@ -87,10 +87,15 @@ function addStringMultilineTagEditorWidget(node) {
     let isConfigured = false; // Flag to know if onConfigure already loaded the state
     let hasSetInitialValue = false; // Track if we've set the initial workflow value
     let onConfigureCallCount = 0; // Track how many times onConfigure has been called
+    let syncInlineEngineSelection = () => {};
 
     // Create a temporary state to check default text
     const defaultState = new EditorState();
     const defaultText = defaultState.text;
+    node.properties = node.properties || {};
+    if (node.properties.ttsTagEditorInlineEngine && !state.activeInlineTagEngine) {
+        state.activeInlineTagEngine = node.properties.ttsTagEditorInlineEngine;
+    }
 
     // Create main editor container (this will be THE widget)
     const editorContainer = document.createElement("div");
@@ -1229,11 +1234,19 @@ function addStringMultilineTagEditorWidget(node) {
             '\x00TAG_START\x00$1\x00TAG_END\x00'
         );
 
-        // Highlight inline edit tags (angle brackets) - magenta
-        html = html.replace(
-            /(<[^<>\r\n]+>)/g,
-            '\x00EDIT_START\x00$1\x00EDIT_END\x00'
-        );
+        const activeInlineEngine = state.activeInlineTagEngine || "step_audio_editx";
+
+        // Highlight inline edit tags with engine-aware warnings.
+        html = html.replace(/(<[^<>\r\n]+>)/g, (tag) => {
+            const analysis = TagUtilities.analyzeInlineTag(tag);
+            if ((analysis.engines || new Set()).size === 0) {
+                return `\x00EDIT_INVALID\x00${tag}\x00EDIT_END\x00`;
+            }
+            if (!(analysis.engines || new Set()).has(activeInlineEngine)) {
+                return `\x00EDIT_FOREIGN\x00${tag}\x00EDIT_END\x00`;
+            }
+            return `\x00EDIT_START\x00${tag}\x00EDIT_END\x00`;
+        });
 
         // Highlight commas - green
         html = html.replace(/,/g, '\x00COMMA_START\x00,\x00COMMA_END\x00');
@@ -1258,6 +1271,8 @@ function addStringMultilineTagEditorWidget(node) {
             .replace(/\x00NUM_START_(\d+)\x00(.*?)\x00NUM_END\x00/g, (_, cueIndex, cueNumber) => buildSRTCueNumberMarkup(cueNumber, Number(cueIndex)))
             .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, (_, timingText) => buildSRTTimingMarkup(stripInternalMarkers(timingText).replace(/&gt;/g, ">"), timingHandleIndex++))
             .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #38d7ae; font-weight: 700;">$1</span>')
+            .replace(/\x00EDIT_INVALID\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #ff5555; font-weight: 700; text-decoration: underline wavy #ff5555;">$1</span>')
+            .replace(/\x00EDIT_FOREIGN\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #e67e22; font-weight: 700; text-decoration: underline wavy #e67e22;">$1</span>')
             .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #a6d700; font-weight: 700;">$1</span>')
             .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #7bd6a7; font-weight: bold;">$1</span>')
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #e3be69; font-weight: bold;">$1</span>')
@@ -1487,6 +1502,7 @@ function addStringMultilineTagEditorWidget(node) {
         if (v !== undefined) {
             widget.value = v;
         }
+        syncInlineEngineSelection();
     };
 
     // Hook into node's onConfigure to load workflow values
@@ -1496,6 +1512,11 @@ function addStringMultilineTagEditorWidget(node) {
         onConfigureCallCount++;
         const result = originalOnConfigure(info);
 
+        if (info?.properties?.ttsTagEditorInlineEngine) {
+            node.properties.ttsTagEditorInlineEngine = info.properties.ttsTagEditorInlineEngine;
+            state.activeInlineTagEngine = info.properties.ttsTagEditorInlineEngine;
+        }
+
         // Load workflow value when onConfigure is called (user opened a file)
         if (info && Array.isArray(info.widgets_values) && info.widgets_values[0]) {
             const workflowValue = info.widgets_values[0];
@@ -1503,27 +1524,16 @@ function addStringMultilineTagEditorWidget(node) {
             // Try to load full state from localStorage first (includes history)
             const savedState = EditorState.loadFromLocalStorage(storageKey);
             if (savedState && savedState.text && savedState.history && savedState.history.length > 0) {
-                // We have localStorage with history - this means we had local edits
+                // Preserve local text/history on same-workflow reloads.
                 Object.assign(state, savedState);
 
-                // Use onConfigureCallCount to distinguish reload from new workflow
-                // First call = initial load, preserve localStorage (it's either reload or user edits)
-                // Subsequent calls = file opened or workflow reloaded, reset if text changed
-                if (onConfigureCallCount === 1) {
-                    // First time seeing this node - keep the loaded history
-                    // Just make sure text matches workflow so they're in sync
+                const savedWorkflowValue = savedState.lastWorkflowValue || "";
+                const workflowChanged = !!savedWorkflowValue && workflowValue !== savedWorkflowValue;
+
+                if (workflowChanged) {
                     state.text = workflowValue;
-                } else {
-                    // Subsequent calls - check if workflow changed
-                    if (state.lastWorkflowValue && workflowValue !== state.lastWorkflowValue) {
-                        // Workflow value changed - user opened a different file
-                        state.text = workflowValue;
-                        state.history = [{text: workflowValue, caretPos: 0}];
-                        state.historyIndex = 0;
-                    } else {
-                        // Workflow unchanged or first time tracking it - preserve history (page reload)
-                        state.text = workflowValue;
-                    }
+                    state.history = [{ text: workflowValue, caretPos: 0 }];
+                    state.historyIndex = 0;
                 }
 
                 state.lastWorkflowValue = workflowValue;
@@ -1537,13 +1547,26 @@ function addStringMultilineTagEditorWidget(node) {
                 state.lastWorkflowValue = workflowValue;
             }
 
-            widget.value = workflowValue;
+            syncInlineEngineSelection();
+            widget.value = state.text;
             historyStatus.textContent = state.getHistoryStatus();
             isConfigured = true; // Mark that we've configured from workflow
             hasSetInitialValue = true; // Mark that we've set the initial value from workflow
         }
 
         return result;
+    };
+
+    const originalOnSerialize = node.onSerialize?.bind(node);
+    node.onSerialize = function(info) {
+        const result = originalOnSerialize ? originalOnSerialize(info) : info;
+        const serialized = result || info || {};
+        serialized.properties = serialized.properties || {};
+        serialized.properties.ttsTagEditorInlineEngine = state.activeInlineTagEngine || node.properties?.ttsTagEditorInlineEngine || "step_audio_editx";
+        if (this.widgets && this.widgets.length > 0) {
+            serialized.widgets_values = this.widgets.map((w) => w.value);
+        }
+        return serialized;
     };
 
     // Set initial node size on creation
@@ -1589,8 +1612,24 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Build inline edit section
     const inlineEditData = buildInlineEditSection(state, storageKey);
-    const { inlineEditSection, inlineTagControls } = inlineEditData;
+    const { inlineEditSection, inlineTagControls, updateInlineEnginePanelVisibility } = inlineEditData;
     inlineEditSection.classList.add("string-multiline-tag-editor-inline-section");
+
+    syncInlineEngineSelection = () => {
+        const desiredEngine = state.activeInlineTagEngine || node.properties?.ttsTagEditorInlineEngine || "step_audio_editx";
+        state.activeInlineTagEngine = desiredEngine;
+        node.properties.ttsTagEditorInlineEngine = desiredEngine;
+        if (inlineTagControls.inlineEngineSelect.value !== desiredEngine) {
+            inlineTagControls.inlineEngineSelect.value = desiredEngine;
+        }
+        updateInlineEnginePanelVisibility?.();
+    };
+
+    inlineTagControls.inlineEngineSelect.addEventListener("change", () => {
+        const selectedEngine = inlineTagControls.inlineEngineSelect.value || "step_audio_editx";
+        state.activeInlineTagEngine = selectedEngine;
+        node.properties.ttsTagEditorInlineEngine = selectedEngine;
+    });
 
     // Build tab system
     const tabData = buildTabSystem(state, storageKey);

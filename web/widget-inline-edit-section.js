@@ -464,5 +464,6 @@ export function buildInlineEditSection(state, storageKey) {
             higgs: higgsSection.controls,
             cosy: cosySection.controls,
         },
+        updateInlineEnginePanelVisibility: updateVisiblePanel,
     };
 }
