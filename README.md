@@ -162,8 +162,6 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   - [Troubleshooting Dependency Issues](#troubleshooting-dependency-issues)
   - [Updating the Node](#updating-the-node)
 - [📁 Example Workflows](#-example-workflows)
-- [Settings Guide](#settings-guide)
-- [Text Processing Capabilities](#text-processing-capabilities)
 - [License](#license)
 - [Credits](#credits)
 - [🔗 Links](#-links)
@@ -1502,6 +1500,7 @@ Your support helps maintain and improve this project for the entire community!
 | **RVC 🎓 Model Training**                     | RVC voice model training workflow                          | ✅ **New in v4.25**   | [📁 JSON](example_workflows/RVC%20🎓%20Model%20Training.json)                                                       |
 | **🎨 Step Audio EditX - Audio Editor**         | Step Audio EditX audio editing with inline edit tags       | ✅ **New in v4.14**   | [📁 JSON](example_workflows/🎨%20Step%20Audio%20EditX%20-%20Audio%20Editor%20+%20Inline%20Edit%20Tags.json)        |
 | **⚙️ Step Audio EditX Integration**            | Step Audio EditX TTS engine with zero-shot voice cloning   | ✅ **New in v4.14**   | [📁 JSON](example_workflows/Step%20Audio%20EditX%20Integration.json)                                                |
+| **⚙️ Higgs Audio v3 Integration**              | Higgs Audio v3 TTS with zero-shot voice cloning and native inline tags | ✅ **New in v4.27** | [📁 JSON](example_workflows/Higgs%20Audio%20v3%20Integration.json)                                                  |
 | **🌈 IndexTTS-2 Integration**                  | IndexTTS-2 engine with advanced emotion control            | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)                                                     |
 | **📝 F5 TTS + Text Normalizer**                | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json)                     |
 | **Qwen3 integration + ASR**                    | Qwen3-TTS voice generation with ASR transcription          | ✅ **New in v4.21**   | [📁 JSON](example_workflows/Qwen3%20integration%20+%20ASR.json)                                                     |
@@ -1509,90 +1508,23 @@ Your support helps maintain and improve this project for the entire community!
 | **ChatterBox Integration**                     | General ChatterBox TTS and Voice Conversion                | ✅ **Compatible**     | [📁 JSON](example_workflows/Chatterbox%20integration.json)                                                          |
 | **F5-TTS Speech Editor**                       | Interactive waveform analysis for F5-TTS editing           | ✅ **Updated for v4** | [📁 JSON](example_workflows/👄%20F5-TTS%20Speech%20Editor%20Workflow.json)                                          |
 
-> **💡 Recommended:** Use the new **Unified 📺 TTS SRT** workflow which showcases all engines and features in one comprehensive workflow. It demonstrates SRT processing, timing modes, multi-character switching, and supports ChatterBox, F5-TTS, and Higgs Audio 2 engines.
+> **💡 Recommended:** Use the new **Unified 📺 TTS SRT** workflow which showcases the unified TTS flow in one comprehensive workflow. It demonstrates SRT processing, timing modes, multi-character switching, and modern engine integration across the suite.
 > 
 > **📥 Usage:** Download the `.json` files and drag them directly into your ComfyUI interface. The workflows will automatically load with proper node connections.
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
-## Settings Guide
-
-### Enhanced Chunking Settings
-
-**For Long Articles/Books:**
-
-- `max_chars_per_chunk=600`, `combination_method=silence_padding`, `silence_between_chunks_ms=200`
-
-**For Natural Speech:**
-
-- `max_chars_per_chunk=400`, `combination_method=auto` (default - works well)
-
-**For Fast Processing:**
-
-- `max_chars_per_chunk=800`, `combination_method=concatenate`
-
-**For Smooth Audio:**
-
-- `max_chars_per_chunk=300`, `combination_method=crossfade`
-
-### Voice Recording Settings
-
-**General Recording:**
-
-- `silence_threshold=0.01`, `silence_duration=2.0` (default settings)
-
-**Noisy Environment:**
-
-- Higher `silence_threshold` (~0.05) to ignore background noise
-- Longer `silence_duration` (~3.0) to avoid cutting off speech
-
-**Quiet Environment:**
-
-- Lower `silence_threshold` (~0.005) for sensitive detection
-- Shorter `silence_duration` (~1.0) for quick stopping
-
-### TTS Settings
-
-**General Use:**
-
-- `exaggeration=0.5`, `cfg_weight=0.5` (default settings work well)
-
-**Expressive Speech:**
-
-- Lower `cfg_weight` (~0.3) + higher `exaggeration` (~0.7)
-- Higher exaggeration speeds up speech; lower CFG slows it down
-
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
-
-## Text Processing Capabilities
-
-### 📚 No Hard Text Limits!
-
-Unlike many TTS systems:
-
-- **OpenAI TTS**: 4096 character limit
-- **ElevenLabs**: 2500 character limit
-- **ChatterBox**: No documented limits + intelligent chunking
-
-### 🧠 Smart Text Splitting
-
-**Sentence Boundary Detection:**
-
-- Splits on `.!?` with proper spacing
-- Preserves sentence integrity
-- Handles abbreviations and edge cases
-
-**Long Sentence Handling:**
-
-- Splits on commas when sentences are too long
-- Maintains natural speech patterns
-- Falls back to character limits only when necessary
-
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
-
 ## License
 
-MIT License - Same as ChatterboxTTS
+The **TTS Audio Suite project code** is licensed under **MIT**.
+
+- Project license: [LICENSE](LICENSE)
+- Engine/model licenses are **not unified**
+- Each engine keeps its own license and usage terms
+- Check the generated engine/model docs before using any specific model:
+  - [Engine Comparison](docs/ENGINE_COMPARISON.md)
+  - [Model Download Sources](docs/MODEL_DOWNLOAD_SOURCES.md)
+  - [Model Folder Layouts](docs/MODEL_LAYOUTS.md)
 
 <div align="right"><a href="#-table-of-contents">Back to top</a></div>
 
@@ -1608,16 +1540,15 @@ MIT License - Same as ChatterboxTTS
 
 ## 🔗 Links
 
-- [Resemble AI ChatterBox](https://github.com/resemble-ai/chatterbox)
+- [Project License](LICENSE)
+- [Documentation Hub](docs)
+- [Engine Comparison](docs/ENGINE_COMPARISON.md)
+- [Language Support](docs/LANGUAGE_SUPPORT.md)
+- [Feature Comparison](docs/FEATURE_COMPARISON.md)
 - [Model Download Sources](docs/MODEL_DOWNLOAD_SOURCES.md)
 - [Model Folder Layouts](docs/MODEL_LAYOUTS.md)
-- [ChatterBox Demo](https://resemble-ai.github.io/chatterbox_demopage/)
-- [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
-- [Resemble AI Official Site](https://www.resemble.ai/chatterbox/)
 
 ---
-
-**Note**: The original ChatterBox model includes Resemble AI's Perth watermarking system for responsible AI usage. This ComfyUI integration includes the Perth dependency but has watermarking disabled by default to ensure maximum compatibility. Users can re-enable watermarking by modifying the code if needed, while maintaining the full quality and capabilities of the underlying TTS model.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
