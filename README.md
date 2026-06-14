@@ -178,24 +178,6 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   <strong><a href="https://youtu.be/VyOawMrCB1g?si=7BubljRhsudGqG3s">▶️ Original Demo - SRT Timing & Basic Features</a></strong>
 </div>
 
-<details>
-<summary><h3>📜 Original ShmuelRonen ChatterBox TTS Nodes</h3></summary>
-
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/4197818c-8093-4da4-abd5-577943ac902c" width="45%" alt="ChatterBox TTS Nodes" />
-  <img src="https://github.com/user-attachments/assets/701c219b-12ff-4567-b414-e58560594ffe" width="45%" alt="ChatterBox Voice Capture" />
-</div>
-
-* **Voice Recording**: Smart silence detection for voice capture
-* **Enhanced Chunking**: Intelligent text splitting with multiple combination methods
-* **Unlimited Text Length**: No character limits with smart processing
-
-**Original creator:** [ShmuelRonen](https://github.com/ShmuelRonen/ComfyUI_ChatterBox_Voice)
-
-</details>
-
-<div align="right"><a href="#-table-of-contents">Back to top</a></div>
-
 ## Features
 
 - 🎤 **Multi-Engine TTS**
