@@ -9,9 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Major release: Transformers 5 main environment with Higgs Audio v3
 - Add Higgs Audio v3 TTS engine with native inline tags and zero-shot voice cloning
-- Move fragile legacy engines to isolated runtimes instead of freezing the main environment
+- Add isolated runtimes for fragile legacy engines so the main environment no longer has to stay on the older stack
 
 ### Changed
 
