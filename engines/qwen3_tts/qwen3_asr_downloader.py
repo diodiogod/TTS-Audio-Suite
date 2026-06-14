@@ -5,8 +5,10 @@ Handles automatic download and setup of Qwen3-ASR models.
 Downloads models to organized ASR/qwen3_asr/ structure.
 """
 
+import logging
 import os
 import sys
+from contextlib import contextmanager
 from typing import Optional
 
 # Add project root to path
@@ -18,6 +20,23 @@ if project_root not in sys.path:
 
 from utils.models.extra_paths import get_preferred_download_path
 import folder_paths
+
+
+@contextmanager
+def _suppress_hf_http_logs():
+    # TTS Audio Suite patch: keep download output readable by muting non-error
+    # HTTP request logs emitted by httpx/httpcore during Hugging Face downloads.
+    logger_names = ("httpx", "httpcore", "huggingface_hub")
+    original_levels = {}
+    try:
+        for name in logger_names:
+            logger = logging.getLogger(name)
+            original_levels[name] = logger.level
+            logger.setLevel(logging.WARNING)
+        yield
+    finally:
+        for name, level in original_levels.items():
+            logging.getLogger(name).setLevel(level)
 
 
 class Qwen3ASRDownloader:
@@ -81,12 +100,13 @@ class Qwen3ASRDownloader:
             print(f"📥 Downloading {model_name} from Hugging Face...")
             from huggingface_hub import snapshot_download
 
-            snapshot_download(
-                repo_id=repo_id,
-                local_dir=model_dir,
-                local_dir_use_symlinks=False,
-                resume_download=True
-            )
+            with _suppress_hf_http_logs():
+                snapshot_download(
+                    repo_id=repo_id,
+                    local_dir=model_dir,
+                    local_dir_use_symlinks=False,
+                    resume_download=True
+                )
 
             if os.path.exists(model_dir) and os.listdir(model_dir):
                 print(f"\n✅ Download complete: {model_dir}")

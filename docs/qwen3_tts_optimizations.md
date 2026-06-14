@@ -8,6 +8,7 @@ This document explains how to enable torch.compile optimizations for Qwen3-TTS t
 
 - **PyTorch 2.10.0+** with CUDA 13.0 support
 - **triton-windows 3.6.0+** (Windows) or **triton 3.6.0+** (Linux)
+- **Visual Studio C++ Build Tools** on Windows (a real `cl.exe` toolchain, not just stale PATH entries)
 - Python 3.12 (recommended)
 
 **Note**: PyTorch 2.8.x and 2.9.x have compatibility issues with triton on Windows. Only PyTorch 2.10+ is supported.
@@ -22,6 +23,13 @@ pip install --upgrade torch torchvision torchaudio --index-url https://download.
 # Install triton-windows 3.6.x
 pip install -U "triton-windows<3.7"
 ```
+
+Also install **Visual Studio Build Tools** with the C++ toolchain:
+
+- Workload: `Desktop development with C++`
+- Or at minimum the MSVC x64/x86 build tools component
+
+If `cl.exe` is missing, `torch.compile` in the isolated Qwen runtime will fall back to the non-compiled path.
 
 **Verification:**
 ```bash
@@ -46,7 +54,12 @@ python -c "import triton; print(triton.__version__)"
 
 ## Environment Configuration
 
-**No special configuration needed** - PyTorch 2.10 works with the default cudaMallocAsync allocator when using `compile_mode="default"`.
+**Main environment**: no special configuration beyond a working compiler toolchain.
+
+**Shared / Dedicated Runtime isolation**:
+- TTS Audio Suite now tries to detect Visual Studio automatically and inject a proper MSVC build environment into the isolated worker
+- This is meant to preserve `torch.compile` parity with old direct Transformers 4 environments
+- It still depends on the Build Tools actually being installed
 
 **Note**: The `reduce-overhead` mode (which includes automatic CUDA graphs) may still have issues with cudaMallocAsync. Use `compile_mode="default"` for best compatibility.
 
@@ -93,6 +106,16 @@ pip install --upgrade torchvision --index-url https://download.pytorch.org/whl/c
 
 **Solution**: Use `compile_mode="default"` instead (recommended for Windows).
 
+### Error: "Failed to find C compiler. Please specify via CC environment variable."
+**Cause**: Triton/Inductor could not find a usable Windows C++ toolchain.
+
+**Solution**:
+1. Install or repair Visual Studio Build Tools with the C++ workload
+2. Restart ComfyUI so the new environment is visible
+3. If using Shared/Dedicated Runtime, let TTS Audio Suite auto-detect the toolchain
+
+If detection still fails, your machine state is broken, not just the Python package stack.
+
 ### Warning: "TensorFloat32 tensor cores... not enabled"
 **Info**: This is just a performance hint, not an error. TF32 is automatically enabled by the extension for better performance.
 
@@ -116,6 +139,7 @@ pip install --upgrade torchvision --index-url https://download.pytorch.org/whl/c
 - **First generation is slower** (~30-60s compilation overhead)
 - **Subsequent generations are fast** (compiled kernels cached)
 - **Model unloading works correctly** even with CUDA graphs enabled
+- **Shared Runtime should preserve these gains** if the Windows compiler toolchain is installed and detected correctly
 
 ## Notes
 

@@ -21,7 +21,108 @@ import numpy as np
 import torch
 
 from transformers.utils import add_start_docstrings
-from transformers.generation.beam_constraints import Constraint, ConstraintListState
+
+try:
+    from transformers.generation.beam_constraints import Constraint, ConstraintListState
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed beam_constraints.
+    class Constraint:
+        def copy(self):
+            raise NotImplementedError
+
+        def reset(self):
+            raise NotImplementedError
+
+        def advance(self):
+            raise NotImplementedError
+
+        def add(self, token_id):
+            raise NotImplementedError
+
+        @property
+        def completed(self):
+            raise NotImplementedError
+
+
+    class _PhrasalConstraintState:
+        def __init__(self, token_ids):
+            self.token_ids = tuple(token_ids)
+            self.position = 0
+
+        def copy(self):
+            cloned = _PhrasalConstraintState(self.token_ids)
+            cloned.position = self.position
+            return cloned
+
+        def reset(self):
+            self.position = 0
+
+        def advance(self):
+            if self.completed:
+                return []
+            return [self.token_ids[self.position]]
+
+        def add(self, token_id):
+            if self.completed:
+                return
+            expected = self.token_ids[self.position]
+            if token_id == expected:
+                self.position += 1
+            elif token_id == self.token_ids[0]:
+                self.position = 1
+            else:
+                self.position = 0
+
+        @property
+        def completed(self):
+            return self.position >= len(self.token_ids)
+
+        def remaining(self):
+            return max(0, len(self.token_ids) - self.position)
+
+
+    class ConstraintListState:
+        def __init__(self, constraints):
+            self.constraints = [constraint.copy() for constraint in constraints]
+
+        def copy(self, stateful=False):
+            cloned = ConstraintListState([])
+            if stateful:
+                cloned.constraints = [constraint.copy() for constraint in self.constraints]
+            else:
+                cloned.constraints = [constraint.copy() for constraint in self.constraints]
+                for constraint in cloned.constraints:
+                    constraint.reset()
+            return cloned
+
+        def reset(self, sequence=None):
+            for constraint in self.constraints:
+                constraint.reset()
+            if sequence is not None:
+                for token_id in sequence:
+                    self.add(token_id)
+            return self
+
+        def advance(self):
+            tokens = []
+            for constraint in self.constraints:
+                if not constraint.completed:
+                    tokens.extend(constraint.advance())
+            return list(dict.fromkeys(tokens))
+
+        def add(self, token_id):
+            for constraint in self.constraints:
+                if not constraint.completed:
+                    constraint.add(token_id)
+
+        @property
+        def completed(self):
+            return all(constraint.completed for constraint in self.constraints)
+
+        def get_bank(self):
+            completed = sum(1 for constraint in self.constraints if constraint.completed)
+            remaining = sum(constraint.remaining() for constraint in self.constraints)
+            return completed * 1000 - remaining
 
 
 PROCESS_INPUTS_DOCSTRING = r"""

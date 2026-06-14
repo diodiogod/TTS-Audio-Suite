@@ -344,7 +344,7 @@ Selects the audio format for separated stems:
                 elif "mel_band_roformer" in model_path.lower() or "melband" in model_path.lower():
                     # MelBandRoFormer implementation
                     print(f"🔧 Using MelBandRoFormer separation engine")
-                    from lib.melband.mel_band_roformer import MelBandRoformer
+                    from engines.rvc.impl.lib.melband.mel_band_roformer import MelBandRoformer
                     import torch
                     import torch.nn.functional as F
                     from tqdm import tqdm

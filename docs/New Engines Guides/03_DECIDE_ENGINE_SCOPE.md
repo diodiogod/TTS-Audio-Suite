@@ -22,7 +22,8 @@ Produce a short scope document with:
 4. Which non-native suite-added features are proposed, if any?
 5. Which existing engine should be used as implementation reference?
 6. What files/modules will likely need changes?
-7. What manual tests will prove the integration works?
+7. Does this engine stay in the Main Environment, or does it need runtime isolation?
+8. What manual tests will prove the integration works?
 ```
 
 ## Node Types To Choose From
@@ -85,6 +86,10 @@ Manual tests:
 - TTS Text with pause tags
 - SRT generation with interrupt test
 - Clear VRAM then regenerate
+
+Runtime plan:
+- Main Environment only
+- or Shared Runtime / Dedicated Runtime if dependency conflicts are expected
 ```
 
 If the scope is vague, do not code yet.

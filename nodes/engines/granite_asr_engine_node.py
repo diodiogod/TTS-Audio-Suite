@@ -83,7 +83,7 @@ class GraniteASREngineNode(BaseTTSNode):
                 }),
                 "asr_use_forced_aligner": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Use Qwen's separate forced aligner after Granite transcription so ✏️ ASR Transcribe can build word timings and SRT.\n\n• True: Enable timestamps/SRT support for Granite\n• False: Granite returns text only\n\nImportant:\n• Granite does NOT have native timestamp output in this integration\n• Translation mode still stays text-only\n• If ASR language is Auto, alignment uses a truthful heuristic: Japanese script -> Japanese mode, otherwise Qwen's generic space-delimited tokenizer path"
+                    "tooltip": "Use Qwen's separate forced aligner after Granite transcription so ✏️ ASR Transcribe can build word timings and SRT.\n\n• True: Enable timestamps/SRT support for Granite\n• False: Granite returns text only\n\nImportant:\n• Granite does NOT have native timestamp output in this integration\n• The reused Qwen forced aligner is automatically routed through the shared legacy Transformers 4 runtime\n• Translation mode still stays text-only\n• If ASR language is Auto, alignment uses a truthful heuristic: Japanese script -> Japanese mode, otherwise Qwen's generic space-delimited tokenizer path"
                 }),
                 "asr_translate_target_language": (translate_languages, {
                     "default": "English",

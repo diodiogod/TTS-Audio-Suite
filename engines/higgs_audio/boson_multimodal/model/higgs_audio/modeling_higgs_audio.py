@@ -711,7 +711,7 @@ class HiggsAudioDualFFNDecoderLayer(nn.Module):
                 hidden_states=hidden_states,
                 attention_mask=audio_attention_mask,
                 position_ids=position_ids,
-                past_key_value=past_key_value,
+                past_key_values=past_key_value,  # TTS Audio Suite patch: avoid deprecated singular cache arg on LlamaAttention.
                 output_attentions=output_attentions,
                 use_cache=use_cache,
                 cache_position=cache_position,
@@ -738,7 +738,7 @@ class HiggsAudioDualFFNDecoderLayer(nn.Module):
             hidden_states=hidden_states,
             attention_mask=attention_mask,
             position_ids=position_ids,
-            past_key_value=past_key_value,
+            past_key_values=past_key_value,  # TTS Audio Suite patch: avoid deprecated singular cache arg on LlamaAttention.
             output_attentions=output_attentions,
             use_cache=use_cache,
             cache_position=cache_position,

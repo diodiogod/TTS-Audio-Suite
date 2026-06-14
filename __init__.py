@@ -149,32 +149,6 @@ def print_critical_versions():
 
     print(f"ℹ️ Critical package versions: {', '.join(version_info)}")
 
-def warn_transformers_5_unsupported():
-    """Warn when Transformers 5.x is installed (Qwen3-TTS tokenizer is incompatible).
-
-    NOTE: This check uses sys.modules to avoid eagerly importing transformers (~1.3s).
-    If transformers hasn't been imported yet (e.g. by the version-printing function above),
-    we skip the check -- it will be caught later when an engine actually loads transformers.
-    """
-    try:
-        # Only check if transformers is already loaded (avoids ~1.3s eager import)
-        import sys as _sys
-        if 'transformers' not in _sys.modules:
-            return
-        transformers = _sys.modules['transformers']
-        try:
-            from packaging.version import Version
-            version = Version(transformers.__version__)
-            is_5x = version >= Version("5.0.0")
-        except Exception:
-            parts = transformers.__version__.split(".")
-            is_5x = int(parts[0]) >= 5 if parts and parts[0].isdigit() else False
-        if is_5x:
-            print("⚠️ Transformers 5.x detected: Qwen3-TTS tokenizer is incompatible.")
-            print("   Please downgrade to transformers<=4.57.3 (see requirements.txt).")
-    except Exception:
-        pass
-
 def check_ffmpeg_availability():
     """Check ffmpeg availability and log status"""
     try:
@@ -207,7 +181,6 @@ def check_ffmpeg_availability():
 # Print versions and check dependencies immediately for troubleshooting
 check_dependencies()
 print_critical_versions()
-warn_transformers_5_unsupported()
 check_ffmpeg_availability()
 
 # Check for old ChatterBox extension conflict

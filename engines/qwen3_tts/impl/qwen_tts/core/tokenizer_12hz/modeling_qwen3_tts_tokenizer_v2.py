@@ -519,6 +519,25 @@ class Qwen3TTSTokenizerV2DecoderTransformerModel(Qwen3TTSTokenizerV2DecoderPreTr
         cache_position=None,
         **kwargs,
     ) -> BaseModelOutputWithPast:
+        """
+        Args:
+            input_ids (`torch.LongTensor`, *optional*):
+                Unused for this decoder-only path. `inputs_embeds` must be provided instead.
+            attention_mask (`torch.Tensor`, *optional*):
+                Attention mask or precomputed causal mask mapping.
+            position_ids (`torch.LongTensor`, *optional*):
+                Position IDs for RoPE application.
+            past_key_values (`Cache`, *optional*):
+                Cached key/value states used during autoregressive generation.
+            inputs_embeds (`torch.FloatTensor`, *optional*):
+                Input embeddings passed into the decoder.
+            use_cache (`bool`, *optional*):
+                Whether key/value cache should be updated and returned.
+            cache_position (`torch.LongTensor` of shape `(sequence_length)`, *optional*):
+                Absolute positions of the current tokens inside the generation cache.
+            kwargs (`dict`, *optional*):
+                Additional backend-specific keyword arguments forwarded to decoder layers.
+        """
         if input_ids is not None:
             raise ValueError("input_ids is not expected")
         if (input_ids is None) ^ (inputs_embeds is not None):

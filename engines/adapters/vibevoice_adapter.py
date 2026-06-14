@@ -16,6 +16,8 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from utils.models.language_mapper import get_model_for_language
+from utils.models.engine_registry import get_default_runtime_profile
+from utils.models.factory_config import normalize_runtime_mode, runtime_uses_isolation
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.character_parser import character_parser
 from engines.vibevoice_engine.vibevoice_downloader import (
@@ -51,11 +53,15 @@ class VibeVoiceEngineAdapter:
             self._device = engine_config.get('device', 'auto')
             self._attention_mode = engine_config.get('attention_mode', 'auto')
             self._quantize_4bit = engine_config.get('quantize_llm_4bit', False)
+            self._runtime_mode = normalize_runtime_mode(engine_config.get('runtime_mode'))
+            self._runtime_profile = engine_config.get('runtime_profile')
         else:
             self._model_name = 'vibevoice-1.5B'
             self._device = 'auto'
             self._attention_mode = 'auto'
             self._quantize_4bit = False
+            self._runtime_mode = 'main_environment'
+            self._runtime_profile = None
 
     @property
     def vibevoice_engine(self):
@@ -68,7 +74,9 @@ class VibeVoiceEngineAdapter:
             model_name=self._model_name,
             device=self._device,
             attention_mode=self._attention_mode,
-            quantize_llm_4bit=self._quantize_4bit
+            quantize_llm_4bit=self._quantize_4bit,
+            runtime_mode=self._runtime_mode,
+            runtime_profile=self._runtime_profile or get_default_runtime_profile("vibevoice"),
         )
 
     @property
@@ -847,7 +855,14 @@ class VibeVoiceEngineAdapter:
         return None
     
     def cleanup(self):
-        """Clean up resources - models are now managed by ModelManager"""
+        """Clean up resources and unload isolated runtime workers when requested."""
         self._character_speaker_map.clear()
         self._speaker_voices.clear()
+
+        if runtime_uses_isolation(self._runtime_mode):
+            try:
+                from utils.models.unified_model_interface import unified_model_interface
+                unified_model_interface.clear_engine_models("vibevoice")
+            except Exception as e:
+                print(f"⚠️ Failed to unload isolated VibeVoice runtime during cleanup: {e}")
         # Don't clean up vibevoice_engine - it just holds references to cached models

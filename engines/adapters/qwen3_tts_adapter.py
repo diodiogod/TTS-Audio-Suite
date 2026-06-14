@@ -123,6 +123,8 @@ class Qwen3TTSEngineAdapter:
                        dtype: str = "auto",
                        model_size: str = "1.7B",
                        attn_implementation: str = "auto",
+                       runtime_mode: str = "main_environment",
+                       runtime_profile: Optional[str] = None,
                        context: Optional[Dict[str, Any]] = None,
                        use_torch_compile: bool = False,
                        use_cuda_graphs: bool = False,
@@ -168,6 +170,8 @@ class Qwen3TTSEngineAdapter:
             model_name=model_name,
             model_path=model_path if model_path else model_name,
             device=resolve_torch_device(device),
+            runtime_mode=runtime_mode,
+            runtime_profile=runtime_profile,
             additional_params={
                 "dtype": dtype,
                 "attn_implementation": attn_implementation,

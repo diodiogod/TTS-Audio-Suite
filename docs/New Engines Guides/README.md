@@ -67,6 +67,7 @@ A new engine is not done until the answer to these questions is yes:
 - Does it use the suite architecture instead of stuffing engine logic into unified nodes?
 - Does it load models through the unified model interface?
 - Does model unload/reload/Clear VRAM work?
+- Did someone explicitly decide whether this engine belongs in the Main Environment or needs runtime isolation?
 - Does it support generated audio cache where applicable?
 - Does it handle ComfyUI audio shape and sample rate correctly?
 - Does it wire character tags, pause tags, and parameter switching where applicable?

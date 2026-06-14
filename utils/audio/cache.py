@@ -141,6 +141,72 @@ class HiggsAudioCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class HiggsAudioV3CacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Higgs Audio v3 engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        temperature = params.get('temperature', 1.0)
+        top_p = params.get('top_p', 0.95)
+
+        if isinstance(temperature, (int, float)):
+            temperature = round(float(temperature), 3)
+        if isinstance(top_p, (int, float)):
+            top_p = round(float(top_p), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'model_variant': params.get('model_variant', 'higgs-audio-v3-tts-4b'),
+            'temperature': temperature,
+            'top_p': top_p,
+            'top_k': params.get('top_k', 50),
+            'max_new_tokens': params.get('max_new_tokens', 2048),
+            'seed': params.get('seed', 0),
+            'device': params.get('device', 'auto'),
+            'dtype': params.get('dtype', 'auto'),
+            'attention': params.get('attention', 'auto'),
+            'character': params.get('character', 'narrator'),
+            'engine': 'higgs_audio_v3',
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
+class HiggsAudioV3CacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Higgs Audio v3 engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        temperature = params.get('temperature', 1.0)
+        top_p = params.get('top_p', 0.95)
+
+        if isinstance(temperature, (int, float)):
+            temperature = round(float(temperature), 3)
+        if isinstance(top_p, (int, float)):
+            top_p = round(float(top_p), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'model_variant': params.get('model_variant', 'higgs-audio-v3-tts-4b'),
+            'temperature': temperature,
+            'top_p': top_p,
+            'top_k': params.get('top_k', 50),
+            'max_new_tokens': params.get('max_new_tokens', 2048),
+            'seed': params.get('seed', 0),
+            'device': params.get('device', 'auto'),
+            'dtype': params.get('dtype', 'auto'),
+            'attention': params.get('attention', 'auto'),
+            'character': params.get('character', 'narrator'),
+            'engine': 'higgs_audio_v3',
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class VibeVoiceCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for VibeVoice engine."""
     
@@ -464,6 +530,7 @@ class AudioCache:
             'chatterbox': ChatterBoxCacheKeyGenerator(),
             'chatterbox_official_23lang': ChatterBoxOfficial23LangCacheKeyGenerator(),  # Uses specialized generator with advanced params
             'higgs_audio': HiggsAudioCacheKeyGenerator(),
+            'higgs_audio_v3': HiggsAudioV3CacheKeyGenerator(),
             'vibevoice': VibeVoiceCacheKeyGenerator(),
             'step_audio_editx': StepAudioEditXCacheKeyGenerator(),
             'index_tts': IndexTTSCacheKeyGenerator(),
@@ -541,7 +608,7 @@ class AudioCache:
             num_samples = audio_tensor.numel()
 
         # Use engine-specific sample rates
-        if engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts'):
+        if engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3'):
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050

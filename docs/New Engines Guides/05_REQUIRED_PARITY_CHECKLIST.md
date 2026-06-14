@@ -25,6 +25,8 @@ Downloads and dependencies:
 - Do models download into organized ComfyUI/models/TTS/ folders?
 - Did you prevent silent downloads into random cache folders?
 - Did you document dependency conflicts or install.py changes?
+- Did you explicitly decide whether this engine belongs in Main Environment or needs runtime isolation?
+- If runtime isolation is needed, did you document the default mode and the reason in YAML/README?
 
 Audio format:
 - Did you verify the model native sample rate?
@@ -44,6 +46,7 @@ Text features:
 - Did you wire parameter switching for real native parameters?
 - Did you avoid adding fake unsupported parameters?
 - Did you remove misleading controls like language selection if unsupported?
+- Did you reuse the suite chunking/chunk-combination controls instead of inventing duplicate engine-local chunk UI or chunk-silence parameters?
 
 SRT features:
 - If this is a TTS engine, did you implement the SRT path?
@@ -62,6 +65,7 @@ Docs and metadata:
 - Did you regenerate docs/tables if metadata changed?
 - Did you document model paths and download sources?
 - Did you add examples or notes for special native features?
+- If the engine needs a secondary environment, does the engine table clearly show that?
 
 Manual tests:
 - Did TTS Text work?

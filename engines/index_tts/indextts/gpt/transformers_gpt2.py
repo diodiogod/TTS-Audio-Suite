@@ -49,7 +49,12 @@ from transformers.modeling_outputs import (
 )
 # from transformers.modeling_utils import PreTrainedModel, SequenceSummary
 
-from transformers.pytorch_utils import Conv1D, find_pruneable_heads_and_indices, prune_conv1d_layer
+try:
+    from transformers.pytorch_utils import Conv1D, find_pruneable_heads_and_indices, prune_conv1d_layer
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed old GPT head-pruning helpers.
+    from transformers.pytorch_utils import Conv1D
+    from indextts.gpt.transformers_modeling_utils import find_pruneable_heads_and_indices, prune_conv1d_layer
 from transformers.utils import (
     ModelOutput,
     add_code_sample_docstrings,
@@ -61,7 +66,28 @@ from transformers.utils import (
     logging,
     replace_return_docstrings,
 )
-from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
+try:
+    from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
+except ImportError:
+    # TTS Audio Suite patch: transformers 5 removed model_parallel_utils.
+    def get_device_map(num_layers, devices):
+        devices = list(devices)
+        if not devices:
+            return {}
+        layer_map = {}
+        for layer_idx in range(num_layers):
+            device = devices[layer_idx % len(devices)]
+            layer_map.setdefault(device, []).append(layer_idx)
+        return layer_map
+
+
+    def assert_device_map(device_map, num_layers):
+        if not device_map:
+            return
+        assigned = sorted(layer for layers in device_map.values() for layer in layers)
+        expected = list(range(num_layers))
+        if assigned != expected:
+            raise ValueError(f"Invalid device_map for {num_layers} layers: {device_map}")
 from transformers.models.gpt2.configuration_gpt2 import GPT2Config
 
 

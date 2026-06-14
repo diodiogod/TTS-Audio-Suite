@@ -12,9 +12,12 @@
 4. **SRT Processor** (`nodes/<engine>/<engine>_srt_processor.py`) - SRT-specific orchestration
 5. **Adapter** (`engines/adapters/<engine>_adapter.py`) - bridges processor to engine implementation
 6. **Engine Implementation** (`engines/<engine>/`) - actual model inference
+7. **Optional Isolated Runtime** (`utils/runtimes/`) - worker subprocess layer for fragile engine stacks
 
 **Key architectural rules:**
 - Chunking happens in the **processor**, not the adapter (`generate_single()` on adapter = raw single call)
+- Runtime routing happens through `ModelLoadConfig.runtime_mode` + `runtime_profile`, not ad-hoc subprocess calls
+- Shared runtime workers are currently used for fragile engine families such as VibeVoice, Qwen3-TTS / ASR, Granite forced alignment, and Higgs Audio 2. Engines that support the modern stack run natively in the main Transformers 5 environment.
 - YAML (`docs/Dev reports/tts_audio_suite_engines.yaml`) is source of truth for engine doc tables → run `python3 scripts/generate_engine_tables.py --readme` to regenerate
 - Auxiliary YAML (`docs/Dev reports/tts_audio_suite_aux_models.yaml`) is source of truth for helper/post-process model docs → run `python3 scripts/generate_aux_model_docs.py`
 - All models download to `ComfyUI/models/TTS/<model-name>/`
@@ -22,7 +25,7 @@
 
 ## Engines
 
-13 engines follow the pattern above:
+14 engines follow the pattern above:
 
 | Engine | Adapter | Processor | SRT Processor | Engine Node |
 |--------|---------|-----------|---------------|-------------|
@@ -30,6 +33,7 @@
 | ChatterBox 23-Lang | `chatterbox_streaming_adapter.py` | `nodes/chatterbox_official_23lang/` | same folder | `chatterbox_engine_node.py` |
 | F5-TTS | `f5tts_adapter.py` | `nodes/f5tts/f5tts_node.py` | `f5tts_srt_node.py` | `f5tts_engine_node.py` |
 | Higgs Audio 2 | `higgs_audio_adapter.py` | — | `nodes/higgs_audio/higgs_audio_srt_processor.py` | `higgs_audio_engine_node.py` |
+| Higgs Audio v3 | `higgs_audio_v3_adapter.py` | `nodes/higgs_audio_v3/higgs_audio_v3_processor.py` | `higgs_audio_v3_srt_processor.py` | `higgs_audio_v3_engine_node.py` |
 | VibeVoice | `vibevoice_adapter.py` | `nodes/vibevoice/vibevoice_processor.py` | — | `vibevoice_engine_node.py` |
 | IndexTTS-2 | — | `engines/index_tts/` | — | `index_tts_engine_node.py` |
 | Step Audio EditX | `step_audio_editx_adapter.py` | `nodes/step_audio_editx/step_audio_editx_processor.py` | `step_audio_editx_srt_processor.py` | `step_audio_editx_engine_node.py` |
@@ -41,7 +45,7 @@
 | RVC | — | `engines/rvc/` | — | `rvc_engine_node.py` |
 
 **Engine implementations live in:**
-- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/granite_asr/`, `engines/rvc/`
+- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/higgs_audio_v3/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/granite_asr/`, `engines/rvc/`
 
 ## Documentation Files
 
@@ -53,6 +57,7 @@
 - `CHARACTER_SWITCHING_GUIDE.md` - [CharacterName] tag system
 - `PARAMETER_SWITCHING_GUIDE.md` - Per-segment parameter override syntax
 - `INLINE_EDIT_TAGS_USER_GUIDE.md` - Step Audio EditX inline tags
+- `HIGGS_AUDIO_V3_INLINE_TAGS.md` - Higgs Audio v3 native paralinguistic tags
 - `MOSS_TTS_PROMPT_FIELDS_GUIDE.md` - Official MOSS whole-segment prompt fields and inline `<>` translation limits
 - `COSYVOICE3_TAGS_GUIDE.md` - CosyVoice3 native paralinguistic tags
 - `CHATTERBOX_V2_SPECIAL_TOKENS.md` - ChatterBox v2 emotion tokens
@@ -69,6 +74,9 @@
 - `tts_audio_suite_aux_models.yaml` - **Source of truth** for helper/post-process model metadata
 - `BUMP_SCRIPT_INSTRUCTIONS.md` - Version bump process
 - `SRT_IMPLEMENTATION.md` - SRT timing technical details
+- `ISOLATED_RUNTIMES_PLAN.md` - original runtime isolation plan and scope
+- `TRANSFORMERS_5_QWEN3_TTS_REPORT.md` - why Qwen3-TTS moved to shared legacy T4 runtime
+- `TRANSFORMERS_5_HIGGS_AUDIO_REPORT.md` - why Higgs Audio 2 moved to shared legacy T4 runtime
 
 ### New Engine Guides (`docs/New Engines Guides/`)
 - `README.md` - Start-here friendly workflow for users guiding LLMs through new engine integrations
@@ -118,9 +126,23 @@
 ### Model Management (`utils/models/`)
 - `unified_model_interface.py` - Universal factory pattern for all engines
 - `engine_registry.py` - Engine capability definitions
+- `factory_config.py` - standardized model load config, runtime mode/profile normalization
 - `manager.py` - Model discovery and caching
 - `comfyui_model_wrapper/` - ComfyUI native model management integration
 - `extra_paths.py` - extra_model_paths.yaml support
+
+### Isolated Runtimes (`utils/runtimes/`)
+- `profiles.py` - named runtime profiles (`vibevoice_transformers4_shared`, dedicated variants, etc.)
+- `launcher.py` - runtime bootstrap, venv creation, Windows toolchain env setup
+- `session.py`, `protocol.py` - JSONL worker transport and message protocol
+- `bootstrap.py` - shared runtime bootstrap helpers
+- `vibevoice_proxy.py`, `qwen3_tts_proxy.py`, `qwen3_asr_proxy.py`, `higgs_audio_proxy.py` - parent-process proxies
+- `workers/` - worker subprocess entrypoints for VibeVoice, Qwen3-TTS, Qwen3-ASR/aligner, Higgs Audio
+- Current shared legacy T4 runtime profile is reused by:
+  - VibeVoice / Kugel
+  - Qwen3-TTS
+  - Qwen3-ASR and Granite's optional Qwen forced aligner
+  - Higgs Audio 2
 
 ### Audio (`utils/audio/`)
 - `processing.py` - Tensor manipulation, normalization, format conversion

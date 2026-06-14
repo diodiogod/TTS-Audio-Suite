@@ -51,9 +51,11 @@ def save_audio_safe(filepath: str, waveform: torch.Tensor, sample_rate: int):
 
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
+from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from utils.text.character_parser import CharacterParser
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import apply_segment_parameters
+from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.voice.discovery import get_character_mapping
 from engines.adapters.index_tts_adapter import IndexTTSAdapter
 
@@ -179,6 +181,11 @@ class IndexTTSProcessor:
             # Parse character segments with emotion support and parameters
             character_segment_objects = self.character_parser.parse_text_segments(text)
             character_segments = [(seg.character, seg.text, seg.language, seg.emotion) for seg in character_segment_objects]
+            any_inline_edit_tags = False
+            for seg in character_segment_objects:
+                _, seg_edit_tags = get_edit_tags_for_segment(seg.text)
+                if seg_edit_tags:
+                    any_inline_edit_tags = True
             all_characters = set(char for char, _, _, _ in character_segments)
             all_characters.add("narrator")
             
@@ -470,32 +477,55 @@ class IndexTTSProcessor:
                         has_parameter_changes = True
                         break
 
-            if has_parameter_changes:
-                # Generate each character segment separately with its parameters
-                # Need to reconstruct text with character tags to preserve character switching
-                audio_parts = []
+            if has_parameter_changes or any_inline_edit_tags:
+                # Generate each parsed segment separately so inline edit tags can be
+                # stripped before IndexTTS tokenization, then restored via post-processing.
+                segment_records = []
                 for seg_idx, seg_obj in enumerate(character_segment_objects):
-                    # Reconstruct segment with character tag for proper character switching
-                    if seg_obj.character and seg_obj.character != "narrator":
-                        segment_text_with_tag = f"[{seg_obj.character}] {seg_obj.text}"
-                    else:
-                        segment_text_with_tag = seg_obj.text
-
                     print(f"  📊 Segment {seg_idx + 1}: Character '{seg_obj.character}' with params {seg_obj.parameters}")
-                    segment_audio = tts_generate_func(segment_text_with_tag, seg_obj.parameters)
-                    if isinstance(segment_audio, torch.Tensor) and segment_audio.numel() > 0:
-                        audio_parts.append(segment_audio)
+                    pause_segments, _ = self.pause_processor.parse_pause_tags(seg_obj.text)
+                    if not pause_segments:
+                        pause_segments = [("text", seg_obj.text)]
 
-                if audio_parts:
-                    # Ensure all audio parts have correct dimensions and concatenate
-                    audio_parts_normalized = []
-                    for audio in audio_parts:
-                        if audio.dim() == 1:
-                            audio = audio.unsqueeze(0)
-                        elif audio.dim() == 3:
-                            audio = audio.squeeze(0)
-                        audio_parts_normalized.append(audio)
-                    result = torch.cat(audio_parts_normalized, dim=-1)
+                    for subseg_type, subseg_content in pause_segments:
+                        if subseg_type == "pause":
+                            silence_audio = self.pause_processor.create_silence_segment(subseg_content, self.sample_rate)
+                            segment_records.append({
+                                "waveform": silence_audio,
+                                "sample_rate": self.sample_rate,
+                                "text": f"[pause:{subseg_content}s]",
+                                "original_text": f"[pause:{subseg_content}s]",
+                                "edit_tags": [],
+                                "character": seg_obj.character,
+                            })
+                            continue
+
+                        clean_segment_text, edit_tags = get_edit_tags_for_segment(subseg_content)
+                        if not clean_segment_text and edit_tags:
+                            print(f"  ⚠️ Segment {seg_idx + 1}: Only inline edit tags found, skipping empty TTS segment")
+                            continue
+
+                        segment_audio = tts_generate_func(clean_segment_text or subseg_content, seg_obj.parameters)
+                        if isinstance(segment_audio, torch.Tensor) and segment_audio.numel() > 0:
+                            if segment_audio.dim() == 1:
+                                segment_audio = segment_audio.unsqueeze(0)
+                            elif segment_audio.dim() == 3:
+                                segment_audio = segment_audio.squeeze(0)
+                            segment_records.append({
+                                "waveform": segment_audio,
+                                "sample_rate": self.sample_rate,
+                                "text": clean_segment_text or subseg_content,
+                                "original_text": subseg_content,
+                                "edit_tags": edit_tags,
+                                "character": seg_obj.character,
+                            })
+
+                if any(seg.get("edit_tags") for seg in segment_records):
+                    print("🎨 Applying Step Audio EditX inline edit tags post-processing...")
+                    segment_records = apply_edit_post_processing(segment_records, self.config)
+
+                if segment_records:
+                    result = torch.cat([seg["waveform"] for seg in segment_records], dim=-1)
                 else:
                     result = torch.zeros(1, self.sample_rate)
             else:

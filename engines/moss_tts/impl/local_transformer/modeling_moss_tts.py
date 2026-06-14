@@ -661,6 +661,10 @@ class MossTTSDelayModel(MosiTTSPretrainedModel, CustomMixin):
         config.eos_token_id = self.config.audio_end_token_id
         config.use_cache = True
         config.do_sample = text_do_sample or audio_do_sample
+        # TTS Audio Suite patch: MOSS local transformer uses per-layer sampling settings
+        # via `config.layers`; leaving the generic HF `temperature` populated triggers
+        # a misleading "generation flags are not valid" warning during generate().
+        config.temperature = None
 
         resolved_n_vq = self.channels - 1 if n_vq_for_inference is None else int(n_vq_for_inference)
         resolved_n_vq = max(1, min(self.channels - 1, resolved_n_vq))

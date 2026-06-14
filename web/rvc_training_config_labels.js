@@ -1,19 +1,27 @@
 import { app } from "../../scripts/app.js";
 
-const TARGET_CLASS = "RVCTrainingConfigNode";
+const LABEL_OVERRIDES = {
+    RVCTrainingConfigNode: {
+        save_every_epoch: "checkpoint every N epochs",
+        max_checkpoints: "keep max checkpoints",
+        save_every_weights: "export extra weights on each save",
+    },
+};
 
 function relabelWidgets(node) {
+    const overrides = LABEL_OVERRIDES[node?.comfyClass];
+    if (!overrides) {
+        return;
+    }
+
     const widgets = node?.widgets || [];
     for (const widget of widgets) {
         if (!widget?.name) {
             continue;
         }
-        if (widget.name === "save_every_epoch") {
-            widget.label = "checkpoint every N epochs";
-        } else if (widget.name === "max_checkpoints") {
-            widget.label = "keep max checkpoints";
-        } else if (widget.name === "save_every_weights") {
-            widget.label = "export extra weights on each save";
+        const overrideLabel = overrides[widget.name];
+        if (overrideLabel) {
+            widget.label = overrideLabel;
         }
     }
 }
@@ -22,7 +30,7 @@ app.registerExtension({
     name: "TTS_Audio_Suite.RVCTrainingConfigLabels",
 
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name !== TARGET_CLASS) {
+        if (!LABEL_OVERRIDES[nodeData.name]) {
             return;
         }
 

@@ -6,6 +6,8 @@ CosyVoice3 has **native paralinguistic tag support** built into the model. Unlik
 
 **⚠️ IMPORTANT**: Step Audio EditX post-processing is **DISABLED** for CosyVoice3. EditX syntax like `<Laughter:2>`, `<emotion:happy>`, `<style:whisper>` will be stripped but **not processed**. Use CosyVoice3 native tags instead.
 
+The multiline TTS tag editor has an engine-aware `Inline Tags` panel with a dedicated `CosyVoice3` mode that inserts these native tags directly.
+
 ---
 
 ## Supported Tags
@@ -216,7 +218,7 @@ A: Yes! Include tags in subtitle text.
 
 ## Related Guides
 
-- **[Inline Edit Tags Guide](INLINE_EDIT_TAGS_USER_GUIDE.md)** - Step Audio EditX tags for other engines
+- **[Step Audio EditX Inline Tags Guide](INLINE_EDIT_TAGS_USER_GUIDE.md)** - Step Audio EditX tags for other engines
 - **[Parameter Switching Guide](PARAMETER_SWITCHING_GUIDE.md)** - Per-segment parameter control
 
 ---

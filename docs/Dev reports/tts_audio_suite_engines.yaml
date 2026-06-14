@@ -1,6 +1,22 @@
 # TTS Audio Suite Engines - Complete Reference Data
 # This is the single source of truth for all engine documentation tables
 
+runtime_isolation_modes:
+  field_label: "⚠️ Runtime Isolation"
+  modes:
+    main_environment:
+      label: "Main Environment"
+      short_label: "Main"
+      description: "Use the main ComfyUI Python environment."
+    shared_runtime:
+      label: "Shared Runtime"
+      short_label: "Shared"
+      description: "Use a secondary shared runtime for engines with dependency conflicts. This runtime reuses heavy base packages like PyTorch from the main environment when configured."
+    dedicated_runtime:
+      label: "Dedicated Runtime"
+      short_label: "Dedicated"
+      description: "Use a dedicated secondary runtime only for one engine when the shared runtime is not enough."
+
 engines:
   - id: f5-tts
     name: F5-TTS
@@ -351,6 +367,17 @@ engines:
       - "Multilingual (KugelAudio variants)"
       - "4-bit quantization"
 
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "main_environment"
+        - "shared_runtime"
+        - "dedicated_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      dedicated_profile: "vibevoice_transformers4_dedicated"
+      notes: "Recommended on modern ComfyUI stacks because VibeVoice/Kugel currently needs a secondary dependency layer. The shared runtime reuses heavy base packages like PyTorch from the main environment to avoid full duplication."
+
     model_sources:
       - component: "vibevoice-1.5B"
         source_name: "microsoft/VibeVoice-1.5B"
@@ -435,6 +462,15 @@ engines:
       - "3 multi-speaker"
       - "CUDA graphs (55+ tokens/sec)"
 
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "main_environment"
+        - "shared_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      notes: "Recommended on modern ComfyUI stacks. Native Transformers 5 path proved unreliable for correct Higgs generation, so the shared legacy T4 runtime is now the supported compatibility path."
+
     model_sources:
       - component: "higgs-audio-v2-3B"
         source_name: "bosonai/higgs-audio-v2-generation-3B-base"
@@ -488,6 +524,148 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(9GB)" }
       speed_performance: { supported: "partial", notes: "" }
+
+  - id: higgs-audio-v3
+    name: Higgs Audio v3
+    models: "4B"
+    size: "~8GB"
+    license: "Boson Higgs Audio v3 Research and Non-Commercial License"
+    commercial: false
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    special_features:
+      - "Native inline emotion/style/prosody/SFX tags"
+      - "Zero-shot voice cloning"
+      - "100+ language support"
+
+    model_sources:
+      - component: "higgs-audio-v3-tts-4b"
+        source_name: "bosonai/higgs-audio-v3-tts-4b"
+        source_url: "https://huggingface.co/bosonai/higgs-audio-v3-tts-4b"
+        size: "~8GB"
+        auto_download: true
+        notes: "Official 4B multilingual controllable TTS model"
+
+    languages:
+      af: { supported: true, flag: "🇿🇦", notes: "(polished)" }
+      sq: { supported: true, flag: "🇦🇱", notes: "(usable)" }
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      ast: { supported: true, flag: "🇪🇸", notes: "(polished)" }
+      as: { supported: true, flag: "🇮🇳", notes: "(polished)" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      az: { supported: true, flag: "🇦🇿", notes: "(polished)" }
+      ba: { supported: true, flag: "🇷🇺", notes: "(polished)" }
+      eu: { supported: true, flag: "🇪🇸", notes: "(polished)" }
+      be: { supported: true, flag: "🇧🇾", notes: "(polished)" }
+      bn: { supported: true, flag: "🇧🇩", notes: "(polished)" }
+      bs: { supported: true, flag: "🇧🇦", notes: "(polished)" }
+      bg: { supported: true, flag: "🇧🇬", notes: "(polished)" }
+      ca: { supported: true, flag: "🇪🇸", notes: "(polished)" }
+      ceb: { supported: true, flag: "🇵🇭", notes: "(polished)" }
+      ckb: { supported: true, flag: "🇮🇶", notes: "(polished)" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇧🇷", notes: "" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇪🇬", notes: "" }
+      hr: { supported: true, flag: "🇭🇷", notes: "(polished)" }
+      cs: { supported: true, flag: "🇨🇿", notes: "(polished)" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "" }
+      hy: { supported: true, flag: "🇦🇲", notes: "" }
+      ka: { supported: true, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: true, flag: "🇮🇱", notes: "" }
+      ms: { supported: true, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: true, flag: "🇰🇪", notes: "" }
+      mhr: { supported: true, flag: "🇷🇺", notes: "(polished)" }
+      eo: { supported: true, flag: "🌍", notes: "(polished)" }
+      et: { supported: true, flag: "🇪🇪", notes: "(polished)" }
+      gl: { supported: true, flag: "🇪🇸", notes: "(polished)" }
+      gu: { supported: true, flag: "🇮🇳", notes: "(polished)" }
+      ht: { supported: true, flag: "🇭🇹", notes: "(polished)" }
+      ha: { supported: true, flag: "🇳🇬", notes: "(polished)" }
+      hu: { supported: true, flag: "🇭🇺", notes: "(polished)" }
+      id: { supported: true, flag: "🇮🇩", notes: "(polished)" }
+      jv: { supported: true, flag: "🇮🇩", notes: "(polished)" }
+      kn: { supported: true, flag: "🇮🇳", notes: "(polished)" }
+      kk: { supported: true, flag: "🇰🇿", notes: "(polished)" }
+      rw: { supported: true, flag: "🇷🇼", notes: "(polished)" }
+      ky: { supported: true, flag: "🇰🇬", notes: "(polished)" }
+      lv: { supported: true, flag: "🇱🇻", notes: "(polished)" }
+      ln: { supported: true, flag: "🇨🇩", notes: "(polished)" }
+      lt: { supported: true, flag: "🇱🇹", notes: "(polished)" }
+      luo: { supported: true, flag: "🇰🇪", notes: "(polished)" }
+      mk: { supported: true, flag: "🇲🇰", notes: "(polished)" }
+      ml: { supported: true, flag: "🇮🇳", notes: "(polished)" }
+      mt: { supported: true, flag: "🇲🇹", notes: "(polished)" }
+      mi: { supported: true, flag: "🇳🇿", notes: "(polished)" }
+      mr: { supported: true, flag: "🇮🇳", notes: "(polished)" }
+      mn: { supported: true, flag: "🇲🇳", notes: "(polished)" }
+      ne: { supported: true, flag: "🇳🇵", notes: "(polished)" }
+      oc: { supported: true, flag: "🇫🇷", notes: "(polished)" }
+      fa: { supported: true, flag: "🇮🇷", notes: "(polished)" }
+      ro: { supported: true, flag: "🇷🇴", notes: "(polished)" }
+      nso: { supported: true, flag: "🇿🇦", notes: "(polished)" }
+      sr: { supported: true, flag: "🇷🇸", notes: "(polished)" }
+      sn: { supported: true, flag: "🇿🇼", notes: "(polished)" }
+      sk: { supported: true, flag: "🇸🇰", notes: "(polished)" }
+      sl: { supported: true, flag: "🇸🇮", notes: "(polished)" }
+      tl: { supported: true, flag: "🇵🇭", notes: "(polished)" }
+      tg: { supported: true, flag: "🇹🇯", notes: "(polished)" }
+      ta: { supported: true, flag: "🇮🇳", notes: "(polished)" }
+      te: { supported: true, flag: "🇮🇳", notes: "(polished)" }
+      uk: { supported: true, flag: "🇺🇦", notes: "(polished)" }
+      ur: { supported: true, flag: "🇵🇰", notes: "(polished)" }
+      ug: { supported: true, flag: "🇨🇳", notes: "(polished)" }
+      uz: { supported: true, flag: "🇺🇿", notes: "(polished)" }
+      xh: { supported: true, flag: "🇿🇦", notes: "(polished)" }
+      zu: { supported: true, flag: "🇿🇦", notes: "(polished)" }
+      ny: { supported: true, flag: "🇲🇼", notes: "(usable)" }
+      pa: { supported: true, flag: "🇮🇳", notes: "(usable)" }
+      lg: { supported: true, flag: "🇺🇬", notes: "(usable)" }
+      is: { supported: true, flag: "🇮🇸", notes: "(usable)" }
+      ga: { supported: true, flag: "🇮🇪", notes: "(usable)" }
+      kab: { supported: true, flag: "🇩🇿", notes: "(usable)" }
+      kea: { supported: true, flag: "🇨🇻", notes: "(usable)" }
+      kam: { supported: true, flag: "🇰🇪", notes: "(usable)" }
+      la: { supported: true, flag: "🇻🇦", notes: "(usable)" }
+      lb: { supported: true, flag: "🇱🇺", notes: "(usable)" }
+      om: { supported: true, flag: "🇪🇹", notes: "(usable)" }
+      ps: { supported: true, flag: "🇦🇫", notes: "(usable)" }
+      sd: { supported: true, flag: "🇵🇰", notes: "(usable)" }
+      so: { supported: true, flag: "🇸🇴", notes: "(usable)" }
+      umb: { supported: true, flag: "🇦🇴", notes: "(usable)" }
+      cy: { supported: true, flag: "🏴", notes: "(usable)" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: true, notes: "(native inline tags)" }
+      native_long_form: { supported: false, notes: "(chunked best-effort)" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(~8-10GB)" }
+      speed_performance: { supported: "partial", notes: "CUDA recommended" }
 
   - id: indextts-2
     name: IndexTTS-2
@@ -650,6 +828,17 @@ engines:
       - "Voice design"
       - "ASR (Automatic Speech Recognition)"
 
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "main_environment"
+        - "shared_runtime"
+        - "dedicated_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      dedicated_profile: "qwen3_tts_transformers4_dedicated"
+      notes: "Recommended on modern ComfyUI stacks because Qwen3-TTS, Qwen3-ASR, and the reused Qwen forced aligner currently rely on the shared legacy T4 runtime for stable operation."
+
     model_sources:
       - component: "CustomVoice 0.6B"
         source_name: "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
@@ -752,6 +941,7 @@ engines:
       - "ASR (Automatic Speech Recognition)"
       - "Custom timestamps/SRT via reused Qwen forced aligner"
       - "Speech translation (experimental)"
+      - "Optional forced aligner auto-routed through shared legacy T4 runtime"
 
     model_sources:
       - component: "granite-4.0-1b-speech"
@@ -1162,6 +1352,81 @@ language_metadata:
   nl: { name: "Dutch", code: "NL" }
   sv: { name: "Swedish", code: "SV" }
   sw: { name: "Swahili", code: "SW" }
+  af: { name: "Afrikaans", code: "AF", flag: "🇿🇦" }
+  sq: { name: "Albanian", code: "SQ", flag: "🇦🇱" }
+  as: { name: "Assamese", code: "AS", flag: "🇮🇳" }
+  ast: { name: "Asturian", code: "AST", flag: "🇪🇸" }
+  az: { name: "Azerbaijani", code: "AZ", flag: "🇦🇿" }
+  ba: { name: "Bashkir", code: "BA", flag: "🇷🇺" }
+  eu: { name: "Basque", code: "EU", flag: "🇪🇸" }
+  be: { name: "Belarusian", code: "BE", flag: "🇧🇾" }
+  bn: { name: "Bengali", code: "BN", flag: "🇧🇩" }
+  bs: { name: "Bosnian", code: "BS", flag: "🇧🇦" }
+  bg: { name: "Bulgarian", code: "BG", flag: "🇧🇬" }
+  ca: { name: "Catalan", code: "CA", flag: "🇪🇸" }
+  ceb: { name: "Cebuano", code: "CEB", flag: "🇵🇭" }
+  ckb: { name: "Central Kurdish", code: "CKB", flag: "🇮🇶" }
+  hr: { name: "Croatian", code: "HR", flag: "🇭🇷" }
+  cs: { name: "Czech", code: "CS", flag: "🇨🇿" }
+  mhr: { name: "Eastern Mari", code: "MHR", flag: "🇷🇺" }
+  eo: { name: "Esperanto", code: "EO", flag: "🌍" }
+  et: { name: "Estonian", code: "ET", flag: "🇪🇪" }
+  gl: { name: "Galician", code: "GL", flag: "🇪🇸" }
+  gu: { name: "Gujarati", code: "GU", flag: "🇮🇳" }
+  ht: { name: "Haitian Creole", code: "HT", flag: "🇭🇹" }
+  ha: { name: "Hausa", code: "HA", flag: "🇳🇬" }
+  hu: { name: "Hungarian", code: "HU", flag: "🇭🇺" }
+  id: { name: "Indonesian", code: "ID", flag: "🇮🇩" }
+  jv: { name: "Javanese", code: "JV", flag: "🇮🇩" }
+  kn: { name: "Kannada", code: "KN", flag: "🇮🇳" }
+  kk: { name: "Kazakh", code: "KK", flag: "🇰🇿" }
+  rw: { name: "Kinyarwanda", code: "RW", flag: "🇷🇼" }
+  ky: { name: "Kyrgyz", code: "KY", flag: "🇰🇬" }
+  lv: { name: "Latvian", code: "LV", flag: "🇱🇻" }
+  ln: { name: "Lingala", code: "LN", flag: "🇨🇩" }
+  lt: { name: "Lithuanian", code: "LT", flag: "🇱🇹" }
+  luo: { name: "Luo", code: "LUO", flag: "🇰🇪" }
+  mk: { name: "Macedonian", code: "MK", flag: "🇲🇰" }
+  ml: { name: "Malayalam", code: "ML", flag: "🇮🇳" }
+  mt: { name: "Maltese", code: "MT", flag: "🇲🇹" }
+  mi: { name: "Māori", code: "MI", flag: "🇳🇿" }
+  mr: { name: "Marathi", code: "MR", flag: "🇮🇳" }
+  mn: { name: "Mongolian", code: "MN", flag: "🇲🇳" }
+  ne: { name: "Nepali", code: "NE", flag: "🇳🇵" }
+  oc: { name: "Occitan", code: "OC", flag: "🇫🇷" }
+  fa: { name: "Persian", code: "FA", flag: "🇮🇷" }
+  ro: { name: "Romanian", code: "RO", flag: "🇷🇴" }
+  nso: { name: "Sepedi", code: "NSO", flag: "🇿🇦" }
+  sr: { name: "Serbian", code: "SR", flag: "🇷🇸" }
+  sn: { name: "Shona", code: "SN", flag: "🇿🇼" }
+  sk: { name: "Slovak", code: "SK", flag: "🇸🇰" }
+  sl: { name: "Slovene", code: "SL", flag: "🇸🇮" }
+  tl: { name: "Tagalog", code: "TL", flag: "🇵🇭" }
+  tg: { name: "Tajik", code: "TG", flag: "🇹🇯" }
+  ta: { name: "Tamil", code: "TA", flag: "🇮🇳" }
+  te: { name: "Telugu", code: "TE", flag: "🇮🇳" }
+  uk: { name: "Ukrainian", code: "UK", flag: "🇺🇦" }
+  ur: { name: "Urdu", code: "UR", flag: "🇵🇰" }
+  ug: { name: "Uyghur", code: "UG", flag: "🇨🇳" }
+  uz: { name: "Uzbek", code: "UZ", flag: "🇺🇿" }
+  xh: { name: "Xhosa", code: "XH", flag: "🇿🇦" }
+  zu: { name: "Zulu", code: "ZU", flag: "🇿🇦" }
+  ny: { name: "Chichewa/Nyanja", code: "NY", flag: "🇲🇼" }
+  pa: { name: "Eastern Punjabi", code: "PA", flag: "🇮🇳" }
+  lg: { name: "Ganda", code: "LG", flag: "🇺🇬" }
+  is: { name: "Icelandic", code: "IS", flag: "🇮🇸" }
+  ga: { name: "Irish", code: "GA", flag: "🇮🇪" }
+  kab: { name: "Kabyle", code: "KAB", flag: "🇩🇿" }
+  kea: { name: "Kabuverdianu", code: "KEA", flag: "🇨🇻" }
+  kam: { name: "Kamba", code: "KAM", flag: "🇰🇪" }
+  la: { name: "Latin", code: "LA", flag: "🇻🇦" }
+  lb: { name: "Luxembourgish", code: "LB", flag: "🇱🇺" }
+  om: { name: "Oromo", code: "OM", flag: "🇪🇹" }
+  ps: { name: "Pashto", code: "PS", flag: "🇦🇫" }
+  sd: { name: "Sindhi", code: "SD", flag: "🇵🇰" }
+  so: { name: "Somali", code: "SO", flag: "🇸🇴" }
+  umb: { name: "Umbundu", code: "UMB", flag: "🇦🇴" }
+  cy: { name: "Welsh", code: "CY", flag: "🏴" }
 
 # Feature metadata for reference
 feature_metadata:
@@ -1180,9 +1445,10 @@ table_notes:
   language_support:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
     - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"
+    - "**Higgs Audio v3**: Official model card lists 102 languages total: 85 polished-production languages and 17 usable but less polished languages."
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
     - "**MOSS-TTS**: Official list includes ZH, EN, DE, ES, FR, JA, IT, HU, KO, RU, FA, AR, PL, PT, CS, DA, SV, EL, TR; HU/FA/CS are not separate columns in this matrix."
-    - "**RVC**: Language-independent (work as post-processors VC with any TTS output)"
+    - "**RVC**: Language-agnostic voice conversion/post-processing; it is marked supported for every language row."
     - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
 
 readme_model_download_table:
@@ -1202,6 +1468,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/HiggsAudio/"
     auto_download: "✅"
     notes: "Generation + tokenizer"
+  - engine: "Higgs Audio v3"
+    primary_model_path: "ComfyUI/models/TTS/higgs_audio_v3/"
+    auto_download: "✅"
+    notes: "Official 4B multilingual TTS model"
   - engine: "VibeVoice"
     primary_model_path: "ComfyUI/models/TTS/VibeVoice/"
     auto_download: "✅"
@@ -1433,7 +1703,7 @@ model_layouts_markdown: |
   - Emotion components and semantic feature models auto-download.
   
   ## Step Audio EditX
-  
+
   ```text
   ComfyUI/models/TTS/step_audio_editx/
   ├── Step-Audio-EditX/
@@ -1444,7 +1714,27 @@ model_layouts_markdown: |
   Notes:
   
   - Main model, tokenizer assets, and speech stack auto-download.
-  
+
+  ## Higgs Audio v3
+
+  ```text
+  ComfyUI/models/TTS/higgs_audio_v3/
+  └── higgs-audio-v3-tts-4b/
+      ├── config.json
+      ├── tokenizer.json
+      ├── tokenizer_config.json
+      ├── chat_template.jinja
+      ├── model.safetensors
+      ├── model.safetensors.index.json
+      └── LICENSE
+  ```
+
+  Notes:
+
+  - Downloads into its own `higgs_audio_v3` folder.
+  - Requires the main Transformers 5 environment.
+  - Reference transcript `.txt` files are optional but improve cloning quality.
+
   ## CosyVoice3
   
   ```text

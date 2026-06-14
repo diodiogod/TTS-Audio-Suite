@@ -143,8 +143,6 @@ def run_moss_training_job(
         from torch.utils.data import DataLoader
         import transformers
         from transformers import BitsAndBytesConfig
-        from transformers.generation import GenerationMixin
-        from transformers.dynamic_module_utils import get_class_from_dynamic_module
     except ImportError as e:
         raise RuntimeError(
             "MOSS LoRA training requires accelerate, peft, transformers, and torch runtime dependencies. "
@@ -152,6 +150,8 @@ def run_moss_training_job(
         ) from e
 
     from engines.moss_tts.training.dataset import MossTTSSFTDataset, build_delay_training_processor
+    from engines.moss_tts.impl.delay.configuration_moss_tts import MossTTSDelayConfig
+    from engines.moss_tts.impl.delay.modeling_moss_tts import MossTTSDelayModel
 
     model_path = resolve_model_path("MOSS-TTS")
     codec_path = resolve_codec_path(shared_settings.get("codec_model", "MOSS-Audio-Tokenizer"))
@@ -265,74 +265,17 @@ def run_moss_training_job(
                 "This usually means the batch size is larger than the prepared train split."
             )
 
-        # Compatibility shim for upstream MOSS remote code on older transformers builds.
-        if not hasattr(transformers, "initialization"):
-            transformers.initialization = torch.nn.init
-
-        RemoteDelayModel = get_class_from_dynamic_module(
-            "modeling_moss_tts.MossTTSDelayModel",
-            model_path,
-            local_files_only=True,
-        )
-        if issubclass(RemoteDelayModel, GenerationMixin):
-            PatchedRemoteDelayModel = RemoteDelayModel
-        else:
-            class PatchedRemoteDelayModel(RemoteDelayModel, GenerationMixin):
-                pass
-
-            PatchedRemoteDelayModel.__name__ = RemoteDelayModel.__name__
-            PatchedRemoteDelayModel.__qualname__ = RemoteDelayModel.__qualname__
-            PatchedRemoteDelayModel.__module__ = RemoteDelayModel.__module__
-
-        original_remote_get_input_embeddings = PatchedRemoteDelayModel.get_input_embeddings
-
-        def _remote_get_input_embeddings(self, input_ids=None):
-            if input_ids is None:
-                return self.language_model.get_input_embeddings()
-            return original_remote_get_input_embeddings(self, input_ids)
-
-        PatchedRemoteDelayModel.get_input_embeddings = _remote_get_input_embeddings
-        if not hasattr(PatchedRemoteDelayModel, "prepare_inputs_for_generation"):
-            def _remote_prepare_inputs_for_generation(
-                self,
-                input_ids,
-                past_key_values=None,
-                attention_mask=None,
-                inputs_embeds=None,
-                cache_position=None,
-                position_ids=None,
-                use_cache=True,
-                **kwargs,
-            ):
-                if past_key_values is not None:
-                    input_ids = input_ids[:, -1:, :]
-                    if cache_position is not None:
-                        cache_position = cache_position[-1:]
-                    if position_ids is not None:
-                        position_ids = position_ids[:, -1:]
-
-                return {
-                    "input_ids": input_ids,
-                    "past_key_values": past_key_values,
-                    "attention_mask": attention_mask,
-                    "inputs_embeds": inputs_embeds,
-                    "cache_position": cache_position,
-                    "position_ids": position_ids,
-                    "use_cache": use_cache,
-                    **kwargs,
-                }
-
-            PatchedRemoteDelayModel.prepare_inputs_for_generation = _remote_prepare_inputs_for_generation
-
         with _quiet_transformers_progress(transformers):
+            model_config = MossTTSDelayConfig.from_pretrained(model_path)
             load_kwargs = {
+                "config": model_config,
                 "attn_implementation": attn_implementation,
                 "dtype": model_dtype,
             }
             if quantization_config is not None:
                 load_kwargs["quantization_config"] = quantization_config
                 load_kwargs["device_map"] = {"": 0}
-            model = PatchedRemoteDelayModel.from_pretrained(
+            model = MossTTSDelayModel.from_pretrained(
                 model_path,
                 **load_kwargs,
             )

@@ -29,7 +29,7 @@ pypinyin
 unidecode
 phonemizer              # IPA phonemization for multilingual TTS (requires espeak system dependency)
 omegaconf>=2.3.0
-transformers>=4.51.3,<=4.57.3  # Required for VibeVoice compatibility (4.51.3+). Transformers 5.0.0 breaks Qwen3-TTS tokenizer loading.
+transformers>=5.3.0,<6.0.0  # Main environment for Higgs Audio v3 / Step Audio EditX / MOSS-TTS. Legacy Transformers 4 engines use isolated runtimes.
 
 # ML utilities (safe)
 accelerate
@@ -111,7 +111,8 @@ inflect>=7.3.0           # Text normalization for English (used in frontend.py)
 # All engines are bundled to avoid external dependency conflicts:
 # - ChatterBox: engines/chatterbox/ (modified for ComfyUI)
 # - F5-TTS: engines/f5_tts/ (numpy 2.x compatible fork)
-# - Higgs Audio: engines/higgs_audio/ (transformers 4.46+ compatible)
+# - Higgs Audio 2: engines/higgs_audio/ (shared isolated legacy T4 runtime)
+# - Higgs Audio v3: engines/higgs_audio_v3/ (main Transformers 5 runtime)
 # - IndexTTS-2: engines/index_tts/ (emotion disentanglement TTS)
 # - CosyVoice3: engines/cosyvoice/impl/ (multilingual zero-shot voice cloning)
 

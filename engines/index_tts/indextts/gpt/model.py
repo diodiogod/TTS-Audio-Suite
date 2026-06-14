@@ -269,6 +269,9 @@ def build_hf_gpt_transformer(layers, model_dim, heads, max_mel_seq_len, max_text
                             n_head=heads,
                             activation_function=activation_function or "gelu_new",
                             gradient_checkpointing=checkpointing,
+                            bos_token_id=0,
+                            eos_token_id=1,
+                            pad_token_id=1,
                             use_cache=not checkpointing)
     gpt = GPT2Model(gpt_config)
     # Override the built in positional embeddings
@@ -401,6 +404,9 @@ class UnifiedVoice(nn.Module):
             n_layer=self.layers,
             n_head=self.heads,
             gradient_checkpointing=False,
+            bos_token_id=self.start_mel_token,
+            eos_token_id=self.stop_mel_token,
+            pad_token_id=self.stop_mel_token,
             use_cache=True,
         )
         self.inference_model = GPT2InferenceModel(

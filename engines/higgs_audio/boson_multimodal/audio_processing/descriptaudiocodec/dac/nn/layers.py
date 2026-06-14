@@ -3,14 +3,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from torch.nn.utils import weight_norm
+from torch.nn.utils.parametrizations import weight_norm
 
 
 def WNConv1d(*args, **kwargs):
+    # TTS Audio Suite patch: use the non-deprecated parametrizations weight_norm API.
     return weight_norm(nn.Conv1d(*args, **kwargs))
 
 
 def WNConvTranspose1d(*args, **kwargs):
+    # TTS Audio Suite patch: use the non-deprecated parametrizations weight_norm API.
     return weight_norm(nn.ConvTranspose1d(*args, **kwargs))
 
 

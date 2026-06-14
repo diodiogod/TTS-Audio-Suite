@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "4.27.3"
+VERSION = "5.0.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -104,6 +104,14 @@ try:
 except Exception as e:
     print(f"❌ Higgs Audio Engine failed: {e}")
     HIGGS_AUDIO_ENGINE_AVAILABLE = False
+
+try:
+    higgs_audio_v3_engine_module = load_node_module("higgs_audio_v3_engine_node", "engines/higgs_audio_v3_engine_node.py")
+    HiggsAudioV3EngineNode = higgs_audio_v3_engine_module.HiggsAudioV3EngineNode
+    HIGGS_AUDIO_V3_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Higgs Audio v3 Engine failed: {e}")
+    HIGGS_AUDIO_V3_ENGINE_AVAILABLE = False
 
 try:
     step_audio_editx_engine_module = load_node_module("step_audio_editx_engine_node", "engines/step_audio_editx_engine_node.py")
@@ -412,14 +420,6 @@ except Exception as e:
     MOSS_TRAINING_CONFIG_AVAILABLE = False
 
 try:
-    moss_manifest_builder_module = load_node_module("moss_manifest_builder_node", "training/moss_manifest_builder_node.py")
-    MossManifestBuilderNode = moss_manifest_builder_module.MossManifestBuilderNode
-    MOSS_MANIFEST_BUILDER_AVAILABLE = True
-except Exception as e:
-    print(f"❌ MOSS Manifest Builder failed: {e}")
-    MOSS_MANIFEST_BUILDER_AVAILABLE = False
-
-try:
     moss_clip_staging_module = load_node_module("moss_clip_staging_node", "training/moss_clip_staging_node.py")
     MossClipStagingNode = moss_clip_staging_module.MossClipStagingNode
     MOSS_CLIP_STAGING_AVAILABLE = True
@@ -568,6 +568,10 @@ if F5TTS_ENGINE_AVAILABLE:
 if HIGGS_AUDIO_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["HiggsAudioEngineNode"] = HiggsAudioEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["HiggsAudioEngineNode"] = "⚙️ Higgs Audio 2 Engine"
+
+if HIGGS_AUDIO_V3_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["HiggsAudioV3EngineNode"] = HiggsAudioV3EngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["HiggsAudioV3EngineNode"] = "⚙️ Higgs Audio v3 Engine"
 
 if STEP_AUDIO_EDITX_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["StepAudioEditXEngineNode"] = StepAudioEditXEngineNode
@@ -735,10 +739,6 @@ if MOSS_DATASET_PREP_AVAILABLE:
 if MOSS_TRAINING_CONFIG_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossTrainingConfigNode"] = MossTrainingConfigNode
     NODE_DISPLAY_NAME_MAPPINGS["MossTrainingConfigNode"] = "🎛️ MOSS Training Config"
-
-if MOSS_MANIFEST_BUILDER_AVAILABLE:
-    NODE_CLASS_MAPPINGS["MossManifestBuilderNode"] = MossManifestBuilderNode
-    NODE_DISPLAY_NAME_MAPPINGS["MossManifestBuilderNode"] = "📝 MOSS Manifest Builder"
 
 if MOSS_CLIP_STAGING_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossClipStagingNode"] = MossClipStagingNode

@@ -203,6 +203,26 @@ Notes:
 
 - Main model, tokenizer assets, and speech stack auto-download.
 
+## Higgs Audio v3
+
+```text
+ComfyUI/models/TTS/higgs_audio_v3/
+└── higgs-audio-v3-tts-4b/
+    ├── config.json
+    ├── tokenizer.json
+    ├── tokenizer_config.json
+    ├── chat_template.jinja
+    ├── model.safetensors
+    ├── model.safetensors.index.json
+    └── LICENSE
+```
+
+Notes:
+
+- Downloads into its own `higgs_audio_v3` folder.
+- Requires the main Transformers 5 environment.
+- Reference transcript `.txt` files are optional but improve cloning quality.
+
 ## CosyVoice3
 
 ```text

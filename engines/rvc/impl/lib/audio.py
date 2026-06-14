@@ -162,6 +162,10 @@ def remix_audio(input_audio,target_sr=None,norm=False,to_int16=False,resample=Fa
     audio = np.array(input_audio[0],dtype="float32")
     if target_sr is None: target_sr=input_audio[1]
 
+    if audio.size == 0:
+        print("⚠️ RVC Audio: received empty audio in remix_audio")
+        return audio.astype("float32"), target_sr
+
     # Debug info (uncomment if needed): shape={audio.shape}, max={audio.max()}, min={audio.min()}, mean={audio.mean()} sr={input_audio[1]}
     if resample or input_audio[1]!=target_sr:
         # Use torchaudio.resample for Python 3.13 compatibility (no numba dependency)

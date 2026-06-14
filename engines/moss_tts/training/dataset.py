@@ -94,8 +94,8 @@ def _normalize_audio_code_list(
 
 def build_delay_training_processor(model_path: str):
     with _quiet_transformers_progress():
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
         model_config = MossTTSDelayConfig.from_pretrained(model_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, config=model_config)
     return MossTTSDelayProcessor(
         tokenizer=tokenizer,
         audio_tokenizer=None,
@@ -105,8 +105,8 @@ def build_delay_training_processor(model_path: str):
 
 def _build_encoding_processor(model_path: str, codec_path: str):
     with _quiet_transformers_progress():
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
         model_config = MossTTSDelayConfig.from_pretrained(model_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, config=model_config)
         audio_tokenizer = MossAudioTokenizerModel.from_pretrained(codec_path)
     return MossTTSDelayProcessor(
         tokenizer=tokenizer,
