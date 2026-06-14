@@ -20,6 +20,8 @@ from utils.audio.audio_hash import generate_stable_audio_component
 from utils.audio.cache import get_audio_cache
 from utils.audio.processing import AudioProcessingUtils
 from utils.models.factory_config import ModelLoadConfig
+from utils.models.language_mapper import resolve_language_alias
+from engines.dots_tts.languages import normalize_dots_language
 
 
 class DotsTTSEngineAdapter:
@@ -137,12 +139,11 @@ class DotsTTSEngineAdapter:
         normalized = str(language).strip()
         if not normalized:
             return None
-        lowered = normalized.lower()
-        if lowered in {"auto", "auto_detect"}:
-            return "auto_detect"
-        if lowered in {"none", "off"}:
-            return None
-        return normalized.upper()
+        normalized_language = normalize_dots_language(normalized)
+        if normalized_language is not None:
+            return normalized_language
+        resolved = resolve_language_alias(normalized)
+        return normalize_dots_language(resolved)
 
     def generate_single(
         self,

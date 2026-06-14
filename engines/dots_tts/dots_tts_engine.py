@@ -11,6 +11,7 @@ import importlib
 import logging
 import time
 import warnings
+import gc
 from contextlib import contextmanager
 from typing import Any, Dict, Optional
 
@@ -278,11 +279,101 @@ class DotsTTSEngine:
             return current in {"cuda", "cuda:0"} and target in {"cuda", "cuda:0"}
         return False
 
+    @staticmethod
+    def _clear_runtime_caches(runtime: Any) -> None:
+        if runtime is None:
+            return
+
+        model = getattr(runtime, "model", None)
+        if model is not None:
+            try:
+                if hasattr(model, "set_optimize"):
+                    model.set_optimize(False)
+            except Exception:
+                pass
+
+            for attr_name in (
+                "_compiled_models",
+                "_prompt_feature_cache",
+                "_static_generate_workspaces",
+                "_fm_decode_workspaces",
+            ):
+                try:
+                    cache = getattr(model, attr_name, None)
+                    if hasattr(cache, "clear"):
+                        cache.clear()
+                except Exception:
+                    pass
+
+        for attr_name in (
+            "_double_streaming_prompt_g_cond_cache",
+            "_double_streaming_silence_audio_patch_cache",
+        ):
+            try:
+                cache = getattr(runtime, attr_name, None)
+                if hasattr(cache, "clear"):
+                    cache.clear()
+            except Exception:
+                pass
+
+    def unload_runtime(self):
+        """Fully tear down the Dots runtime so Clear VRAM actually releases it."""
+        runtime = self._runtime
+        if runtime is None:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                if hasattr(torch.cuda, "ipc_collect"):
+                    try:
+                        torch.cuda.ipc_collect()
+                    except Exception:
+                        pass
+            gc.collect()
+            return
+
+        self._clear_runtime_caches(runtime)
+
+        model = getattr(runtime, "model", None)
+        try:
+            if model is not None and hasattr(model, "to"):
+                model.to("cpu")
+        except Exception:
+            pass
+
+        try:
+            runtime.model = None
+        except Exception:
+            pass
+
+        self._runtime = None
+
+        try:
+            import torch._dynamo as torch_dynamo
+
+            torch_dynamo.reset()
+        except Exception:
+            pass
+
+        del model
+        del runtime
+        gc.collect()
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            if hasattr(torch.cuda, "ipc_collect"):
+                try:
+                    torch.cuda.ipc_collect()
+                except Exception:
+                    pass
+
     def to(self, device):
         """ComfyUI unload/reload hook."""
         self.device = str(device) if isinstance(device, str) else str(torch.device(device))
         self._ensure_runtime_device()
         return self
+
+    def unload(self):
+        """Explicit unload hook used by engine-specific ComfyUI handlers."""
+        self.unload_runtime()
 
     def generate(
         self,

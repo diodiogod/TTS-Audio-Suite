@@ -19,6 +19,8 @@ sys.modules["base_node_module"] = base_module
 base_spec.loader.exec_module(base_module)
 BaseTTSNode = base_module.BaseTTSNode
 
+from engines.dots_tts.languages import DOTS_LANGUAGE_OPTIONS
+
 
 class DotsTTSEngineNode(BaseTTSNode):
     """Dots TTS engine configuration node."""
@@ -28,34 +30,7 @@ class DotsTTSEngineNode(BaseTTSNode):
         "dots.tts-mf",
         "dots.tts-base",
     ]
-    LANGUAGE_OPTIONS = [
-        "auto",
-        "none",
-        "AR",
-        "CS",
-        "DE",
-        "EL",
-        "EN",
-        "ES",
-        "FI",
-        "FR",
-        "HI",
-        "ID",
-        "IT",
-        "JA",
-        "KO",
-        "NL",
-        "PL",
-        "PT",
-        "RO",
-        "RU",
-        "TH",
-        "TR",
-        "UK",
-        "VI",
-        "YUE",
-        "ZH",
-    ]
+    LANGUAGE_OPTIONS = DOTS_LANGUAGE_OPTIONS
 
     @classmethod
     def NAME(cls):
@@ -74,8 +49,8 @@ class DotsTTSEngineNode(BaseTTSNode):
                     "tooltip": "Device to run Dots TTS on.\n• auto: use the best available device\n• cuda: NVIDIA GPU\n• cpu: CPU-only (very slow for 2B model)"
                 }),
                 "language": (cls.LANGUAGE_OPTIONS, {
-                    "default": "auto",
-                    "tooltip": "Official Dots language tag.\n• auto: let Dots detect language from text\n• none: disable explicit language tagging\n• codes: force the model-side language tag"
+                    "default": "Auto",
+                    "tooltip": "Official Dots language tag.\n• Auto: let Dots detect language from text\n• None: disable explicit language tagging\n• Full language names: force the model-side language tag"
                 }),
                 "num_steps": ("INT", {
                     "default": 10,

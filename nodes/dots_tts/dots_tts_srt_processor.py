@@ -202,7 +202,7 @@ class DotsTTSSRTProcessor:
                 )
                 continue
 
-            print(f"📖 Dots TTS SRT Subtitle {i + 1}/{len(subtitles)}: '{text[:60]}'")
+            print(f"📖 Dots TTS SRT Subtitle {i + 1}/{len(subtitles)}")
             segment_records = self.processor.process_text(
                 text=text,
                 voice_mapping=voice_mapping,
@@ -335,19 +335,58 @@ class DotsTTSSRTProcessor:
         return audio_segments, adjustments
 
     def _assemble_final_audio(self, audio_segments, subtitles, timing_mode, timing_params, adjustments):
-        from utils.timing.assembly import AudioAssemblyEngine
+        if timing_mode == "stretch_to_fit":
+            from engines.chatterbox.audio_timing import TimedAudioAssembler
 
-        return AudioAssemblyEngine.assemble(
-            audio_segments=audio_segments,
-            subtitles=subtitles,
-            timing_mode=timing_mode,
-            fade_for_stretch=timing_params.get("fade_for_StretchToFit", False),
-            max_stretch_ratio=timing_params.get("max_stretch_ratio", 1.15),
-            min_stretch_ratio=timing_params.get("min_stretch_ratio", 0.85),
-            timing_tolerance=timing_params.get("timing_tolerance", 0.15),
-            sample_rate=self.SAMPLE_RATE,
-            adjustments=adjustments,
+            assembler = TimedAudioAssembler(self.SAMPLE_RATE)
+            target_timings = [(sub.start_time, sub.end_time) for sub in subtitles]
+            fade_duration = timing_params.get("fade_for_StretchToFit", 0.01)
+            final_audio, stretch_method_used = assembler.assemble_timed_audio(
+                audio_segments,
+                target_timings,
+                fade_duration=fade_duration,
+            )
+            return final_audio, None, stretch_method_used
+
+        if timing_mode == "pad_with_silence":
+            from utils.timing.assembly import AudioAssemblyEngine
+
+            assembler = AudioAssemblyEngine(self.SAMPLE_RATE)
+            final_audio = assembler.assemble_with_overlaps(audio_segments, subtitles, torch.device("cpu"))
+            return final_audio, None, None
+
+        if timing_mode == "concatenate":
+            from utils.timing.assembly import AudioAssemblyEngine
+            from utils.timing.engine import TimingEngine
+
+            timing_engine = TimingEngine(self.SAMPLE_RATE)
+            assembler = AudioAssemblyEngine(self.SAMPLE_RATE)
+            new_adjustments = timing_engine.calculate_concatenation_adjustments(audio_segments, subtitles)
+            fade_duration = timing_params.get("fade_for_StretchToFit", 0.01)
+            final_audio = assembler.assemble_concatenation(audio_segments, fade_duration)
+            return final_audio, new_adjustments, None
+
+        from utils.timing.assembly import AudioAssemblyEngine
+        from utils.timing.engine import TimingEngine
+
+        timing_engine = TimingEngine(self.SAMPLE_RATE)
+        assembler = AudioAssemblyEngine(self.SAMPLE_RATE)
+        smart_adjustments, processed_segments = timing_engine.calculate_smart_timing_adjustments(
+            audio_segments,
+            subtitles,
+            timing_params.get("timing_tolerance", 2.0),
+            timing_params.get("max_stretch_ratio", 1.0),
+            timing_params.get("min_stretch_ratio", 0.5),
+            torch.device("cpu"),
         )
+        final_audio = assembler.assemble_smart_natural(
+            audio_segments,
+            processed_segments,
+            smart_adjustments,
+            subtitles,
+            torch.device("cpu"),
+        )
+        return final_audio, smart_adjustments, None
 
     def _generate_timing_report(
         self,
@@ -359,19 +398,21 @@ class DotsTTSSRTProcessor:
         original_mode=None,
         stretch_method=None,
     ) -> str:
-        from utils.timing.reporting import TimingReportGenerator
+        from utils.timing.reporting import SRTReportGenerator
 
-        return TimingReportGenerator.generate(
-            subtitles=subtitles,
-            adjustments=adjustments,
-            timing_mode=current_timing_mode,
-            has_overlaps=has_overlaps,
-            mode_switched=mode_switched,
-            original_mode=original_mode,
-            stretch_method=stretch_method,
+        reporter = SRTReportGenerator()
+        return reporter.generate_timing_report(
+            subtitles,
+            adjustments,
+            current_timing_mode,
+            has_overlaps,
+            mode_switched,
+            original_mode,
+            stretch_method,
         )
 
     def _generate_adjusted_srt_string(self, subtitles, adjustments, timing_mode: str) -> str:
-        from utils.timing.reporting import AdjustedSRTGenerator
+        from utils.timing.reporting import SRTReportGenerator
 
-        return AdjustedSRTGenerator.generate(subtitles, adjustments, timing_mode=timing_mode)
+        reporter = SRTReportGenerator()
+        return reporter.generate_adjusted_srt_string(subtitles, adjustments, timing_mode)

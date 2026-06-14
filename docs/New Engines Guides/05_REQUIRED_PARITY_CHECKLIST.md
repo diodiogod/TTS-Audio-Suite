@@ -46,12 +46,13 @@ Text features:
 - Did you wire parameter switching for real native parameters?
 - Did you avoid adding fake unsupported parameters?
 - Did you remove misleading controls like language selection if unsupported?
+- If the engine supports language control, did you normalize the user-facing language UI/logs honestly and map them back to official backend codes without breaking segment/alias language switching?
 - Did you reuse the suite chunking/chunk-combination controls instead of inventing duplicate engine-local chunk UI or chunk-silence parameters?
 
 SRT features:
 - If this is a TTS engine, did you implement the SRT path?
 - Did you add interrupt checks in long SRT loops?
-- Does SRT use the shared timing/assembly systems correctly?
+- Does SRT use the shared timing/assembly/reporting systems correctly, using the real existing APIs instead of guessed helper names?
 - Did you avoid unnecessary timing-mode restrictions?
 - Does character switching work in SRT if text character tags are supported?
 
@@ -76,7 +77,7 @@ Manual tests:
 - Did character tags work?
 - Did pause tags work?
 - Did parameter switching work?
-- Did Clear VRAM then regenerate work?
+- Did Clear VRAM then regenerate work, and did unload actually tear down runtime/cache state instead of only moving weights to CPU?
 - Did interrupt/cancel work in long generation?
 ```
 

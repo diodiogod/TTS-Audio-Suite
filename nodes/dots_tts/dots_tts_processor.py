@@ -19,9 +19,10 @@ if project_root not in sys.path:
 
 from utils.audio.chunk_timing import ChunkTimingHelper
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+from engines.dots_tts.languages import format_dots_language_display, normalize_dots_language
 from utils.text.character_parser import character_parser
 from utils.text.pause_processor import PauseTagProcessor
-from utils.text.segment_parameters import apply_segment_parameters
+from utils.text.segment_parameters import ParameterValidator, apply_segment_parameters
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
 
@@ -58,19 +59,65 @@ class DotsTTSProcessor:
         language: str,
         voice_ref: Dict[str, Any],
         chunk_count: int,
+        parameter_log: str = "",
+        show_text_content: bool = True,
     ) -> None:
         voice_note = self._voice_log_note(voice_ref)
         print(f"🎭 Dots TTS - Generating for '{character_name}' (Language: {language}){voice_note}:")
-        print("=" * 60)
-        print(text_content)
-        print("=" * 60)
+        if parameter_log:
+            print(f"🎛️ Dots TTS params: {parameter_log}")
+        if show_text_content:
+            print("=" * 60)
+            print(text_content)
+            print("=" * 60)
         if chunk_count > 1:
             print(
                 f"📝 Chunking {character_name}'s text into {chunk_count} chunks "
                 f"(Language: {language}){voice_note}"
             )
 
+    @staticmethod
+    def _format_parameter_log(filtered_params: Dict[str, Any], current_config: Dict[str, Any], current_seed: int) -> str:
+        if not filtered_params:
+            return ""
+
+        ordered_parts = []
+        if "seed" in filtered_params:
+            ordered_parts.append(f"seed={current_seed}")
+
+        for key in ("num_steps", "guidance_scale", "speaker_scale", "max_generate_length"):
+            if key in filtered_params:
+                ordered_parts.append(f"{key}={current_config.get(key)}")
+
+        for key in ("normalize_text", "language"):
+            if key in filtered_params:
+                value = current_config.get(key)
+                if key == "language":
+                    value = format_dots_language_display(value)
+                ordered_parts.append(f"{key}={value}")
+
+        remaining_keys = [
+            key for key in filtered_params.keys()
+            if key not in {"seed", "num_steps", "guidance_scale", "speaker_scale", "max_generate_length", "normalize_text", "language"}
+        ]
+        for key in remaining_keys:
+            ordered_parts.append(f"{key}={current_config.get(key, filtered_params[key])}")
+
+        return ", ".join(ordered_parts)
+
     def _setup_character_parser(self, text: str):
+        configured_language = str(self.config.get("language", "auto") or "auto").strip()
+        normalized_language = normalize_dots_language(configured_language)
+        if normalized_language is None:
+            resolved_language = "en"
+        elif normalized_language == "auto_detect":
+            resolved_language = "en"
+        else:
+            resolved_language = normalized_language.lower()
+
+        character_parser.language_resolver.default_language = resolved_language
+        character_parser.default_language = resolved_language
+
         character_tags = re.findall(r"\[([^\]]+)\]", text or "")
         characters_from_tags = []
         for tag in character_tags:
@@ -109,6 +156,7 @@ class DotsTTSProcessor:
         silence_between_chunks_ms: int = 100,
         enable_audio_cache: bool = True,
         apply_edit_postprocessing: bool = True,
+        show_text_logging: bool = True,
     ) -> List[Dict[str, Any]]:
         self._setup_character_parser(text)
 
@@ -132,12 +180,27 @@ class DotsTTSProcessor:
             segment_params = seg.parameters if seg.parameters else {}
             current_config = base_config
             current_seed = seed
+            filtered_params: Dict[str, Any] = {}
             if segment_params:
+                filtered_params = ParameterValidator.filter_parameters_for_engine(segment_params, "dots_tts")
                 current_config = apply_segment_parameters(base_config, segment_params, "dots_tts")
                 if "seed" in current_config:
                     current_seed = int(current_config.get("seed", seed))
+
+            if hasattr(seg, "language") and seg.language:
+                current_config = current_config.copy()
+                current_config["language"] = seg.language
+                global_language = normalize_dots_language(base_config.get("language", "auto"))
+                segment_language_code = normalize_dots_language(seg.language)
+                if segment_language_code != global_language:
+                    print(
+                        "  🌍 Dots TTS language switched to: "
+                        f"{format_dots_language_display(seg.language)}"
+                    )
+
             self.adapter.update_config(current_config)
-            segment_language = current_config.get("language", "Auto")
+            segment_language = format_dots_language_display(current_config.get("language", "Auto"))
+            parameter_log = self._format_parameter_log(filtered_params, current_config, current_seed)
 
             voice_ref = narrator_voice.copy()
             char_name = seg.character or "narrator"
@@ -168,6 +231,8 @@ class DotsTTSProcessor:
                     language=segment_language,
                     voice_ref=voice_ref,
                     chunk_count=len(chunks),
+                    parameter_log=parameter_log,
+                    show_text_content=show_text_logging,
                 )
 
                 for chunk_idx, chunk in enumerate(chunks):
