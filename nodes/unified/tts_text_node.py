@@ -204,6 +204,12 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['use_cuda_graphs'] = config.get('use_cuda_graphs', False)
                 stable_params['compile_mode'] = config.get('compile_mode', 'default')
 
+            if engine_type == "dots_tts":
+                stable_params['model_variant'] = config.get('model_variant', 'dots.tts-soar')
+                stable_params['precision'] = config.get('precision', 'auto')
+                stable_params['optimize'] = config.get('optimize', False)
+                stable_params['max_generate_length'] = config.get('max_generate_length', 500)
+
             # For MOSS-TTS, include model identity and load-time options.
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
@@ -507,6 +513,36 @@ Back to the main narrator voice for the conclusion.""",
                 engine_instance = EchoTTSWrapper(config)
 
                 # Cache the instance with timestamp
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
+            elif engine_type == "dots_tts":
+                from engines.adapters.dots_tts_adapter import DotsTTSEngineAdapter
+                dots_tts_processor_path = os.path.join(nodes_dir, "dots_tts", "dots_tts_processor.py")
+                dots_tts_processor_spec = importlib.util.spec_from_file_location("dots_tts_processor_module", dots_tts_processor_path)
+                dots_tts_processor_module = importlib.util.module_from_spec(dots_tts_processor_spec)
+                dots_tts_processor_spec.loader.exec_module(dots_tts_processor_module)
+
+                DotsTTSProcessor = dots_tts_processor_module.DotsTTSProcessor
+
+                class DotsTTSWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = DotsTTSEngineAdapter(self.config)
+                        self.processor = DotsTTSProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+                        self.processor.update_config(new_config)
+
+                engine_instance = DotsTTSWrapper(config)
+
                 import time
                 self._cached_engine_instances[cache_key] = {
                     'instance': engine_instance,
@@ -1281,6 +1317,56 @@ Back to the main narrator voice for the conclusion.""",
                 generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
 
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 44100)
+                result = (formatted_audio, generation_info)
+
+            elif engine_type == "dots_tts":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                if not hasattr(engine_instance, "processor"):
+                    dots_tts_processor_path = os.path.join(nodes_dir, "dots_tts", "dots_tts_processor.py")
+                    dots_tts_processor_spec = importlib.util.spec_from_file_location("dots_tts_processor_module", dots_tts_processor_path)
+                    dots_tts_processor_module = importlib.util.module_from_spec(dots_tts_processor_spec)
+                    dots_tts_processor_spec.loader.exec_module(dots_tts_processor_module)
+                    DotsTTSProcessor = dots_tts_processor_module.DotsTTSProcessor
+                    engine_instance.processor = DotsTTSProcessor(engine_instance.adapter, config)
+                    engine_instance.processor.update_config(config)
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                    }
+
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache
+                )
+
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True
+                )
+
+                total_duration = combined_audio.shape[-1] / 48000.0 if combined_audio.numel() else 0.0
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters (Dots TTS, narrator: {char_display})"
+                base_info += "\n🎭 Character switching and pause tags enabled"
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 48000)
                 result = (formatted_audio, generation_info)
 
             elif engine_type == "moss_tts":

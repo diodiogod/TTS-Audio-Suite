@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 14 Engines
+## Quick Engine Comparison — 15 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -39,6 +39,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
+| **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB each | Zero-shot voice cloning, Official auto language detect / tags |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 20-language generation, Long-form generation (TTSD/Delay) |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
@@ -1432,6 +1433,7 @@ For offline/manual setup:
 | MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay/TTSD models plus shared MOSS-Audio-Tokenizer codec |
 | Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Main Granite model; optional Qwen forced aligner reused lazily for timestamps/SRT |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
+| Dots TTS | `ComfyUI/models/TTS/dots_tts/` | ✅ | Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder |
 
 *Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*
 

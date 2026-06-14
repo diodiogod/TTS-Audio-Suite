@@ -521,6 +521,42 @@ class EchoTTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class DotsTTSCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Dots TTS engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        guidance_scale = params.get('guidance_scale', 1.2)
+        speaker_scale = params.get('speaker_scale', 1.5)
+
+        if isinstance(guidance_scale, (int, float)):
+            guidance_scale = round(float(guidance_scale), 3)
+        if isinstance(speaker_scale, (int, float)):
+            speaker_scale = round(float(speaker_scale), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'prompt_text': params.get('prompt_text', ''),
+            'model_variant': params.get('model_variant', 'dots.tts-soar'),
+            'language': params.get('language', 'auto_detect'),
+            'template_name': params.get('template_name', 'tts'),
+            'num_steps': params.get('num_steps', 10),
+            'guidance_scale': guidance_scale,
+            'speaker_scale': speaker_scale,
+            'normalize_text': params.get('normalize_text', False),
+            'max_generate_length': params.get('max_generate_length', 500),
+            'precision': params.get('precision', 'auto'),
+            'optimize': params.get('optimize', False),
+            'seed': params.get('seed', 0),
+            'device': params.get('device', 'auto'),
+            'character': params.get('character', 'narrator'),
+            'engine': 'dots_tts',
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -536,6 +572,7 @@ class AudioCache:
             'index_tts': IndexTTSCacheKeyGenerator(),
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
             'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
+            'dots_tts': DotsTTSCacheKeyGenerator(),
             'moss_tts': MossTTSCacheKeyGenerator(),
             'echo_tts': EchoTTSCacheKeyGenerator()
         }
@@ -608,7 +645,9 @@ class AudioCache:
             num_samples = audio_tensor.numel()
 
         # Use engine-specific sample rates
-        if engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3'):
+        if engine_type == 'dots_tts':
+            sample_rate = 48000
+        elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3'):
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050

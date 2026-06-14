@@ -57,6 +57,7 @@ SRT features:
 
 UX:
 - Did you add progress feedback for long generation?
+- Did you preserve useful console observability parity instead of making the engine run silently (for example input-text echo and live it/s/progress)?
 - Are error messages clear when required inputs are missing?
 - Are tooltips honest about limitations, license, VRAM, and expected text length?
 

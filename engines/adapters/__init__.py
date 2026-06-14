@@ -41,6 +41,15 @@ except Exception as e:
             raise ImportError(f"Echo-TTS adapter not available: {e}")
 
 try:
+    from .dots_tts_adapter import DotsTTSEngineAdapter
+    DOTS_TTS_ADAPTER_AVAILABLE = True
+except Exception as e:
+    DOTS_TTS_ADAPTER_AVAILABLE = False
+    class DotsTTSEngineAdapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"Dots TTS adapter not available: {e}")
+
+try:
     from .moss_tts_adapter import MossTTSEngineAdapter
     MOSS_TTS_ADAPTER_AVAILABLE = True
 except Exception as e:
@@ -60,7 +69,9 @@ except Exception as e:
 
 __all__ = [
     'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter', 'EchoTTSEngineAdapter',
+    'DotsTTSEngineAdapter',
     'MossTTSEngineAdapter', 'HiggsAudioV3EngineAdapter',
     'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE',
-    'ECHO_TTS_ADAPTER_AVAILABLE', 'MOSS_TTS_ADAPTER_AVAILABLE', 'HIGGS_AUDIO_V3_ADAPTER_AVAILABLE'
+    'ECHO_TTS_ADAPTER_AVAILABLE', 'DOTS_TTS_ADAPTER_AVAILABLE',
+    'MOSS_TTS_ADAPTER_AVAILABLE', 'HIGGS_AUDIO_V3_ADAPTER_AVAILABLE'
 ]

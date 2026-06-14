@@ -1675,6 +1675,34 @@ def register_qwen3_tts_factory():
     unified_model_interface.register_model_factory("qwen3_tts", "tts", qwen3_tts_factory)
 
 
+def register_dots_tts_factory():
+    """Register Dots TTS model factory."""
+    def dots_tts_factory(config: ModelLoadConfig):
+        """Factory for official Dots TTS models with ComfyUI integration."""
+        model_name = config.model_name or "dots.tts-soar"
+        device = config.device or "auto"
+        additional_params = config.additional_params or {}
+        precision = additional_params.get("precision", "auto")
+        optimize = bool(additional_params.get("optimize", False))
+        max_generate_length = int(additional_params.get("max_generate_length", 500))
+
+        from engines.dots_tts.dots_tts_engine import DotsTTSEngine
+
+        print(f"🔄 Loading Dots TTS model via unified interface: {model_name}")
+        engine = DotsTTSEngine(
+            model_name=model_name,
+            device=device,
+            precision=precision,
+            optimize=optimize,
+            max_generate_length=max_generate_length,
+        )
+        engine._ensure_runtime_loaded()
+        print(f"✅ Dots TTS model '{model_name}' loaded successfully")
+        return engine
+
+    unified_model_interface.register_model_factory("dots_tts", "tts", dots_tts_factory)
+
+
 def register_qwen3_asr_factory():
     """Register Qwen3-ASR model factory"""
     def qwen3_asr_factory(config: ModelLoadConfig):
@@ -1883,6 +1911,7 @@ def initialize_all_factories():
     register_cosyvoice_factory()
     register_moss_tts_factory()
     register_qwen3_tts_factory()
+    register_dots_tts_factory()
     register_qwen3_asr_factory()
     register_qwen3_aligner_factory()
     register_granite_asr_factory()

@@ -314,3 +314,37 @@ Notes:
 
 - Both components are required and auto-downloaded on first use.
 - License: CC-BY-NC-SA (non-commercial).
+
+## Dots TTS
+
+```text
+ComfyUI/models/TTS/dots_tts/
+├── dots.tts-base/
+├── dots.tts-soar/
+└── dots.tts-mf/
+```
+
+Typical checkpoint contents:
+
+```text
+ComfyUI/models/TTS/dots_tts/dots.tts-soar/
+├── added_tokens.json
+├── chat_template.jinja
+├── config.json
+├── latent_stats.pt
+├── llm_config.json
+├── merges.txt
+├── model.safetensors
+├── speaker_encoder.safetensors
+├── special_tokens_map.json
+├── tokenizer.json
+├── tokenizer_config.json
+├── vocab.json
+└── vocoder.safetensors
+```
+
+Notes:
+
+- Downloads into a dedicated `dots_tts/` folder.
+- Native sample rate is 48kHz.
+- Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.

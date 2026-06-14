@@ -1131,6 +1131,33 @@ class TTSAudioInstaller:
                 ignore_errors=True
             )
 
+    def install_dots_tts(self):
+        """Install official Dots TTS with minimal dependency impact."""
+        self.log("Installing Dots TTS engine", "INFO")
+
+        dependency_probes = [
+            ("lingua", ["install", "lingua-language-detector"], "Installing lingua-language-detector"),
+            ("langcodes", ["install", "langcodes"], "Installing langcodes"),
+            ("loguru", ["install", "loguru"], "Installing loguru"),
+            ("tn", ["install", "WeTextProcessing"], "Installing WeTextProcessing"),
+        ]
+
+        for module_name, pip_args, description in dependency_probes:
+            if self.verify_python_import(module_name):
+                self.log(f"{module_name} import already satisfied - skipping", "SUCCESS")
+                continue
+            self.run_pip_command(pip_args, description, ignore_errors=True)
+
+        if self.verify_python_import("dots_tts.runtime"):
+            self.log("dots_tts.runtime already satisfied - skipping", "SUCCESS")
+            return
+
+        self.run_pip_command(
+            ["install", "git+https://github.com/rednote-hilab/dots.tts.git", "--no-deps"],
+            "Installing official dots.tts from GitHub (--no-deps)",
+            ignore_errors=True
+        )
+
     def install_f5tts_multilingual_support(self):
         """Install phonemization support for F5-TTS multilingual models (Polish, German, French, Spanish, etc.)"""
         self.log("Installing F5-TTS multilingual phonemization support", "INFO")
@@ -1567,6 +1594,7 @@ def main():
         installer.install_onnxruntime_with_gpu_support()  # Install ONNX with GPU acceleration if available
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
         installer.install_echo_tts()  # Install Echo-TTS with minimal dependency impact
+        installer.install_dots_tts()  # Install official Dots TTS in the main environment first
         installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
         installer.install_indexts_text_processing()  # Install IndexTTS-2 text normalization with fallback
         installer.install_russian_text_stresser_support()  # Install lightweight Russian stress package for Official 23-Lang
