@@ -80,10 +80,6 @@ class HiggsAudioV3EngineNode(BaseTTSNode):
                     "default": 2048, "min": 32, "max": 8192, "step": 8,
                     "tooltip": "Maximum generated audio-token steps per call. Raise if speech cuts off; prefer chunking for long text.",
                 }),
-                "words_per_chunk": ("INT", {
-                    "default": 45, "min": 20, "max": 300, "step": 5,
-                    "tooltip": "Target chunk size for longform Higgs v3 generation. Chunking preserves <|...|> inline tags.",
-                }),
             },
         }
 
@@ -106,7 +102,6 @@ class HiggsAudioV3EngineNode(BaseTTSNode):
         top_p,
         top_k,
         max_new_tokens,
-        words_per_chunk,
     ):
         config = {
             "engine_type": "higgs_audio_v3",
@@ -118,7 +113,6 @@ class HiggsAudioV3EngineNode(BaseTTSNode):
             "top_p": max(0.0, min(1.0, float(top_p))),
             "top_k": max(0, min(1026, int(top_k))),
             "max_new_tokens": max(32, min(8192, int(max_new_tokens))),
-            "words_per_chunk": max(20, min(300, int(words_per_chunk))),
             "adapter_class": "HiggsAudioV3EngineAdapter",
         }
         print(f"✅ Higgs Audio v3 engine config created: {model} on {device}")

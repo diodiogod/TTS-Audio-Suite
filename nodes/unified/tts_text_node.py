@@ -1383,7 +1383,7 @@ Back to the main narrator voice for the conclusion.""",
                     voice_mapping=voice_mapping,
                     seed=seed,
                     enable_chunking=enable_chunking,
-                    max_chars_per_chunk=config.get("words_per_chunk", max_chars_per_chunk),
+                    max_chars_per_chunk=max_chars_per_chunk,
                 )
 
                 audio_result, chunk_info = engine_instance.processor.combine_audio_segments(

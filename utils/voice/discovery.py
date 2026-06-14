@@ -31,6 +31,8 @@ class VoiceDiscovery:
     - Performance caching to avoid repeated filesystem scans
     - Backward compatibility with existing flat structure
     """
+    _GLOBAL_LAST_DISCOVERY_SIGNATURE = None
+    _GLOBAL_BACKGROUND_ANNOUNCED_FOR_SIGNATURES = set()
     
     def __init__(self):
         self._cache = {}
@@ -48,6 +50,35 @@ class VoiceDiscovery:
 
         # Defer character discovery to first access (non-blocking startup)
         self._initialized = False
+
+    def _maybe_log_character_discovery(self, *, cached: bool, announce_background: bool = False, force: bool = False):
+        """Suppress repeated discovery logs unless the signature changes or refresh forces it."""
+        char_count = len(self._character_cache)
+        alias_count = len(self._character_aliases)
+        if char_count <= 0:
+            return
+
+        signature = (char_count, alias_count, cached)
+        already_logged_same_signature = (
+            not force and
+            VoiceDiscovery._GLOBAL_LAST_DISCOVERY_SIGNATURE == signature
+        )
+
+        if not already_logged_same_signature:
+            if alias_count > 0:
+                suffix = " (cached)" if cached else ""
+                print(f"[TTS Audio Suite] 🎭 Character voices: Found {char_count} characters, {alias_count} aliases{suffix}")
+            else:
+                suffix = " (cached)" if cached else ""
+                print(f"[TTS Audio Suite] 🎭 Character voices: Found {char_count} characters{suffix}")
+
+            VoiceDiscovery._GLOBAL_LAST_DISCOVERY_SIGNATURE = signature
+            self._discovery_logged = True
+
+        if announce_background:
+            if force or signature not in VoiceDiscovery._GLOBAL_BACKGROUND_ANNOUNCED_FOR_SIGNATURES:
+                print("[TTS Audio Suite] 🔄 Updating character discovery in background...")
+                VoiceDiscovery._GLOBAL_BACKGROUND_ANNOUNCED_FOR_SIGNATURES.add(signature)
     
     def _ensure_initialized(self):
         """
@@ -71,15 +102,8 @@ class VoiceDiscovery:
                     self._character_cache_valid = True
                     self._aliases_valid = True
 
-                    # Only log once (first time initialization)
-                    if len(self._character_cache) > 0 and not self._discovery_logged:
-                        alias_count = len(self._character_aliases)
-                        if alias_count > 0:
-                            print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases (cached)")
-                        else:
-                            print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters (cached)")
-                        print(f"[TTS Audio Suite] 🔄 Updating character discovery in background...")
-                        self._discovery_logged = True
+                    if len(self._character_cache) > 0:
+                        self._maybe_log_character_discovery(cached=True, announce_background=True)
 
                     # Start background refresh after ComfyUI loads
                     self._cache_manager.start_background_refresh(self._get_fresh_cache_data)
@@ -96,14 +120,8 @@ class VoiceDiscovery:
             cache_data = self._get_fresh_cache_data()
             self._cache_manager.save_cache(cache_data)
 
-            # Only log once (first time initialization)
-            if len(self._character_cache) > 0 and not self._discovery_logged:
-                alias_count = len(self._character_aliases)
-                if alias_count > 0:
-                    print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters, {alias_count} aliases")
-                else:
-                    print(f"[TTS Audio Suite] 🎭 Character voices: Found {len(self._character_cache)} characters")
-                self._discovery_logged = True
+            if len(self._character_cache) > 0:
+                self._maybe_log_character_discovery(cached=False)
 
             # Start background refresh for updates
             self._cache_manager.start_background_refresh(self._get_fresh_cache_data)

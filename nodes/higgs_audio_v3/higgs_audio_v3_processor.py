@@ -154,8 +154,8 @@ def _chunk_by_characters(text: str, chars_per_chunk: int) -> list[str]:
     return chunks or [text]
 
 
-def _smart_chunk_text(text: str, words_per_chunk: int, enabled: bool) -> list[str]:
-    if not enabled or words_per_chunk <= 0:
+def _smart_chunk_text(text: str, max_chars_per_chunk: int, enabled: bool) -> list[str]:
+    if not enabled or max_chars_per_chunk <= 0:
         return [text.strip()]
     text = text.strip()
     if not text:
@@ -164,17 +164,18 @@ def _smart_chunk_text(text: str, words_per_chunk: int, enabled: bool) -> list[st
     cjk_count = sum(1 for ch in text if _is_cjk(ch))
     alpha_count = sum(1 for ch in text if ch.isalpha() or _is_cjk(ch))
     if alpha_count > 0 and cjk_count / alpha_count > 0.3:
-        return _chunk_by_characters(text, words_per_chunk)
+        return _chunk_by_characters(text, max_chars_per_chunk)
+
+    if len(text) <= max_chars_per_chunk:
+        return [text]
 
     words = text.split()
-    if len(words) <= words_per_chunk:
-        return [text]
     chunks: list[str] = []
     current: list[str] = []
     for word in words:
         current.append(word)
-        if len(current) >= words_per_chunk:
-            candidate = " ".join(current)
+        candidate = " ".join(current)
+        if len(candidate) >= max_chars_per_chunk:
             split = _tag_safe_boundary(candidate)
             if split is not None and split >= max(20, len(candidate) // 3):
                 final = candidate[:split].strip()
@@ -312,8 +313,7 @@ class HiggsAudioV3Processor:
         if not text:
             return
         voice_ref = voice_mapping.get(character) or voice_mapping.get("narrator")
-        words_per_chunk = int(params.get("words_per_chunk") or max(20, max_chars // 8))
-        chunks = _smart_chunk_text(text, words_per_chunk, enable_chunking and len(text) > max_chars)
+        chunks = _smart_chunk_text(text, int(max_chars), enable_chunking and len(text) > max_chars)
         delivery_state: dict[str, str] = {}
 
         for chunk_idx, chunk in enumerate(chunks):
