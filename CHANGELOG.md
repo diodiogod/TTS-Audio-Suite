@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-06-14
+
+### Added
+
+- Major release: Transformers 5 main environment with Higgs Audio v3
+- Add Higgs Audio v3 TTS engine with native inline tags and zero-shot voice cloning
+- Move fragile legacy engines to isolated runtimes instead of freezing the main environment
+
+### Changed
+
+- Improve the Multiline TTS Tag Editor with engine-aware inline tags, validation, conversion, and persistence
+- Update workflows, screenshots, and documentation for the new architecture
 ## [4.27.3] - 2026-05-26
 
 ### Added
