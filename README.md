@@ -93,30 +93,20 @@ Per-Seg Parameter     Step Audio EditX    CosyVoice3           │
 Switching [seed:24]   Inline Edit tags    TTS + VC             │
                       <laughter:2>                             │
                                                                ▼
-v4.24◄─────────────── v4.22 ◄──────────────── v4.19 ◄──────────┘
-Mar 26                Mar 26                Jan 26
-│                     │                     │
-Text to SRT           Echo-TTS              Qwen3-TTS
-Builder               English TTS           TTS + ASR
-|                                           VoiceDesign
-|─── 🎓 Training Support Era
-▼              
-v4.25 ──────────────► v4.26 ────────────►
-Apr 26                May 26
-│                     │
-RVC                   MOSS-TTS
-Model Training 
-|
-|─── 🧱 Runtime Isolation + T5 Era
-▼
-v4.27 ──────────────►
-Jun 26
-│
-Shared legacy T4
-runtime isolation
-+ Higgs Audio v3
-+ Main env on
-Transformers 5
+v4.24◄─────────────── v4.22 ◄─────────────── v4.19 ◄───────────┘
+Mar 26                Mar 26                 Jan 26
+│                     │                      │
+Text to SRT           Echo-TTS               Qwen3-TTS
+Builder               English TTS      TTS + ASR + VoiceDesign
+|                                          
+|─── 🎓 Training Support Era     🧱 Runtime Isolation T5 Era
+▼                                      |
+v4.25 ──────────────► v4.26 ────────────► v4.27 ─────►
+Apr 26                May 26              Jun 26
+│                     │                      │
+RVC                   MOSS-TTS           Transformers 5
+Model Training                           Higgs Audio v3 TTS
+
 ```
 
 ## 🧩 Adding New Engines
