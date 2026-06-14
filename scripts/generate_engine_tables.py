@@ -147,8 +147,8 @@ def generate_readme_condensed_table(data):
     output = []
     output.append(f"## Quick Engine Comparison — {engine_count} Engines")
     output.append("")
-    output.append("| Engine | Isolation | Languages | Size | Key Features |")
-    output.append("|--------|-----------|-----------|------|--------------|")
+    output.append("| Engine | Languages | Size | Key Features |")
+    output.append("|--------|-----------|------|--------------|")
 
     # Show ALL engines
     for e in engines:
@@ -186,7 +186,6 @@ def generate_readme_condensed_table(data):
 
         row = [
             f"**{e['name']}**",
-            format_runtime_label(data, get_engine_runtime_mode(e), short=True),
             lang_display,
             e["size"],
             key_features
@@ -202,10 +201,6 @@ def generate_readme_condensed_table(data):
                   "**[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | "
                   "**[Model folder layouts →](docs/MODEL_LAYOUTS.md)**")
     output.append("")
-    isolation_note = build_isolation_note(data)
-    if isolation_note:
-        output.append(isolation_note)
-        output.append("")
     output.append("*Note: These tables are generated automatically from source: [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml)*")
 
     return "\n".join(output)
