@@ -1191,7 +1191,7 @@ engines:
       ja: { supported: true, flag: "🇯🇵", notes: "" }
       ko: { supported: true, flag: "🇰🇷", notes: "" }
       ru: { supported: true, flag: "🇷🇺", notes: "" }
-      pt: { supported: true, flag: "🇧🇷", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "(Official PT tag is generic; upstream does not expose separate PT-BR/PT-PT tags and it may lean more European Portuguese than Brazilian Portuguese)" }
       pl: { supported: true, flag: "🇵🇱", notes: "" }
       hi: { supported: true, flag: "🇮🇳", notes: "" }
       ar: { supported: true, flag: "🇦🇪", notes: "" }

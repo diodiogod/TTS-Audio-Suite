@@ -50,7 +50,7 @@ class DotsTTSEngineNode(BaseTTSNode):
             "required": {
                 "model_variant": (cls.MODEL_VARIANTS, {
                     "default": "dots.tts-soar",
-                    "tooltip": "Official Dots checkpoint.\n• dots.tts-soar: best zero-shot voice cloning\n• dots.tts-mf: fastest distilled checkpoint\n• dots.tts-base: pretrained baseline"
+                    "tooltip": "Official Dots checkpoint.\n• dots.tts-soar: best zero-shot voice cloning\n• dots.tts-mf: fastest distilled MeanFlow checkpoint; use 4 steps\n• dots.tts-base: pretrained baseline"
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
@@ -58,7 +58,7 @@ class DotsTTSEngineNode(BaseTTSNode):
                 }),
                 "language": (cls.LANGUAGE_OPTIONS, {
                     "default": "Auto",
-                    "tooltip": "Official Dots language tag.\n• Auto: let Dots detect language from text\n• None: disable explicit language tagging\n• Full language names: force the model-side language tag"
+                    "tooltip": "Official Dots language tag.\n• Auto: let Dots detect language from text\n• None: disable explicit language tagging\n• Full language names: force the model-side language tag\n\nVoice-cloning note: reference/narrator audio works best when the generated language matches the language spoken in the reference. Cross-language cloning can degrade quality, accent, and speaker similarity."
                 }),
                 "num_steps": ("INT", {
                     "default": 10,

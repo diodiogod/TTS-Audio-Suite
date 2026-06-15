@@ -889,6 +889,8 @@ Back to the main narrator voice for the conclusion.""",
                 lang_code = "local"
             elif language.lower() == "auto":
                 lang_code = "auto"
+            elif language.lower() == "none":
+                lang_code = "none"
             else:
                 # Standard language codes - take first 2 chars
                 lang_code = language.lower()[:2]  # en, fr, de, etc.

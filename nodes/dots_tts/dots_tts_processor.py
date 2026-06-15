@@ -145,6 +145,27 @@ class DotsTTSProcessor:
 
         character_parser.reset_session_cache()
 
+    @staticmethod
+    def _should_apply_segment_language(seg: Any, base_config: Dict[str, Any]) -> bool:
+        segment_language = getattr(seg, "language", None)
+        if not segment_language:
+            return False
+
+        if getattr(seg, "explicit_language", False):
+            return True
+
+        global_language = normalize_dots_language(base_config.get("language", "auto"))
+        parser_default = normalize_dots_language(character_parser.default_language)
+        segment_language_code = normalize_dots_language(segment_language)
+
+        # Character parser always resolves untagged text to its fallback default
+        # language. For Dots we must not feed that fallback back into generation,
+        # or Auto/None collapse into English cache/runtime behavior.
+        if segment_language_code == parser_default:
+            return False
+
+        return segment_language_code != global_language
+
     def process_text(
         self,
         text: str,
@@ -187,7 +208,7 @@ class DotsTTSProcessor:
                 if "seed" in current_config:
                     current_seed = int(current_config.get("seed", seed))
 
-            if hasattr(seg, "language") and seg.language:
+            if self._should_apply_segment_language(seg, base_config):
                 current_config = current_config.copy()
                 current_config["language"] = seg.language
                 global_language = normalize_dots_language(base_config.get("language", "auto"))
