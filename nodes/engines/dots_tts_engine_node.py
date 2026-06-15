@@ -31,6 +31,14 @@ class DotsTTSEngineNode(BaseTTSNode):
         "dots.tts-base",
     ]
     LANGUAGE_OPTIONS = DOTS_LANGUAGE_OPTIONS
+    TEMPLATE_MODE_OPTIONS = [
+        "TTS",
+        "Instruction TTS",
+    ]
+    TEMPLATE_NAME_BY_MODE = {
+        "TTS": "tts",
+        "Instruction TTS": "instruction_tts",
+    }
 
     @classmethod
     def NAME(cls):
@@ -82,6 +90,10 @@ class DotsTTSEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
+                "template_mode": (cls.TEMPLATE_MODE_OPTIONS, {
+                    "default": "TTS",
+                    "tooltip": "Official non-standard Dots template mode from upstream.\n• TTS: standard Dots speech synthesis template\n• Instruction TTS: uses the same text field as normal TTS\nUpstream does not clearly document what behavior difference this mode is meant to produce.\nIt may yield different results, or little noticeable difference, versus standard TTS. Needs testing."
+                }),
                 "precision": (["auto", "bfloat16", "float16", "float32"], {
                     "default": "auto",
                     "tooltip": "Runtime precision.\n• auto: bfloat16 on newer CUDA GPUs, else float16, cpu -> float32"
@@ -111,10 +123,12 @@ class DotsTTSEngineNode(BaseTTSNode):
         guidance_scale: float,
         speaker_scale: float,
         max_generate_length: int,
+        template_mode: str = "TTS",
         precision: str = "auto",
         normalize_text: bool = False,
         optimize: bool = False,
     ) -> tuple:
+        template_name = self.TEMPLATE_NAME_BY_MODE.get(template_mode, "tts")
         config = {
             "engine_type": "dots_tts",
             "model_variant": model_variant,
@@ -127,11 +141,11 @@ class DotsTTSEngineNode(BaseTTSNode):
             "max_generate_length": int(max_generate_length),
             "normalize_text": bool(normalize_text),
             "optimize": bool(optimize),
-            "template_name": "tts",
+            "template_name": template_name,
         }
 
         print(f"⚙️ Dots TTS: Configured on {device}")
-        print(f"   Model: {model_variant} | Language: {language} | Precision: {precision}")
+        print(f"   Model: {model_variant} | Language: {language} | Mode: {template_mode} | Precision: {precision}")
         print(
             f"   Settings: steps={num_steps}, guidance_scale={guidance_scale}, "
             f"speaker_scale={speaker_scale}, max_generate_length={max_generate_length}"
