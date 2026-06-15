@@ -61,6 +61,13 @@
 - **Pattern**: F5-TTS and ChatterBox don't have `__del__`, only IndexTTS and StepAudio did (wrong)
 - **Correct behavior**: Models stay in VRAM for reuse; only unload on explicit Clear VRAM button, engine switch, or parameter change
 
+### Clear VRAM - Runtime Teardown vs CPU Offload
+- **Wrong**: Assuming every engine is safe to unload with only `.to('cpu')`
+- **Symptom**: Clear VRAM frees only part of VRAM; most memory disappears only after closing ComfyUI
+- **Cause**: Runtime-heavy engines can keep compiled graphs, prompt caches, workspaces, or runtime objects alive after CPU offload
+- **Correct**: Add an engine-specific unload handler that clears internal caches, drops runtime/model references, then runs `gc.collect()`, `torch.cuda.empty_cache()`, and `torch.cuda.ipc_collect()` when available
+- **Prevention**: If the engine uses warmup, `torch.compile`, streaming caches, or a custom runtime object, explicitly test Clear VRAM and reload instead of assuming generic offload parity
+
 ### Generation Info Reports - Modular Pattern
 - **CRITICAL - Consistency required**: ALL engines must use `ChunkCombiner` + `ChunkTimingHelper` for generation reports
 - **Correct pattern** (from ChatterBox 23-Lang, F5-TTS):
@@ -74,9 +81,26 @@
 ### Segment Parameter Registration
 - **Forgot to add**: New engines to `PARAMETER_ENGINES` in `utils/text/segment_parameters.py` for `[seed:X]` tag support
 
+### Language UI Normalization
+- **Wrong**: Exposing raw backend language codes in the engine node just because the official runtime accepts them
+- **Symptom**: New engine UI looks inconsistent with the suite, logs show backend codes instead of readable names, and character-tag / alias languages do not map cleanly to node config values
+- **Correct**: Keep user-facing language controls normalized to honest display names when the suite already does that, then map them back to the official backend codes in the adapter/runtime layer
+- **Prevention**: Reuse or add a small engine-local language helper so node UI, processor logs, segment language overrides, and adapter normalization all agree on the same mapping
+
 ### SRT Processor Import Pattern
 - **Wrong**: Using `from nodes.xxx import` - fails with `'nodes' is not a package`
 - **Correct**: Use `importlib.util.spec_from_file_location()` for cross-module imports in dynamically loaded processors
+
+### SRT Shared API Guessing
+- **Wrong**: Inventing shared helper names like `AudioAssemblyEngine.assemble(...)`, `TimingReportGenerator`, or `AdjustedSRTGenerator`
+- **Correct**: Open a working SRT processor first and match the exact API that already exists in `utils/timing/assembly.py`, `utils/timing/engine.py`, and `utils/timing/reporting.py`
+- **Real pattern**:
+  - `stretch_to_fit` → `TimedAudioAssembler.assemble_timed_audio(...)`
+  - `pad_with_silence` → `AudioAssemblyEngine(...).assemble_with_overlaps(...)`
+  - `concatenate` → `TimingEngine.calculate_concatenation_adjustments(...)` + `assemble_concatenation(...)`
+  - `smart_natural` → `TimingEngine.calculate_smart_timing_adjustments(...)` + `assemble_smart_natural(...)`
+  - reporting / adjusted SRT → `SRTReportGenerator().generate_timing_report(...)` and `generate_adjusted_srt_string(...)`
+- **Prevention**: Never assume shared helper names. Grep existing SRT processors and copy the real call pattern exactly.
 
 ### ComfyUI Audio Dict Format
 - **Wrong**: Passing `audio_tensor` directly to functions expecting raw tensor

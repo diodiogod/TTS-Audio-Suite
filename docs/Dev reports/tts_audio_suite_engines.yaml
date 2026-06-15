@@ -1142,6 +1142,84 @@ engines:
       vram_efficient: { supported: "partial", notes: "(~7GB total)" }
       speed_performance: { supported: true, notes: "Fast (diffusion, realtime-capable)" }
 
+  - id: dots-tts
+    name: Dots TTS
+    models: "dots.tts-base, dots.tts-soar, dots.tts-mf"
+    size: "~6GB"
+    license: "Apache-2.0"
+    commercial: true
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    special_features:
+      - "Official auto language detect / language control"
+      - "SOAR and MeanFlow distilled variants"
+
+    model_sources:
+      - component: "dots.tts-base"
+        source_name: "rednote-hilab/dots.tts-base"
+        source_url: "https://huggingface.co/rednote-hilab/dots.tts-base"
+        size: "~6GB"
+        auto_download: true
+        notes: "Official base checkpoint with tokenizer, vocoder, speaker encoder, and latent stats"
+      - component: "dots.tts-soar"
+        source_name: "rednote-hilab/dots.tts-soar"
+        source_url: "https://huggingface.co/rednote-hilab/dots.tts-soar"
+        size: "~6GB"
+        auto_download: true
+        notes: "Official SOAR checkpoint for higher-quality zero-shot cloning"
+      - component: "dots.tts-mf"
+        source_name: "rednote-hilab/dots.tts-mf"
+        source_url: "https://huggingface.co/rednote-hilab/dots.tts-mf"
+        size: "~6GB"
+        auto_download: true
+        notes: "Official MeanFlow-distilled checkpoint for faster inference"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "(Mandarin; official also exposes YUE separately outside this matrix)" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "(Official PT tag is generic; upstream does not expose separate PT-BR/PT-PT tags and it may lean more European Portuguese than Brazilian Portuguese)" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "" }
+      native_long_form: { supported: false, notes: "(use suite chunking)" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(main env works; 2B-class model is not lightweight)" }
+      speed_performance: { supported: "partial", notes: "Moderate; mf variant is faster" }
+
   - id: moss-tts
     name: MOSS-TTS
     models: "Local 1.7B, Delay 8B, TTSD 8B"
@@ -1508,6 +1586,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/echo-tts-base/"
     auto_download: "✅"
     notes: "~7.1GB total (base + dac); CC-BY-NC-SA"
+  - engine: "Dots TTS"
+    primary_model_path: "ComfyUI/models/TTS/dots_tts/"
+    auto_download: "✅"
+    notes: "Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder"
 
 model_layouts_markdown: |
   # Model Folder Layouts
@@ -1826,3 +1908,37 @@ model_layouts_markdown: |
 
   - Both components are required and auto-downloaded on first use.
   - License: CC-BY-NC-SA (non-commercial).
+
+  ## Dots TTS
+
+  ```text
+  ComfyUI/models/TTS/dots_tts/
+  ├── dots.tts-base/
+  ├── dots.tts-soar/
+  └── dots.tts-mf/
+  ```
+
+  Typical checkpoint contents:
+
+  ```text
+  ComfyUI/models/TTS/dots_tts/dots.tts-soar/
+  ├── added_tokens.json
+  ├── chat_template.jinja
+  ├── config.json
+  ├── latent_stats.pt
+  ├── llm_config.json
+  ├── merges.txt
+  ├── model.safetensors
+  ├── speaker_encoder.safetensors
+  ├── special_tokens_map.json
+  ├── tokenizer.json
+  ├── tokenizer_config.json
+  ├── vocab.json
+  └── vocoder.safetensors
+  ```
+
+  Notes:
+
+  - Downloads into a dedicated `dots_tts/` folder.
+  - Native sample rate is 48kHz.
+  - Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.

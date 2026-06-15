@@ -149,10 +149,57 @@ class HiggsAudioHandler(BaseEngineHandler):
         return result
 
 
+class DotsTTSHandler(BaseEngineHandler):
+    """Handler for Dots TTS, which needs explicit runtime teardown to free compile caches."""
+
+    def partially_unload(self, wrapper, device: str, memory_to_free: int) -> int:
+        if not wrapper._is_loaded_on_gpu:
+            print(f"⚠️ Skipping unload: model already marked as not on GPU")
+            return 0
+
+        model = wrapper._model_ref() if wrapper._model_ref else None
+        if model is None:
+            print(f"⚠️ Model reference is None, cannot unload")
+            return 0
+
+        try:
+            if hasattr(model, "unload_runtime"):
+                model.unload_runtime()
+                print(
+                    f"🔄 Unloaded {wrapper.model_info.model_type} model "
+                    f"({wrapper.model_info.engine}) runtime and freed "
+                    f"{wrapper._memory_size // 1024 // 1024}MB"
+                )
+            elif hasattr(model, "to"):
+                model.to(device)
+                print(
+                    f"🔄 Moved {wrapper.model_info.model_type} model "
+                    f"({wrapper.model_info.engine}) to {device}, freed "
+                    f"{wrapper._memory_size // 1024 // 1024}MB"
+                )
+
+            wrapper.current_device = device
+            wrapper._is_loaded_on_gpu = False
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                if hasattr(torch.cuda, "ipc_collect"):
+                    try:
+                        torch.cuda.ipc_collect()
+                    except Exception:
+                        pass
+            gc.collect()
+            return wrapper._memory_size
+        except Exception as e:
+            print(f"⚠️ Error unloading {wrapper.model_info.engine} model: {e}")
+            return 0
+
+
 # Engine registry
 _ENGINE_HANDLERS = {
     'chatterbox': BaseEngineHandler(),
     'chatterbox_official_23lang': BaseEngineHandler(),
+    'dots_tts': DotsTTSHandler(),
     'f5tts': BaseEngineHandler(),
     'echo_tts': BaseEngineHandler(),
     'higgs_audio': HiggsAudioHandler(),

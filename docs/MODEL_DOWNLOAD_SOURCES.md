@@ -112,6 +112,14 @@ Use this as the canonical list of model repositories/links for offline setup.
 | echo-tts-base (model + PCA state) | [jordand/echo-tts-base](https://huggingface.co/jordand/echo-tts-base) | ~5.3GB | ✅ | pytorch_model.safetensors + pca_state.safetensors |
 | fish-s1-dac-min (audio codec) | [jordand/fish-s1-dac-min](https://huggingface.co/jordand/fish-s1-dac-min) | ~1.8GB | ✅ | pytorch_model.safetensors — audio codec required by Echo-TTS |
 
+## Dots TTS
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| dots.tts-base | [rednote-hilab/dots.tts-base](https://huggingface.co/rednote-hilab/dots.tts-base) | ~6GB | ✅ | Official base checkpoint with tokenizer, vocoder, speaker encoder, and latent stats |
+| dots.tts-soar | [rednote-hilab/dots.tts-soar](https://huggingface.co/rednote-hilab/dots.tts-soar) | ~6GB | ✅ | Official SOAR checkpoint for higher-quality zero-shot cloning |
+| dots.tts-mf | [rednote-hilab/dots.tts-mf](https://huggingface.co/rednote-hilab/dots.tts-mf) | ~6GB | ✅ | Official MeanFlow-distilled checkpoint for faster inference |
+
 ## MOSS-TTS
 
 | Component | Source | Size | Auto-Download | Notes |

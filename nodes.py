@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "5.0.0"
+VERSION = "5.1.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -160,6 +160,14 @@ try:
 except Exception as e:
     print(f"❌ Echo-TTS Engine failed: {e}")
     ECHO_TTS_ENGINE_AVAILABLE = False
+
+try:
+    dots_tts_engine_module = load_node_module("dots_tts_engine_node", "engines/dots_tts_engine_node.py")
+    DotsTTSEngineNode = dots_tts_engine_module.DotsTTSEngineNode
+    DOTS_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Dots TTS Engine failed: {e}")
+    DOTS_TTS_ENGINE_AVAILABLE = False
 
 try:
     chatterbox_official_23lang_engine_module = load_node_module("chatterbox_official_23lang_engine_node", "engines/chatterbox_official_23lang_engine_node.py")
@@ -596,6 +604,10 @@ if GRANITE_ASR_ENGINE_AVAILABLE:
 if ECHO_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["EchoTTSEngineNode"] = EchoTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["EchoTTSEngineNode"] = "⚙️ Echo-TTS Engine"
+
+if DOTS_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["DotsTTSEngineNode"] = DotsTTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["DotsTTSEngineNode"] = "⚙️ Dots TTS Engine"
 
 if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode

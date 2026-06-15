@@ -22,6 +22,10 @@ PARAMETER_ALIASES = {
     'cfg_weight': 'cfg',  # cfg_weight alias -> cfg (more universal)
     'cfgweight': 'cfg',
     'num_steps': 'num_steps',
+    'guidance_scale': 'guidance_scale',
+    'guidance': 'guidance_scale',
+    'speaker_scale': 'speaker_scale',
+    'speaker_guidance': 'speaker_scale',
     'cfg_text': 'cfg_scale_text',
     'cfg_scale_text': 'cfg_scale_text',
     'cfg_speaker': 'cfg_scale_speaker',
@@ -55,6 +59,8 @@ PARAMETER_ALIASES = {
     'tokens': 'duration_tokens',
     'duration_tokens': 'duration_tokens',
     'max_new_tokens': 'max_new_tokens',
+    'max_generate_length': 'max_generate_length',
+    'max_audio_patches': 'max_generate_length',
     'n_vq': 'n_vq_for_inference',
     'n_vq_for_inference': 'n_vq_for_inference',
     'instruction': 'instruction',
@@ -72,6 +78,7 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
+        'dots_tts',
         'echo_tts', 'moss_tts'
     },
     'temperature': {
@@ -82,7 +89,13 @@ PARAMETER_ENGINES = {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang'
     },
     'num_steps': {
-        'echo_tts'
+        'echo_tts', 'dots_tts'
+    },
+    'guidance_scale': {
+        'dots_tts'
+    },
+    'speaker_scale': {
+        'dots_tts'
     },
     'cfg_scale_text': {
         'echo_tts'
@@ -150,6 +163,9 @@ PARAMETER_ENGINES = {
     'max_new_tokens': {
         'higgs_audio_v3', 'moss_tts'
     },
+    'max_generate_length': {
+        'dots_tts'
+    },
     'n_vq_for_inference': {
         'moss_tts'
     },
@@ -179,6 +195,8 @@ PARAMETER_VALIDATION = {
     'temperature': (float, 0.1, 2.0, "Randomness/creativity control (lower=more deterministic)"),
     'cfg': (float, 0.0, 20.0, "Classifier-free guidance strength"),
     'num_steps': (int, 1, 200, "Number of inference steps"),
+    'guidance_scale': (float, 0.0, 5.0, "Dots TTS classifier-free guidance scale"),
+    'speaker_scale': (float, 0.0, 5.0, "Dots TTS speaker conditioning scale"),
     'cfg_scale_text': (float, 0.0, 20.0, "CFG scale for text guidance (Echo-TTS)"),
     'cfg_scale_speaker': (float, 0.0, 20.0, "CFG scale for speaker guidance (Echo-TTS)"),
     'cfg_min_t': (float, 0.0, 1.0, "CFG minimum t value (Echo-TTS)"),
@@ -201,6 +219,7 @@ PARAMETER_VALIDATION = {
     'audio_repetition_penalty': (float, 0.5, 3.0, "MOSS-TTS audio repetition penalty"),
     'duration_tokens': (int, 0, 8192, "MOSS-TTS duration hint in audio tokens"),
     'max_new_tokens': (int, 64, 16384, "Maximum generated tokens"),
+    'max_generate_length': (int, 32, 1024, "Dots TTS maximum audio patch budget"),
     'n_vq_for_inference': (int, 0, 32, "MOSS-TTS Local Transformer RVQ layers for inference"),
     'instruction': (str, None, None, "MOSS-TTS whole-segment instruction"),
     'quality': (str, None, None, "MOSS-TTS whole-segment quality hint"),
@@ -217,6 +236,8 @@ PARAMETER_NODE_KEYS = {
     'temperature': 'temperature',
     'cfg': {'default': 'cfg_weight', 'f5tts': 'cfg_strength'},  # Engine-specific mapping
     'num_steps': 'num_steps',
+    'guidance_scale': 'guidance_scale',
+    'speaker_scale': 'speaker_scale',
     'cfg_scale_text': 'cfg_scale_text',
     'cfg_scale_speaker': 'cfg_scale_speaker',
     'cfg_min_t': 'cfg_min_t',
@@ -239,6 +260,7 @@ PARAMETER_NODE_KEYS = {
     'audio_repetition_penalty': 'audio_repetition_penalty',
     'duration_tokens': 'duration_tokens',
     'max_new_tokens': 'max_new_tokens',
+    'max_generate_length': 'max_generate_length',
     'n_vq_for_inference': 'n_vq_for_inference',
     'instruction': 'instruction',
     'quality': 'quality',

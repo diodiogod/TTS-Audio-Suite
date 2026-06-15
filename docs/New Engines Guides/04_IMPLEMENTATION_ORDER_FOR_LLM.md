@@ -43,6 +43,7 @@ Use Qwen3-TTS for:
 - SRT processor structure that reuses the main TTS processor for generation.
 - Interrupt handling.
 - Progress feedback.
+- Console observability parity, such as input-text echo and useful live generation progress.
 - Unified model loading.
 
 Secondary reference:
