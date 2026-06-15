@@ -39,7 +39,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
-| **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB each | Zero-shot voice cloning, Official auto language detect / tags |
+| **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 20-language generation, Long-form generation (TTSD/Delay) |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 

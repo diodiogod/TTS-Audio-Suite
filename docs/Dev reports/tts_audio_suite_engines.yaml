@@ -1145,7 +1145,7 @@ engines:
   - id: dots-tts
     name: Dots TTS
     models: "dots.tts-base, dots.tts-soar, dots.tts-mf"
-    size: "~6GB each"
+    size: "~6GB"
     license: "Apache-2.0"
     commercial: true
 
@@ -1157,8 +1157,7 @@ engines:
       training: false
 
     special_features:
-      - "Zero-shot voice cloning"
-      - "Official auto language detect / tags"
+      - "Official auto language detect / language control"
       - "SOAR and MeanFlow distilled variants"
 
     model_sources:
