@@ -108,6 +108,77 @@ def _inherit_base_site_packages(runtime_dir: Path, source_python: str) -> Option
     return base_site_packages
 
 
+def _run_bootstrap_command(command: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        command,
+        cwd=str(PROJECT_ROOT),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _ensure_virtualenv_available(source_python: str) -> None:
+    probe = subprocess.run(
+        [source_python, "-m", "virtualenv", "--version"],
+        cwd=str(PROJECT_ROOT),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode == 0:
+        return
+
+    print("🔧 Installing virtualenv in base runtime for isolated-runtime bootstrap fallback")
+    install = subprocess.run(
+        [source_python, "-m", "pip", "install", "virtualenv"],
+        cwd=str(PROJECT_ROOT),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if install.returncode != 0:
+        stderr = (install.stderr or "").strip()
+        stdout = (install.stdout or "").strip()
+        details = stderr or stdout or "unknown error"
+        raise RuntimeError(
+            "Failed to install virtualenv for isolated-runtime bootstrap fallback. "
+            f"Command: {source_python} -m pip install virtualenv\n{details}"
+        )
+
+
+def _create_runtime_environment(runtime_dir: Path, source_python: str) -> None:
+    venv_command = [source_python, "-m", "venv", str(runtime_dir)]
+    venv_result = _run_bootstrap_command(venv_command)
+    if venv_result.returncode == 0:
+        return
+
+    print("⚠️ Standard venv bootstrap failed; trying virtualenv fallback")
+    shutil.rmtree(runtime_dir, ignore_errors=True)
+    _ensure_virtualenv_available(source_python)
+
+    virtualenv_command = [source_python, "-m", "virtualenv", str(runtime_dir)]
+    virtualenv_result = _run_bootstrap_command(virtualenv_command)
+    if virtualenv_result.returncode == 0:
+        return
+
+    stderr = (virtualenv_result.stderr or "").strip()
+    stdout = (virtualenv_result.stdout or "").strip()
+    fallback_details = stderr or stdout or "unknown error"
+
+    original_stderr = (venv_result.stderr or "").strip()
+    original_stdout = (venv_result.stdout or "").strip()
+    original_details = original_stderr or original_stdout or "unknown error"
+
+    raise RuntimeError(
+        "Failed to create isolated runtime environment.\n"
+        f"Primary command: {' '.join(venv_command)}\n"
+        f"Primary error: {original_details}\n"
+        f"Fallback command: {' '.join(virtualenv_command)}\n"
+        f"Fallback error: {fallback_details}"
+    )
+
+
 def ensure_runtime(
     profile: RuntimeProfile,
     *,
@@ -140,11 +211,7 @@ def ensure_runtime(
         f"(reuses heavy base packages like PyTorch from the main runtime when configured)"
     )
 
-    subprocess.run(
-        [source_python, "-m", "venv", str(runtime_dir)],
-        cwd=str(PROJECT_ROOT),
-        check=True,
-    )
+    _create_runtime_environment(runtime_dir, source_python)
 
     subprocess.run(
         [str(python_path), "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],

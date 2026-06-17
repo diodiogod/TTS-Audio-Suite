@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.1] - 2026-06-17
+
+### Added
+
+- Add a virtualenv fallback when the bundled Python cannot create isolated runtimes with venv
+- Keep isolated runtimes reusing the main ComfyUI Torch and other heavy dependencies when inheritance succeeds
+
+### Changed
+
+- Improve runtime bootstrap errors so users can see why environment creation failed
+
+### Fixed
+
+- Fix Unified ASR isolated runtime setup on portable ComfyUI
+- Fix Qwen3 ASR and Granite forced-aligner workflows failing before model startup on some portable Windows installs
 ## [5.1.0] - 2026-06-15
 
 ### Added
