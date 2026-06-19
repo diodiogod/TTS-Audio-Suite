@@ -11,7 +11,7 @@ class OmniVoiceGenerationProgress:
     """Render real iterative decode progress with it/s."""
 
     def __init__(self, total_steps: int):
-        self.total_steps = max(int(total_steps or 0), 0)
+        self.total_steps = max(1, int(total_steps or 1))
         self.start_time = time.time()
         self.last_print_time = self.start_time
         self.last_step = 0
@@ -20,7 +20,12 @@ class OmniVoiceGenerationProgress:
     def update(self, current_step: int, force: bool = False):
         current_step = max(0, min(int(current_step), self.total_steps))
         current_time = time.time()
-        if not force and current_time - self.last_print_time < 0.25:
+        should_print = (
+            force
+            or current_step == 1
+            or current_time - self.last_print_time >= 0.5
+        )
+        if not should_print:
             return
 
         delta_steps = current_step - self.last_step
@@ -32,6 +37,7 @@ class OmniVoiceGenerationProgress:
 
         bar_width = 12
         filled = int(bar_width * current_step / self.total_steps) if self.total_steps > 0 else 0
+        filled = min(filled, bar_width)
         progress_bar = f"[{'█' * filled}{'░' * (bar_width - filled)}] {current_step}/{self.total_steps}"
         print(
             f"\r   Progress: {progress_bar} | {its:.1f} it/s | {elapsed:.0f}s | ETA {eta:.0f}s      ",

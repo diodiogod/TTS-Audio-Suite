@@ -27,17 +27,23 @@ from utils.device import resolve_torch_device
 
 @contextmanager
 def _suppress_transformers_logs():
-    logger_names = ("transformers", "transformers.modeling_utils", "transformers.tokenization_utils_base")
-    original_levels = {}
+    logger = logging.getLogger("transformers.integrations.tensor_parallel")
+
+    class _TensorParallelPlanFilter(logging.Filter):
+        _suppressed_prefixes = (
+            "The following layers were not sharded:",
+            "The following TP rules were not applied on any of the layers:",
+        )
+
+        def filter(self, record):
+            return not record.getMessage().startswith(self._suppressed_prefixes)
+
+    message_filter = _TensorParallelPlanFilter()
+    logger.addFilter(message_filter)
     try:
-        for name in logger_names:
-            logger = logging.getLogger(name)
-            original_levels[name] = logger.level
-            logger.setLevel(logging.WARNING)
         yield
     finally:
-        for name, level in original_levels.items():
-            logging.getLogger(name).setLevel(level)
+        logger.removeFilter(message_filter)
 
 
 class OmniVoiceEngine:
