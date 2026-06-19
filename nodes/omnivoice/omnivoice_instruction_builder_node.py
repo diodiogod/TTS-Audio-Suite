@@ -96,6 +96,11 @@ class OmniVoiceInstructionBuilderNode:
                     "default": "English",
                     "tooltip": "Output language mode for the builder UI and emitted instruct string. Hidden by the custom builder UI."
                 }),
+                "instruct_text": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "Hidden raw output text emitted by the visual builder UI."
+                }),
             }
         }
 
@@ -118,7 +123,12 @@ class OmniVoiceInstructionBuilderNode:
         accent: str,
         dialect: str,
         output_language: str,
+        instruct_text: str,
     ) -> Tuple[str]:
+        instruct_text = str(instruct_text or "").strip()
+        if instruct_text:
+            return (instruct_text,)
+
         gender = _normalize_value(gender)
         age = _normalize_value(age)
         pitch = _normalize_value(pitch)
