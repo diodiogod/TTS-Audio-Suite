@@ -94,6 +94,7 @@ class EchoTTSProcessor:
         silence_between_chunks_ms: int = 100,
         enable_audio_cache: bool = True,
         apply_edit_postprocessing: bool = True,
+        interrupt_callback = None,
     ) -> List[Dict[str, Any]]:
         """
         Process text and generate Echo-TTS segment records.
@@ -142,6 +143,8 @@ class EchoTTSProcessor:
         try:
             for block_idx, seg in enumerate(active_segments):
                 self.adapter.set_current_block(block_idx)
+                if interrupt_callback:
+                    interrupt_callback(character=seg.character)
 
                 segment_text = (seg.text or "").strip()
                 segment_params = seg.parameters if seg.parameters else {}

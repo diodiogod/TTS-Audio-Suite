@@ -59,9 +59,9 @@ class GraniteASREngineNode(BaseTTSNode):
         ]
         return {
             "required": {
-                "model_name": (["granite-4.0-1b-speech"], {
-                    "default": "granite-4.0-1b-speech",
-                    "tooltip": "Granite speech model:\n• granite-4.0-1b-speech: IBM 1B speech model for transcription and speech translation\n\nThis engine is ASR-only. It plugs into ✏️ ASR Transcribe like Qwen ASR does, but it does not generate native timestamps."
+                "model_name": (["granite-speech-4.1-2b", "granite-speech-4.1-2b-plus", "granite-4.0-1b-speech"], {
+                    "default": "granite-speech-4.1-2b",
+                    "tooltip": "Granite speech model:\n• granite-speech-4.1-2b: IBM 2B speech model (latest default, ASR/AST, supports Japanese)\n• granite-speech-4.1-2b-plus: IBM 2B speech model (ASR with speaker attribution and native timestamps, excludes Japanese)\n• granite-4.0-1b-speech: IBM 1B speech model\n\nThis engine is ASR-only. It plugs into ✏️ ASR Transcribe like Qwen ASR does, but it does not generate native timestamps."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",

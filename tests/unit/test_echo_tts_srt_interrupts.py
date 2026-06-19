@@ -80,6 +80,18 @@ class TestEchoTTSSRTInterruptHandling:
         processor = EchoTTSSRTProcessor.__new__(EchoTTSSRTProcessor)
         processor.config = {}
 
+        class FakeAdapter:
+            def start_job(self, *args, **kwargs): pass
+            def set_current_block(self, *args, **kwargs): pass
+            def complete_block(self, *args, **kwargs): pass
+            def end_job(self, *args, **kwargs): pass
+
+        class FakeProcessor:
+            def __init__(self):
+                self.adapter = FakeAdapter()
+
+        processor._tts_processor = FakeProcessor()
+
         subtitle = SimpleNamespace(
             text="Hello world",
             sequence=1,
@@ -88,8 +100,9 @@ class TestEchoTTSSRTInterruptHandling:
             duration=1.0,
         )
 
+        from utils.text.character_parser import character_parser
         monkeypatch.setattr(
-            echo_tts_srt_module.character_parser,
+            character_parser,
             "split_by_character",
             lambda _text, include_language=False: [],
             raising=True,
@@ -115,13 +128,24 @@ class TestEchoTTSSRTInterruptHandling:
         processor.config = {}
 
         class FakeAdapter:
-            def update_config(self, _config):
-                return None
+            def start_job(self, *args, **kwargs): pass
+            def set_current_block(self, *args, **kwargs): pass
+            def complete_block(self, *args, **kwargs): pass
+            def end_job(self, *args, **kwargs): pass
+
+        class FakeProcessor:
+            def __init__(self):
+                self.adapter = FakeAdapter()
 
             def process_text(self, **_kwargs):
-                return echo_tts_srt_module.torch.zeros(1, 64)
+                interrupt_cb = _kwargs.get("interrupt_callback")
+                if interrupt_cb:
+                    # Simulate processing segment
+                    interrupt_cb(character="narrator")
+                    interrupt_cb(character="narrator")
+                return [{"waveform": echo_tts_srt_module.torch.zeros(1, 64), "edit_tags": []}]
 
-        processor.processor = FakeAdapter()
+        processor._tts_processor = FakeProcessor()
 
         subtitle = SimpleNamespace(
             text="Hello world",
@@ -133,14 +157,15 @@ class TestEchoTTSSRTInterruptHandling:
 
         segment = SimpleNamespace(character="narrator", text="Hello world", parameters={})
 
+        from utils.text.character_parser import character_parser
         monkeypatch.setattr(
-            echo_tts_srt_module.character_parser,
+            character_parser,
             "split_by_character",
             lambda _text, include_language=False: [],
             raising=True,
         )
         monkeypatch.setattr(
-            echo_tts_srt_module.character_parser,
+            character_parser,
             "parse_text_segments",
             lambda _text: [segment],
             raising=True,

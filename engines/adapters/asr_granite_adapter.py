@@ -48,7 +48,11 @@ class GraniteASREngineAdapter:
     def _normalize_language(self, language: Optional[str]) -> Optional[str]:
         if not language or str(language).lower() == "auto":
             return None
-        return self.GRANITE_LANGUAGES.get(str(language).strip().lower())
+        normalized = self.GRANITE_LANGUAGES.get(str(language).strip().lower())
+        model_name = self.config.get("model_name", "")
+        if normalized == "Japanese" and "plus" in str(model_name).lower():
+            return None
+        return normalized
 
     def _get_model(self):
         from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
@@ -63,8 +67,8 @@ class GraniteASREngineAdapter:
         config = ModelLoadConfig(
             engine_name="granite_asr",
             model_type="asr",
-            model_name=self.config.get("model_name", "granite-4.0-1b-speech"),
-            model_path=self.config.get("model_name", "granite-4.0-1b-speech"),
+            model_name=self.config.get("model_name", "granite-speech-4.1-2b"),
+            model_path=self.config.get("model_name", "granite-speech-4.1-2b"),
             device=device,
             additional_params={
                 "precision": self.config.get("dtype", "auto"),
@@ -261,15 +265,21 @@ class GraniteASREngineAdapter:
         warnings: List[str] = []
         notes: List[str] = []
         normalized_language = self._normalize_language(req.language)
+        model_name = self.config.get("model_name", "granite-speech-4.1-2b")
         target_language = self.config.get("asr_translate_target_language", "English")
         translate_instruction_override = str(
             self.config.get("asr_translate_instruction_override", DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE)
             or DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE
         ).strip()
         if req.language and str(req.language).lower() != "auto" and not normalized_language:
-            warnings.append(
-                f"Granite received unsupported language hint '{req.language}'. Falling back to Granite auto language handling."
-            )
+            if str(req.language).lower() == "japanese" and "plus" in str(model_name).lower():
+                warnings.append(
+                    "Granite Speech Plus variant does not support Japanese. Falling back to Granite auto language handling."
+                )
+            else:
+                warnings.append(
+                    f"Granite received unsupported language hint '{req.language}'. Falling back to Granite auto language handling."
+                )
         if req.task == "translate":
             self._append_once(
                 notes,
