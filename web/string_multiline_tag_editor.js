@@ -918,6 +918,9 @@ function addStringMultilineTagEditorWidget(node) {
         if (!startPoint || !endPoint) {
             return;
         }
+        if (!document.contains(startPoint.node) || !document.contains(endPoint.node)) {
+            return;
+        }
 
         range.setStart(startPoint.node, startPoint.offset);
         range.setEnd(endPoint.node, endPoint.offset);
@@ -1559,14 +1562,15 @@ function addStringMultilineTagEditorWidget(node) {
 
     const originalOnSerialize = node.onSerialize?.bind(node);
     node.onSerialize = function(info) {
-        const result = originalOnSerialize ? originalOnSerialize(info) : info;
-        const serialized = result || info || {};
+        if (originalOnSerialize) {
+            originalOnSerialize(info);
+        }
+        const serialized = info || {};
         serialized.properties = serialized.properties || {};
         serialized.properties.ttsTagEditorInlineEngine = state.activeInlineTagEngine || node.properties?.ttsTagEditorInlineEngine || "step_audio_editx";
         if (this.widgets && this.widgets.length > 0) {
             serialized.widgets_values = this.widgets.map((w) => w.value);
         }
-        return serialized;
     };
 
     // Set initial node size on creation

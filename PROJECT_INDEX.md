@@ -105,6 +105,7 @@
 
 ### Shared / Special Nodes
 - `nodes/shared/character_voices_node.py` - Character voice management (NARRATOR_VOICE output)
+- `nodes/omnivoice/omnivoice_instruction_builder_node.py` - OmniVoice voice-design instruction helper with custom visual builder UI
 - `nodes/text/phoneme_text_normalizer_node.py` - Multilingual text preprocessing
 - `nodes/text/asr_punctuation_truecase_node.py` - Standalone punctuation / truecase cleanup for raw ASR text
 - `nodes/subtitles/text_to_srt_builder_node.py` - Build SRT from transcript text plus timing data, or estimate timings from plain text

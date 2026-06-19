@@ -189,19 +189,14 @@ app.registerExtension({
             // Additional widget persistence backup - ensure values persist on workflow load
             const onSerialize = nodeType.prototype.onSerialize;
             nodeType.prototype.onSerialize = function(info) {
-                const result = onSerialize ? onSerialize.apply(this, arguments) : undefined;
-                
-                // Ensure widget values are properly serialized
-                if (!result) {
-                    return result;
+                if (onSerialize) {
+                    onSerialize.apply(this, arguments);
                 }
-                
+
                 // Force widget values to be saved correctly
                 if (this.widgets && this.widgets.length > 0) {
-                    result.widgets_values = this.widgets.map(w => w.value);
+                    info.widgets_values = this.widgets.map(w => w.value);
                 }
-                
-                return result;
             };
             
             // Override onExecuted to capture data immediately

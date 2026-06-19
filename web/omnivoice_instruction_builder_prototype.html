@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniVoice Instruction Builder Prototype</title>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(19, 165, 213, 0.12), transparent 38%),
+                linear-gradient(180deg, #15181d 0%, #0e1014 100%);
+            color: #dce7f7;
+        }
+
+        .shell {
+            min-height: 100vh;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 16px;
+            border: 1px solid rgba(124, 156, 186, 0.24);
+            border-radius: 14px;
+            background: rgba(12, 15, 20, 0.82);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #f3f8ff;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #93a4bc;
+        }
+
+        .viewport {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 4px 0 24px;
+        }
+
+        #prototype-root {
+            width: min(1500px, 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="toolbar">
+            <div class="title">📐 OmniVoice Instruction Builder Prototype</div>
+            <div class="hint">Refresh this page after each JS change. It loads the same shared module used by the ComfyUI widget.</div>
+        </div>
+        <div class="viewport">
+            <div id="prototype-root"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { mountOmniVoiceInstructionBuilderPrototype } from "./omnivoice_instruction_builder_shared.js";
+
+        const root = document.getElementById("prototype-root");
+        mountOmniVoiceInstructionBuilderPrototype(root, {
+            initialState: {
+                gender: "male",
+                age: "young adult",
+                pitch: "moderate pitch",
+                style: "whisper",
+                accent: "american accent",
+                dialect: "",
+            },
+        });
+    </script>
+</body>
+</html>
