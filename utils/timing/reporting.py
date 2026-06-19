@@ -25,6 +25,39 @@ class SRTReportGenerator:
             if current.end_time > next_sub.start_time:
                 overlapping_segments.add(i)
         return overlapping_segments
+
+    @staticmethod
+    def _get_native_duration_summary(adjustments: List[Dict[str, Any]]) -> List[str]:
+        native_adjustments = [
+            adj for adj in adjustments
+            if adj.get("native_duration_targeting_enabled")
+            and adj.get("native_requested_duration") is not None
+            and adj.get("pre_timing_generated_duration") is not None
+        ]
+        if not native_adjustments:
+            return []
+
+        abs_errors = [
+            abs(adj["pre_timing_generated_duration"] - adj["native_requested_duration"])
+            for adj in native_adjustments
+        ]
+        signed_errors = [
+            adj["pre_timing_generated_duration"] - adj["native_requested_duration"]
+            for adj in native_adjustments
+        ]
+
+        avg_abs_error = sum(abs_errors) / len(abs_errors)
+        max_abs_error = max(abs_errors)
+        avg_signed_error = sum(signed_errors) / len(signed_errors)
+
+        return [
+            "",
+            "Native duration targeting summary:",
+            f"  Segments using native targeting: {len(native_adjustments)}/{len(adjustments)}",
+            f"  Average pre-timing duration error: {avg_signed_error:+.3f}s",
+            f"  Average absolute pre-timing error: {avg_abs_error:.3f}s",
+            f"  Maximum absolute pre-timing error: {max_abs_error:.3f}s",
+        ]
     
     def generate_timing_report(self, subtitles: List, adjustments: List[Dict], timing_mode: str, has_original_overlaps: bool = False, mode_switched: bool = False, original_mode: str = None, stretch_method: str = None) -> str:
         """Generate detailed timing report with original vs generated overlap distinction"""
@@ -56,6 +89,9 @@ No segments were processed due to immediate interruption.
             f"Total subtitles: {len(subtitles)}",
             f"Total duration: {subtitles[-1].end_time:.3f}s",
         ]
+
+        if any(adj.get("native_duration_targeting_enabled") for adj in adjustments):
+            report_lines.append("Native duration targeting: enabled")
 
         # Add stretcher method info if available
         if stretch_method and timing_mode == "stretch_to_fit":
@@ -236,6 +272,7 @@ No segments were processed due to immediate interruption.
                 summary_lines.append(f"  Perfect timing match - no gaps or overlaps")
             
             report_lines.extend(summary_lines)
+            report_lines.extend(self._get_native_duration_summary(adjustments))
         elif timing_mode == "concatenate":
             # Summary for concatenate mode
             total_original_duration = sum(adj.get('original_srt_duration', 0) for adj in adjustments)
@@ -258,6 +295,7 @@ No segments were processed due to immediate interruption.
                 f"  Audio quality: Natural (no stretching or padding applied)"
             ]
             report_lines.extend(summary_lines)
+            report_lines.extend(self._get_native_duration_summary(adjustments))
         elif timing_mode == "smart_natural":
             # Define the same threshold used in smart timing processing
             INSIGNIFICANT_TRUNCATION_THRESHOLD = 0.05
@@ -277,6 +315,7 @@ No segments were processed due to immediate interruption.
                 f"  Segments truncated: {total_truncated}/{len(adjustments)}",
             ]
             report_lines.extend(summary_lines)
+            report_lines.extend(self._get_native_duration_summary(adjustments))
         else:
             total_stretch_needed = sum(1 for adj in adjustments if adj['needs_stretching'])
             avg_stretch = np.mean([adj['stretch_factor'] for adj in adjustments])
@@ -293,6 +332,7 @@ No segments were processed due to immediate interruption.
                 summary_lines.append(f"  Original SRT overlaps: {total_original_overlaps} segments (expected behavior - segments will overlap as intended)")
             
             report_lines.extend(summary_lines)
+            report_lines.extend(self._get_native_duration_summary(adjustments))
         
         return "\n".join(report_lines)
     

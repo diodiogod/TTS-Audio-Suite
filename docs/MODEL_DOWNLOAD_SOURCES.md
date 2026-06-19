@@ -120,6 +120,12 @@ Use this as the canonical list of model repositories/links for offline setup.
 | dots.tts-soar | [rednote-hilab/dots.tts-soar](https://huggingface.co/rednote-hilab/dots.tts-soar) | ~6GB | ✅ | Official SOAR checkpoint for higher-quality zero-shot cloning |
 | dots.tts-mf | [rednote-hilab/dots.tts-mf](https://huggingface.co/rednote-hilab/dots.tts-mf) | ~6GB | ✅ | Official MeanFlow-distilled checkpoint for faster inference |
 
+## OmniVoice
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| OmniVoice | [k2-fsa/OmniVoice](https://huggingface.co/k2-fsa/OmniVoice) | ~3.7GB | ✅ | Official main model including bundled audio_tokenizer assets |
+
 ## MOSS-TTS
 
 | Component | Source | Size | Auto-Download | Notes |

@@ -135,6 +135,10 @@ Hello! This is unified SRT TTS with character switching.
                     "default": 0, "min": 0, "max": 32, "step": 1,
                     "tooltip": "Parallel processing workers. 0 = sequential (recommended), 2+ = streaming mode. Note: Streaming often slower than sequential mode. F5-TTS doesn't support streaming yet."
                 }),
+                "use_native_duration_targeting": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "When enabled, supported engines like OmniVoice use the model's native duration parameter for each subtitle during generation. This helps the model aim closer to the subtitle length before the suite applies final timing adjustment, which can reduce stretching/compression and sound more natural."
+                }),
             }
         }
 
@@ -207,6 +211,10 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['precision'] = config.get('precision', 'auto')
                 stable_params['optimize'] = config.get('optimize', False)
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
+
+            if engine_type == "omnivoice":
+                stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
+                stable_params['dtype'] = config.get('dtype', 'auto')
 
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
@@ -536,6 +544,51 @@ Hello! This is unified SRT TTS with character switching.
                             raise InterruptedError("Dots TTS SRT processing interrupted by user")
 
                 engine_instance = DotsTTSSRTWrapper(config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
+            elif engine_type == "omnivoice":
+                omnivoice_srt_processor_path = os.path.join(nodes_dir, "omnivoice", "omnivoice_srt_processor.py")
+                omnivoice_srt_spec = importlib.util.spec_from_file_location("omnivoice_srt_processor_module", omnivoice_srt_processor_path)
+                omnivoice_srt_module = importlib.util.module_from_spec(omnivoice_srt_spec)
+                omnivoice_srt_spec.loader.exec_module(omnivoice_srt_module)
+
+                OmniVoiceSRTProcessor = omnivoice_srt_module.OmniVoiceSRTProcessor
+
+                class OmniVoiceSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = OmniVoiceSRTProcessor(self, config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def process_with_error_handling(self, func):
+                        try:
+                            return func()
+                        except Exception as e:
+                            raise e
+
+                    def format_audio_output(self, audio_tensor, sample_rate):
+                        if audio_tensor.is_cuda:
+                            audio_tensor = audio_tensor.cpu()
+                        if audio_tensor.dim() == 1:
+                            audio_tensor = audio_tensor.unsqueeze(0).unsqueeze(0)
+                        elif audio_tensor.dim() == 2:
+                            audio_tensor = audio_tensor.unsqueeze(0)
+                        return {"waveform": audio_tensor, "sample_rate": sample_rate}
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("OmniVoice SRT processing interrupted by user")
+
+                engine_instance = OmniVoiceSRTWrapper(config)
 
                 import time
                 self._cached_engine_instances[cache_key] = {
@@ -896,7 +949,10 @@ Hello! This is unified SRT TTS with character switching.
                     reference_text = ""  # No reference text available from direct audio
                     
                     print(f"📺 TTS SRT: Using direct audio input ({character_name})")
-                    print(f"⚠️ TTS SRT: Direct audio input has no reference text - F5-TTS engines will fail")
+                    print(
+                        "⚠️ TTS SRT: Direct audio input has no reference text - "
+                        "F5-TTS and OmniVoice cloning will fail"
+                    )
                     return None, audio_tensor, reference_text, character_name
             
             # Priority 2: narrator_voice dropdown (fallback)
@@ -929,7 +985,7 @@ Hello! This is unified SRT TTS with character switching.
                            seed: int, timing_mode: str, opt_narrator=None, enable_audio_cache: bool = True,
                            fade_for_StretchToFit: float = 0.01, max_stretch_ratio: float = 1.0,
                            min_stretch_ratio: float = 0.5, timing_tolerance: float = 2.0,
-                           batch_size: int = 0):
+                           batch_size: int = 0, use_native_duration_targeting: bool = False):
         """
         Generate SRT-timed speech using the selected TTS engine.
         This is a DELEGATION WRAPPER that preserves all original SRT functionality.
@@ -947,6 +1003,7 @@ Hello! This is unified SRT TTS with character switching.
             min_stretch_ratio: Minimum stretch ratio for smart_natural mode
             timing_tolerance: Timing tolerance for smart_natural mode
             batch_size: Number of parallel workers (0=sequential, 1+=streaming parallel)
+            use_native_duration_targeting: Inject subtitle durations into supported engines during generation
             
         Returns:
             Tuple of (audio_tensor, generation_info, timing_report, adjusted_srt)
@@ -975,6 +1032,15 @@ Hello! This is unified SRT TTS with character switching.
                 raise ValueError("TTS engine missing engine_type")
 
             print(f"📺 TTS SRT: Starting {engine_type} SRT generation")
+
+            native_duration_targeting_active = bool(
+                use_native_duration_targeting and engine_type == "omnivoice"
+            )
+            if use_native_duration_targeting and not native_duration_targeting_active:
+                print(
+                    f"ℹ️ Native duration targeting is currently supported only for OmniVoice in TTS SRT. "
+                    f"Ignoring it for engine '{engine_type}'."
+                )
             
             # Get voice reference (opt_narrator takes priority)
             audio_path, audio_tensor, reference_text, character_name = self._get_voice_reference(opt_narrator, narrator_voice)
@@ -984,6 +1050,11 @@ Hello! This is unified SRT TTS with character switching.
                 raise ValueError(
                     "F5-TTS requires reference text. When using direct audio input, "
                     "please use Character Voices node instead, which provides both audio and text."
+                )
+            if engine_type == "omnivoice" and (audio_tensor is not None or audio_path) and not reference_text.strip():
+                raise ValueError(
+                    "OmniVoice voice cloning requires reference text. "
+                    "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
                 )
             
             # Create proper engine SRT node instance to preserve ALL functionality
@@ -1166,6 +1237,32 @@ Hello! This is unified SRT TTS with character switching.
                     'max_stretch_ratio': max_stretch_ratio,
                     'min_stretch_ratio': min_stretch_ratio,
                     'timing_tolerance': timing_tolerance
+                }
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text if reference_text else "",
+                    }
+
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache
+                )
+
+            elif engine_type == "omnivoice":
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance,
+                    'use_native_duration_targeting': native_duration_targeting_active,
                 }
 
                 voice_mapping = {}

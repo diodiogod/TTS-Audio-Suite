@@ -55,7 +55,6 @@ categories:
         languages:
           - "47 languages"
         notes: "Heavier multilingual fallback with the widest language coverage supported by the punctuators package."
-
 model_layouts_markdown: |
   # Auxiliary Model Layouts
 

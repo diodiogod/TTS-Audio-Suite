@@ -666,6 +666,8 @@ class TTSAudioInstaller:
         mac_audio_packages = [
             "soundfile>=0.12.0",
             "sounddevice>=0.4.0",
+            "pydub",
+            "webdataset",
         ]
         
         for package in mac_audio_packages:
@@ -1039,6 +1041,7 @@ class TTSAudioInstaller:
             "descript-audio-codec", # Pulls unnecessary deps, conflicts with protobuf
             "descript-audiotools",  # Forces protobuf downgrade from 6.x to 3.19.x
             "cached-path",          # Forces package downgrades
+            "omnivoice",            # Keep shared dependency resolution under our control
             "torchcrepe",          # Conflicts via librosa dependency
             # NOTE: onnxruntime moved to install_onnxruntime_with_gpu_support() for smart GPU detection
             "opencv-python",       # Forces numpy downgrade from 2.x to 1.26.x - dependencies pre-installed
