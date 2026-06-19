@@ -1,10 +1,12 @@
 const NODE_CLASS = "OmniVoiceInstructionBuilderNode";
-const PANEL_MIN_WIDTH = 900;
-const PANEL_MIN_HEIGHT = 620;
-const PANEL_WIDGET_MIN_HEIGHT = 520;
+const PANEL_MIN_WIDTH = 700;
+const PANEL_MIN_HEIGHT = 500;
+const PANEL_WIDGET_MIN_HEIGHT = 392;
+const PANEL_BOTTOM_PADDING = 12;
 const COLUMN_IDS = ["gender", "age", "pitch", "style", "language"];
 const RESTING_OFFSET_LIMIT = 26;
 const DRAG_START_THRESHOLD = 4;
+const PATH_BASE_STROKE_WIDTH = 2.2;
 
 const EN_TO_ZH = {
     "male": "男",
@@ -289,18 +291,22 @@ function ensureStyles(panel) {
     style.textContent = `
         .omnivoice-instruction-builder-panel {
             width: 100%;
+            height: 100%;
             color: #e3e2e6;
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             box-sizing: border-box;
             overflow: visible;
-            padding: 4px 2px 0 2px;
+            padding: 2px 2px 0 2px;
         }
         .ovib-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
             border: 1px solid rgba(152, 203, 255, 0.12);
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
             background: #17191d;
-            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.34);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
         }
         .ovib-topline {
             height: 2px;
@@ -309,85 +315,37 @@ function ensureStyles(panel) {
         .ovib-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 13px 16px;
+            gap: 8px;
+            padding: 9px 12px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             background: rgba(23, 25, 29, 0.96);
         }
         .ovib-header-spacer {
             flex: 1 1 auto;
         }
-        .ovib-header-icon {
-            position: relative;
-            width: 24px;
-            height: 16px;
-            flex: 0 0 auto;
-        }
-        .ovib-header-icon::before,
-        .ovib-header-icon::after {
-            content: "";
-            position: absolute;
-            border-radius: 999px;
-            background: linear-gradient(180deg, #98cbff 0%, #68c6ff 100%);
-            box-shadow: 0 0 10px rgba(152, 203, 255, 0.5);
-        }
-        .ovib-header-icon::before {
-            left: 1px;
-            top: 1px;
-            width: 4px;
-            height: 10px;
-        }
-        .ovib-header-icon::after {
-            right: 1px;
-            top: 5px;
-            width: 4px;
-            height: 10px;
-        }
-        .ovib-header-icon span {
-            position: absolute;
-            inset: 0;
-            display: block;
-        }
-        .ovib-header-icon span::before,
-        .ovib-header-icon span::after {
-            content: "";
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: #98cbff;
-            box-shadow: 0 0 8px rgba(152, 203, 255, 0.58);
-        }
-        .ovib-header-icon span::before {
-            left: 0;
-            top: 0;
-        }
-        .ovib-header-icon span::after {
-            right: 0;
-            bottom: 0;
-        }
-        .ovib-header-title {
-            margin: 0;
-            color: #f1f5f9;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 0.01em;
+        .ovib-header-preview {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex: 1 1 auto;
+            overflow: hidden;
         }
         .ovib-locale-switch {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            width: 112px;
+            gap: 6px;
+            width: 84px;
             flex: 0 0 auto;
         }
         .ovib-locale-chip {
-            min-height: 28px;
-            padding: 6px 8px;
-            border-radius: 9px;
+            min-height: 24px;
+            padding: 4px 6px;
+            border-radius: 7px;
             border: 1px solid rgba(121, 134, 155, 0.34);
             background: rgba(34, 37, 43, 0.92);
             color: #9fb0c6;
-            font-size: 10px;
+            font-size: 8px;
             font-weight: 700;
             letter-spacing: 0.04em;
             cursor: pointer;
@@ -405,14 +363,15 @@ function ensureStyles(panel) {
         }
         .ovib-body {
             position: relative;
-            min-height: 430px;
-            padding: 20px 18px 16px 18px;
+            flex: 1 1 auto;
+            min-height: 312px;
+            padding: 14px 12px 10px 12px;
             background:
                 linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                 radial-gradient(circle at top left, rgba(152, 203, 255, 0.08) 0%, transparent 34%),
                 #17191d;
-            background-size: 24px 24px, 24px 24px, auto, auto;
+            background-size: 18px 18px, 18px 18px, auto, auto;
         }
         .ovib-svg {
             position: absolute;
@@ -427,13 +386,13 @@ function ensureStyles(panel) {
             z-index: 1;
             display: grid;
             grid-template-columns: 1fr 1.1fr 1.1fr 0.9fr 1.15fr;
-            gap: 16px;
+            gap: 12px;
             align-items: start;
         }
         .ovib-column {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 7px;
             min-width: 0;
             position: relative;
             transition: transform 0.18s ease, z-index 0.18s ease;
@@ -454,35 +413,34 @@ function ensureStyles(panel) {
             margin: 0;
             text-align: center;
             color: #90a0b7;
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 600;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
         .ovib-subtitle {
-            font-size: 10px;
+            font-size: 8px;
             color: #79869b;
             margin-bottom: 2px;
         }
         .ovib-chip-list {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 7px;
         }
         .ovib-chip {
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 38px;
-            width: min(100%, 172px);
-            padding: 9px 12px;
+            min-height: 30px;
+            padding: 7px 8px;
             margin: 0 auto;
-            border-radius: 10px;
+            border-radius: 8px;
             border: 1px solid rgba(121, 134, 155, 0.38);
             background: rgba(41, 43, 49, 0.94);
-            color: #d7dfeb;
-            font-size: 11px;
+            color: #e6edf8;
+            font-size: 9px;
             font-weight: 600;
             text-align: center;
             line-height: 1.2;
@@ -490,19 +448,30 @@ function ensureStyles(panel) {
             user-select: none;
             box-sizing: border-box;
             cursor: pointer;
+            text-rendering: geometricPrecision;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+        }
+        .ovib-column:not(.ovib-language-column) .ovib-chip {
+            width: min(100%, 84px);
+            padding-left: 6px;
+            padding-right: 6px;
+        }
+        .ovib-language-column .ovib-chip {
+            width: min(100%, 108px);
         }
         .ovib-chip:hover:not(.is-disabled) {
             border-color: rgba(152, 203, 255, 0.44);
             background: rgba(50, 54, 62, 0.96);
-            color: #f8fbff;
+            color: #ffffff;
             transform: translateY(-1px);
         }
         .ovib-chip.is-active {
             border-color: rgba(152, 203, 255, 0.98);
             background: linear-gradient(180deg, rgba(47, 68, 92, 0.78) 0%, rgba(35, 52, 74, 0.68) 100%);
-            color: #9ed0ff;
-            box-shadow: 0 0 0 1px rgba(152, 203, 255, 0.18) inset, 0 0 16px rgba(64, 167, 255, 0.26);
+            color: #b7ddff;
+            box-shadow: 0 0 0 1px rgba(152, 203, 255, 0.16) inset, 0 0 12px rgba(64, 167, 255, 0.2);
         }
         .ovib-chip.is-disabled {
             opacity: 0.2;
@@ -514,8 +483,8 @@ function ensureStyles(panel) {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            width: 5px;
-            height: 5px;
+            width: 3px;
+            height: 3px;
             border-radius: 50%;
             background: rgba(111, 126, 147, 0.38);
             opacity: 0;
@@ -542,22 +511,22 @@ function ensureStyles(panel) {
         .ovib-language-stack {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }
         .ovib-mode-switch {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 4px;
+            gap: 6px;
+            margin-bottom: 2px;
         }
         .ovib-mode-chip {
-            min-height: 30px;
-            padding: 7px 8px;
-            border-radius: 9px;
+            min-height: 24px;
+            padding: 5px 6px;
+            border-radius: 7px;
             border: 1px solid rgba(121, 134, 155, 0.34);
             background: rgba(34, 37, 43, 0.92);
             color: #9fb0c6;
-            font-size: 10px;
+            font-size: 8px;
             font-weight: 700;
             letter-spacing: 0.06em;
             text-transform: uppercase;
@@ -577,13 +546,13 @@ function ensureStyles(panel) {
         .ovib-language-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             transition: opacity 0.2s ease;
         }
         .ovib-language-group .ovib-chip-list {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
+            gap: 7px;
         }
         .ovib-language-group.is-hidden {
             display: none;
@@ -591,30 +560,25 @@ function ensureStyles(panel) {
         .ovib-language-group.is-dimmed {
             opacity: 0.24;
         }
-        .ovib-preview {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-            background: #101215;
-            padding: 12px 16px;
-            min-height: 44px;
-            box-sizing: border-box;
-        }
         .ovib-preview-label {
             color: #8492a7;
-            font-size: 10px;
+            font-size: 8px;
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             white-space: nowrap;
+            flex: 0 0 auto;
         }
         .ovib-preview-value {
             color: #98cbff;
             font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-            font-size: 11px;
+            font-size: 9px;
             line-height: 1.35;
-            word-break: break-word;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+            flex: 1 1 auto;
         }
         .ovib-preview-value.is-empty {
             color: #64748b;
@@ -622,7 +586,6 @@ function ensureStyles(panel) {
         .ovib-path {
             fill: none;
             stroke: url(#ovibPathGradient);
-            stroke-width: 3;
             stroke-linecap: round;
             stroke-linejoin: round;
             filter: drop-shadow(0 0 5px rgba(152, 203, 255, 0.58));
@@ -655,12 +618,12 @@ function createPanelDom() {
     shell.appendChild(createEl("div", "ovib-topline"));
 
     const header = createEl("div", "ovib-header");
-    const icon = createEl("div", "ovib-header-icon");
-    icon.appendChild(document.createElement("span"));
-    header.appendChild(icon);
-    const headerTitle = createEl("h1", "ovib-header-title", UI_TEXT.en.title);
-    header.appendChild(headerTitle);
-    header.appendChild(createEl("div", "ovib-header-spacer"));
+    const headerPreview = createEl("div", "ovib-header-preview");
+    const previewLabel = createEl("span", "ovib-preview-label", UI_TEXT.en.previewLabel);
+    headerPreview.appendChild(previewLabel);
+    const previewValue = createEl("span", "ovib-preview-value is-empty", UI_TEXT.en.emptyPreview);
+    headerPreview.appendChild(previewValue);
+    header.appendChild(headerPreview);
     const localeSwitch = createEl("div", "ovib-locale-switch");
     const localeEnglishButton = createEl("button", "ovib-locale-chip is-active", UI_TEXT.en.localeEn);
     localeEnglishButton.type = "button";
@@ -758,20 +721,12 @@ function createPanelDom() {
     grid.appendChild(languageColumn);
     shell.appendChild(body);
 
-    const preview = createEl("div", "ovib-preview");
-    const previewLabel = createEl("span", "ovib-preview-label", UI_TEXT.en.previewLabel);
-    preview.appendChild(previewLabel);
-    const previewValue = createEl("span", "ovib-preview-value is-empty", UI_TEXT.en.emptyPreview);
-    preview.appendChild(previewValue);
-    shell.appendChild(preview);
-
     return {
         panel,
         body,
         grid,
         svg,
         path: svg.querySelector(".ovib-path"),
-        headerTitle,
         previewLabel,
         previewValue,
         chipButtons,
@@ -814,7 +769,6 @@ function applyStateToWidgets(node, state) {
 function applyLocalizedUiText(ui, state) {
     const locale = getOutputLocale(state);
     const text = UI_TEXT[locale];
-    ui.headerTitle.textContent = text.title;
     ui.previewLabel.textContent = text.previewLabel;
     ui.columnTitles.get("gender").textContent = text.gender;
     ui.columnTitles.get("age").textContent = text.age;
@@ -860,7 +814,7 @@ function renderState(node, ui, state) {
     }
 
     if (!ui.languageMode) {
-        ui.languageMode = "accent";
+        ui.languageMode = normalizeWidgetValue(state.dialect) ? "dialect" : "accent";
     }
     const languageMode = ui.languageMode || "accent";
     ui.languageMode = languageMode;
@@ -882,6 +836,8 @@ function renderState(node, ui, state) {
 }
 
 function drawPath(ui, state) {
+    const scale = getCanvasScale();
+    ui.path.style.strokeWidth = `${PATH_BASE_STROKE_WIDTH * scale}px`;
     const bodyRect = ui.body.getBoundingClientRect();
     const svgWidth = Math.max(1, Math.round(bodyRect.width));
     const svgHeight = Math.max(1, Math.round(bodyRect.height));
@@ -892,11 +848,7 @@ function drawPath(ui, state) {
     const selected = [];
     for (const columnId of ui.columnOrder) {
         if (columnId === "language") {
-            const languageCategory = normalizeWidgetValue(state.dialect)
-                ? "dialect"
-                : normalizeWidgetValue(state.accent)
-                    ? "accent"
-                    : null;
+            const languageCategory = ui.languageMode === "dialect" ? "dialect" : "accent";
             if (!languageCategory) {
                 continue;
             }
@@ -905,8 +857,6 @@ function drawPath(ui, state) {
                 const button = ui.chipButtons.get(`${languageCategory}:${languageValue}`);
                 if (button && button.getClientRects().length > 0) {
                     selected.push(button);
-                } else {
-                    selected.push(languageCategory === "dialect" ? ui.dialectModeButton : ui.accentModeButton);
                 }
             }
             continue;
@@ -941,7 +891,9 @@ function drawPath(ui, state) {
     let pathData = "";
     for (const segment of segments) {
         const dx = segment.x2 - segment.x1;
-        const handle = Math.max(28, Math.min(64, Math.abs(dx) * 0.35));
+        const minHandle = 28 * scale;
+        const maxHandle = 64 * scale;
+        const handle = Math.max(minHandle, Math.min(maxHandle, Math.abs(dx) * 0.35));
         const control1X = segment.x1 + handle;
         const control2X = segment.x2 - handle;
         pathData += `M ${segment.x1} ${segment.y1} C ${control1X} ${segment.y1}, ${control2X} ${segment.y2}, ${segment.x2} ${segment.y2} `;
@@ -966,7 +918,41 @@ function setWidgetHeightSafe(widget, height) {
     if (widget.element) {
         widget.element.style.height = `${height}px`;
         widget.element.style.minHeight = `${height}px`;
+        widget.element.style.maxHeight = `${height}px`;
     }
+}
+
+function getCanvasViewportRect() {
+    const canvasEl = window.app?.canvas?.canvas || window.app?.canvas?.canvasEl;
+    if (canvasEl?.getBoundingClientRect) {
+        return canvasEl.getBoundingClientRect();
+    }
+    return null;
+}
+
+function getCanvasScale() {
+    const scale = Number(
+        window.app?.canvas?.ds?.scale
+        || window.app?.graph?.canvas?.ds?.scale
+        || 1
+    );
+    return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+function getMovementBoundsRect(ui) {
+    const bodyRect = ui.body.getBoundingClientRect();
+    const canvasRect = getCanvasViewportRect();
+    if (!canvasRect) {
+        return bodyRect;
+    }
+    const left = Math.max(bodyRect.left, canvasRect.left);
+    const top = Math.max(bodyRect.top, canvasRect.top);
+    const right = Math.min(bodyRect.right, canvasRect.right);
+    const bottom = Math.min(bodyRect.bottom, canvasRect.bottom);
+    if (right <= left || bottom <= top) {
+        return bodyRect;
+    }
+    return { left, top, right, bottom };
 }
 
 function applyColumnLayout(ui) {
@@ -976,7 +962,9 @@ function applyColumnLayout(ui) {
             column.style.order = String(slotIndex);
         }
         const offset = getColumnOffset(ui, columnId);
-        column.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
+        const roundedX = Math.round(offset.x);
+        const roundedY = Math.round(offset.y);
+        column.style.transform = `translate(${roundedX}px, ${roundedY}px)`;
         column.classList.toggle("is-dragging", ui.dragState?.active && ui.dragState.columnId === columnId);
     }
 }
@@ -986,19 +974,37 @@ function getColumnCenterX(column) {
     return rect.left + rect.width / 2;
 }
 
+function clampColumnOffsetX(ui, columnId, desiredX) {
+    const column = ui.columns.get(columnId);
+    if (!column) {
+        return desiredX;
+    }
+    const boundsRect = getMovementBoundsRect(ui);
+    const rect = column.getBoundingClientRect();
+    const currentOffset = getColumnOffset(ui, columnId);
+    const scale = getCanvasScale();
+    const naturalLeft = rect.left - (currentOffset.x * scale);
+    const naturalRight = rect.right - (currentOffset.x * scale);
+    const padding = 8;
+    const minX = (boundsRect.left + padding - naturalLeft) / scale;
+    const maxX = (boundsRect.right - padding - naturalRight) / scale;
+    return Math.max(minX, Math.min(maxX, desiredX));
+}
+
 function clampColumnOffsetY(ui, columnId, desiredY) {
     const column = ui.columns.get(columnId);
     if (!column) {
         return desiredY;
     }
-    const bodyRect = ui.body.getBoundingClientRect();
+    const boundsRect = getMovementBoundsRect(ui);
     const rect = column.getBoundingClientRect();
     const currentOffset = getColumnOffset(ui, columnId);
-    const naturalTop = rect.top - currentOffset.y;
-    const naturalBottom = rect.bottom - currentOffset.y;
+    const scale = getCanvasScale();
+    const naturalTop = rect.top - (currentOffset.y * scale);
+    const naturalBottom = rect.bottom - (currentOffset.y * scale);
     const padding = 8;
-    const minY = bodyRect.top + padding - naturalTop;
-    const maxY = bodyRect.bottom - padding - naturalBottom;
+    const minY = (boundsRect.top + padding - naturalTop) / scale;
+    const maxY = (boundsRect.bottom - padding - naturalBottom) / scale;
     return Math.max(minY, Math.min(maxY, desiredY));
 }
 
@@ -1026,9 +1032,10 @@ function swapColumns(ui, sourceIndex, targetIndex) {
     applyColumnLayout(ui);
     const newCenter = getColumnCenterX(draggedColumn);
     const offset = getColumnOffset(ui, sourceId);
+    const scale = getCanvasScale();
     setColumnOffset(ui, sourceId, {
-        x: offset.x + (oldCenter - newCenter),
-        y: offset.y,
+        x: clampColumnOffsetX(ui, sourceId, offset.x + ((oldCenter - newCenter) / scale)),
+        y: clampColumnOffsetY(ui, sourceId, offset.y),
     });
     applyColumnLayout(ui);
     return true;
@@ -1071,8 +1078,9 @@ function setupColumnDragging(node, ui) {
             return;
         }
 
-        const deltaX = event.clientX - dragState.startX;
-        const deltaY = event.clientY - dragState.startY;
+        const scale = getCanvasScale();
+        const deltaX = (event.clientX - dragState.startX) / scale;
+        const deltaY = (event.clientY - dragState.startY) / scale;
         if (!dragState.moved && Math.hypot(deltaX, deltaY) < DRAG_START_THRESHOLD) {
             return;
         }
@@ -1084,8 +1092,9 @@ function setupColumnDragging(node, ui) {
             return;
         }
 
-        const nextOffsetX = dragState.baseOffsetX + deltaX;
+        const desiredOffsetX = dragState.baseOffsetX + deltaX;
         const desiredOffsetY = dragState.baseOffsetY + deltaY;
+        const nextOffsetX = clampColumnOffsetX(ui, columnId, desiredOffsetX);
         const nextOffsetY = clampColumnOffsetY(ui, columnId, desiredOffsetY);
         setColumnOffset(ui, columnId, {
             x: nextOffsetX,
@@ -1137,7 +1146,11 @@ function setupColumnDragging(node, ui) {
         const currentOffset = getColumnOffset(ui, columnId);
         const clampedOffset = stillSelected
             ? {
-                x: Math.max(-RESTING_OFFSET_LIMIT, Math.min(RESTING_OFFSET_LIMIT, currentOffset.x)),
+                x: clampColumnOffsetX(
+                    ui,
+                    columnId,
+                    Math.max(-RESTING_OFFSET_LIMIT, Math.min(RESTING_OFFSET_LIMIT, currentOffset.x)),
+                ),
                 y: clampColumnOffsetY(ui, columnId, currentOffset.y),
             }
             : { x: 0, y: 0 };
@@ -1188,27 +1201,59 @@ function persistLayoutState(node, ui) {
     };
 }
 
+function updateBasePanelHeight(node, panelWidget, force = false) {
+    if (!force && Number(node.__omnivoiceInstructionBasePanelHeight || 0) > 0) {
+        return;
+    }
+    const nodeHeight = Math.max(PANEL_MIN_HEIGHT, Number(node?.size?.[1] || 0));
+    const layoutY = Math.max(0, Number(panelWidget?.last_y || 0));
+    const extraHeight = Math.max(0, nodeHeight - PANEL_MIN_HEIGHT);
+    const measuredHeight = Math.max(PANEL_WIDGET_MIN_HEIGHT, Math.round(nodeHeight - layoutY - PANEL_BOTTOM_PADDING));
+    const baselineHeight = Math.max(PANEL_WIDGET_MIN_HEIGHT, measuredHeight - extraHeight);
+    node.__omnivoiceInstructionBasePanelHeight = baselineHeight;
+}
+
+function getRequiredNodeMinHeight(node) {
+    const layoutY = Math.max(0, Number(node.__omnivoiceInstructionLastY || 0));
+    return Math.max(
+        PANEL_WIDGET_MIN_HEIGHT + PANEL_BOTTOM_PADDING,
+        Math.round(layoutY + PANEL_WIDGET_MIN_HEIGHT + PANEL_BOTTOM_PADDING),
+    );
+}
+
+function getTargetPanelHeight(node) {
+    const nodeHeight = Math.max(getRequiredNodeMinHeight(node), Number(node?.size?.[1] || 0));
+    const layoutY = Math.max(0, Number(node.__omnivoiceInstructionLastY || 0));
+    return Math.max(PANEL_WIDGET_MIN_HEIGHT, Math.round(nodeHeight - layoutY - PANEL_BOTTOM_PADDING));
+}
+
 function resizePanel(node, ui, panelWidget) {
     requestAnimationFrame(() => {
-        setWidgetHeightSafe(panelWidget, PANEL_WIDGET_MIN_HEIGHT);
+        const targetPanelHeight = getTargetPanelHeight(node);
+        const panelHeightChanged = Math.abs(Number(node.__omnivoiceInstructionAppliedPanelHeight || 0) - targetPanelHeight) > 1;
+        if (panelHeightChanged) {
+            setWidgetHeightSafe(panelWidget, PANEL_WIDGET_MIN_HEIGHT);
+        }
         if (panelWidget.element) {
             panelWidget.element.style.width = "100%";
             panelWidget.element.style.maxWidth = "100%";
-            panelWidget.element.style.height = `${PANEL_WIDGET_MIN_HEIGHT}px`;
-            panelWidget.element.style.minHeight = `${PANEL_WIDGET_MIN_HEIGHT}px`;
+            panelWidget.element.style.minWidth = "100%";
+            panelWidget.element.style.height = `${targetPanelHeight}px`;
+            panelWidget.element.style.minHeight = `${targetPanelHeight}px`;
+            panelWidget.element.style.maxHeight = `${targetPanelHeight}px`;
             panelWidget.element.style.overflow = "visible";
             panelWidget.element.style.display = "block";
             panelWidget.element.style.position = "relative";
             panelWidget.element.style.boxSizing = "border-box";
+            panelWidget.element.style.margin = "0";
+            panelWidget.element.style.padding = "0";
+            panelWidget.element.style.alignSelf = "stretch";
         }
-        if (typeof node.setSize === "function") {
-            const targetWidth = Math.max(Number(node.size?.[0] || 0), PANEL_MIN_WIDTH);
-            if (Math.abs((node.size?.[0] || 0) - targetWidth) > 1 || Math.abs((node.size?.[1] || 0) - PANEL_MIN_HEIGHT) > 1) {
-                node.setSize([targetWidth, PANEL_MIN_HEIGHT]);
-            }
+        node.__omnivoiceInstructionAppliedPanelHeight = targetPanelHeight;
+        if (panelHeightChanged) {
+            node.graph?.setDirtyCanvas?.(true, true);
+            drawPath(ui, node.__omnivoiceInstructionState || {});
         }
-        node.graph?.setDirtyCanvas?.(true, true);
-        drawPath(ui, node.__omnivoiceInstructionState || {});
     });
 }
 
@@ -1234,9 +1279,12 @@ function createBuilder(node) {
     ui.dragState = null;
     ui.suppressNextClick = false;
     applyColumnLayout(ui);
+    node.__omnivoiceInstructionAppliedPanelHeight = PANEL_WIDGET_MIN_HEIGHT;
+    node.__omnivoiceInstructionBasePanelHeight = PANEL_WIDGET_MIN_HEIGHT;
+    node.__omnivoiceInstructionLastY = 0;
     const panelWidget = node.addDOMWidget("omnivoice_instruction_builder_panel", "div", ui.panel, {
         serialize: false,
-        hideOnZoom: false,
+        hideOnZoom: true,
         getMinHeight() {
             return PANEL_WIDGET_MIN_HEIGHT;
         },
@@ -1249,6 +1297,19 @@ function createBuilder(node) {
         return [Math.max(PANEL_MIN_WIDTH, width || PANEL_MIN_WIDTH), PANEL_WIDGET_MIN_HEIGHT];
     };
     panelWidget.getHeight = () => PANEL_WIDGET_MIN_HEIGHT;
+    panelWidget.options = panelWidget.options || {};
+    panelWidget.options.minNodeSize = [PANEL_MIN_WIDTH, getRequiredNodeMinHeight(node)];
+    panelWidget.draw = function (_ctx, currentNode, _widgetWidth, y) {
+        this.last_y = y;
+        const activeNode = currentNode || node;
+        activeNode.__omnivoiceInstructionLastY = y;
+        panelWidget.options.minNodeSize = [
+            PANEL_MIN_WIDTH,
+            getRequiredNodeMinHeight(activeNode),
+        ];
+        updateBasePanelHeight(activeNode, panelWidget);
+        resizePanel(activeNode, ui, panelWidget);
+    };
     setWidgetHeightSafe(panelWidget, PANEL_WIDGET_MIN_HEIGHT);
 
     const refresh = () => {
@@ -1317,24 +1378,53 @@ function createBuilder(node) {
     setupColumnDragging(node, ui);
 
     const resizeObserver = new ResizeObserver(() => {
-        drawPath(ui, node.__omnivoiceInstructionState || {});
+        resizePanel(node, ui, panelWidget);
     });
     resizeObserver.observe(ui.body);
 
-    window.addEventListener("resize", () => {
-        drawPath(ui, node.__omnivoiceInstructionState || {});
-    });
+    const handleWindowResize = () => {
+        resizePanel(node, ui, panelWidget);
+    };
+    window.addEventListener("resize", handleWindowResize);
+
+    const handleWheel = (event) => {
+        if (event.defaultPrevented || ui.dragState?.active) {
+            return;
+        }
+        const wheelCallback = window.app?.canvas?._mousewheel_callback;
+        if (typeof wheelCallback !== "function") {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        wheelCallback.call(window.app.canvas, event);
+    };
+    ui.panel.addEventListener("wheel", handleWheel, { passive: false });
 
     node.__omnivoiceInstructionUi = ui;
     node.__omnivoiceInstructionPanelWidget = panelWidget;
     node.__omnivoiceInstructionRefresh = refresh;
+    node.__omnivoiceInstructionCleanup = () => {
+        resizeObserver.disconnect();
+        window.removeEventListener("resize", handleWindowResize);
+        ui.panel.removeEventListener("wheel", handleWheel);
+        if (ui.handlePointerMove) {
+            window.removeEventListener("pointermove", ui.handlePointerMove);
+        }
+        if (ui.handlePointerEnd) {
+            window.removeEventListener("pointerup", ui.handlePointerEnd);
+            window.removeEventListener("pointercancel", ui.handlePointerEnd);
+        }
+    };
 
     if (typeof node.setSize === "function") {
         node.setSize([
-            PANEL_MIN_WIDTH,
-            PANEL_MIN_HEIGHT,
+            Math.max(Number(node.size?.[0] || 0), PANEL_MIN_WIDTH),
+            Math.max(Number(node.size?.[1] || 0), PANEL_MIN_HEIGHT),
         ]);
     }
+
+    updateBasePanelHeight(node, panelWidget, true);
 
     refresh();
     return true;
@@ -1440,6 +1530,11 @@ function createPrototypeController(container, initialState = {}, initialLayout =
         drawPath(ui, state);
     });
 
+    container.style.height = `${PANEL_WIDGET_MIN_HEIGHT}px`;
+    container.style.minHeight = `${PANEL_WIDGET_MIN_HEIGHT}px`;
+    container.style.maxHeight = `${PANEL_WIDGET_MIN_HEIGHT}px`;
+    container.style.display = "block";
+
     container.innerHTML = "";
     container.appendChild(ui.panel);
     refresh();
@@ -1459,6 +1554,14 @@ function createPrototypeController(container, initialState = {}, initialLayout =
                 window.removeEventListener("pointercancel", ui.handlePointerEnd);
             }
         },
+    };
+}
+
+export function getOmniVoiceInstructionBuilderDefaults() {
+    return {
+        nodeWidth: PANEL_MIN_WIDTH,
+        nodeHeight: PANEL_MIN_HEIGHT,
+        widgetHeight: PANEL_WIDGET_MIN_HEIGHT,
     };
 }
 
@@ -1489,6 +1592,13 @@ export function installOmniVoiceInstructionBuilderExtension(app) {
                 return result;
             };
 
+            const originalOnResize = nodeType.prototype.onResize;
+            nodeType.prototype.onResize = function () {
+                const result = originalOnResize ? originalOnResize.apply(this, arguments) : undefined;
+                this.__omnivoiceInstructionRefresh?.();
+                return result;
+            };
+
             const originalOnSerialize = nodeType.prototype.onSerialize;
             nodeType.prototype.onSerialize = function (info) {
                 if (originalOnSerialize) {
@@ -1498,6 +1608,12 @@ export function installOmniVoiceInstructionBuilderExtension(app) {
                 if (this.properties?.omnivoiceInstructionLayout) {
                     info.properties.omnivoiceInstructionLayout = this.properties.omnivoiceInstructionLayout;
                 }
+            };
+
+            const originalOnRemoved = nodeType.prototype.onRemoved;
+            nodeType.prototype.onRemoved = function () {
+                this.__omnivoiceInstructionCleanup?.();
+                return originalOnRemoved ? originalOnRemoved.apply(this, arguments) : undefined;
             };
         },
         nodeCreated(node) {
