@@ -246,3 +246,6 @@ tests/output/
 
 # AI Agent skills
 .agents/
+
+#others
+node_modules/
