@@ -75,6 +75,7 @@ class GraniteASRRuntime:
         language: Optional[str] = None,
         target_language: Optional[str] = None,
         translate_instruction_override: Optional[str] = None,
+        timestamps: bool = False,
     ) -> str:
         if task == "translate":
             target_language = target_language or "English"
@@ -86,6 +87,8 @@ class GraniteASRRuntime:
 
             if "<|audio|>" not in user_prompt:
                 user_prompt = f"<|audio|>{user_prompt.lstrip()}"
+        elif timestamps:
+            user_prompt = "<|audio|> Timestamps: Transcribe the speech. After each word, add a timestamp tag showing the end time in centiseconds, e.g. hello [T:45] world [T:82]"
         else:
             if language:
                 user_prompt = f"<|audio|>can you transcribe the {language} speech into a written format?"
@@ -135,12 +138,14 @@ class GraniteASRRuntime:
         target_language: Optional[str] = None,
         translate_instruction_override: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, object]] = None,
+        timestamps: bool = False,
     ):
         prompt = self._build_prompt(
             task=task,
             language=language,
             target_language=target_language,
             translate_instruction_override=translate_instruction_override,
+            timestamps=timestamps,
         )
         generate_kwargs = self._build_generation_kwargs(generation_kwargs)
 

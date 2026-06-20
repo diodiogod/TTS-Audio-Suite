@@ -96,7 +96,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 }),
                 "timestamps": (["none", "word"], {
                     "default": "none",
-                    "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are produced by the separate Qwen forced aligner, not natively by Granite."
+                    "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are produced natively on the plus model variant, while other variants require the separate Qwen forced aligner."
                 }),
                 "chunk_size": ("INT", {
                     "default": 30, "min": 0, "max": 600, "step": 1,
@@ -208,17 +208,17 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 "WARNINGS",
                 "Word timing data was requested, but this run returned no timed segments.",
             )
+            if not forced_aligner_enabled:
+                info = append_info_items(
+                    info,
+                    "NOTES",
+                    "If you need high-quality subtitle timing from ASR output, enable the Qwen3 Forced Aligner when supported by the engine.",
+                )
         elif timestamps == "none":
             info = append_info_items(
                 info,
                 "NOTES",
                 "asr_timing_data has no word timings because timestamps=none.",
-            )
-        elif timestamps == "word" and not forced_aligner_enabled:
-            info = append_info_items(
-                info,
-                "NOTES",
-                "If you need high-quality subtitle timing from ASR output, enable the Qwen3 Forced Aligner when supported by the engine.",
             )
 
         return (result.text or "", asr_result_to_json(result), info)
