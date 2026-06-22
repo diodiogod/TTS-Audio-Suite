@@ -182,7 +182,7 @@ try:
     OmniVoiceInstructionBuilderNode = omnivoice_instruction_builder_module.OmniVoiceInstructionBuilderNode
     OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE = True
 except Exception as e:
-    print(f"❌ OmniVoice Instruction Builder failed: {e}")
+    print(f"❌ Visual Tag Builder failed: {e}")
     OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE = False
 
 try:
@@ -631,7 +631,7 @@ if OMNIVOICE_ENGINE_AVAILABLE:
 
 if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceInstructionBuilderNode"] = OmniVoiceInstructionBuilderNode
-    NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceInstructionBuilderNode"] = "📐 OmniVoice Instruction Builder"
+    NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceInstructionBuilderNode"] = "📐 Visual Tag Builder"
 
 if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode

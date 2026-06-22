@@ -1,5 +1,5 @@
 """
-OmniVoice Instruction Builder helper node.
+Visual Tag Builder helper node.
 
 Builds a valid OmniVoice voice-design instruct string with canonical category
 ordering while leaving the main engine's raw instruct field available for
@@ -36,7 +36,7 @@ class OmniVoiceInstructionBuilderNode:
 
     @classmethod
     def NAME(cls):
-        return "📐 OmniVoice Instruction Builder"
+        return "📐 Visual Tag Builder"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -44,19 +44,19 @@ class OmniVoiceInstructionBuilderNode:
             "required": {
                 "gender": (["None", "male", "female"], {
                     "default": "None",
-                    "tooltip": "OmniVoice gender attribute. Hidden by the custom builder UI."
+                    "tooltip": "Used by the Visual Tag Builder preset."
                 }),
                 "age": (["None", "child", "teenager", "young adult", "middle-aged", "elderly"], {
                     "default": "None",
-                    "tooltip": "OmniVoice age attribute. Hidden by the custom builder UI."
+                    "tooltip": "Used by the Visual Tag Builder preset."
                 }),
                 "pitch": (["None", "very low pitch", "low pitch", "moderate pitch", "high pitch", "very high pitch"], {
                     "default": "None",
-                    "tooltip": "OmniVoice pitch attribute. Hidden by the custom builder UI."
+                    "tooltip": "Used by the Visual Tag Builder preset."
                 }),
                 "style": (["None", "whisper"], {
                     "default": "None",
-                    "tooltip": "OmniVoice style attribute. Hidden by the custom builder UI."
+                    "tooltip": "Used by the Visual Tag Builder preset."
                 }),
                 "accent": ([
                     "None",
@@ -72,7 +72,7 @@ class OmniVoiceInstructionBuilderNode:
                     "russian accent",
                 ], {
                     "default": "None",
-                    "tooltip": "OmniVoice English accent attribute. Hidden by the custom builder UI."
+                    "tooltip": "Used by the Visual Tag Builder preset."
                 }),
                 "dialect": ([
                     "None",
@@ -90,16 +90,16 @@ class OmniVoiceInstructionBuilderNode:
                     "东北话",
                 ], {
                     "default": "None",
-                    "tooltip": "OmniVoice Chinese dialect attribute. Hidden by the custom builder UI."
+                    "tooltip": "Used by the Visual Tag Builder preset."
                 }),
                 "output_language": (["English", "Chinese"], {
                     "default": "English",
-                    "tooltip": "Output language mode for the builder UI and emitted instruct string. Hidden by the custom builder UI."
+                    "tooltip": "Controls the builder preview language and emitted text format."
                 }),
                 "instruct_text": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "Hidden raw output text emitted by the visual builder UI."
+                    "tooltip": "Text emitted by the Visual Tag Builder."
                 }),
             }
         }
@@ -109,9 +109,9 @@ class OmniVoiceInstructionBuilderNode:
     FUNCTION = "build_instruction"
     CATEGORY = "TTS Audio Suite/📐 OmniVoice"
     DESCRIPTION = (
-        "Visual helper for OmniVoice voice-design instructions. Outputs a "
-        "canonical instruct string that can be connected into the OmniVoice "
-        "engine's instruct input."
+        "Visual tag and attribute builder with preset-driven ordering. "
+        "Outputs a text string that can be used for OmniVoice or other "
+        "tag-based prompt workflows."
     )
 
     def build_instruction(
@@ -160,5 +160,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "OmniVoiceInstructionBuilderNode": "📐 OmniVoice Instruction Builder",
+    "OmniVoiceInstructionBuilderNode": "📐 Visual Tag Builder",
 }
