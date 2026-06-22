@@ -144,6 +144,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   - [Step Audio EditX - LLM Audio Editing](#step-audio-editx---llm-audio-editing)
   - [CosyVoice3 Multilingual Voice Cloning](#cosyvoice3-multilingual-voice-cloning)
   - [Qwen3-TTS - 4 Model Types with Text-to-Voice Design](#qwen3-tts---4-model-types-with-text-to-voice-design)
+  - [OmniVoice + Visual Tag Builder](#omnivoice--visual-tag-builder)
   - [Echo-TTS Voice Cloning](#echo-tts-voice-cloning)
   - [Phoneme Text Normalizer](#phoneme-text-normalizer)
   - [Multiline TTS Tag Editor and Per-Segment Parameter Switching](#multiline-tts-tag-editor-and-per-segment-parameter-switching)
@@ -189,6 +190,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - 🎓 **Integrated Model Training**
 - 🎨 **Audio Post-Processing** → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🎭 **Character and Language Switching** → **[📖 Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
+- 📐 **Visual Tag Builder** → Preset-driven visual tag and attribute assembly for OmniVoice and other tag-based text workflows
 - 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
 - 📝 **Intelligent Text Chunking** → **[📖 Text Chunking Guide](docs/TEXT_CHUNKING_GUIDE.md)**
 - 🤐 **Vocal/Noise Removal** → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
@@ -890,6 +892,23 @@ Description: "A deep, authoritative male voice with clear articulation"
 - **Creative voice design from text descriptions** (VoiceDesign) - **unique to Qwen3-TTS**
 - High-quality voice cloning with reference audio (Base)
 - Content requiring specific vocal characteristics defined by text
+
+</details>
+
+<details>
+<summary><h3>OmniVoice + Visual Tag Builder</h3></summary>
+
+**NEW in v5.x**: OmniVoice is now integrated into the unified suite with native duration-aware SRT generation and a generalized visual tag workflow.
+
+* **🌍 OmniVoice integration**: official model support with broad upstream language coverage
+* **🎯 Native duration targeting**: SRT workflows can send target durations directly into OmniVoice instead of relying only on post-generation time stretching
+* **⏱️ Precise segment control**: this is the first engine in the suite where segment duration can be meaningfully guided at generation time, making precise TTS timing far more practical
+* **📺 Better SRT timing behavior**: subtitle generation can land much closer to target timings before any fallback timing correction, so stretch-to-fit has less work to do and results can stay more natural
+* **📐 Visual Tag Builder**: reusable preset-driven visual node for assembling tag or attribute strings, originally added for OmniVoice voice-design prompting and now generalized for broader tag-based text workflows
+
+**Practical note:**
+
+Use the built-in OmniVoice preset in **📐 Visual Tag Builder** for the canonical voice-design workflow. If you need a different tag schema, the same node now supports reusable custom presets with saved column order.
 
 </details>
 

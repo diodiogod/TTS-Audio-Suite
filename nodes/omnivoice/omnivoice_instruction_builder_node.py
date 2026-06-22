@@ -105,7 +105,7 @@ class OmniVoiceInstructionBuilderNode:
         }
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("instruct",)
+    RETURN_NAMES = ("string",)
     FUNCTION = "build_instruction"
     CATEGORY = "TTS Audio Suite/📐 OmniVoice"
     DESCRIPTION = (
