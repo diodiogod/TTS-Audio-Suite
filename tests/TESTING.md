@@ -86,6 +86,27 @@ Test workflow files are in `tests/fixtures/workflows/`:
 
 ---
 
+## Path Configuration & Local Overrides
+
+By default, the tests attempt to locate ComfyUI and its python virtual environment using default relative paths (`../../../`).
+
+If you use a custom setup (such as stability-matrix or a different venv location), you can override these paths locally without editing any tracked git files:
+
+1. Create a file named `tests/.env.local` (this file is ignored by git).
+2. Define the path overrides:
+
+```env
+# Root directory of your ComfyUI installation
+TTS_SUITE_TEST_COMFY_ROOT=/path/to/ComfyUI
+
+# Path to the python executable inside the virtual environment
+TTS_SUITE_TEST_VENV_PYTHON=/path/to/ComfyUI/venv/bin/python
+```
+
+These overrides will be automatically picked up by `tests/env_config.py` when you run tests.
+
+---
+
 ## For Developers
 
 ### Adding Unit Tests
