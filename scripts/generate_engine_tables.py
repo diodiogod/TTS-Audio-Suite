@@ -100,15 +100,17 @@ def generate_engine_comparison(data):
     output.append("| ------------------ | --------- | ----------------------------------------- | ------------ | :-: | :-: | :-: | :-: | :------: | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
 
     for e in engines:
-        supported_language_count = sum(
-            1
-            for lang_key, lang_data in e["languages"].items()
-            if lang_key != "_default" and lang_data["supported"]
-        )
-        if e["id"] == "rvc":
-            language_summary = "Any"
-        else:
-            language_summary = str(supported_language_count)
+        language_summary = e.get("language_summary_full")
+        if not language_summary:
+            supported_language_count = sum(
+                1
+                for lang_key, lang_data in e["languages"].items()
+                if lang_key != "_default" and lang_data["supported"]
+            )
+            if e["id"] == "rvc":
+                language_summary = "Any"
+            else:
+                language_summary = str(supported_language_count)
 
         # Format special features with proper spacing
         features = ", ".join(e.get("special_features", []))

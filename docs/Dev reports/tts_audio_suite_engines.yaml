@@ -536,6 +536,8 @@ engines:
     size: "~8GB"
     license: "Boson Higgs Audio v3 Research and Non-Commercial License"
     commercial: false
+    language_summary_compact: "🌐 100+ languages"
+    language_summary_full: "100+"
 
     capabilities:
       tts: true
@@ -1240,6 +1242,7 @@ engines:
     license: "Apache-2.0"
     commercial: true
     language_summary_compact: "🌐 600+ languages"
+    language_summary_full: "600+"
 
     capabilities:
       tts: true
