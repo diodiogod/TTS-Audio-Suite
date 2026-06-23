@@ -73,7 +73,7 @@ class OmniVoiceEngineNode(BaseTTSNode):
                 "instruct": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "Optional OmniVoice voice-design / style instruction. Works for pure voice design (no reference audio) or as extra guidance with a properly transcribed reference voice."
+                    "tooltip": "Optional OmniVoice voice-design / style instruction. Strong effect when no narrator/reference is provided, because the model uses it to design the voice directly. With narrator/reference cloning, it still acts as guidance, but the effect is usually much weaker because OmniVoice prioritizes the provided voice identity."
                 }),
                 "layer_penalty_factor": ("FLOAT", {
                     "default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1,

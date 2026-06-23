@@ -131,6 +131,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Very Fast" }
+      reference_free_tts: { supported: false, notes: "" }
 
   - id: chatterbox
     name: ChatterBox
@@ -262,6 +263,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: true, notes: "(default speaker)" }
 
   - id: chatterbox-23l
     name: ChatterBox 23L
@@ -346,6 +348,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: true, notes: "(default speaker)" }
 
   - id: vibevoice
     name: VibeVoice
@@ -443,6 +446,7 @@ engines:
       community_finetunes: { supported: true, notes: "KugelAudio, Hindi" }
       vram_efficient: { supported: "partial", notes: "(5-18GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: true, notes: "(zero-shot / default speaker)" }
 
   - id: higgs-audio-2
     name: Higgs Audio 2
@@ -524,6 +528,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(9GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: true, notes: "(basic TTS if no narrator/reference is provided)" }
 
   - id: higgs-audio-v3
     name: Higgs Audio v3
@@ -666,6 +671,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(~8-10GB)" }
       speed_performance: { supported: "partial", notes: "CUDA recommended" }
+      reference_free_tts: { supported: true, notes: "(zero-shot)" }
 
   - id: indextts-2
     name: IndexTTS-2
@@ -744,6 +750,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(9-12GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: false, notes: "" }
 
   - id: cosyvoice3
     name: CosyVoice3
@@ -809,6 +816,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: true, notes: "(5.4GB)" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: true, notes: "(cross-lingual or instruct mode)" }
 
   - id: qwen3-tts
     name: Qwen3-TTS
@@ -922,6 +930,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: true, notes: "(3-6GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: true, notes: "(Base default voice or CustomVoice presets)" }
 
   - id: granite-asr
     name: Granite ASR
@@ -996,6 +1005,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: true, notes: "(~4.6GB)" }
       speed_performance: { supported: "partial", notes: "Moderate" }
+      reference_free_tts: { supported: null, notes: "N/A" }
 
   - id: step-editx
     name: Step Audio EditX
@@ -1069,6 +1079,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(7GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: false, notes: "(clone mode only)" }
 
   - id: echo-tts
     name: Echo-TTS
@@ -1141,6 +1152,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(~7GB total)" }
       speed_performance: { supported: true, notes: "Fast (diffusion, realtime-capable)" }
+      reference_free_tts: { supported: false, notes: "(reference audio required)" }
 
   - id: dots-tts
     name: Dots TTS
@@ -1219,6 +1231,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(main env works; 2B-class model is not lightweight)" }
       speed_performance: { supported: "partial", notes: "Moderate; mf variant is faster" }
+      reference_free_tts: { supported: true, notes: "(default speaker)" }
 
   - id: omnivoice
     name: OmniVoice
@@ -1287,6 +1300,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(main env works; 2B-class model is not lightweight)" }
       speed_performance: { supported: true, notes: "Fast; upstream reports sub-realtime RTF" }
+      reference_free_tts: { supported: true, notes: "(native default voice; instruct also works without narrator)" }
 
   - id: moss-tts
     name: MOSS-TTS
@@ -1375,6 +1389,7 @@ engines:
       community_finetunes: { supported: true, notes: "(LoRA adapter inference supported; initial integrated LoRA training support added for MOSS-TTS Delay 8B)" }
       vram_efficient: { supported: "partial", notes: "(Local 1.7B smaller; tokenizer is large)" }
       speed_performance: { supported: true, notes: "Fast with CUDA/FlashAttention" }
+      reference_free_tts: { supported: true, notes: "(direct TTS and prompt-only generation)" }
 
   - id: rvc
     name: RVC
@@ -1468,6 +1483,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: null, notes: "N/A" }
 
 # Language metadata for reference
 language_metadata:
@@ -1585,6 +1601,7 @@ feature_metadata:
   community_finetunes: { name: "Community Finetunes", display: "**Community Finetunes**" }
   vram_efficient: { name: "VRAM Efficient", display: "**VRAM Efficient**" }
   speed_performance: { name: "Speed/Performance", display: "**Speed/Performance**" }
+  reference_free_tts: { name: "No Narrator Required", display: "**No Narrator Required**" }
 
 # Table notes for additional context
 table_notes:
