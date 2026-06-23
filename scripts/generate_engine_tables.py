@@ -152,30 +152,33 @@ def generate_readme_condensed_table(data):
 
     # Show ALL engines
     for e in engines:
-
-        # Get first 6-8 language flags
-        flags = []
-        count = 0
-        for lang_data in e["languages"].values():
-            if isinstance(lang_data, dict) and lang_data.get("supported") and lang_data.get("flag"):
-                flags.append(lang_data["flag"])
-                count += 1
-                if count >= 6:  # Limit to 6 flags for readability
-                    break
-
-        lang_display = "\u200B".join(flags)
-
-        # Special handling for ChatterBox 23L
-        if e["id"] == "chatterbox-23l":
-            lang_display = "🌐 24 languages"
-        # Special handling for RVC
-        elif e["id"] == "rvc":
-            lang_display = "🌐 Any"
+        language_summary_override = e.get("language_summary_compact")
+        if language_summary_override:
+            lang_display = language_summary_override
         else:
-            # Add count if more languages exist
-            total_langs = sum(1 for ld in e["languages"].values() if ld["supported"])
-            if total_langs > 6:
-                lang_display += f" +{total_langs - 6}"
+            # Get first 6-8 language flags
+            flags = []
+            count = 0
+            for lang_data in e["languages"].values():
+                if isinstance(lang_data, dict) and lang_data.get("supported") and lang_data.get("flag"):
+                    flags.append(lang_data["flag"])
+                    count += 1
+                    if count >= 6:  # Limit to 6 flags for readability
+                        break
+
+            lang_display = "\u200B".join(flags)
+
+            # Special handling for ChatterBox 23L
+            if e["id"] == "chatterbox-23l":
+                lang_display = "🌐 24 languages"
+            # Special handling for RVC
+            elif e["id"] == "rvc":
+                lang_display = "🌐 Any"
+            else:
+                # Add count if more languages exist
+                total_langs = sum(1 for ld in e["languages"].values() if ld["supported"])
+                if total_langs > 6:
+                    lang_display += f" +{total_langs - 6}"
 
         # Get 1-2 key features
         special_features = e.get("special_features", [])

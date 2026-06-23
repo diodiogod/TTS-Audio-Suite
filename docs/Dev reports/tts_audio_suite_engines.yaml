@@ -1239,6 +1239,7 @@ engines:
     size: "~3.7GB"
     license: "Apache-2.0"
     commercial: true
+    language_summary_compact: "🌐 600+ languages"
 
     capabilities:
       tts: true
@@ -1249,7 +1250,7 @@ engines:
 
     special_features:
       - "600+ language support"
-      - "Voice design (instruct-only)"
+      - "Instruction-based voice design"
       - "Upstream long-form chunk orchestration"
       - "Inline non-verbal tags and pronunciation overrides"
 
