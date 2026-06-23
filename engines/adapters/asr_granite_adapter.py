@@ -292,7 +292,7 @@ class GraniteASREngineAdapter:
         return waveform
 
     def _alignment_requested(self, req: ASRRequest) -> bool:
-        return req.timestamps == "word" or req.use_forced_aligner
+        return req.timestamps == "word"
 
     def _can_use_aligner(self, req: ASRRequest, normalized_language: Optional[str], warnings: List[str]) -> bool:
         if not self._alignment_requested(req):
@@ -519,7 +519,7 @@ class GraniteASREngineAdapter:
                     chunk_offset = start / sample_rate
                     parsed_text, chunk_segments = parse_granite_diarization(text, chunk_offset, len(chunk_np) / sample_rate)
                     if parsed_text:
-                        full_text_parts.append(parsed_text)
+                        full_text_parts.append(text)
                     
                     if aligner is not None and parsed_text:
                         aligner_language = self._resolve_aligner_language(normalized_language, parsed_text, notes)
@@ -533,6 +533,10 @@ class GraniteASREngineAdapter:
                         )
                         aligned_words = [seg.words[0] for seg in word_segments if seg.words]
                         remap_words_to_speaker_segments(chunk_segments, aligned_words)
+                        
+                    for seg in chunk_segments:
+                        if seg.speaker:
+                            seg.text = f"[{seg.speaker}]: {seg.text}"
                     
                     segments.extend(chunk_segments)
                 elif use_native_timestamps:
@@ -595,7 +599,7 @@ class GraniteASREngineAdapter:
             if diarization_requested:
                 parsed_text, chunk_segments = parse_granite_diarization(text, 0.0, len(wav_np) / sample_rate)
                 if parsed_text:
-                    full_text_parts.append(parsed_text)
+                    full_text_parts.append(text)
                 
                 if aligner is not None and parsed_text:
                     aligner_language = self._resolve_aligner_language(normalized_language, parsed_text, notes)
@@ -609,6 +613,10 @@ class GraniteASREngineAdapter:
                     )
                     aligned_words = [seg.words[0] for seg in word_segments if seg.words]
                     remap_words_to_speaker_segments(chunk_segments, aligned_words)
+                    
+                for seg in chunk_segments:
+                    if seg.speaker:
+                        seg.text = f"[{seg.speaker}]: {seg.text}"
                 
                 segments.extend(chunk_segments)
             elif use_native_timestamps:

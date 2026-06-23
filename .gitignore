@@ -247,3 +247,4 @@ node_modules/
 
 # AI Agent skills
 .agents/
+skills-lock.json
