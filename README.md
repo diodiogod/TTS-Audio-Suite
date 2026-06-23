@@ -103,11 +103,17 @@ Builder               English TTS      TTS + ASR + VoiceDesign
 |                                          
 |─── 🎓 Training Support Era     🧱 Runtime Isolation T5 Era
 ▼                                      |
-v4.25 ──────────────► v4.26 ────────────► v5.00 ─────►
-Apr 26                May 26              Jun 26
-│                     │                      │
-RVC                   MOSS-TTS           Transformers 5
-Model Training                           Higgs Audio v3 TTS
+v4.25 ──────────────► v4.26 ────────────► v5.00 ───────────────┐
+Apr 26                May 26              Jun 26               │
+│                     │                   │                    │
+RVC                   MOSS-TTS            Transformers 5       │
+Model Training                            Higgs Audio v3 TTS   │
+                                                               │
+                                                               ▼
+              ◄──────── v5.2 ◄─────────────── v5.1 ◄───────────┘
+                          Mar 26                 Jan 26
+                          │                      │
+                          OmniVoice TTS          Dots TTS
 
 ```
 
