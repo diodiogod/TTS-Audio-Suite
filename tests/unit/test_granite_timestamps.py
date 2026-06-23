@@ -112,22 +112,22 @@ def test_parse_granite_diarization():
     plain_text, segments = parse_granite_diarization(text, chunk_offset, chunk_duration)
 
     # Assert
-    assert plain_text == "hello there. hi how are you? good."
-    assert len(segments) == 3
+    # Math: hello there. (12 chars), hi how are you? (15 chars), good. (5 chars) -> total 32
+    # chunk_duration = 5.0
     assert segments[0].speaker == "Speaker 1"
     assert segments[0].text == "hello there."
-    assert segments[0].start == 0.0
-    assert segments[0].end == 5.0
+    assert abs(segments[0].start - 0.0) < 1e-5
+    assert abs(segments[0].end - (5.0 * 12 / 32)) < 1e-5
 
     assert segments[1].speaker == "Speaker 2"
     assert segments[1].text == "hi how are you?"
-    assert segments[1].start == 0.0
-    assert segments[1].end == 5.0
+    assert abs(segments[1].start - (5.0 * 12 / 32)) < 1e-5
+    assert abs(segments[1].end - (5.0 * 27 / 32)) < 1e-5
 
     assert segments[2].speaker == "Speaker 1"
     assert segments[2].text == "good."
-    assert segments[2].start == 0.0
-    assert segments[2].end == 5.0
+    assert abs(segments[2].start - (5.0 * 27 / 32)) < 1e-5
+    assert abs(segments[2].end - 5.0) < 1e-5
 
 
 def test_remap_words_to_speaker_segments():

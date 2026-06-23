@@ -117,6 +117,18 @@ def parse_granite_diarization(text: str, chunk_offset: float, chunk_duration: fl
         
     plain_text = " ".join(seg.text for seg in segments if seg.text).strip()
     plain_text = re.sub(r"\s+", " ", plain_text).strip()
+    
+    # Distribute the chunk_duration proportionally across segments based on character length
+    total_len = sum(len(seg.text) for seg in segments if seg.text)
+    if total_len > 0:
+        current_time = chunk_offset
+        for seg in segments:
+            seg_len = len(seg.text) if seg.text else 0
+            duration = chunk_duration * (seg_len / total_len)
+            seg.start = current_time
+            seg.end = current_time + duration
+            current_time += duration
+
     return plain_text, segments
 
 
@@ -286,9 +298,8 @@ class GraniteASREngineAdapter:
             waveform = waveform[0]
 
         if sample_rate != 16000:
-            w = waveform.view(1, 1, -1)
-            w = F.interpolate(w, size=int(w.shape[-1] * 16000 / sample_rate), mode="linear", align_corners=False)
-            waveform = w.view(-1)
+            import torchaudio.functional as TA_F
+            waveform = TA_F.resample(waveform, orig_freq=sample_rate, new_freq=16000)
         return waveform
 
     def _alignment_requested(self, req: ASRRequest) -> bool:

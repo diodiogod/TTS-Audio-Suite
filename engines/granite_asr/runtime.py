@@ -18,12 +18,18 @@ class GraniteASRRuntime:
 
     DEFAULT_CHAT_TEMPLATE = (
         "{% for message in messages %}"
-        "{% if message['role'] == 'user' %}"
-        "USER: {{ message['content'] }}\n ASSISTANT:"
+        "{% if message['role'] == 'system' %}"
+        "<|start_of_role|>system<|end_of_role|>{{ message['content'] }}<|end_of_text|>\n"
+        "{% elif message['role'] == 'user' %}"
+        "<|start_of_role|>user<|end_of_role|>{{ message['content'] }}<|end_of_text|>\n"
         "{% elif message['role'] == 'assistant' %}"
-        "{{ message['content'] }}"
+        "<|start_of_role|>assistant<|end_of_role|>{{ message['content'] }}"
+        "{% if not loop.last %}<|end_of_text|>\n{% endif %}"
         "{% endif %}"
         "{% endfor %}"
+        "{% if add_generation_prompt %}"
+        "<|start_of_role|>assistant<|end_of_role|>"
+        "{% endif %}"
     )
 
     LANGUAGE_NAMES = {
@@ -98,7 +104,15 @@ class GraniteASRRuntime:
             else:
                 user_prompt = "<|audio|>can you transcribe the speech into a written format?"
 
-        chat = [{"role": "user", "content": user_prompt}]
+        SYSTEM_PROMPT = (
+            "Knowledge Cutoff Date: April 2024.\n"
+            "Today's Date: December 19, 2024.\n"
+            "You are Granite, developed by IBM. You are a helpful AI assistant"
+        )
+        chat = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt}
+        ]
         tokenizer = self.processor.tokenizer
         return tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
 
