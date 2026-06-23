@@ -575,6 +575,10 @@ Back to the main narrator voice for the conclusion.""",
                         self.adapter.update_config(new_config)
                         self.processor.update_config(new_config)
 
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("OmniVoice processing interrupted by user")
+
                 engine_instance = OmniVoiceWrapper(config)
 
                 import time
@@ -1867,6 +1871,8 @@ Back to the main narrator voice for the conclusion.""",
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
             if engine_type == "index_tts":
+                raise
+            if isinstance(e, InterruptedError):
                 raise
             error_msg = f"❌ TTS Text generation failed: {e}"
             print(error_msg)

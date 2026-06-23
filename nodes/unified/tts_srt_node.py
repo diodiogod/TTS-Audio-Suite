@@ -1519,6 +1519,8 @@ Hello! This is unified SRT TTS with character switching.
                 or "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input" in msg
             ):
                 raise
+            if isinstance(e, InterruptedError):
+                raise
             error_msg = f"❌ TTS SRT generation failed: {e}"
             print(error_msg)
             import traceback

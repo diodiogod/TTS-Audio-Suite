@@ -10,6 +10,7 @@ import re
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import comfy.model_management as model_management
 import torch
 
 current_dir = os.path.dirname(__file__)
@@ -40,6 +41,27 @@ class OmniVoiceProcessor:
     def update_config(self, new_config: Dict[str, Any]):
         self.config = new_config.copy() if new_config else {}
         self.adapter.update_config(self.config)
+
+    @staticmethod
+    def _check_interrupt(
+        item_index: Optional[int] = None,
+        total_items: Optional[int] = None,
+        character_name: Optional[str] = None,
+    ) -> None:
+        if not model_management.interrupt_processing:
+            return
+
+        if item_index is not None and total_items is not None:
+            if character_name:
+                raise InterruptedError(
+                    f"OmniVoice text generation interrupted at item "
+                    f"{item_index + 1}/{total_items}, character '{character_name}'"
+                )
+            raise InterruptedError(
+                f"OmniVoice text generation interrupted at item {item_index + 1}/{total_items}"
+            )
+
+        raise InterruptedError("OmniVoice text generation interrupted by user")
 
     @staticmethod
     def _first_non_none(*values):
@@ -221,6 +243,7 @@ class OmniVoiceProcessor:
         native_chunking_notice_shown = False
 
         for seg in segment_objects:
+            self._check_interrupt()
             segment_text = (seg.text or "").strip()
             if not segment_text:
                 continue
@@ -396,7 +419,12 @@ class OmniVoiceProcessor:
             self._apply_duration_budget(generation_items, float(duration_budget))
 
         segment_records: List[Dict[str, Any]] = []
-        for item in generation_items:
+        for item_index, item in enumerate(generation_items):
+            self._check_interrupt(
+                item_index=item_index,
+                total_items=len(generation_items),
+                character_name=item.get("character_name"),
+            )
             if item["kind"] == "pause":
                 silence_duration = float(item.get("effective_duration", item.get("duration", 0.0)))
                 silence = PauseTagProcessor.create_silence_segment(
@@ -430,6 +458,11 @@ class OmniVoiceProcessor:
                 voice_ref=item["voice_ref"],
                 parameter_log=item["parameter_log"],
                 show_text_content=item["show_text_logging"],
+            )
+            self._check_interrupt(
+                item_index=item_index,
+                total_items=len(generation_items),
+                character_name=item.get("character_name"),
             )
             audio = self.adapter.generate_single(
                 text=item["text"],
