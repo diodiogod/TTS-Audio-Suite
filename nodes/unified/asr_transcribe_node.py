@@ -88,7 +88,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                     "Macedonian"
                 ], {
                     "default": "Auto",
-                    "tooltip": "Language hint for ASR.\n• Auto: Let the engine handle language itself when possible\n• Explicit language: Better when you know the spoken language and want more predictable results\n\nEngine caveat:\n• Qwen ASR has native Auto language detection\n• Granite currently supports English, French, German, Spanish, Portuguese, and Japanese\n• Granite + forced aligner on Auto uses a truthful heuristic for timestamps: Japanese script -> Japanese mode, otherwise the generic space-delimited aligner path"
+                    "tooltip": "Language hint for ASR.\n• Auto: Let the engine handle language itself when possible\n• Explicit language: Better when you know the spoken language and want more predictable results\n\nEngine caveat:\n• Qwen ASR has native Auto language detection\n• Granite currently supports English, French, German, Spanish, Portuguese, and Japanese\n• Granite 4.1 plus drops Japanese, but adds native speaker diarization and native word timestamps\n• Granite + forced aligner on Auto uses a truthful heuristic for timestamps: Japanese script -> Japanese mode, otherwise the generic space-delimited aligner path"
                 }),
                 "task": (["transcribe", "translate"], {
                     "default": "transcribe",
@@ -96,11 +96,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 }),
                 "timestamps": (["none", "word"], {
                     "default": "none",
-                    "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are produced natively on the plus model variant, while other variants require the separate Qwen forced aligner."
-                }),
-                "diarization": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Speaker Diarization (Speaker Attribution):\n• True: Attribute speech to speakers if supported (e.g. [Speaker 1]: ...)\n• False: Plain transcription without speaker turns\n\nGranite note: Native speaker attribution is supported on the 'plus' model variant. If combined with word-level timestamps, the system automatically uses the Qwen forced aligner to timing-align the speakers' words."
+                    "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are native on the plus model variant when diarization is off. Other Granite timestamp paths use the separate Qwen forced aligner."
                 }),
                 "chunk_size": ("INT", {
                     "default": 30, "min": 0, "max": 600, "step": 1,
@@ -113,6 +109,10 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 "enable_asr_cache": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "Cache ASR results in memory so SRT tweaks are instant. Disable if you want fresh ASR every run."
+                }),
+                "diarization": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Speaker Diarization (Speaker Attribution):\n• True: Attribute speech to speakers if supported (for example [Speaker 1] hello)\n• False: Plain transcription without speaker turns\n\nGranite note: Native speaker attribution is supported on the 'plus' model variant. If combined with word-level timestamps, the system automatically uses the Qwen forced aligner to time-align the speakers' words."
                 }),
             }
         }

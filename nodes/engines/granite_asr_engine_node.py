@@ -69,7 +69,7 @@ class GraniteASREngineNode(BaseTTSNode):
                 }),
                 "max_new_tokens": ("INT", {
                     "default": 200, "min": 32, "max": 2048, "step": 32,
-                    "tooltip": "Maximum text tokens Granite may generate per ASR chunk.\n\nThis is a hard cap, not a target:\n• Lower values: Safer against runaway output, but can cut off longer chunks\n• 200: Matches IBM's reference example\n• Higher values: Needed for longer spoken chunks, but can increase loop/repetition risk if the model goes off the rails"
+                    "tooltip": "Maximum text tokens Granite may generate per ASR chunk.\n\nThis is a hard cap, not a target:\n• Lower values: Safer against runaway output, but can cut off longer chunks\n• 200: Matches IBM's reference example for plain transcription\n• Native timestamp mode and speaker diarization auto-raise low budgets internally because those outputs are much longer\n• Higher values: Needed for longer spoken chunks, but can increase loop/repetition risk if the model goes off the rails"
                 }),
             },
             "optional": {

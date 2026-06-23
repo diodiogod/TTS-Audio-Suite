@@ -297,6 +297,7 @@ ComfyUI/models/TTS/granite_asr/
 Notes:
 
 - Granite downloads into its own `granite_asr` folder.
+- `granite-speech-4.1-2b-plus` adds native speaker diarization and native word-level timestamps, but drops Japanese.
 - If Granite word timestamps are enabled, it lazily reuses `Qwen3-ForcedAligner-0.6B` from the Qwen ASR folder instead of duplicating that model.
 
 ## Echo-TTS

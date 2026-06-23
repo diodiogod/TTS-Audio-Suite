@@ -140,6 +140,63 @@ def test_format_granite_diarization_segments_uses_suite_character_style():
     assert format_granite_diarization_segments(segments) == "[Speaker 1] hello there. [Speaker 2] hi."
 
 
+def test_native_timestamp_mode_auto_raises_low_max_new_tokens_budget():
+    from engines.adapters.asr_granite_adapter import GraniteASREngineAdapter
+    from utils.asr.types import ASRRequest
+
+    adapter = GraniteASREngineAdapter({
+        "engine_type": "granite_asr",
+        "config": {
+            "model_name": "granite-speech-4.1-2b-plus",
+            "max_new_tokens": 200,
+        },
+    })
+
+    req = ASRRequest(
+        audio={"waveform": torch.zeros(16000), "sample_rate": 16000},
+        timestamps="word",
+        chunk_size=30,
+    )
+
+    resolved = adapter._resolve_max_new_tokens(
+        req,
+        chunk_num_samples=30 * 16000,
+        sample_rate=16000,
+        timestamps=True,
+    )
+
+    assert resolved >= 480
+
+
+def test_plain_transcription_keeps_configured_max_new_tokens_budget():
+    from engines.adapters.asr_granite_adapter import GraniteASREngineAdapter
+    from utils.asr.types import ASRRequest
+
+    adapter = GraniteASREngineAdapter({
+        "engine_type": "granite_asr",
+        "config": {
+            "model_name": "granite-speech-4.1-2b-plus",
+            "max_new_tokens": 200,
+        },
+    })
+
+    req = ASRRequest(
+        audio={"waveform": torch.zeros(16000), "sample_rate": 16000},
+        timestamps="none",
+        chunk_size=30,
+    )
+
+    resolved = adapter._resolve_max_new_tokens(
+        req,
+        chunk_num_samples=30 * 16000,
+        sample_rate=16000,
+        timestamps=False,
+        diarization=False,
+    )
+
+    assert resolved == 200
+
+
 def test_remap_words_to_speaker_segments():
     # Arrange
     speaker_segments = [

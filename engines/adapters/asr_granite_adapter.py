@@ -422,6 +422,32 @@ class GraniteASREngineAdapter:
             warnings.append(f"Granite timestamps skipped: Qwen forced aligner failed ({e}).")
             return []
 
+    def _resolve_max_new_tokens(
+        self,
+        req: ASRRequest,
+        *,
+        chunk_num_samples: int,
+        sample_rate: int,
+        timestamps: bool = False,
+        diarization: bool = False,
+    ) -> int:
+        base_max_new_tokens = int(self.config.get("max_new_tokens", req.max_new_tokens or 200))
+        chunk_seconds = max(1.0, float(chunk_num_samples) / float(sample_rate))
+
+        # Native timestamp mode expands output heavily because each spoken word is
+        # followed by a [T:NNN] tag. Speaker attribution also adds extra label tokens.
+        # Keep the user-configured cap as the floor, but auto-raise low budgets so
+        # longer chunks do not get truncated mid-transcript.
+        if timestamps:
+            recommended_floor = int(max(256, min(2048, round(chunk_seconds * 16.0))))
+            return max(base_max_new_tokens, recommended_floor)
+
+        if diarization:
+            recommended_floor = int(max(256, min(2048, round(chunk_seconds * 10.0))))
+            return max(base_max_new_tokens, recommended_floor)
+
+        return base_max_new_tokens
+
     def _run_chunk(
         self,
         runtime,
@@ -434,7 +460,13 @@ class GraniteASREngineAdapter:
         diarization: bool = False,
     ) -> Tuple[str, Optional[str]]:
         generation_kwargs = {
-            "max_new_tokens": int(self.config.get("max_new_tokens", req.max_new_tokens or 200)),
+            "max_new_tokens": self._resolve_max_new_tokens(
+                req,
+                chunk_num_samples=len(chunk_np),
+                sample_rate=16000,
+                timestamps=timestamps,
+                diarization=diarization,
+            ),
             "do_sample": bool(self.config.get("do_sample", False)),
             "num_beams": int(self.config.get("num_beams", 1)),
             "temperature": float(self.config.get("temperature", 1.0)),

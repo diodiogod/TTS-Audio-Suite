@@ -939,11 +939,11 @@ engines:
 
     special_features:
       - "ASR (Automatic Speech Recognition)"
+      - "Native speaker attribution / diarization (plus model variant)"
+      - "Native word-level timestamps (plus model variant)"
       - "Custom timestamps/SRT via reused Qwen forced aligner"
       - "Speech translation (experimental)"
       - "Optional forced aligner auto-routed through shared legacy T4 runtime"
-      - "Native speaker attribution / diarization (plus model variant)"
-      - "Native word-level timestamps (plus model variant)"
 
     model_sources:
       - component: "granite-4.0-1b-speech"
@@ -978,7 +978,7 @@ engines:
       es: { supported: true, flag: "🇪🇸", notes: "" }
       fr: { supported: true, flag: "🇫🇷", notes: "" }
       it: { supported: false, flag: "🇮🇹", notes: "" }
-      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "(4.1-2b supports Japanese; plus variant does not)" }
       ko: { supported: false, flag: "🇰🇷", notes: "" }
       ru: { supported: false, flag: "🇷🇺", notes: "" }
       pt: { supported: true, flag: "🇵🇹", notes: "" }
@@ -1002,7 +1002,7 @@ engines:
 
     features:
       voice_cloning: { supported: false, notes: "" }
-      native_multi_speaker: { supported: false, notes: "" }
+      native_multi_speaker: { supported: "partial", notes: "(Plus variant speaker attribution / diarization)" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: true, notes: "" }
       emotion_control: { supported: false, notes: "" }
@@ -1595,7 +1595,7 @@ readme_model_download_table:
   - engine: "Granite ASR"
     primary_model_path: "ComfyUI/models/TTS/granite_asr/"
     auto_download: "✅"
-    notes: "Main Granite model; optional Qwen forced aligner reused lazily for timestamps/SRT"
+    notes: "Granite ASR models; plus adds native diarization/timestamps, optional Qwen forced aligner reused lazily for timestamps/SRT fallback"
   - engine: "Echo-TTS"
     primary_model_path: "ComfyUI/models/TTS/echo-tts-base/"
     auto_download: "✅"
@@ -1905,6 +1905,7 @@ model_layouts_markdown: |
   Notes:
 
   - Granite downloads into its own `granite_asr` folder.
+  - `granite-speech-4.1-2b-plus` adds native speaker diarization and native word-level timestamps, but drops Japanese.
   - If Granite word timestamps are enabled, it lazily reuses `Qwen3-ForcedAligner-0.6B` from the Qwen ASR folder instead of duplicating that model.
 
   ## Echo-TTS
