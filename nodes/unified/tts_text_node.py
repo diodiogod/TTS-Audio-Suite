@@ -422,6 +422,8 @@ Back to the main narrator voice for the conclusion.""",
                                         voice_mapping[char] = {"waveform": waveform, "sample_rate": sample_rate}
                                         print(f"🎭 VibeVoice: Using character-specific voice for '{char}'")
                                     except Exception as e:
+                                        if isinstance(e, InterruptedError):
+                                            raise
                                         print(f"⚠️ Failed to load character audio for '{char}': {e}")
                                         voice_mapping[char] = char_audio  # Fallback to main voice
                                         print(f"🔄 VibeVoice: Using main voice fallback for '{char}'")
@@ -756,6 +758,8 @@ Back to the main narrator voice for the conclusion.""",
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
             print(f"❌ Failed to create engine node instance: {e}")
@@ -869,6 +873,8 @@ Back to the main narrator voice for the conclusion.""",
             return None, None, "", "narrator"
             
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             print(f"❌ Voice reference error: {e}")
             return None, None, "", "narrator"
 
@@ -1694,6 +1700,8 @@ Back to the main narrator voice for the conclusion.""",
                                 }
                                 print(f"🎭 Qwen3-TTS: Using character-specific voice for '{character}' (ICL mode)")
                             except Exception as e:
+                                if isinstance(e, InterruptedError):
+                                    raise
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
                                 if audio_tensor is not None and reference_text:
@@ -1737,6 +1745,8 @@ Back to the main narrator voice for the conclusion.""",
                                 print(f"⚠️⚠️ Qwen3-TTS: Character '{character}' has audio but NO reference text")
                                 print(f"⚠️⚠️ Using x_vector_only mode (speaker embedding only) - LOWER QUALITY than ICL mode")
                             except Exception as e:
+                                if isinstance(e, InterruptedError):
+                                    raise
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
                                 if audio_tensor is not None:

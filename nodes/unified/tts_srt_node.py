@@ -887,6 +887,8 @@ Hello! This is unified SRT TTS with character switching.
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             print(f"❌ Failed to create engine SRT node instance: {e}")
             return None
 
@@ -978,6 +980,8 @@ Hello! This is unified SRT TTS with character switching.
             return None, None, "", "narrator"
             
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             print(f"❌ Voice reference error: {e}")
             return None, None, "", "narrator"
 

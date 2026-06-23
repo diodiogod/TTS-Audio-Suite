@@ -125,6 +125,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             return normalized_audio
             
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             raise ValueError(f"Failed to process {input_name}: {e}")
 
     def _handle_rvc_chunked_conversion(self, source_chunks, source_sample_rate, rvc_engine,
@@ -394,6 +396,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             return converted_audio, final_conversion_info
             
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             print(f"❌ RVC voice conversion failed: {e}")
             raise RuntimeError(f"RVC voice conversion failed: {e}")
 
@@ -596,6 +600,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 raise ValueError(f"Engine type '{engine_type}' does not support voice conversion. Currently supported: ChatterBox, CosyVoice")
                 
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             print(f"❌ Failed to create engine VC node instance: {e}")
             return None
 
@@ -1127,6 +1133,8 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             return (converted_audio, conversion_info)
                 
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             error_msg = f"❌ Voice conversion failed: {e}"
             print(error_msg)
             import traceback
