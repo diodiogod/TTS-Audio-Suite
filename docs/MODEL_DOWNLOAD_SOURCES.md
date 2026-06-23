@@ -96,6 +96,8 @@ Use this as the canonical list of model repositories/links for offline setup.
 | Component | Source | Size | Auto-Download | Notes |
 |---|---|---|---|---|
 | granite-4.0-1b-speech | [ibm-granite/granite-4.0-1b-speech](https://huggingface.co/ibm-granite/granite-4.0-1b-speech) | ~4.6GB | ✅ | Main Granite ASR / AST model |
+| granite-speech-4.1-2b | [ibm-granite/granite-speech-4.1-2b](https://huggingface.co/ibm-granite/granite-speech-4.1-2b) | ~4.6GB | ✅ | Granite Speech 4.1 2B multilingual model (supports Japanese) |
+| granite-speech-4.1-2b-plus | [ibm-granite/granite-speech-4.1-2b-plus](https://huggingface.co/ibm-granite/granite-speech-4.1-2b-plus) | ~4.6GB | ✅ | Plus variant supporting native speaker diarization and word-level timestamps |
 | Qwen3-ForcedAligner-0.6B | [Qwen/Qwen3-ForcedAligner-0.6B](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B) | N/A | ✅ | Optional custom word-level timestamps/SRT path; reused from Qwen folder |
 
 ## Step Audio EditX

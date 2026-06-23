@@ -925,7 +925,7 @@ engines:
 
   - id: granite-asr
     name: Granite ASR
-    models: "granite-4.0-1b-speech, granite-speech-4.1-2b-plus"
+    models: "granite-4.0-1b-speech, granite-speech-4.1-2b, granite-speech-4.1-2b-plus"
     size: "~4.6GB"
     license: "Apache-2.0"
     commercial: true
@@ -952,6 +952,12 @@ engines:
         size: "~4.6GB"
         auto_download: true
         notes: "Main Granite ASR / AST model"
+      - component: "granite-speech-4.1-2b"
+        source_name: "ibm-granite/granite-speech-4.1-2b"
+        source_url: "https://huggingface.co/ibm-granite/granite-speech-4.1-2b"
+        size: "~4.6GB"
+        auto_download: true
+        notes: "Granite Speech 4.1 2B multilingual model (supports Japanese)"
       - component: "granite-speech-4.1-2b-plus"
         source_name: "ibm-granite/granite-speech-4.1-2b-plus"
         source_url: "https://huggingface.co/ibm-granite/granite-speech-4.1-2b-plus"
