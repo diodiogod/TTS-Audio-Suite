@@ -23,19 +23,17 @@ os.environ["COMFYUI_TESTING"] = "1"
 # Path routing
 # ---------------------------------------------------------------------------
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Works whether invoked from repo root or inside tests/
-TEST_DIR = SCRIPT_DIR if SCRIPT_DIR.endswith("tests") else os.path.join(SCRIPT_DIR, "tests")
-COMFYUI_ROOT = os.path.abspath(os.path.join(TEST_DIR, "..", "..", ".."))
-if not os.path.isdir(os.path.join(COMFYUI_ROOT, "venv")):
-    # Fallback to two levels up if venv is not found (e.g. if run from a different layout)
-    COMFYUI_ROOT = os.path.abspath(os.path.join(TEST_DIR, "..", ".."))
+# Import shared configuration
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import env_config
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tests"))
+    import env_config
 
-# Cross-platform venv resolution
-if os.name == "nt":
-    PYTHON_EXE = os.path.join(COMFYUI_ROOT, "venv", "Scripts", "python.exe")
-else:
-    PYTHON_EXE = os.path.join(COMFYUI_ROOT, "venv", "bin", "python")
+TEST_DIR = env_config.TESTS_DIR
+COMFYUI_ROOT = env_config.COMFYUI_ROOT
+PYTHON_EXE = env_config.VENV_PYTHON
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +59,7 @@ def main():
         # rather than forcing "." which overrides testpaths and collects root scripts
         pass
     pytest_args.extend(args)
-    print(f"\n📋 Executing: {' '.join(pytest_args)}")
+    print(f"\n[TESTS] Executing: {' '.join(pytest_args)}")
 
     result = subprocess.run(pytest_args, env=os.environ)
     return result.returncode
@@ -69,3 +67,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
