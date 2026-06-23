@@ -139,6 +139,9 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
+tests/.env
+tests/.env.local
 .venv
 env/
 venv/
@@ -243,3 +246,10 @@ tests/output/
 
 # TTS Audio Suite settings cache (user preferences)
 .inline_tag_settings_cache.json
+
+# AI Agent skills
+.agents/
+skills-lock.json
+
+# others
+node_modules/

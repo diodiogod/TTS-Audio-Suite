@@ -59,9 +59,9 @@ class GraniteASREngineNode(BaseTTSNode):
         ]
         return {
             "required": {
-                "model_name": (["granite-4.0-1b-speech"], {
-                    "default": "granite-4.0-1b-speech",
-                    "tooltip": "Granite speech model:\n• granite-4.0-1b-speech: IBM 1B speech model for transcription and speech translation\n\nThis engine is ASR-only. It plugs into ✏️ ASR Transcribe like Qwen ASR does, but it does not generate native timestamps."
+                "model_name": (["granite-speech-4.1-2b", "granite-speech-4.1-2b-plus", "granite-4.0-1b-speech"], {
+                    "default": "granite-speech-4.1-2b",
+                    "tooltip": "Granite speech model:\n• granite-speech-4.1-2b: IBM 2B speech model (latest default, ASR/AST, supports Japanese)\n• granite-speech-4.1-2b-plus: IBM 2B speech model (ASR with speaker attribution and native timestamps, excludes Japanese)\n• granite-4.0-1b-speech: IBM 1B speech model\n\nThis engine is ASR-only. It plugs into ✏️ ASR Transcribe like Qwen ASR does. The plus variant supports native word-level timestamps, while other models require the separate forced aligner."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
@@ -69,7 +69,7 @@ class GraniteASREngineNode(BaseTTSNode):
                 }),
                 "max_new_tokens": ("INT", {
                     "default": 200, "min": 32, "max": 2048, "step": 32,
-                    "tooltip": "Maximum text tokens Granite may generate per ASR chunk.\n\nThis is a hard cap, not a target:\n• Lower values: Safer against runaway output, but can cut off longer chunks\n• 200: Matches IBM's reference example\n• Higher values: Needed for longer spoken chunks, but can increase loop/repetition risk if the model goes off the rails"
+                    "tooltip": "Maximum text tokens Granite may generate per ASR chunk.\n\nThis is a hard cap, not a target:\n• Lower values: Safer against runaway output, but can cut off longer chunks\n• 200: Matches IBM's reference example for plain transcription\n• Native timestamp mode and speaker diarization auto-raise low budgets internally because those outputs are much longer\n• Higher values: Needed for longer spoken chunks, but can increase loop/repetition risk if the model goes off the rails"
                 }),
             },
             "optional": {
@@ -83,7 +83,7 @@ class GraniteASREngineNode(BaseTTSNode):
                 }),
                 "asr_use_forced_aligner": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Use Qwen's separate forced aligner after Granite transcription so ✏️ ASR Transcribe can build word timings and SRT.\n\n• True: Enable timestamps/SRT support for Granite\n• False: Granite returns text only\n\nImportant:\n• Granite does NOT have native timestamp output in this integration\n• The reused Qwen forced aligner is automatically routed through the shared legacy Transformers 4 runtime\n• Translation mode still stays text-only\n• If ASR language is Auto, alignment uses a truthful heuristic: Japanese script -> Japanese mode, otherwise Qwen's generic space-delimited tokenizer path"
+                    "tooltip": "Use Qwen's separate forced aligner after Granite transcription so ✏️ ASR Transcribe can build word timings and SRT.\n\n• True: Enable timestamps/SRT support for Granite\n• False: Granite returns text only\n\nImportant:\n• Only the plus model variant has native timestamp output. Other variants do not, and require the Qwen forced aligner for word timings.\n• The reused Qwen forced aligner is automatically routed through the shared legacy Transformers 4 runtime\n• Translation mode still stays text-only\n• If ASR language is Auto, alignment uses a truthful heuristic: Japanese script -> Japanese mode, otherwise Qwen's generic space-delimited tokenizer path"
                 }),
                 "asr_translate_target_language": (translate_languages, {
                     "default": "English",

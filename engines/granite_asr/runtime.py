@@ -18,12 +18,18 @@ class GraniteASRRuntime:
 
     DEFAULT_CHAT_TEMPLATE = (
         "{% for message in messages %}"
-        "{% if message['role'] == 'user' %}"
-        "USER: {{ message['content'] }}\n ASSISTANT:"
+        "{% if message['role'] == 'system' %}"
+        "<|start_of_role|>system<|end_of_role|>{{ message['content'] }}<|end_of_text|>\n"
+        "{% elif message['role'] == 'user' %}"
+        "<|start_of_role|>user<|end_of_role|>{{ message['content'] }}<|end_of_text|>\n"
         "{% elif message['role'] == 'assistant' %}"
-        "{{ message['content'] }}"
+        "<|start_of_role|>assistant<|end_of_role|>{{ message['content'] }}"
+        "{% if not loop.last %}<|end_of_text|>\n{% endif %}"
         "{% endif %}"
         "{% endfor %}"
+        "{% if add_generation_prompt %}"
+        "<|start_of_role|>assistant<|end_of_role|>"
+        "{% endif %}"
     )
 
     LANGUAGE_NAMES = {
@@ -75,6 +81,8 @@ class GraniteASRRuntime:
         language: Optional[str] = None,
         target_language: Optional[str] = None,
         translate_instruction_override: Optional[str] = None,
+        timestamps: bool = False,
+        diarization: bool = False,
     ) -> str:
         if task == "translate":
             target_language = target_language or "English"
@@ -86,13 +94,25 @@ class GraniteASRRuntime:
 
             if "<|audio|>" not in user_prompt:
                 user_prompt = f"<|audio|>{user_prompt.lstrip()}"
+        elif diarization:
+            user_prompt = "<|audio|> Speaker attribution: Transcribe and denote who is speaking by adding [Speaker 1]: and [Speaker 2]: tags before speaker turns."
+        elif timestamps:
+            user_prompt = "<|audio|> Timestamps: Transcribe the speech. After each word, add a timestamp tag showing the end time in centiseconds, e.g. hello [T:45] world [T:82]"
         else:
             if language:
                 user_prompt = f"<|audio|>can you transcribe the {language} speech into a written format?"
             else:
                 user_prompt = "<|audio|>can you transcribe the speech into a written format?"
 
-        chat = [{"role": "user", "content": user_prompt}]
+        SYSTEM_PROMPT = (
+            "Knowledge Cutoff Date: April 2024.\n"
+            "Today's Date: December 19, 2024.\n"
+            "You are Granite, developed by IBM. You are a helpful AI assistant"
+        )
+        chat = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt}
+        ]
         tokenizer = self.processor.tokenizer
         return tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
 
@@ -135,12 +155,16 @@ class GraniteASRRuntime:
         target_language: Optional[str] = None,
         translate_instruction_override: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, object]] = None,
+        timestamps: bool = False,
+        diarization: bool = False,
     ):
         prompt = self._build_prompt(
             task=task,
             language=language,
             target_language=target_language,
             translate_instruction_override=translate_instruction_override,
+            timestamps=timestamps,
+            diarization=diarization,
         )
         generate_kwargs = self._build_generation_kwargs(generation_kwargs)
 

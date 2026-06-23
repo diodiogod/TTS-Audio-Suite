@@ -36,7 +36,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **IndexTTS-2** | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
 | **Qwen3-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
-| **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Custom timestamps/SRT via reused Qwen forced aligner |
+| **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Native speaker attribution / diarization (plus model variant) |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
@@ -848,7 +848,7 @@ Instruct: 用兴奋的语气说话。
 <summary><h3>Qwen3-TTS - 4 Model Types with Text-to-Voice Design</h3></summary>
 
 **NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct TTS model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning! A **single engine** automatically selects and downloads the correct model based on your settings — no manual model management needed.
-**NEW**: ✏️ Unified ASR Transcribe support now includes **Qwen3-ASR** and **Granite ASR**, giving the suite a second ASR engine option with optional custom timestamps/SRT for Granite via the reused Qwen forced aligner.
+**NEW**: ✏️ Unified ASR Transcribe support now includes **Qwen3-ASR** and **Granite ASR**, giving the suite a second ASR engine option with optional custom timestamps/SRT for Granite via the reused Qwen forced aligner. Granite `4.1 plus` also adds native speaker diarization and native word timestamps.
 
 **Model Types:**
 
@@ -990,6 +990,7 @@ This matters because the suite can now:
 * **Reuse timings with edited text** - Clean or post-process transcript text first, then rebuild SRT using the original timings
 * **Use dedicated subtitle controls** - `🔧 SRT Advanced Options` now belongs to the builder stage instead of being mixed into ASR
 * **Support Granite better** - Granite can stay raw for alignment, then go through punctuation/truecase before subtitle construction
+* **Support diarized Granite workflows** - Granite `4.1 plus` can emit suite-native speaker tags like `[Speaker 1]` for downstream TTS/alias workflows, and if you need both diarization and word timings the node automatically falls back to the reused Qwen forced aligner
 * **Support text-only SRT generation** - Leave `asr_timing_data` disconnected and the builder estimates subtitle timings from plain text using the same SRT options that later shape the final cues
 * **Preserve project control tags** - Character, language, parameter, pause, and inline edit tags are preserved instead of being broken by subtitle heuristics
 * **Keep tag-heavy SRT usable for TTS** - Control tags do not count toward readability metrics, pause tags still affect timing, and active speaker state is re-emitted on wrapped subtitle lines/cues so TTS does not fall back to narrator
@@ -999,6 +1000,12 @@ This matters because the suite can now:
 * `✏️ ASR Transcribe` for timed transcription with **Qwen3-ASR** or **Granite ASR**
 * `📝 ASR Punctuation / Truecase` mainly for low-punctuation ASR outputs like Granite
 * `📺 Text to SRT Builder` to turn cleaned text + ASR timing data into final SRT
+
+Granite note:
+
+* `granite-speech-4.1-2b` keeps Japanese support
+* `granite-speech-4.1-2b-plus` adds native diarization and native word timestamps, but drops Japanese
+* When Granite diarization and word timestamps are requested together, the suite automatically uses the reused Qwen forced aligner so the output still carries speaker-attributed word timings
 
 **Workflow example:**
 
@@ -1457,7 +1464,7 @@ For offline/manual setup:
 | CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
 | Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
 | MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay/TTSD models plus shared MOSS-Audio-Tokenizer codec |
-| Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Main Granite model; optional Qwen forced aligner reused lazily for timestamps/SRT |
+| Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Granite ASR models; plus adds native diarization/timestamps, optional Qwen forced aligner reused lazily for timestamps/SRT fallback |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 | Dots TTS | `ComfyUI/models/TTS/dots_tts/` | ✅ | Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder |
 | OmniVoice | `ComfyUI/models/TTS/omnivoice/` | ✅ | Official OmniVoice model. Voice cloning in this suite requires explicit reference text. |

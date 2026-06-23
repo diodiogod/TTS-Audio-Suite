@@ -73,7 +73,12 @@ collect_ignore = ["__init__.py", "nodes.py"]
 CUSTOM_NODE_ROOT = Path(__file__).parent.parent  # tests/ -> TTS-Audio-Suite/
 DEFAULT_COMFY_ROOT = CUSTOM_NODE_ROOT.parent.parent  # Navigate to Comfy-new
 COMFY_ROOT = Path(os.environ.get("TTS_SUITE_TEST_COMFY_ROOT", str(DEFAULT_COMFY_ROOT)))
-DEFAULT_VENV_PYTHON = COMFY_ROOT / "venv" / "Scripts" / "python.exe"  # Windows
+
+if os.name == "nt":
+    DEFAULT_VENV_PYTHON = COMFY_ROOT / "venv" / "Scripts" / "python.exe"
+else:
+    DEFAULT_VENV_PYTHON = COMFY_ROOT / "venv" / "bin" / "python"
+
 VENV_PYTHON = Path(os.environ.get("TTS_SUITE_TEST_VENV_PYTHON", str(DEFAULT_VENV_PYTHON)))
 
 
@@ -183,7 +188,15 @@ def comfyui_server():
     except (requests.ConnectionError, requests.Timeout):
         pass  # Server not running, we'll start it
     
-    # Start ComfyUI in subprocess
+    # Start ComfyUI in subprocess with process group isolation and a clean env (no COMFYUI_TESTING)
+    creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+    server_env = os.environ.copy()
+    server_env.pop("COMFYUI_TESTING", None)
+    server_env.pop("PYTEST_CURRENT_TEST", None)
+
+    log_path = CUSTOM_NODE_ROOT / "tests" / "comfyui_server.log"
+    log_file = open(log_path, "w", encoding="utf-8", errors="replace")
+
     process = subprocess.Popen(
         [
             str(VENV_PYTHON),
@@ -194,10 +207,11 @@ def comfyui_server():
             "--cpu"  # Use CPU for faster startup in tests
         ],
         cwd=str(COMFY_ROOT),
-        stdout=subprocess.PIPE,
+        stdout=log_file,
         stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1
+        creationflags=creation_flags,
+        preexec_fn=os.setsid if sys.platform != "win32" else None,
+        env=server_env
     )
     
     # Wait for server to be ready
@@ -220,8 +234,9 @@ def comfyui_server():
         # Try to get any error output
         process.terminate()
         try:
-            stdout, _ = process.communicate(timeout=5)
-            error_lines = stdout[-2000:] if stdout else "No output"
+            log_file.close()
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                error_lines = f.read()[-2000:]
         except Exception:
             error_lines = "Could not capture output"
         
@@ -230,18 +245,27 @@ def comfyui_server():
             f"Last output:\n{error_lines}"
         )
     
-    yield {"url": server_url, "process": process, "external": False}
-    
-    # Teardown
-    if process and process.poll() is None:
-        print("\n🛑 Shutting down ComfyUI server...")
-        process.terminate()
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-        print("✅ Server stopped")
+    try:
+        yield {"url": server_url, "process": process, "external": False}
+    finally:
+        # Teardown
+        if process and process.poll() is None:
+            print("\n🛑 Shutting down ComfyUI server...")
+            if sys.platform == "win32":
+                process.terminate()
+            else:
+                try:
+                    import signal
+                    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                except ProcessLookupError:
+                    process.terminate()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            print("✅ Server stopped")
+        log_file.close()
 
 
 @pytest.fixture

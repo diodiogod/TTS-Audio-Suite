@@ -238,6 +238,11 @@ class EchoTTSSRTProcessor:
                     enable_chunking=False,  # SRT handles timing, no chunking
                     enable_audio_cache=enable_audio_cache,
                     apply_edit_postprocessing=False,
+                    interrupt_callback=lambda character=None: self._check_interrupt(
+                        subtitle_index=i,
+                        total_subtitles=len(subtitles),
+                        character=character
+                    )
                 )
 
                 subtitle_has_edit_tags = any(seg.get("edit_tags") for seg in segment_records)

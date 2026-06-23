@@ -1,42 +1,69 @@
 #!/usr/bin/env python
 """
-TTS-Audio-Suite Test Runner
+Universal ComfyUI Custom Node Test Runner.
 
-This script runs pytest with proper environment isolation to prevent
-the main TTS-Audio-Suite __init__.py from being loaded during unit tests.
+Handles working directory isolation, cross-platform venv detection,
+and forwards execution to pytest.
 
-Usage:
-    python tests/run_tests.py                    # Run all tests
-    python tests/run_tests.py -m unit            # Run only unit tests
-    python tests/run_tests.py -m integration     # Run only integration tests
+Usage (from the custom node root):
+    python tests/run_tests.py                 # all tests
+    python tests/run_tests.py unit/           # unit only
+    python tests/run_tests.py integration/    # integration only
+    python tests/run_tests.py -m unit         # via marker
 """
 
 import os
 import sys
 import subprocess
 
-# Set testing environment BEFORE any imports
-os.environ['COMFYUI_TESTING'] = '1'
+# Flag for code paths that need to know they're under test
+os.environ["COMFYUI_TESTING"] = "1"
 
-# Get paths
-script_dir = os.path.dirname(os.path.abspath(__file__))
-venv_python = os.path.join(script_dir, '..', '..', 'venv', 'Scripts', 'python.exe')
+# ---------------------------------------------------------------------------
+# Path routing
+# ---------------------------------------------------------------------------
 
-# Build pytest command
-pytest_args = [
-    venv_python,
-    '-m', 'pytest',
-    script_dir,
-    '-v',
-    '--tb=short',
-]
+# Import shared configuration
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import env_config
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tests"))
+    import env_config
 
-# Add any additional arguments passed to this script
-pytest_args.extend(sys.argv[1:])
+TEST_DIR = env_config.TESTS_DIR
+COMFYUI_ROOT = env_config.COMFYUI_ROOT
+PYTHON_EXE = env_config.VENV_PYTHON
 
-# Run from tests directory to avoid package import
-os.chdir(script_dir)
 
-print(f"Running: {' '.join(pytest_args)}")
-result = subprocess.run(pytest_args, env=os.environ)
-sys.exit(result.returncode)
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    args = sys.argv[1:]
+
+    # Isolate to tests/ so the local pytest.ini wins over ComfyUI's root config
+    os.chdir(TEST_DIR)
+
+    # Check if a path argument is explicitly provided
+    has_path = False
+    for arg in args:
+        if not arg.startswith("-") and (os.path.exists(arg) or "/" in arg or arg.endswith(".py")):
+            has_path = True
+            break
+
+    pytest_args = [PYTHON_EXE, "-m", "pytest"]
+    if not has_path:
+        # If no explicit path is given, we let pytest.ini's testpaths control collection
+        # rather than forcing "." which overrides testpaths and collects root scripts
+        pass
+    pytest_args.extend(args)
+    print(f"\n[TESTS] Executing: {' '.join(pytest_args)}")
+
+    result = subprocess.run(pytest_args, env=os.environ)
+    return result.returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

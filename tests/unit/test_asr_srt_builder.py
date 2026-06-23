@@ -13,6 +13,7 @@ os.environ.setdefault("COMFYUI_TESTING", "1")
 from utils.asr.srt_builder import build_srt
 from utils.asr.pipeline import format_asr_output
 from utils.asr.synthetic_timing import estimate_asr_result_from_text
+from utils.asr.tagged_text import parse_tagged_text
 from utils.asr.types import ASRSegment, ASRWord
 
 
@@ -157,3 +158,67 @@ def test_english_spacing_is_preserved():
     )
 
     assert "You know, after." in srt
+
+
+def test_punctuation_only_word_stream_does_not_crash_srt_builder():
+    words = [
+        ASRWord(start=0.0, end=0.01, text=","),
+        ASRWord(start=0.01, end=0.02, text="."),
+        ASRWord(start=0.02, end=0.03, text="?"),
+    ]
+    segments = [ASRSegment(start=0.0, end=0.03, text="", words=words)]
+
+    srt, stats = build_srt(
+        segments,
+        mode="smart",
+        full_text="Hello world.",
+        max_chars_per_line=100,
+        max_lines=2,
+        min_duration=0.0,
+        min_gap=10.0,
+        min_words_per_segment=1,
+        min_segment_seconds=0.0,
+        dedupe_overlaps=False,
+        return_stats=True,
+    )
+
+    assert isinstance(srt, str)
+    assert stats["matched"] == 0
+    assert stats["total"] == 0
+    assert stats["punct"] == []
+
+
+def test_speaker_state_tags_consume_trailing_colon_for_alignment():
+    full_text = "[Speaker 1]: Jane. [Speaker 2]: Mark."
+    profile = parse_tagged_text(full_text)
+
+    assert profile.spoken_text == " Jane.   Mark."
+
+    words = [
+        ASRWord(start=0.0, end=0.4, text="Jane"),
+        ASRWord(start=0.4, end=0.8, text="Mark"),
+    ]
+    segments = [
+        ASRSegment(start=0.0, end=0.4, text="[Speaker 1]: Jane.", speaker="Speaker 1", words=[words[0]]),
+        ASRSegment(start=0.4, end=0.8, text="[Speaker 2]: Mark.", speaker="Speaker 2", words=[words[1]]),
+    ]
+
+    srt, stats = build_srt(
+        segments,
+        mode="smart",
+        full_text=full_text,
+        max_chars_per_line=100,
+        max_lines=2,
+        min_duration=0.0,
+        min_gap=10.0,
+        min_words_per_segment=1,
+        min_segment_seconds=0.0,
+        dedupe_overlaps=False,
+        return_stats=True,
+    )
+
+    assert "[Speaker 1]: Jane." in srt
+    assert "[Speaker 2]: Mark." in srt
+    assert "Jane.:" not in srt
+    assert "Mark.:" not in srt
+    assert all(evt["punct"] != ":" for evt in stats["punct"])

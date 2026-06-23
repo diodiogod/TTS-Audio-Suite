@@ -5,7 +5,7 @@ Generates audio samples with different parameter combinations
 to help identify quality issues and optimal settings.
 
 Usage:
-    python tests/audio_sample_generator.py [--server-url URL]
+    python tests/diagnostics/audio_sample_generator.py [--server-url URL]
 
 Outputs:
     tests/output/audio_samples/
@@ -25,7 +25,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:

@@ -124,7 +124,15 @@ def _extract_control_tag(text: str, start_idx: int):
 
     if control is None:
         return None
-    return control, end_idx + 1
+
+    next_idx = end_idx + 1
+    # Treat labels like "[Speaker 1]:" as a single persistent state tag so the
+    # trailing colon does not leak into spoken-text punctuation alignment.
+    if opener == "[" and control.kind == "state" and next_idx < len(text) and text[next_idx] == ":":
+        control = ControlTag(text=f"{control.text}:", kind=control.kind, duration=control.duration)
+        next_idx += 1
+
+    return control, next_idx
 
 
 def parse_tagged_text(text: str) -> TaggedTextProfile:

@@ -24,6 +24,42 @@ class GraniteASRDownloader:
     """Downloader for Granite ASR models using unified download system."""
 
     MODELS = {
+        "granite-speech-4.1-2b": {
+            "repo_id": "ibm-granite/granite-speech-4.1-2b",
+            "files": [
+                "config.json",
+                "processor_config.json",
+                "preprocessor_config.json",
+                "chat_template.jinja",
+                "tokenizer.json",
+                "tokenizer_config.json",
+                "special_tokens_map.json",
+                "added_tokens.json",
+                "vocab.json",
+                "merges.txt",
+                "model.safetensors.index.json",
+                "model-00001-of-00003.safetensors",
+                "model-00002-of-00003.safetensors",
+                "model-00003-of-00003.safetensors",
+            ],
+            "description": "IBM Granite Speech 4.1 2B multilingual ASR/AST model"
+        },
+        "granite-speech-4.1-2b-plus": {
+            "repo_id": "ibm-granite/granite-speech-4.1-2b-plus",
+            "files": [
+                "config.json",
+                "generation_config.json",
+                "processor_config.json",
+                "chat_template.jinja",
+                "tokenizer.json",
+                "tokenizer_config.json",
+                "model.safetensors.index.json",
+                "model-00001-of-00003.safetensors",
+                "model-00002-of-00003.safetensors",
+                "model-00003-of-00003.safetensors",
+            ],
+            "description": "IBM Granite Speech 4.1 2B Plus multilingual ASR model with word-level timestamps and speaker attribution"
+        },
         "granite-4.0-1b-speech": {
             "repo_id": "ibm-granite/granite-4.0-1b-speech",
             "files": [
@@ -58,7 +94,7 @@ class GraniteASRDownloader:
 
     def download_model(
         self,
-        model_name: str = "granite-4.0-1b-speech",
+        model_name: str = "granite-speech-4.1-2b",
         force_download: bool = False,
         **kwargs
     ) -> str:
@@ -112,7 +148,7 @@ class GraniteASRDownloader:
 
     def resolve_model_path(self, model_identifier: str) -> str:
         if not model_identifier:
-            model_identifier = "granite-4.0-1b-speech"
+            model_identifier = "granite-speech-4.1-2b"
 
         if model_identifier.startswith("local:"):
             model_name = model_identifier[6:]
@@ -134,5 +170,5 @@ class GraniteASRDownloader:
 
         return model_identifier
 
-    def get_model_info(self, model_name: str = "granite-4.0-1b-speech") -> Optional[Dict[str, Any]]:
+    def get_model_info(self, model_name: str = "granite-speech-4.1-2b") -> Optional[Dict[str, Any]]:
         return self.MODELS.get(model_name)

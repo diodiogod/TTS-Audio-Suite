@@ -45,6 +45,7 @@ class ASRRequest:
     attn_implementation: str = "auto"
     use_forced_aligner: bool = False
     forced_aligner_model: Optional[str] = None
+    diarization: bool = False
 
 
 def asr_word_to_dict(word: ASRWord) -> Dict[str, Any]:
