@@ -910,11 +910,11 @@ def segments_from_words(words: List[ASRWord], **kwargs) -> List[ASRSegment]:
 
 def _apply_punctuation(words: List[ASRWord], full_text: str):
     if not words or not full_text:
-        return words, 0, 0, []
+        return words, 0, 0, [], []
 
     words = [word for word in words if not _is_punctuation_only(word.text)]
     if not words:
-        return words, 0, 0, []
+        return words, 0, 0, [], []
 
     # Tokenize text into words and punctuation
     # Keep apostrophes and hyphens inside compounds so they do not get

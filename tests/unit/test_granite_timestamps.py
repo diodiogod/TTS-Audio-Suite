@@ -1,6 +1,7 @@
 import pytest
 import torch
 from engines.adapters.asr_granite_adapter import (
+    format_granite_diarization_segments,
     parse_granite_native_timestamps,
     parse_granite_diarization,
     remap_words_to_speaker_segments,
@@ -130,6 +131,15 @@ def test_parse_granite_diarization():
     assert abs(segments[2].end - 5.0) < 1e-5
 
 
+def test_format_granite_diarization_segments_uses_suite_character_style():
+    segments = [
+        ASRSegment(start=0.0, end=1.0, text="hello there.", speaker="Speaker 1"),
+        ASRSegment(start=1.0, end=2.0, text="hi.", speaker="Speaker 2"),
+    ]
+
+    assert format_granite_diarization_segments(segments) == "[Speaker 1] hello there. [Speaker 2] hi."
+
+
 def test_remap_words_to_speaker_segments():
     # Arrange
     speaker_segments = [
@@ -250,7 +260,7 @@ def test_diarization_qwen_realignment_transcribe():
     # Assert
     assert len(result.segments) == 2
     assert result.segments[0].speaker == "Speaker 1"
-    assert result.segments[0].text == "[Speaker 1]: hello there."
+    assert result.segments[0].text == "[Speaker 1] hello there."
     assert len(result.segments[0].words) == 2
     assert result.segments[0].words[0].text == "hello"
     assert result.segments[0].words[0].start == 0.1
@@ -258,6 +268,8 @@ def test_diarization_qwen_realignment_transcribe():
     assert result.segments[0].words[1].text == "there"
     assert result.segments[0].words[1].start == 0.5
     assert result.segments[0].words[1].end == 0.8
+    assert result.segments[1].text == "[Speaker 2] hi."
+    assert result.text == "[Speaker 1] hello there. [Speaker 2] hi."
     assert result.segments[0].start == 0.1
     assert result.segments[0].end == 0.8
 

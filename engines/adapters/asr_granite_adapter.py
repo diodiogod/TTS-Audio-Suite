@@ -132,6 +132,23 @@ def parse_granite_diarization(text: str, chunk_offset: float, chunk_duration: fl
     return plain_text, segments
 
 
+def format_granite_diarization_segments(segments: List[ASRSegment]) -> str:
+    """
+    Normalize Granite speaker attribution to the suite's canonical bracket format:
+    [Speaker 1] text
+    """
+    parts: List[str] = []
+    for seg in segments:
+        text = (seg.text or "").strip()
+        if not text:
+            continue
+        if seg.speaker:
+            parts.append(f"[{seg.speaker}] {text}")
+        else:
+            parts.append(text)
+    return " ".join(parts).strip()
+
+
 def remap_words_to_speaker_segments(speaker_segments: List[ASRSegment], aligned_words: List[ASRWord]) -> None:
     """
     Distributes aligned words sequentially to speaker_segments based on text matching.
@@ -530,7 +547,7 @@ class GraniteASREngineAdapter:
                     chunk_offset = start / sample_rate
                     parsed_text, chunk_segments = parse_granite_diarization(text, chunk_offset, len(chunk_np) / sample_rate)
                     if parsed_text:
-                        full_text_parts.append(text)
+                        full_text_parts.append(format_granite_diarization_segments(chunk_segments))
                     
                     if aligner is not None and parsed_text:
                         aligner_language = self._resolve_aligner_language(normalized_language, parsed_text, notes)
@@ -547,7 +564,7 @@ class GraniteASREngineAdapter:
                         
                     for seg in chunk_segments:
                         if seg.speaker:
-                            seg.text = f"[{seg.speaker}]: {seg.text}"
+                            seg.text = f"[{seg.speaker}] {seg.text}"
                     
                     segments.extend(chunk_segments)
                 elif use_native_timestamps:
@@ -610,7 +627,7 @@ class GraniteASREngineAdapter:
             if diarization_requested:
                 parsed_text, chunk_segments = parse_granite_diarization(text, 0.0, len(wav_np) / sample_rate)
                 if parsed_text:
-                    full_text_parts.append(text)
+                    full_text_parts.append(format_granite_diarization_segments(chunk_segments))
                 
                 if aligner is not None and parsed_text:
                     aligner_language = self._resolve_aligner_language(normalized_language, parsed_text, notes)
@@ -627,7 +644,7 @@ class GraniteASREngineAdapter:
                     
                 for seg in chunk_segments:
                     if seg.speaker:
-                        seg.text = f"[{seg.speaker}]: {seg.text}"
+                        seg.text = f"[{seg.speaker}] {seg.text}"
                 
                 segments.extend(chunk_segments)
             elif use_native_timestamps:
