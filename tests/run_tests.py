@@ -20,7 +20,35 @@ os.environ['COMFYUI_TESTING'] = '1'
 
 # Get paths
 script_dir = os.path.dirname(os.path.abspath(__file__))
-venv_python = os.path.join(script_dir, '..', '..', 'venv', 'Scripts', 'python.exe')
+project_dir = os.path.dirname(script_dir)
+
+def check_pytest(python_path):
+    if not os.path.exists(python_path):
+        return False
+    try:
+        res = subprocess.run([python_path, '-c', 'import pytest'], capture_output=True)
+        return res.returncode == 0
+    except Exception:
+        return False
+
+# Detect environments
+if os.name == 'nt':
+    local_venv = os.path.join(project_dir, '.venv', 'Scripts', 'python.exe')
+    parent_venv_2 = os.path.join(script_dir, '..', '..', 'venv', 'Scripts', 'python.exe')
+    parent_venv_3 = os.path.join(script_dir, '..', '..', '..', 'venv', 'Scripts', 'python.exe')
+else:
+    local_venv = os.path.join(project_dir, '.venv', 'bin', 'python')
+    parent_venv_2 = os.path.join(script_dir, '..', '..', 'venv', 'bin', 'python')
+    parent_venv_3 = os.path.join(script_dir, '..', '..', '..', 'venv', 'bin', 'python')
+
+if check_pytest(local_venv):
+    venv_python = local_venv
+elif check_pytest(parent_venv_2):
+    venv_python = parent_venv_2
+elif check_pytest(parent_venv_3):
+    venv_python = parent_venv_3
+else:
+    venv_python = sys.executable
 
 # Build pytest command
 pytest_args = [

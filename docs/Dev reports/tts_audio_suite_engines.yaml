@@ -925,7 +925,7 @@ engines:
 
   - id: granite-asr
     name: Granite ASR
-    models: "granite-4.0-1b-speech"
+    models: "granite-4.0-1b-speech, granite-speech-4.1-2b-plus"
     size: "~4.6GB"
     license: "Apache-2.0"
     commercial: true
@@ -942,6 +942,8 @@ engines:
       - "Custom timestamps/SRT via reused Qwen forced aligner"
       - "Speech translation (experimental)"
       - "Optional forced aligner auto-routed through shared legacy T4 runtime"
+      - "Native speaker attribution / diarization (plus model variant)"
+      - "Native word-level timestamps (plus model variant)"
 
     model_sources:
       - component: "granite-4.0-1b-speech"
@@ -950,6 +952,12 @@ engines:
         size: "~4.6GB"
         auto_download: true
         notes: "Main Granite ASR / AST model"
+      - component: "granite-speech-4.1-2b-plus"
+        source_name: "ibm-granite/granite-speech-4.1-2b-plus"
+        source_url: "https://huggingface.co/ibm-granite/granite-speech-4.1-2b-plus"
+        size: "~4.6GB"
+        auto_download: true
+        notes: "Plus variant supporting native speaker diarization and word-level timestamps"
       - component: "Qwen3-ForcedAligner-0.6B"
         source_name: "Qwen/Qwen3-ForcedAligner-0.6B"
         source_url: "https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B"

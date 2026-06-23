@@ -98,6 +98,10 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                     "default": "none",
                     "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are produced natively on the plus model variant, while other variants require the separate Qwen forced aligner."
                 }),
+                "diarization": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Speaker Diarization (Speaker Attribution):\n• True: Attribute speech to speakers if supported (e.g. [Speaker 1]: ...)\n• False: Plain transcription without speaker turns\n\nGranite note: Native speaker attribution is supported on the 'plus' model variant. If combined with word-level timestamps, the system automatically uses the Qwen forced aligner to timing-align the speakers' words."
+                }),
                 "chunk_size": ("INT", {
                     "default": 30, "min": 0, "max": 600, "step": 1,
                     "tooltip": "Chunk size in seconds. 0 = no chunking (use for short audio only)."
@@ -125,6 +129,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
         language: str = "Auto",
         task: str = "transcribe",
         timestamps: str = "none",
+        diarization: bool = False,
         chunk_size: int = 30,
         overlap: int = 2,
         enable_asr_cache: bool = True,
@@ -157,6 +162,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             chunk_size=chunk_size,
             overlap=overlap,
             use_forced_aligner=forced_aligner_enabled,
+            diarization=diarization,
         )
 
         cache_key = None
@@ -186,6 +192,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 "language": req.language,
                 "task": req.task,
                 "timestamps": req.timestamps,
+                "diarization": req.diarization,
                 "chunk_size": req.chunk_size,
                 "overlap": req.overlap,
                 "audio_component": audio_component,

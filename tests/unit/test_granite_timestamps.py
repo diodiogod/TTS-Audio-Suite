@@ -1,5 +1,10 @@
 import pytest
-from engines.adapters.asr_granite_adapter import parse_granite_native_timestamps
+import torch
+from engines.adapters.asr_granite_adapter import (
+    parse_granite_native_timestamps,
+    parse_granite_diarization,
+    remap_words_to_speaker_segments,
+)
 from utils.asr.types import ASRSegment, ASRWord
 
 
@@ -95,3 +100,172 @@ def test_parse_empty_and_malformed():
             words=[ASRWord(start=0.0, end=0.5, text="world")],
         )
     ])
+
+
+def test_parse_granite_diarization():
+    # Arrange
+    text = "[Speaker 1]: hello there. [Speaker 2]: hi how are you? [Speaker 1]: good."
+    chunk_offset = 0.0
+    chunk_duration = 5.0
+
+    # Act
+    plain_text, segments = parse_granite_diarization(text, chunk_offset, chunk_duration)
+
+    # Assert
+    assert plain_text == "hello there. hi how are you? good."
+    assert len(segments) == 3
+    assert segments[0].speaker == "Speaker 1"
+    assert segments[0].text == "hello there."
+    assert segments[0].start == 0.0
+    assert segments[0].end == 5.0
+
+    assert segments[1].speaker == "Speaker 2"
+    assert segments[1].text == "hi how are you?"
+    assert segments[1].start == 0.0
+    assert segments[1].end == 5.0
+
+    assert segments[2].speaker == "Speaker 1"
+    assert segments[2].text == "good."
+    assert segments[2].start == 0.0
+    assert segments[2].end == 5.0
+
+
+def test_remap_words_to_speaker_segments():
+    # Arrange
+    speaker_segments = [
+        ASRSegment(start=0.0, end=5.0, text="hello there", speaker="Speaker 1"),
+        ASRSegment(start=0.0, end=5.0, text="hi how are you", speaker="Speaker 2")
+    ]
+    aligned_words = [
+        ASRWord(start=0.1, end=0.4, text="hello"),
+        ASRWord(start=0.5, end=0.8, text="there"),
+        ASRWord(start=1.2, end=1.4, text="hi"),
+        ASRWord(start=1.5, end=1.7, text="how"),
+        ASRWord(start=1.8, end=2.0, text="are"),
+        ASRWord(start=2.1, end=2.5, text="you")
+    ]
+
+    # Act
+    remap_words_to_speaker_segments(speaker_segments, aligned_words)
+
+    # Assert
+    assert len(speaker_segments[0].words) == 2
+    assert speaker_segments[0].words[0].text == "hello"
+    assert speaker_segments[0].words[1].text == "there"
+    assert pytest.approx(speaker_segments[0].start) == 0.1
+    assert pytest.approx(speaker_segments[0].end) == 0.8
+
+    assert len(speaker_segments[1].words) == 4
+    assert speaker_segments[1].words[0].text == "hi"
+    assert speaker_segments[1].words[-1].text == "you"
+    assert pytest.approx(speaker_segments[1].start) == 1.2
+    assert pytest.approx(speaker_segments[1].end) == 2.5
+
+
+def test_diarization_fallback_warning():
+    from engines.adapters.asr_granite_adapter import GraniteASREngineAdapter
+    from utils.asr.types import ASRRequest
+
+    # Arrange
+    engine_data = {
+        "engine_type": "granite_asr",
+        "config": {
+            "model_name": "granite-4.0-1b-speech" # Non-plus model
+        }
+    }
+    adapter = GraniteASREngineAdapter(engine_data)
+    
+    # Mock runtime and audio prep
+    class MockRuntime:
+        def transcribe(self, *args, **kwargs):
+            return {"text": "hello", "language": "en"}
+            
+    adapter._get_model = lambda: MockRuntime()
+    adapter._prepare_audio = lambda x: torch.zeros(16000)
+    
+    req = ASRRequest(
+        audio={"waveform": torch.zeros(16000), "sample_rate": 16000},
+        diarization=True, # Requested
+        timestamps="none"
+    )
+    
+    # Act
+    result = adapter.transcribe(req)
+    
+    # Assert
+    assert result.raw is not None
+    assert "warnings" in result.raw
+    assert any("Only 'plus' variants support speaker attribution natively" in w for w in result.raw["warnings"])
+
+
+def test_diarization_qwen_realignment_transcribe():
+    from engines.adapters.asr_granite_adapter import GraniteASREngineAdapter
+    from utils.asr.types import ASRRequest
+
+    # Arrange
+    engine_data = {
+        "engine_type": "granite_asr",
+        "config": {
+            "model_name": "granite-speech-4.1-2b-plus", # Plus model
+            "asr_use_forced_aligner": True
+        }
+    }
+    adapter = GraniteASREngineAdapter(engine_data)
+    
+    class MockRuntime:
+        def transcribe(self, *args, **kwargs):
+            # Return speaker attributed output
+            return {"text": "[Speaker 1]: hello there. [Speaker 2]: hi.", "language": "en"}
+            
+    class MockAlignerItem:
+        def __init__(self, text, start_time, end_time):
+            self.text = text
+            self.start_time = start_time
+            self.end_time = end_time
+
+    class MockAligner:
+        def align(self, audio, text, language):
+            # Mock alignment output for "hello there hi"
+            return [[
+                MockAlignerItem("hello", 0.1, 0.4),
+                MockAlignerItem("there", 0.5, 0.8),
+                MockAlignerItem("hi", 1.2, 1.4)
+            ]]
+
+    adapter._get_model = lambda: MockRuntime()
+    adapter._get_forced_aligner = lambda: MockAligner()
+    adapter._prepare_audio = lambda x: torch.zeros(16000)
+    adapter._can_use_aligner = lambda *args: True
+    
+    req = ASRRequest(
+        audio={"waveform": torch.zeros(16000), "sample_rate": 16000},
+        diarization=True,
+        timestamps="word",
+        chunk_size=0 # avoid chunking loop complexities
+    )
+    
+    # Act
+    result = adapter.transcribe(req)
+    
+    # Assert
+    assert len(result.segments) == 2
+    assert result.segments[0].speaker == "Speaker 1"
+    assert result.segments[0].text == "hello there."
+    assert len(result.segments[0].words) == 2
+    assert result.segments[0].words[0].text == "hello"
+    assert result.segments[0].words[0].start == 0.1
+    assert result.segments[0].words[0].end == 0.4
+    assert result.segments[0].words[1].text == "there"
+    assert result.segments[0].words[1].start == 0.5
+    assert result.segments[0].words[1].end == 0.8
+    assert result.segments[0].start == 0.1
+    assert result.segments[0].end == 0.8
+
+    assert result.segments[1].speaker == "Speaker 2"
+    assert result.segments[1].text == "hi."
+    assert len(result.segments[1].words) == 1
+    assert result.segments[1].words[0].text == "hi"
+    assert result.segments[1].words[0].start == 1.2
+    assert result.segments[1].words[0].end == 1.4
+    assert result.segments[1].start == 1.2
+    assert result.segments[1].end == 1.4
