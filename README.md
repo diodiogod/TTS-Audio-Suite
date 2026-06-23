@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v5.1.1
+# TTS Audio Suite v5.2.0
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 15 Engines
+## Quick Engine Comparison — 16 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -32,7 +32,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **ChatterBox 23L** | 🌐 24 languages | ~4.3GB | 24 languages in single model, emotion tokens (v2 - doesn't work) |
 | **VibeVoice** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +21 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker (Base models) |
 | **Higgs Audio 2** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
-| **Higgs Audio v3** | 🇿🇦​🇦🇱​🇺🇸​🇪🇸​🇮🇳​🇨🇳 +96 | ~8GB | Native inline emotion/style/prosody/SFX tags, Zero-shot voice cloning |
+| **Higgs Audio v3** | 🌐 100+ languages | ~8GB | Native inline emotion/style/prosody/SFX tags, Zero-shot voice cloning |
 | **IndexTTS-2** | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Text as reference |
 | **CosyVoice3** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
 | **Qwen3-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
@@ -40,6 +40,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
+| **OmniVoice** | 🌐 600+ languages | ~3.7GB | 600+ language support, Instruction-based voice design |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 20-language generation, Long-form generation (TTSD/Delay) |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
@@ -102,11 +103,17 @@ Builder               English TTS      TTS + ASR + VoiceDesign
 |                                          
 |─── 🎓 Training Support Era     🧱 Runtime Isolation T5 Era
 ▼                                      |
-v4.25 ──────────────► v4.26 ────────────► v5.00 ─────►
-Apr 26                May 26              Jun 26
-│                     │                      │
-RVC                   MOSS-TTS           Transformers 5
-Model Training                           Higgs Audio v3 TTS
+v4.25 ──────────────► v4.26 ────────────► v5.00 ───────────────┐
+Apr 26                May 26              Jun 26               │
+│                     │                   │                    │
+RVC                   MOSS-TTS            Transformers 5       │
+Model Training                            Higgs Audio v3 TTS   │
+                                                               │
+                                                               ▼
+              ◄──────── v5.2 ◄─────────────── v5.1 ◄───────────┘
+                          Mar 26                 Jan 26
+                          │                      │
+                          OmniVoice TTS          Dots TTS
 
 ```
 
@@ -143,6 +150,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   - [Step Audio EditX - LLM Audio Editing](#step-audio-editx---llm-audio-editing)
   - [CosyVoice3 Multilingual Voice Cloning](#cosyvoice3-multilingual-voice-cloning)
   - [Qwen3-TTS - 4 Model Types with Text-to-Voice Design](#qwen3-tts---4-model-types-with-text-to-voice-design)
+  - [OmniVoice + Visual Tag Builder](#omnivoice--visual-tag-builder)
   - [Echo-TTS Voice Cloning](#echo-tts-voice-cloning)
   - [Phoneme Text Normalizer](#phoneme-text-normalizer)
   - [Multiline TTS Tag Editor and Per-Segment Parameter Switching](#multiline-tts-tag-editor-and-per-segment-parameter-switching)
@@ -188,6 +196,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - 🎓 **Integrated Model Training**
 - 🎨 **Audio Post-Processing** → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🎭 **Character and Language Switching** → **[📖 Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
+- 📐 **Visual Tag Builder** → Preset-driven visual tag and attribute assembly for OmniVoice and other tag-based text workflows
 - 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
 - 📝 **Intelligent Text Chunking** → **[📖 Text Chunking Guide](docs/TEXT_CHUNKING_GUIDE.md)**
 - 🤐 **Vocal/Noise Removal** → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
@@ -893,6 +902,23 @@ Description: "A deep, authoritative male voice with clear articulation"
 </details>
 
 <details>
+<summary><h3>OmniVoice + Visual Tag Builder</h3></summary>
+
+**NEW in v5.x**: OmniVoice is now integrated into the unified suite with native duration-aware SRT generation and a generalized visual tag workflow.
+
+* **🌍 OmniVoice integration**: official model support with broad upstream language coverage
+* **🎯 Native duration targeting**: SRT workflows can send target durations directly into OmniVoice instead of relying only on post-generation time stretching
+* **⏱️ Precise segment control**: this is the first engine in the suite where segment duration can be meaningfully guided at generation time, making precise TTS timing far more practical
+* **📺 Better SRT timing behavior**: subtitle generation can land much closer to target timings before any fallback timing correction, so stretch-to-fit has less work to do and results can stay more natural
+* **📐 Visual Tag Builder**: reusable preset-driven visual node for assembling tag or attribute strings, originally added for OmniVoice voice-design prompting and now generalized for broader tag-based text workflows
+
+**Practical note:**
+
+Use the built-in OmniVoice preset in **📐 Visual Tag Builder** for the canonical voice-design workflow. If you need a different tag schema, the same node now supports reusable custom presets with saved column order.
+
+</details>
+
+<details>
 <summary><h3>MOSS-TTS - Local/Delay/TTSD Engine Family</h3></summary>
 
 **NEW in v4.26**: OpenMOSS engine family integration with unified support for single-speaker TTS and native multi-speaker dialogue.
@@ -1441,6 +1467,7 @@ For offline/manual setup:
 | Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Granite ASR models; plus adds native diarization/timestamps, optional Qwen forced aligner reused lazily for timestamps/SRT fallback |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 | Dots TTS | `ComfyUI/models/TTS/dots_tts/` | ✅ | Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder |
+| OmniVoice | `ComfyUI/models/TTS/omnivoice/` | ✅ | Official OmniVoice model. Voice cloning in this suite requires explicit reference text. |
 
 *Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*
 
@@ -1482,6 +1509,7 @@ Your support helps maintain and improve this project for the entire community!
 | **🎨 Step Audio EditX - Audio Editor**         | Step Audio EditX audio editing with inline edit tags       | ✅ **New in v4.14**   | [📁 JSON](example_workflows/🎨%20Step%20Audio%20EditX%20-%20Audio%20Editor%20+%20Inline%20Edit%20Tags.json)        |
 | **⚙️ Step Audio EditX Integration**            | Step Audio EditX TTS engine with zero-shot voice cloning   | ✅ **New in v4.14**   | [📁 JSON](example_workflows/Step%20Audio%20EditX%20Integration.json)                                                |
 | **⚙️ Higgs Audio v3 Integration**              | Higgs Audio v3 TTS with zero-shot voice cloning and native inline tags | ✅ **New in v4.27** | [📁 JSON](example_workflows/Higgs%20Audio%20v3%20Integration.json)                                                  |
+| **⚙️ OmniVoice Engine Integration**            | OmniVoice multilingual TTS with cloning, voice design, and native duration control | ✅ **New in v4.28** | [📁 JSON](example_workflows/OmniVoice%20Engine%20Integration.json)                                                  |
 | **🌈 IndexTTS-2 Integration**                  | IndexTTS-2 engine with advanced emotion control            | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)                                                     |
 | **📝 F5 TTS + Text Normalizer**                | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json)                     |
 | **Qwen3 integration + ASR**                    | Qwen3-TTS voice generation with ASR transcription          | ✅ **New in v4.21**   | [📁 JSON](example_workflows/Qwen3%20integration%20+%20ASR.json)                                                     |

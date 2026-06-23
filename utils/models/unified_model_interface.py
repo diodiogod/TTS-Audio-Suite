@@ -1703,6 +1703,31 @@ def register_dots_tts_factory():
     unified_model_interface.register_model_factory("dots_tts", "tts", dots_tts_factory)
 
 
+def register_omnivoice_factory():
+    """Register OmniVoice model factory."""
+
+    def omnivoice_factory(config: ModelLoadConfig):
+        """Factory for official OmniVoice models with ComfyUI integration."""
+        model_name = config.model_name or "OmniVoice"
+        device = config.device or "auto"
+        additional_params = config.additional_params or {}
+        dtype = additional_params.get("dtype", "auto")
+
+        from engines.omnivoice.omnivoice_engine import OmniVoiceEngine
+
+        print(f"🔄 Loading OmniVoice model via unified interface: {model_name}")
+        engine = OmniVoiceEngine(
+            model_name=model_name,
+            device=device,
+            dtype=dtype,
+        )
+        engine._ensure_model_loaded()
+        print(f"✅ OmniVoice model '{model_name}' loaded successfully")
+        return engine
+
+    unified_model_interface.register_model_factory("omnivoice", "tts", omnivoice_factory)
+
+
 def register_qwen3_asr_factory():
     """Register Qwen3-ASR model factory"""
     def qwen3_asr_factory(config: ModelLoadConfig):
@@ -1912,6 +1937,7 @@ def initialize_all_factories():
     register_moss_tts_factory()
     register_qwen3_tts_factory()
     register_dots_tts_factory()
+    register_omnivoice_factory()
     register_qwen3_asr_factory()
     register_qwen3_aligner_factory()
     register_granite_asr_factory()

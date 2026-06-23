@@ -149,6 +149,13 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         fallback_languages=["English"],
     ),
 
+    "omnivoice": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+    ),
+
     "qwen3_asr": EngineCapabilities(
         supports_voice_conversion=False,
         multilingual_model_switching=False,

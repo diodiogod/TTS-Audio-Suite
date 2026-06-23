@@ -298,8 +298,17 @@ def setup_api_routes():
     """Setup API routes for widget communication"""
     try:
         import json
+        import folder_paths
         from server import PromptServer
         from aiohttp import web
+
+        def _get_ui_data_dir():
+            base_dir = os.path.join(folder_paths.get_system_user_directory("tts_audio_suite"), "ui")
+            os.makedirs(base_dir, exist_ok=True)
+            return base_dir
+
+        def _get_omnivoice_preset_library_path():
+            return os.path.join(_get_ui_data_dir(), "omnivoice_instruction_builder_presets.json")
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/available-characters")
         async def get_available_characters_endpoint(request):
@@ -338,6 +347,53 @@ def setup_api_routes():
                 print(f"⚠️ Error retrieving available languages: {e}")
                 # Fallback list
                 return web.json_response({"languages": ["en", "de", "fr", "ja", "es", "it", "pt", "th", "no"], "error": str(e)})
+
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/omnivoice-presets")
+        async def get_omnivoice_presets_endpoint(request):
+            """Return the persisted OmniVoice instruction builder preset library."""
+            try:
+                library_path = _get_omnivoice_preset_library_path()
+                if not os.path.exists(library_path):
+                    return web.json_response({"presets": [], "builtinStates": {}, "builtinLayouts": {}})
+                with open(library_path, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                presets = payload.get("presets", []) if isinstance(payload, dict) else []
+                builtin_states = payload.get("builtinStates", {}) if isinstance(payload, dict) else {}
+                builtin_layouts = payload.get("builtinLayouts", {}) if isinstance(payload, dict) else {}
+                if not isinstance(presets, list):
+                    presets = []
+                if not isinstance(builtin_states, dict):
+                    builtin_states = {}
+                if not isinstance(builtin_layouts, dict):
+                    builtin_layouts = {}
+                return web.json_response({"presets": presets, "builtinStates": builtin_states, "builtinLayouts": builtin_layouts})
+            except Exception as e:
+                print(f"⚠️ Error retrieving OmniVoice preset library: {e}")
+                return web.json_response({"presets": [], "builtinStates": {}, "builtinLayouts": {}, "error": str(e)}, status=500)
+
+        @PromptServer.instance.routes.post("/api/tts-audio-suite/omnivoice-presets")
+        async def save_omnivoice_presets_endpoint(request):
+            """Persist the OmniVoice instruction builder preset library."""
+            try:
+                data = await request.json()
+                presets = data.get("presets", [])
+                builtin_states = data.get("builtinStates", {})
+                builtin_layouts = data.get("builtinLayouts", {})
+                if not isinstance(presets, list):
+                    return web.json_response({"error": "presets must be a list"}, status=400)
+                if not isinstance(builtin_states, dict):
+                    return web.json_response({"error": "builtinStates must be an object"}, status=400)
+                if not isinstance(builtin_layouts, dict):
+                    return web.json_response({"error": "builtinLayouts must be an object"}, status=400)
+
+                library_path = _get_omnivoice_preset_library_path()
+                payload = {"presets": presets, "builtinStates": builtin_states, "builtinLayouts": builtin_layouts}
+                with open(library_path, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, ensure_ascii=False, indent=2)
+                return web.json_response({"status": "success", "count": len(presets)})
+            except Exception as e:
+                print(f"⚠️ Error saving OmniVoice preset library: {e}")
+                return web.json_response({"status": "error", "error": str(e)}, status=500)
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-input-devices")
         async def get_voice_input_devices_endpoint(request):

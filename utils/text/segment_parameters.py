@@ -22,8 +22,16 @@ PARAMETER_ALIASES = {
     'cfg_weight': 'cfg',  # cfg_weight alias -> cfg (more universal)
     'cfgweight': 'cfg',
     'num_steps': 'num_steps',
+    'num_step': 'num_steps',
     'guidance_scale': 'guidance_scale',
     'guidance': 'guidance_scale',
+    'duration': 'duration',
+    't_shift': 't_shift',
+    'layer_penalty_factor': 'layer_penalty_factor',
+    'position_temperature': 'position_temperature',
+    'class_temperature': 'class_temperature',
+    'audio_chunk_duration': 'audio_chunk_duration',
+    'audio_chunk_threshold': 'audio_chunk_threshold',
     'speaker_scale': 'speaker_scale',
     'speaker_guidance': 'speaker_scale',
     'cfg_text': 'cfg_scale_text',
@@ -78,7 +86,7 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
-        'dots_tts',
+        'dots_tts', 'omnivoice',
         'echo_tts', 'moss_tts'
     },
     'temperature': {
@@ -89,10 +97,31 @@ PARAMETER_ENGINES = {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang'
     },
     'num_steps': {
-        'echo_tts', 'dots_tts'
+        'echo_tts', 'dots_tts', 'omnivoice'
     },
     'guidance_scale': {
-        'dots_tts'
+        'dots_tts', 'omnivoice'
+    },
+    'duration': {
+        'omnivoice'
+    },
+    't_shift': {
+        'omnivoice'
+    },
+    'layer_penalty_factor': {
+        'omnivoice'
+    },
+    'position_temperature': {
+        'omnivoice'
+    },
+    'class_temperature': {
+        'omnivoice'
+    },
+    'audio_chunk_duration': {
+        'omnivoice'
+    },
+    'audio_chunk_threshold': {
+        'omnivoice'
     },
     'speaker_scale': {
         'dots_tts'
@@ -134,7 +163,7 @@ PARAMETER_ENGINES = {
         'chatterbox', 'chatterbox_official_23lang'
     },
     'speed': {
-        'f5tts', 'cosyvoice'
+        'f5tts', 'cosyvoice', 'omnivoice'
     },
     'top_p': {
         'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts'
@@ -195,7 +224,14 @@ PARAMETER_VALIDATION = {
     'temperature': (float, 0.1, 2.0, "Randomness/creativity control (lower=more deterministic)"),
     'cfg': (float, 0.0, 20.0, "Classifier-free guidance strength"),
     'num_steps': (int, 1, 200, "Number of inference steps"),
-    'guidance_scale': (float, 0.0, 5.0, "Dots TTS classifier-free guidance scale"),
+    'guidance_scale': (float, 0.0, 10.0, "Classifier-free guidance scale"),
+    'duration': (float, 0.0, 600.0, "Fixed output duration in seconds"),
+    't_shift': (float, 0.0, 1.0, "Noise schedule time-step shift"),
+    'layer_penalty_factor': (float, 0.0, 10.0, "Penalty encouraging lower codebook layers first"),
+    'position_temperature': (float, 0.0, 10.0, "Mask-position sampling temperature"),
+    'class_temperature': (float, 0.0, 2.0, "Token sampling temperature"),
+    'audio_chunk_duration': (float, 1.0, 60.0, "Native long-form chunk target duration in seconds"),
+    'audio_chunk_threshold': (float, 1.0, 180.0, "Native long-form chunking activation threshold in seconds"),
     'speaker_scale': (float, 0.0, 5.0, "Dots TTS speaker conditioning scale"),
     'cfg_scale_text': (float, 0.0, 20.0, "CFG scale for text guidance (Echo-TTS)"),
     'cfg_scale_speaker': (float, 0.0, 20.0, "CFG scale for speaker guidance (Echo-TTS)"),
@@ -209,7 +245,7 @@ PARAMETER_VALIDATION = {
     'speaker_kv_min_t': (float, 0.0, 1.0, "Speaker KV min t (Echo-TTS)"),
     'sequence_length': (int, 1, 2048, "Sequence length / block size (Echo-TTS)"),
     'exaggeration': (float, 0.0, 2.0, "Voice emotion exaggeration (ChatterBox only)"),
-    'speed': (float, 0.5, 2.0, "Speech speed multiplier (F5-TTS only)"),
+    'speed': (float, 0.25, 3.0, "Speech speed multiplier"),
     'top_p': (float, 0.0, 1.0, "Nucleus sampling probability"),
     'top_k': (int, 1, 100, "Top-k sampling"),
     'audio_temperature': (float, 0.1, 2.5, "MOSS-TTS audio sampling temperature"),
@@ -237,6 +273,13 @@ PARAMETER_NODE_KEYS = {
     'cfg': {'default': 'cfg_weight', 'f5tts': 'cfg_strength'},  # Engine-specific mapping
     'num_steps': 'num_steps',
     'guidance_scale': 'guidance_scale',
+    'duration': 'duration',
+    't_shift': 't_shift',
+    'layer_penalty_factor': 'layer_penalty_factor',
+    'position_temperature': 'position_temperature',
+    'class_temperature': 'class_temperature',
+    'audio_chunk_duration': 'audio_chunk_duration',
+    'audio_chunk_threshold': 'audio_chunk_threshold',
     'speaker_scale': 'speaker_scale',
     'cfg_scale_text': 'cfg_scale_text',
     'cfg_scale_speaker': 'cfg_scale_speaker',

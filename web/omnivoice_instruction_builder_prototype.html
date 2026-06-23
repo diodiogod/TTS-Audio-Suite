@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Tag Builder Prototype</title>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(19, 165, 213, 0.12), transparent 38%),
+                linear-gradient(180deg, #15181d 0%, #0e1014 100%);
+            color: #dce7f7;
+        }
+
+        .shell {
+            min-height: 100vh;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 16px;
+            border: 1px solid rgba(124, 156, 186, 0.24);
+            border-radius: 14px;
+            background: rgba(12, 15, 20, 0.82);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #f3f8ff;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #93a4bc;
+        }
+
+        .viewport {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 4px 0 24px;
+        }
+
+        .node-frame {
+            width: var(--node-width, 700px);
+            min-width: var(--node-width, 700px);
+            max-width: var(--node-width, 700px);
+            height: var(--node-height, 500px);
+            min-height: var(--node-height, 500px);
+            max-height: var(--node-height, 500px);
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 245, 220, 0.34);
+            background:
+                linear-gradient(180deg, rgba(16, 92, 108, 0.92) 0px, rgba(16, 92, 108, 0.92) 54px, rgba(13, 67, 78, 0.96) 54px, rgba(13, 67, 78, 0.96) 100%);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+            position: relative;
+        }
+
+        .node-titlebar {
+            height: 54px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            color: #f7fbff;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .node-titlebar::before {
+            content: "";
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(199, 213, 222, 0.72);
+            flex: 0 0 auto;
+        }
+
+        .node-body {
+            height: calc(100% - 54px);
+            padding: 18px 22px 18px 22px;
+        }
+
+        #prototype-root {
+            width: 100%;
+            height: var(--widget-height, 410px);
+            min-height: var(--widget-height, 410px);
+            max-height: var(--widget-height, 410px);
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="toolbar">
+            <div class="title">📐 Visual Tag Builder Prototype</div>
+            <div class="hint">This preview now uses the same default node footprint as the Comfy widget, not a responsive browser layout.</div>
+        </div>
+        <div class="viewport">
+            <div class="node-frame">
+                <div class="node-titlebar">Visual Tag Builder</div>
+                <div class="node-body">
+                    <div id="prototype-root"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            getOmniVoiceInstructionBuilderDefaults,
+            mountOmniVoiceInstructionBuilderPrototype,
+        } from "./omnivoice_instruction_builder_shared.js";
+
+        const root = document.getElementById("prototype-root");
+        const defaults = getOmniVoiceInstructionBuilderDefaults();
+        document.documentElement.style.setProperty("--node-width", `${defaults.nodeWidth}px`);
+        document.documentElement.style.setProperty("--node-height", `${defaults.nodeHeight}px`);
+        document.documentElement.style.setProperty("--widget-height", `${defaults.widgetHeight}px`);
+
+        mountOmniVoiceInstructionBuilderPrototype(root, {
+            initialState: {
+                gender: "male",
+                age: "young adult",
+                pitch: "moderate pitch",
+                style: "whisper",
+                accent: "american accent",
+                dialect: "",
+            },
+        });
+    </script>
+</body>
+</html>

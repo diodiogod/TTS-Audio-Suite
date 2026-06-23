@@ -349,3 +349,32 @@ Notes:
 - Downloads into a dedicated `dots_tts/` folder.
 - Native sample rate is 48kHz.
 - Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.
+
+## OmniVoice
+
+```text
+ComfyUI/models/TTS/omnivoice/
+└── OmniVoice/
+```
+
+Main model contents:
+
+```text
+ComfyUI/models/TTS/omnivoice/OmniVoice/
+├── chat_template.jinja
+├── config.json
+├── model.safetensors
+├── tokenizer.json
+├── tokenizer_config.json
+└── audio_tokenizer/
+    ├── config.json
+    ├── model.safetensors
+    └── preprocessor_config.json
+```
+
+Notes:
+
+- Downloads into a dedicated `omnivoice/` folder.
+- Native sample rate is 24kHz.
+- The main OmniVoice model stays in the main Transformers 5 environment.
+- Voice cloning requires reference audio plus explicit reference text in this suite.

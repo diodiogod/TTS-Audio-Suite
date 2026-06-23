@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.0] - 2026-06-23
+
+### Added
+
+- Add OmniVoice engine with native timing-aware TTS controls
+- Add OmniVoice text and SRT generation with native duration targeting for more precise subtitle timing
+- Add Visual Tag Builder workflow example and documentation for OmniVoice prompt building
+
+### Changed
+
+- Improve interruption handling so stopped generation exits cleanly across unified TTS workflows
+
+### Fixed
+
+- Fix Qwen3 Voice Designer metadata links and test environment path handling
 ## [5.1.1] - 2026-06-17
 
 ### Added

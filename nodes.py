@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Version and constants
-VERSION = "5.1.1"
+VERSION = "5.2.0"
 IS_DEV = False  # Set to False for release builds
 VERSION_DISPLAY = f"v{VERSION}" + (" (dev)" if IS_DEV else "")
 SEPARATOR = "=" * 70
@@ -168,6 +168,22 @@ try:
 except Exception as e:
     print(f"❌ Dots TTS Engine failed: {e}")
     DOTS_TTS_ENGINE_AVAILABLE = False
+
+try:
+    omnivoice_engine_module = load_node_module("omnivoice_engine_node", "engines/omnivoice_engine_node.py")
+    OmniVoiceEngineNode = omnivoice_engine_module.OmniVoiceEngineNode
+    OMNIVOICE_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ OmniVoice Engine failed: {e}")
+    OMNIVOICE_ENGINE_AVAILABLE = False
+
+try:
+    omnivoice_instruction_builder_module = load_node_module("omnivoice_instruction_builder_node", "omnivoice/omnivoice_instruction_builder_node.py")
+    OmniVoiceInstructionBuilderNode = omnivoice_instruction_builder_module.OmniVoiceInstructionBuilderNode
+    OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Visual Tag Builder failed: {e}")
+    OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE = False
 
 try:
     chatterbox_official_23lang_engine_module = load_node_module("chatterbox_official_23lang_engine_node", "engines/chatterbox_official_23lang_engine_node.py")
@@ -608,6 +624,14 @@ if ECHO_TTS_ENGINE_AVAILABLE:
 if DOTS_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["DotsTTSEngineNode"] = DotsTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["DotsTTSEngineNode"] = "⚙️ Dots TTS Engine"
+
+if OMNIVOICE_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["OmniVoiceEngineNode"] = OmniVoiceEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceEngineNode"] = "⚙️ OmniVoice Engine"
+
+if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
+    NODE_CLASS_MAPPINGS["OmniVoiceInstructionBuilderNode"] = OmniVoiceInstructionBuilderNode
+    NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceInstructionBuilderNode"] = "📐 Visual Tag Builder"
 
 if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode

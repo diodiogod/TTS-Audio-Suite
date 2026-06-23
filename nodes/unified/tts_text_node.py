@@ -210,6 +210,10 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['optimize'] = config.get('optimize', False)
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
 
+            if engine_type == "omnivoice":
+                stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+
             # For MOSS-TTS, include model identity and load-time options.
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
@@ -418,6 +422,8 @@ Back to the main narrator voice for the conclusion.""",
                                         voice_mapping[char] = {"waveform": waveform, "sample_rate": sample_rate}
                                         print(f"🎭 VibeVoice: Using character-specific voice for '{char}'")
                                     except Exception as e:
+                                        if isinstance(e, InterruptedError):
+                                            raise
                                         print(f"⚠️ Failed to load character audio for '{char}': {e}")
                                         voice_mapping[char] = char_audio  # Fallback to main voice
                                         print(f"🔄 VibeVoice: Using main voice fallback for '{char}'")
@@ -542,6 +548,40 @@ Back to the main narrator voice for the conclusion.""",
                         self.processor.update_config(new_config)
 
                 engine_instance = DotsTTSWrapper(config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
+            elif engine_type == "omnivoice":
+                from engines.adapters.omnivoice_adapter import OmniVoiceEngineAdapter
+                omnivoice_processor_path = os.path.join(nodes_dir, "omnivoice", "omnivoice_processor.py")
+                omnivoice_processor_spec = importlib.util.spec_from_file_location("omnivoice_processor_module", omnivoice_processor_path)
+                omnivoice_processor_module = importlib.util.module_from_spec(omnivoice_processor_spec)
+                omnivoice_processor_spec.loader.exec_module(omnivoice_processor_module)
+
+                OmniVoiceProcessor = omnivoice_processor_module.OmniVoiceProcessor
+
+                class OmniVoiceWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = OmniVoiceEngineAdapter(self.config)
+                        self.processor = OmniVoiceProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+                        self.processor.update_config(new_config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("OmniVoice processing interrupted by user")
+
+                engine_instance = OmniVoiceWrapper(config)
 
                 import time
                 self._cached_engine_instances[cache_key] = {
@@ -718,6 +758,8 @@ Back to the main narrator voice for the conclusion.""",
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
             print(f"❌ Failed to create engine node instance: {e}")
@@ -783,7 +825,10 @@ Back to the main narrator voice for the conclusion.""",
                     reference_text = ""  # No reference text available from direct audio
 
                     print(f"🎤 TTS Text: Using direct audio input ({character_name})")
-                    print(f"⚠️ TTS Text: Direct audio input has no reference text - F5-TTS will fail, Qwen3-TTS will use x_vector_only mode (lower quality)")
+                    print(
+                        "⚠️ TTS Text: Direct audio input has no reference text - "
+                        "F5-TTS and OmniVoice cloning will fail, Qwen3-TTS will use x_vector_only mode (lower quality)"
+                    )
                     return None, audio_tensor, reference_text, character_name
             
             # Priority 2: narrator_voice dropdown (fallback)
@@ -828,6 +873,8 @@ Back to the main narrator voice for the conclusion.""",
             return None, None, "", "narrator"
             
         except Exception as e:
+            if isinstance(e, InterruptedError):
+                raise
             print(f"❌ Voice reference error: {e}")
             return None, None, "", "narrator"
 
@@ -913,6 +960,11 @@ Back to the main narrator voice for the conclusion.""",
                 raise ValueError(
                     "F5-TTS requires reference text. When using direct audio input, "
                     "please use Character Voices node instead, which provides both audio and text."
+                )
+            if engine_type == "omnivoice" and (audio_tensor is not None or audio_path) and not reference_text.strip():
+                raise ValueError(
+                    "OmniVoice voice cloning requires reference text. "
+                    "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
                 )
             
             # Create proper engine node instance to preserve ALL functionality
@@ -1371,6 +1423,57 @@ Back to the main narrator voice for the conclusion.""",
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 48000)
                 result = (formatted_audio, generation_info)
 
+            elif engine_type == "omnivoice":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                if not hasattr(engine_instance, "processor"):
+                    omnivoice_processor_path = os.path.join(nodes_dir, "omnivoice", "omnivoice_processor.py")
+                    omnivoice_processor_spec = importlib.util.spec_from_file_location("omnivoice_processor_module", omnivoice_processor_path)
+                    omnivoice_processor_module = importlib.util.module_from_spec(omnivoice_processor_spec)
+                    omnivoice_processor_spec.loader.exec_module(omnivoice_processor_module)
+                    OmniVoiceProcessor = omnivoice_processor_module.OmniVoiceProcessor
+                    engine_instance.processor = OmniVoiceProcessor(engine_instance.adapter, config)
+                    engine_instance.processor.update_config(config)
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                    }
+
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache
+                )
+
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True
+                )
+
+                total_duration = combined_audio.shape[-1] / 24000.0 if combined_audio.numel() else 0.0
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                text_length = len(clean_text)
+
+                base_info = f"Generated {total_duration:.1f}s audio from {text_length} characters (OmniVoice, narrator: {char_display})"
+                base_info += "\n🎭 Character switching, pause tags, voice design, and native long-form chunking enabled"
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 24000)
+                result = (formatted_audio, generation_info)
+
             elif engine_type == "moss_tts":
                 import re
                 from utils.audio.chunk_timing import ChunkTimingHelper
@@ -1597,6 +1700,8 @@ Back to the main narrator voice for the conclusion.""",
                                 }
                                 print(f"🎭 Qwen3-TTS: Using character-specific voice for '{character}' (ICL mode)")
                             except Exception as e:
+                                if isinstance(e, InterruptedError):
+                                    raise
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
                                 if audio_tensor is not None and reference_text:
@@ -1640,6 +1745,8 @@ Back to the main narrator voice for the conclusion.""",
                                 print(f"⚠️⚠️ Qwen3-TTS: Character '{character}' has audio but NO reference text")
                                 print(f"⚠️⚠️ Using x_vector_only mode (speaker embedding only) - LOWER QUALITY than ICL mode")
                             except Exception as e:
+                                if isinstance(e, InterruptedError):
+                                    raise
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
                                 if audio_tensor is not None:
@@ -1774,6 +1881,8 @@ Back to the main narrator voice for the conclusion.""",
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
             if engine_type == "index_tts":
+                raise
+            if isinstance(e, InterruptedError):
                 raise
             error_msg = f"❌ TTS Text generation failed: {e}"
             print(error_msg)

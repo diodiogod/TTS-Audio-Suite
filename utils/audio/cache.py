@@ -557,6 +557,68 @@ class DotsTTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class OmniVoiceCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for OmniVoice engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        guidance_scale = params.get('guidance_scale', 2.0)
+        t_shift = params.get('t_shift', 0.1)
+        speed = params.get('speed', 1.0)
+        duration = params.get('duration', 'auto')
+        layer_penalty_factor = params.get('layer_penalty_factor', 5.0)
+        position_temperature = params.get('position_temperature', 5.0)
+        class_temperature = params.get('class_temperature', 0.0)
+        audio_chunk_duration = params.get('audio_chunk_duration', 15.0)
+        audio_chunk_threshold = params.get('audio_chunk_threshold', 30.0)
+
+        rounded_fields = {
+            'guidance_scale': guidance_scale,
+            't_shift': t_shift,
+            'speed': speed,
+            'layer_penalty_factor': layer_penalty_factor,
+            'position_temperature': position_temperature,
+            'class_temperature': class_temperature,
+            'audio_chunk_duration': audio_chunk_duration,
+            'audio_chunk_threshold': audio_chunk_threshold,
+        }
+        for key, value in list(rounded_fields.items()):
+            if isinstance(value, (int, float)):
+                rounded_fields[key] = round(float(value), 3)
+
+        if isinstance(duration, (int, float)):
+            duration = round(float(duration), 3)
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'prompt_text': params.get('prompt_text', ''),
+            'model_variant': params.get('model_variant', 'OmniVoice'),
+            'language': params.get('language', 'none'),
+            'instruct': params.get('instruct', ''),
+            'num_step': params.get('num_step', 32),
+            'guidance_scale': rounded_fields['guidance_scale'],
+            't_shift': rounded_fields['t_shift'],
+            'speed': rounded_fields['speed'],
+            'duration': duration,
+            'layer_penalty_factor': rounded_fields['layer_penalty_factor'],
+            'position_temperature': rounded_fields['position_temperature'],
+            'class_temperature': rounded_fields['class_temperature'],
+            'denoise': params.get('denoise', True),
+            'preprocess_prompt': params.get('preprocess_prompt', True),
+            'postprocess_output': params.get('postprocess_output', True),
+            'audio_chunk_duration': rounded_fields['audio_chunk_duration'],
+            'audio_chunk_threshold': rounded_fields['audio_chunk_threshold'],
+            'dtype': params.get('dtype', 'auto'),
+            'device': params.get('device', 'auto'),
+            'seed': params.get('seed', 0),
+            'character': params.get('character', 'narrator'),
+            'engine': 'omnivoice',
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -573,6 +635,7 @@ class AudioCache:
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
             'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
             'dots_tts': DotsTTSCacheKeyGenerator(),
+            'omnivoice': OmniVoiceCacheKeyGenerator(),
             'moss_tts': MossTTSCacheKeyGenerator(),
             'echo_tts': EchoTTSCacheKeyGenerator()
         }
@@ -647,7 +710,7 @@ class AudioCache:
         # Use engine-specific sample rates
         if engine_type == 'dots_tts':
             sample_rate = 48000
-        elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3'):
+        elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3', 'omnivoice'):
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050

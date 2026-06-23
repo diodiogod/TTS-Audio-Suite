@@ -131,6 +131,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Very Fast" }
+      reference_free_tts: { supported: false, notes: "" }
 
   - id: chatterbox
     name: ChatterBox
@@ -262,6 +263,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: true, notes: "(default speaker)" }
 
   - id: chatterbox-23l
     name: ChatterBox 23L
@@ -346,6 +348,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: true, notes: "(default speaker)" }
 
   - id: vibevoice
     name: VibeVoice
@@ -443,6 +446,7 @@ engines:
       community_finetunes: { supported: true, notes: "KugelAudio, Hindi" }
       vram_efficient: { supported: "partial", notes: "(5-18GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: true, notes: "(zero-shot / default speaker)" }
 
   - id: higgs-audio-2
     name: Higgs Audio 2
@@ -524,6 +528,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(9GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: true, notes: "(basic TTS if no narrator/reference is provided)" }
 
   - id: higgs-audio-v3
     name: Higgs Audio v3
@@ -531,6 +536,8 @@ engines:
     size: "~8GB"
     license: "Boson Higgs Audio v3 Research and Non-Commercial License"
     commercial: false
+    language_summary_compact: "🌐 100+ languages"
+    language_summary_full: "100+"
 
     capabilities:
       tts: true
@@ -666,6 +673,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(~8-10GB)" }
       speed_performance: { supported: "partial", notes: "CUDA recommended" }
+      reference_free_tts: { supported: true, notes: "(zero-shot)" }
 
   - id: indextts-2
     name: IndexTTS-2
@@ -744,6 +752,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(9-12GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: false, notes: "" }
 
   - id: cosyvoice3
     name: CosyVoice3
@@ -809,6 +818,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: true, notes: "(5.4GB)" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: true, notes: "(cross-lingual or instruct mode)" }
 
   - id: qwen3-tts
     name: Qwen3-TTS
@@ -922,6 +932,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: true, notes: "(3-6GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: true, notes: "(Base default voice or CustomVoice presets)" }
 
   - id: granite-asr
     name: Granite ASR
@@ -1010,6 +1021,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: true, notes: "(~4.6GB)" }
       speed_performance: { supported: "partial", notes: "Moderate" }
+      reference_free_tts: { supported: null, notes: "N/A" }
 
   - id: step-editx
     name: Step Audio EditX
@@ -1083,6 +1095,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(7GB)" }
       speed_performance: { supported: "partial", notes: "" }
+      reference_free_tts: { supported: false, notes: "(clone mode only)" }
 
   - id: echo-tts
     name: Echo-TTS
@@ -1155,6 +1168,7 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(~7GB total)" }
       speed_performance: { supported: true, notes: "Fast (diffusion, realtime-capable)" }
+      reference_free_tts: { supported: false, notes: "(reference audio required)" }
 
   - id: dots-tts
     name: Dots TTS
@@ -1233,6 +1247,78 @@ engines:
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(main env works; 2B-class model is not lightweight)" }
       speed_performance: { supported: "partial", notes: "Moderate; mf variant is faster" }
+      reference_free_tts: { supported: true, notes: "(default speaker)" }
+
+  - id: omnivoice
+    name: OmniVoice
+    models: "OmniVoice"
+    size: "~3.7GB"
+    license: "Apache-2.0"
+    commercial: true
+    language_summary_compact: "🌐 600+ languages"
+    language_summary_full: "600+"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    special_features:
+      - "600+ language support"
+      - "Instruction-based voice design"
+      - "Upstream long-form chunk orchestration"
+      - "Inline non-verbal tags and pronunciation overrides"
+
+    model_sources:
+      - component: "OmniVoice"
+        source_name: "k2-fsa/OmniVoice"
+        source_url: "https://huggingface.co/k2-fsa/OmniVoice"
+        size: "~3.7GB"
+        auto_download: true
+        notes: "Official main model including bundled audio_tokenizer assets"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "(generic PT; official language space is much broader than this matrix)" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "" }
+      hy: { supported: true, flag: "🇦🇲", notes: "" }
+      ka: { supported: true, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: true, flag: "🇮🇱", notes: "" }
+      ms: { supported: true, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: true, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "" }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "(no standalone ASR node)" }
+      emotion_control: { supported: "partial", notes: "(voice-design instruct + inline non-verbal tags)" }
+      native_long_form: { supported: true, notes: "(uses upstream audio_chunk_duration / audio_chunk_threshold orchestration; bypasses suite char-based chunk splitting)" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(main env works; 2B-class model is not lightweight)" }
+      speed_performance: { supported: true, notes: "Fast; upstream reports sub-realtime RTF" }
+      reference_free_tts: { supported: true, notes: "(native default voice; instruct also works without narrator)" }
 
   - id: moss-tts
     name: MOSS-TTS
@@ -1321,6 +1407,7 @@ engines:
       community_finetunes: { supported: true, notes: "(LoRA adapter inference supported; initial integrated LoRA training support added for MOSS-TTS Delay 8B)" }
       vram_efficient: { supported: "partial", notes: "(Local 1.7B smaller; tokenizer is large)" }
       speed_performance: { supported: true, notes: "Fast with CUDA/FlashAttention" }
+      reference_free_tts: { supported: true, notes: "(direct TTS and prompt-only generation)" }
 
   - id: rvc
     name: RVC
@@ -1414,6 +1501,7 @@ engines:
       community_finetunes: { supported: true, notes: "" }
       vram_efficient: { supported: true, notes: "" }
       speed_performance: { supported: true, notes: "Fast" }
+      reference_free_tts: { supported: null, notes: "N/A" }
 
 # Language metadata for reference
 language_metadata:
@@ -1531,6 +1619,7 @@ feature_metadata:
   community_finetunes: { name: "Community Finetunes", display: "**Community Finetunes**" }
   vram_efficient: { name: "VRAM Efficient", display: "**VRAM Efficient**" }
   speed_performance: { name: "Speed/Performance", display: "**Speed/Performance**" }
+  reference_free_tts: { name: "No Narrator Required", display: "**No Narrator Required**" }
 
 # Table notes for additional context
 table_notes:
@@ -1540,6 +1629,7 @@ table_notes:
     - "**Higgs Audio v3**: Official model card lists 102 languages total: 85 polished-production languages and 17 usable but less polished languages."
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
     - "**MOSS-TTS**: Official list includes ZH, EN, DE, ES, FR, JA, IT, HU, KO, RU, FA, AR, PL, PT, CS, DA, SV, EL, TR; HU/FA/CS are not separate columns in this matrix."
+    - "**OmniVoice**: Official model supports 600+ languages; this matrix only shows the suite's comparison subset."
     - "**RVC**: Language-agnostic voice conversion/post-processing; it is marked supported for every language row."
     - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
 
@@ -1604,6 +1694,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/dots_tts/"
     auto_download: "✅"
     notes: "Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder"
+  - engine: "OmniVoice"
+    primary_model_path: "ComfyUI/models/TTS/omnivoice/"
+    auto_download: "✅"
+    notes: "Official OmniVoice model. Voice cloning in this suite requires explicit reference text."
 
 model_layouts_markdown: |
   # Model Folder Layouts
@@ -1957,3 +2051,32 @@ model_layouts_markdown: |
   - Downloads into a dedicated `dots_tts/` folder.
   - Native sample rate is 48kHz.
   - Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.
+
+  ## OmniVoice
+
+  ```text
+  ComfyUI/models/TTS/omnivoice/
+  └── OmniVoice/
+  ```
+
+  Main model contents:
+
+  ```text
+  ComfyUI/models/TTS/omnivoice/OmniVoice/
+  ├── chat_template.jinja
+  ├── config.json
+  ├── model.safetensors
+  ├── tokenizer.json
+  ├── tokenizer_config.json
+  └── audio_tokenizer/
+      ├── config.json
+      ├── model.safetensors
+      └── preprocessor_config.json
+  ```
+
+  Notes:
+
+  - Downloads into a dedicated `omnivoice/` folder.
+  - Native sample rate is 24kHz.
+  - The main OmniVoice model stays in the main Transformers 5 environment.
+  - Voice cloning requires reference audio plus explicit reference text in this suite.

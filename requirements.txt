@@ -22,6 +22,8 @@ setuptools>=65.0.0    # Provides distutils compatibility for Python 3.12+ (requi
 # Audio processing (safe)
 soundfile>=0.12.0
 sounddevice>=0.4.0
+pydub
+webdataset
 
 # Text processing (safe)
 jieba
@@ -95,6 +97,7 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # - librosa (--no-deps): Forces numpy downgrade
 # - descript-audio-codec (--no-deps): Conflicts with protobuf
 # - cached-path (--no-deps): Forces package downgrades
+# - omnivoice (--no-deps): We install official OmniVoice separately to avoid letting pip reshape shared deps
 # - torchcrepe (--no-deps): Conflicts via librosa dependency
 # - onnxruntime (--no-deps): Forces numpy 2.3.x, needed for OpenSeeFace
 # - opencv-python (--no-deps): Forces numpy downgrade via numpy<2.3.0 constraint

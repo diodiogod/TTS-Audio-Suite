@@ -10,6 +10,8 @@ Session-scoped fixtures for ComfyUI server management and API testing.
 # ============================================================================
 import os
 import sys
+import tempfile
+import types
 from unittest.mock import MagicMock
 
 # Set testing environment
@@ -22,7 +24,6 @@ _MOCK_MODULES = [
     'comfy.model_management',
     'comfy.utils',
     'nodes',
-    'folder_paths',
     'server',
     'execution',
     'comfy_extras',
@@ -31,6 +32,30 @@ _MOCK_MODULES = [
 for _module_name in _MOCK_MODULES:
     if _module_name not in sys.modules:
         sys.modules[_module_name] = MagicMock()
+
+# folder_paths cannot be a raw MagicMock because code under test uses
+# folder_paths.models_dir in os.path.join/os.makedirs calls. A MagicMock there
+# creates junk folders like ./MagicMock/mock.models_dir/... on disk.
+if 'folder_paths' not in sys.modules:
+    mock_folder_paths = types.ModuleType("folder_paths")
+    mock_models_dir = tempfile.mkdtemp(prefix="tts_suite_test_models_")
+    mock_input_dir = tempfile.mkdtemp(prefix="tts_suite_test_input_")
+    mock_output_dir = tempfile.mkdtemp(prefix="tts_suite_test_output_")
+    mock_temp_dir = tempfile.mkdtemp(prefix="tts_suite_test_temp_")
+
+    mock_folder_paths.models_dir = mock_models_dir
+    mock_folder_paths.input_directory = mock_input_dir
+    mock_folder_paths.output_directory = mock_output_dir
+    mock_folder_paths.temp_directory = mock_temp_dir
+
+    mock_folder_paths.get_folder_paths = lambda *args, **kwargs: []
+    mock_folder_paths.get_input_directory = lambda: mock_input_dir
+    mock_folder_paths.get_output_directory = lambda: mock_output_dir
+    mock_folder_paths.get_temp_directory = lambda: mock_temp_dir
+    mock_folder_paths.get_annotated_filepath = lambda path: path
+    mock_folder_paths.exists_annotated_filepath = lambda path: os.path.exists(path)
+
+    sys.modules['folder_paths'] = mock_folder_paths
 
 # Now safe to import pytest and other modules
 import pytest
