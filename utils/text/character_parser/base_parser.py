@@ -43,6 +43,13 @@ class CharacterParser(ValidationMixin):
         'cough', 'sneeze', 'sniff', 'snore', 'clear_throat', 'chew', 'sip', 'kiss',
         'bark', 'howl', 'meow', 'shhh', 'gibberish'
     }
+
+    OMNIVOICE_TOKENS = {
+        'laughter', "sigh", "confirmation-en",
+        "question-en", "question-ah", "question-oh", "question-ei", "question-yi", 
+        "surprise-ah", "surprise-oh", "surprise-wa", "surprise-yo",
+        "dissatisfaction-hnn"
+    }
     
     def __init__(self, default_character: str = "narrator", default_language: Optional[str] = None):
         """
