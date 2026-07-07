@@ -114,6 +114,13 @@ Use this as the canonical list of model repositories/links for offline setup.
 | echo-tts-base (model + PCA state) | [jordand/echo-tts-base](https://huggingface.co/jordand/echo-tts-base) | ~5.3GB | ✅ | pytorch_model.safetensors + pca_state.safetensors |
 | fish-s1-dac-min (audio codec) | [jordand/fish-s1-dac-min](https://huggingface.co/jordand/fish-s1-dac-min) | ~1.8GB | ✅ | pytorch_model.safetensors — audio codec required by Echo-TTS |
 
+## Fish Audio S2 Pro
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| S2 Pro | [fishaudio/s2-pro](https://huggingface.co/fishaudio/s2-pro) | ~10.3GB | ✅ | Official 4B model and codec; BNB INT8/NF4 are optional load-time quantization modes that reuse these files; non-commercial license |
+| S2 Pro FP8 | [drbaph/s2-pro-fp8](https://huggingface.co/drbaph/s2-pro-fp8) | ~8.0GB | ✅ | Community weight-only FP8 checkpoint; BF16 activations; RTX 4090/5090-class CUDA GPU required |
+
 ## Dots TTS
 
 | Component | Source | Size | Auto-Download | Notes |

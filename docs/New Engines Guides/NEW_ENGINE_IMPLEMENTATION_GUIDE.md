@@ -466,6 +466,7 @@ Also to test, requirements and dependencies need to be added.
 - [ ] Model auto-download works
 - [ ] VRAM management works (model unloads)
 - [ ] Different parameter combinations work
+- [ ] Engine prints a standard `Settings:` summary with the active generation/load parameters
 - [ ] **Interrupt handling works** - User can stop SRT generation and it stops within ~1 segment
 
 ### Phase 4: SRT Implementation

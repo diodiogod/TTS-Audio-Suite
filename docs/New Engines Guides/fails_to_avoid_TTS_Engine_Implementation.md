@@ -56,6 +56,9 @@
 - **Cache key pattern**: `audio_cache.generate_cache_key(engine_type, text=..., audio_component=..., **all_params)`
 - **Duration calculation**: Update `_calculate_duration()` with engine sample rate (e.g., 24000 for Step Audio EditX, F5-TTS)
 
+### Engine Settings Logging
+- **Missing standard print**: New engines should print the usual `Settings:` summary once per run with the active generation/load parameters so validation can confirm what actually executed
+
 ### Model Lifecycle - __del__ Destructor
 - **CRITICAL**: Remove `__del__` from engine classes - causes automatic unload after generation ends (when object goes out of scope)
 - **Pattern**: F5-TTS and ChatterBox don't have `__del__`, only IndexTTS and StepAudio did (wrong)

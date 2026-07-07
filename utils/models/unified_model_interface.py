@@ -14,6 +14,7 @@ from utils.models.comfyui_model_wrapper import tts_model_manager, ModelInfo
 from utils.models.factory_config import ModelLoadConfig, runtime_uses_isolation
 from utils.models.engine_registry import get_default_runtime_profile
 from utils.runtimes import (
+    build_fish_audio_s2_proxy,
     build_higgs_audio_isolated_proxy,
     build_qwen3_asr_isolated_proxy,
     build_qwen3_tts_isolated_proxy,
@@ -232,6 +233,11 @@ class UnifiedModelInterface:
 
         if config.engine_name == "qwen3_tts" and config.model_type == "tts":
             proxy = build_qwen3_tts_isolated_proxy(config)
+            self._isolated_model_cache[cache_key] = proxy
+            return proxy
+
+        if config.engine_name == "fish_audio_s2" and config.model_type == "tts":
+            proxy = build_fish_audio_s2_proxy(config)
             self._isolated_model_cache[cache_key] = proxy
             return proxy
 
@@ -1675,6 +1681,13 @@ def register_qwen3_tts_factory():
     unified_model_interface.register_model_factory("qwen3_tts", "tts", qwen3_tts_factory)
 
 
+def register_fish_audio_s2_factory():
+    """Register Fish S2; isolated routing constructs the actual proxy."""
+    def fish_audio_s2_factory(config: ModelLoadConfig):
+        return build_fish_audio_s2_proxy(config)
+    unified_model_interface.register_model_factory("fish_audio_s2", "tts", fish_audio_s2_factory)
+
+
 def register_dots_tts_factory():
     """Register Dots TTS model factory."""
     def dots_tts_factory(config: ModelLoadConfig):
@@ -1936,6 +1949,7 @@ def initialize_all_factories():
     register_cosyvoice_factory()
     register_moss_tts_factory()
     register_qwen3_tts_factory()
+    register_fish_audio_s2_factory()
     register_dots_tts_factory()
     register_omnivoice_factory()
     register_qwen3_asr_factory()

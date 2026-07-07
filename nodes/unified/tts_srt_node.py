@@ -212,6 +212,11 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['optimize'] = config.get('optimize', False)
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
 
+            if engine_type == "fish_audio_s2":
+                stable_params['model_variant'] = 's2-pro'
+                stable_params['precision'] = config.get('precision', 'bfloat16')
+                stable_params['compile'] = config.get('compile', False)
+
             if engine_type == "omnivoice":
                 stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
                 stable_params['dtype'] = config.get('dtype', 'auto')
@@ -545,6 +550,34 @@ Hello! This is unified SRT TTS with character switching.
 
                 engine_instance = DotsTTSSRTWrapper(config)
 
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
+            elif engine_type == "fish_audio_s2":
+                processor_path = os.path.join(nodes_dir, "fish_audio_s2", "fish_audio_s2_srt_processor.py")
+                processor_spec = importlib.util.spec_from_file_location("fish_audio_s2_srt_processor_module", processor_path)
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                FishAudioS2SRTProcessor = processor_module.FishAudioS2SRTProcessor
+
+                class FishAudioS2SRTWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.processor = FishAudioS2SRTProcessor(self, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("Fish Audio S2 SRT processing interrupted by user")
+
+                engine_instance = FishAudioS2SRTWrapper(config)
                 import time
                 self._cached_engine_instances[cache_key] = {
                     'instance': engine_instance,
@@ -1251,6 +1284,29 @@ Hello! This is unified SRT TTS with character switching.
                         'reference_text': reference_text if reference_text else "",
                     }
 
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache
+                )
+
+            elif engine_type == "fish_audio_s2":
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance
+                }
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or "",
+                    }
                 result = engine_instance.processor.process_srt_content(
                     srt_content=srt_content,
                     voice_mapping=voice_mapping,

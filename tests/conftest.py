@@ -49,6 +49,7 @@ if 'folder_paths' not in sys.modules:
     mock_folder_paths.temp_directory = mock_temp_dir
 
     mock_folder_paths.get_folder_paths = lambda *args, **kwargs: []
+    mock_folder_paths.add_model_folder_path = lambda *args, **kwargs: None
     mock_folder_paths.get_input_directory = lambda: mock_input_dir
     mock_folder_paths.get_output_directory = lambda: mock_output_dir
     mock_folder_paths.get_temp_directory = lambda: mock_temp_dir

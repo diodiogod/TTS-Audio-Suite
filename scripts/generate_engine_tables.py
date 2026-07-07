@@ -444,7 +444,7 @@ def generate_license_table(data):
     output.append(header)
     output.append(sep)
     for name, lic, com in rows:
-        output.append(f"  {name:<{col1}}  {lic:<{col2}}  {com:<{col3}}")
+        output.append(f"  {name:<{col1}}  {lic:<{col2}}  {com}")
     output.append(sep)
     output.append("")
     output.append("Users are responsible for complying with respective model licenses.")

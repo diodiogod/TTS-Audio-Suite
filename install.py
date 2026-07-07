@@ -1161,6 +1161,40 @@ class TTSAudioInstaller:
             ignore_errors=True
         )
 
+    def install_fish_audio_s2(self):
+        """Install Fish S2 without changing the suite's core ML stack."""
+        self.log("Installing Fish Audio S2 support in the main T5 environment", "INFO")
+
+        packages = [
+            ("lightning", "lightning"),
+            ("pytorch_lightning", "pytorch-lightning"),
+            ("lightning_utilities", "lightning-utilities"),
+            ("torchmetrics", "torchmetrics"),
+            ("opencc", "opencc-python-reimplemented==0.1.7"),
+            ("ormsgpack", "ormsgpack"),
+            ("zstandard", "zstandard"),
+            ("pyrootutils", "pyrootutils"),
+            ("loralib", "loralib"),
+        ]
+        for module_name, package_name in packages:
+            if self.verify_python_import(module_name):
+                self.log(f"{module_name} import already satisfied - skipping", "SUCCESS")
+                continue
+            self.run_pip_command(
+                ["install", package_name, "--no-deps"],
+                f"Installing Fish S2 dependency {package_name} (--no-deps)",
+                ignore_errors=True,
+            )
+
+        if self.check_package_installed("fish-speech"):
+            self.log("fish-speech already satisfied - skipping", "SUCCESS")
+            return
+        self.run_pip_command(
+            ["install", "git+https://github.com/fishaudio/fish-speech.git", "--no-deps"],
+            "Installing official fish-speech from GitHub (--no-deps)",
+            ignore_errors=True,
+        )
+
     def install_f5tts_multilingual_support(self):
         """Install phonemization support for F5-TTS multilingual models (Polish, German, French, Spanish, etc.)"""
         self.log("Installing F5-TTS multilingual phonemization support", "INFO")
@@ -1598,6 +1632,7 @@ def main():
         installer.install_vibevoice()  # Install VibeVoice with careful dependency management
         installer.install_echo_tts()  # Install Echo-TTS with minimal dependency impact
         installer.install_dots_tts()  # Install official Dots TTS in the main environment first
+        installer.install_fish_audio_s2()  # Install Fish S2 without changing Torch/Transformers
         installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
         installer.install_indexts_text_processing()  # Install IndexTTS-2 text normalization with fallback
         installer.install_russian_text_stresser_support()  # Install lightweight Russian stress package for Official 23-Lang

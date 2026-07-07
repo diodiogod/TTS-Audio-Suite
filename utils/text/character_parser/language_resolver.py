@@ -244,7 +244,7 @@ class LanguageResolver:
         if resolved_language and resolved_language != self.default_language:
             if character_lower not in logged_characters:
                 # Suppress language logs for engines that auto-detect language from text
-                if self.engine_type not in ["vibevoice", "kugelaudio", "higgs_audio_v3"]:
+                if self.engine_type not in ["vibevoice", "kugelaudio", "higgs_audio_v3", "fish_audio_s2"]:
                     print(f"🎭 Character '{character}' auto-switching to 🚨 alias default language '{resolved_language}'")
                 logged_characters.add(character_lower)
         
