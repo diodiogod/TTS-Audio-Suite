@@ -797,21 +797,28 @@ class VibeVoiceSRTProcessor:
         Returns:
             Dict mapping character names to speaker numbers (1-4)
         """
-        # Collect all unique characters across all subtitles
-        all_characters = set()
-        
+        # Collect characters across all subtitles in first-appearance order.
+        # If narrator exists anywhere, reserve Speaker 1 for narrator and then
+        # map remaining characters by first appearance order.
+        seen_characters = set()
+        ordered_characters = []
+
         for subtitle in subtitles:
             character_segments = parse_character_text(subtitle.text, None)
             for character, _ in character_segments:
-                all_characters.add(character)
-        
-        # Sort characters to ensure consistent mapping
-        # narrator/untagged first, then alphabetical order for tagged characters
-        sorted_chars = sorted(all_characters, key=lambda x: (x != 'narrator', x))
-        
+                if character not in seen_characters:
+                    seen_characters.add(character)
+                    ordered_characters.append(character)
+
+        narrator_present = "narrator" in seen_characters
+        if narrator_present:
+            ordered_chars = ["narrator"] + [c for c in ordered_characters if c != "narrator"]
+        else:
+            ordered_chars = ordered_characters
+
         # Map to speakers (limit to 4 for VibeVoice native mode)
         char_to_speaker = {}
-        for i, character in enumerate(sorted_chars[:4]):  # Max 4 speakers
+        for i, character in enumerate(ordered_chars[:4]):  # Max 4 speakers
             char_to_speaker[character] = i + 1
         
         if char_to_speaker:

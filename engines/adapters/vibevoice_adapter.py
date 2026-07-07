@@ -526,15 +526,11 @@ class VibeVoiceEngineAdapter:
         Returns:
             Combined audio dict
         """
-        # Get speaker voice inputs from engine config for priority system
-        # For manual Speaker format, the main narrator voice comes from the TTS Text node
-        # We need to get it from a different source since voice_mapping may not have 'narrator' key
-        main_narrator_voice = voice_mapping.get('narrator')  # Try narrator first
-        if main_narrator_voice is None:
-            # If no 'narrator' key, get it from any available voice (fallback for manual Speaker format)
-            available_voices = [v for v in voice_mapping.values() if v is not None]
-            main_narrator_voice = available_voices[0] if available_voices else None
-            # print(f"🐛 Debug: No 'narrator' key, using fallback voice: {'✅ found' if main_narrator_voice else '❌ none available'}")
+        # Get speaker voice inputs from engine config for priority system.
+        # Speaker 1 must only come from an explicit narrator/speaker-1 input.
+        # Do not synthesize Speaker 1 from discovered character voices, or aliases
+        # will look like they were overridden by a connection that does not exist.
+        main_narrator_voice = voice_mapping.get('narrator')
         speaker_inputs = {
             1: main_narrator_voice,  # Speaker 1 uses main narrator from TTS Text
             2: params.get('speaker2_voice'),
@@ -552,9 +548,16 @@ class VibeVoiceEngineAdapter:
         character_global_slots = {}
         speaker_voices = []
         formatted_lines = []
+        segment_characters = [char for char, _ in segments]
 
-        print(f"🎭 Native multi-speaker: Processing {len(segments)} segments with characters: {[char for char, _ in segments]}")
+        print(f"🎭 Native multi-speaker: Processing {len(segments)} segments with characters: {segment_characters}")
         print(f"🎤 Speaker inputs connected: {[f'Speaker {k}' for k, v in speaker_inputs.items() if v is not None]}")
+        narrator_exists_globally = bool(global_char_to_speaker and "narrator" in global_char_to_speaker)
+        if speaker_inputs.get(1) is not None and "narrator" not in segment_characters:
+            if narrator_exists_globally:
+                print("ℹ️ Narrator input is connected, but this subtitle has no narrator turn; it will not override tagged characters")
+            else:
+                print("ℹ️ No narrator turns exist in this SRT; Speaker 1 maps to the first named character by first appearance")
         
         for character, text in segments:
             # Check if this is already a manual "Speaker N:" format
@@ -604,12 +607,25 @@ class VibeVoiceEngineAdapter:
                             global_speaker_num = speaker_idx + 1
                             character_global_slots[character] = global_speaker_num
                         
-                    # Priority system: speaker inputs override character aliases
+                    # Priority system:
+                    # - Numeric [1]-[4] always map directly to speaker inputs 1-4.
+                    # - If any narrator turn exists in the SRT, Speaker 1 is reserved for narrator.
+                    # - Otherwise, Speaker 1..4 map to named characters by first global appearance order.
                     speaker_num = speaker_idx + 1
                     global_speaker_num = character_global_slots.get(character, speaker_num)
-                    connected_voice = speaker_inputs.get(global_speaker_num)
+                    connected_voice = None
+                    is_numeric_direct = character.isdigit() and 1 <= int(character) <= 4
+                    if is_numeric_direct:
+                        connected_voice = speaker_inputs.get(global_speaker_num)
+                    elif character == "narrator":
+                        connected_voice = speaker_inputs.get(1)
+                    elif narrator_exists_globally:
+                        if global_speaker_num >= 2:
+                            connected_voice = speaker_inputs.get(global_speaker_num)
+                    else:
+                        connected_voice = speaker_inputs.get(global_speaker_num)
                     character_voice = voice_mapping.get(character)
-                    
+
                     if connected_voice is not None and character_voice is not None:
                         if global_speaker_num != speaker_num:
                             print(
@@ -627,9 +643,9 @@ class VibeVoiceEngineAdapter:
                         voice = connected_voice
                     else:
                         if global_speaker_num != speaker_num:
-                            print(f"🎭 Character '{character}' -> global Speaker {global_speaker_num}, local Speaker {speaker_num}, using character voice")
+                            print(f"🎭 Character '{character}' -> global Speaker {global_speaker_num}, local Speaker {speaker_num}, using alias/character voice")
                         else:
-                            print(f"🎭 Character '{character}' -> Speaker {speaker_num}, using character voice")
+                            print(f"🎭 Character '{character}' -> Speaker {speaker_num}, using alias/character voice")
                         voice = character_voice
                     
                     # Ensure we have enough speaker_voices slots
@@ -648,6 +664,18 @@ class VibeVoiceEngineAdapter:
         print(formatted_text)
         print("="*60)
         print(f"🎤 Using {len(speaker_voices)} voice samples for generation")
+        for idx, voice in enumerate(speaker_voices, start=1):
+            if voice is None:
+                print(f"   Speaker {idx}: default / no reference")
+            elif isinstance(voice, dict) and voice.get("audio_path"):
+                print(f"   Speaker {idx}: file reference -> {voice['audio_path']}")
+            elif isinstance(voice, dict) and "waveform" in voice:
+                waveform = voice["waveform"]
+                sample_rate = voice.get("sample_rate", "unknown")
+                shape = tuple(waveform.shape) if hasattr(waveform, "shape") else "unknown"
+                print(f"   Speaker {idx}: waveform reference -> shape {shape}, sr {sample_rate}")
+            else:
+                print(f"   Speaker {idx}: unexpected reference type {type(voice).__name__}")
         
         # Validate and normalize voice references
         normalized_voices = []

@@ -719,6 +719,8 @@ class VibeVoiceEngine:
                     # Extract waveform from ComfyUI audio format
                     waveform = voice_ref["waveform"]
                     input_sample_rate = voice_ref.get("sample_rate", 24000)
+                    shape = tuple(waveform.shape) if hasattr(waveform, "shape") else "unknown"
+                    print(f"🎵 VibeVoice ENGINE: Using waveform input for speaker {i+1} - shape: {shape}, sr: {input_sample_rate}")
                     
                     # Convert to numpy
                     if isinstance(waveform, torch.Tensor):

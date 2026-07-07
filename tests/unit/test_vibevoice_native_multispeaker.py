@@ -62,3 +62,138 @@ def test_native_multispeaker_remaps_global_slots_to_local_sequence(monkeypatch):
     call = fake_engine.calls[0]
     assert call["text"] == "Speaker 1: Hi there.\nSpeaker 2: Welcome back."
     assert call["voice_samples"] == [speaker3_override, narrator_voice]
+
+
+@pytest.mark.unit
+def test_native_multispeaker_does_not_fake_speaker1_from_character_voice(monkeypatch):
+    fake_engine = FakeVibeVoiceEngine()
+
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "vibevoice_engine",
+        property(lambda self: fake_engine),
+    )
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "current_model",
+        property(lambda self: object()),
+    )
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "current_processor",
+        property(lambda self: object()),
+    )
+
+    adapter = ADAPTER_MODULE.VibeVoiceEngineAdapter(SimpleNamespace(), {})
+
+    alice_voice = {"audio_path": "alice.wav"}
+    clint_voice = {"audio_path": "clint.wav"}
+
+    adapter._generate_native_multispeaker(
+        segments=[("female_01", "Hi there."), ("clint_eastwood cc3 (enhanced2)", "Hello there.")],
+        voice_mapping={
+            "female_01": alice_voice,
+            "clint_eastwood cc3 (enhanced2)": clint_voice,
+        },
+        params={"enable_cache": False},
+        global_char_to_speaker={
+            "clint_eastwood cc3 (enhanced2)": 1,
+            "female_01": 2,
+            "male_01": 3,
+        },
+    )
+
+    call = fake_engine.calls[0]
+    assert call["text"] == "Speaker 1: Hi there.\nSpeaker 2: Hello there."
+    assert call["voice_samples"] == [alice_voice, clint_voice]
+
+
+@pytest.mark.unit
+def test_native_multispeaker_narrator_input_does_not_override_tagged_global_speaker1(monkeypatch):
+    fake_engine = FakeVibeVoiceEngine()
+
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "vibevoice_engine",
+        property(lambda self: fake_engine),
+    )
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "current_model",
+        property(lambda self: object()),
+    )
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "current_processor",
+        property(lambda self: object()),
+    )
+
+    adapter = ADAPTER_MODULE.VibeVoiceEngineAdapter(SimpleNamespace(), {})
+
+    narrator_voice = {"audio_path": "joe.wav"}
+    bob_voice = {"audio_path": "bob.wav"}
+    alice_voice = {"audio_path": "alice.wav"}
+
+    adapter._generate_native_multispeaker(
+        segments=[("male_01", "Hello."), ("female_01", "Hi there.")],
+        voice_mapping={
+            "narrator": narrator_voice,
+            "male_01": bob_voice,
+            "female_01": alice_voice,
+        },
+        params={"enable_cache": False},
+        global_char_to_speaker={
+            "narrator": 1,
+            "female_01": 3,
+            "male_01": 4,
+        },
+    )
+
+    call = fake_engine.calls[0]
+    assert call["text"] == "Speaker 1: Hello.\nSpeaker 2: Hi there."
+    assert call["voice_samples"] == [bob_voice, alice_voice]
+
+
+@pytest.mark.unit
+def test_native_multispeaker_narrator_input_overrides_first_character_when_no_narrator_exists(monkeypatch):
+    fake_engine = FakeVibeVoiceEngine()
+
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "vibevoice_engine",
+        property(lambda self: fake_engine),
+    )
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "current_model",
+        property(lambda self: object()),
+    )
+    monkeypatch.setattr(
+        ADAPTER_MODULE.VibeVoiceEngineAdapter,
+        "current_processor",
+        property(lambda self: object()),
+    )
+
+    adapter = ADAPTER_MODULE.VibeVoiceEngineAdapter(SimpleNamespace(), {})
+
+    narrator_voice = {"audio_path": "joe.wav"}
+    bob_voice = {"audio_path": "bob.wav"}
+    alice_voice = {"audio_path": "alice.wav"}
+
+    adapter._generate_native_multispeaker(
+        segments=[("male_01", "Hello."), ("female_01", "Hi there.")],
+        voice_mapping={
+            "narrator": narrator_voice,
+            "male_01": bob_voice,
+            "female_01": alice_voice,
+        },
+        params={"enable_cache": False},
+        global_char_to_speaker={
+            "male_01": 1,
+            "female_01": 2,
+        },
+    )
+
+    call = fake_engine.calls[0]
+    assert call["text"] == "Speaker 1: Hello.\nSpeaker 2: Hi there."
+    assert call["voice_samples"] == [narrator_voice, alice_voice]
