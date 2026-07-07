@@ -198,7 +198,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - 🎨 **Audio Post-Processing** → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🎭 **Character and Language Switching** → **[📖 Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
 - 📐 **Visual Tag Builder** → Preset-driven visual tag and attribute assembly for OmniVoice and other tag-based text workflows
-- 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
+- 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)** | **[📖 OmniVoice Tags Guide](docs/OMNIVOICE_TAGS_GUIDE.md)**
 - 📝 **Intelligent Text Chunking** → **[📖 Text Chunking Guide](docs/TEXT_CHUNKING_GUIDE.md)**
 - 🤐 **Vocal/Noise Removal** → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
 - 🌊 **Audio Wave Analyzer** → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
@@ -912,6 +912,7 @@ Description: "A deep, authoritative male voice with clear articulation"
 * **⏱️ Precise segment control**: this is the first engine in the suite where segment duration can be meaningfully guided at generation time, making precise TTS timing far more practical
 * **📺 Better SRT timing behavior**: subtitle generation can land much closer to target timings before any fallback timing correction, so stretch-to-fit has less work to do and results can stay more natural
 * **📐 Visual Tag Builder**: reusable preset-driven visual node for assembling tag or attribute strings, originally added for OmniVoice voice-design prompting and now generalized for broader tag-based text workflows
+* **🔊 Native inline non-verbal tags**: OmniVoice non-verbal controls are exposed in suite-default `<>` form like `<laughter>`, then converted internally for generation → **[📖 OmniVoice Tags Guide](docs/OMNIVOICE_TAGS_GUIDE.md)**
 
 **Practical note:**
 
@@ -1071,6 +1072,7 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 Beyond character switching and language control, you can now override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using inline tags. The new **🏷️ Multiline TTS Tag Editor** node makes building complex tags easier and more visual with:
 - **Rich Text Editor**: Multiline editor with resizable font sizes (2-120px), multiple font families, and customizable UI scaling
 - **Visual Tag Management**: Character/language/parameter dropdowns for quick selection, inline tag validation with syntax checking
+- **Engine-Aware Inline Tags**: dedicated editor modes for Step Audio EditX, Higgs Audio v3, CosyVoice3, and OmniVoice
 - **Preset System**: Save and load up to 3 preset configurations for rapid tag reuse
 - **Keyboard Shortcuts**: Alt+L/C/P for tag insertion, Alt+1/2/3 for preset loading
 - **History & Undo/Redo**: Full edit history with Alt+Z for undo (Alt+Shift+Z for redo)
@@ -1109,7 +1111,7 @@ This enables dynamic control over individual audio segments without modifying no
 - **VibeVoice**: seed, temperature, cfg, top_p, top_k, inference_steps
 - **IndexTTS-2**: seed, temperature, cfg, top_p, top_k, emotion_alpha
 
-**📖 Guides:** [Per-Segment Parameter Switching](docs/PARAMETER_SWITCHING_GUIDE.md) | [Multiline TTS Tag Editor](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)
+**📖 Guides:** [Per-Segment Parameter Switching](docs/PARAMETER_SWITCHING_GUIDE.md) | [Multiline TTS Tag Editor](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md) | [OmniVoice Tags Guide](docs/OMNIVOICE_TAGS_GUIDE.md)
 
 Perfect for:
 

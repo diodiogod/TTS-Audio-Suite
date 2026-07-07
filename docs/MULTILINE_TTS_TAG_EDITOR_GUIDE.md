@@ -9,6 +9,7 @@ For related topics, also see:
 - [Step Audio EditX Inline Tags User Guide](INLINE_EDIT_TAGS_USER_GUIDE.md)
 - [Higgs Audio v3 Inline Tags](HIGGS_AUDIO_V3_INLINE_TAGS.md)
 - [CosyVoice3 Tags Guide](COSYVOICE3_TAGS_GUIDE.md)
+- [OmniVoice Native Tags Guide](OMNIVOICE_TAGS_GUIDE.md)
 
 ## What This Editor Is For
 
@@ -19,7 +20,7 @@ It supports:
 - Character switching tags
 - Language switching tags
 - Per-segment parameter overrides
-- Engine-aware inline tags for Step Audio EditX, Higgs Audio v3, and CosyVoice3
+- Engine-aware inline tags for Step Audio EditX, Higgs Audio v3, CosyVoice3, and OmniVoice
 - Presets and edit history
 - SRT-aware highlighting and timing editing
 
@@ -80,7 +81,21 @@ CosyVoice3 examples:
 <laughing>that was funny</laughing>
 ```
 
+OmniVoice examples:
+
+```text
+<laughter>
+<sigh>
+<question-ei>
+```
+
 Use the dedicated inline tag controls in the sidebar when you do not want to type these by hand.
+
+Important differences:
+
+- `Step Audio EditX` tags are post-process controls
+- `Higgs Audio v3`, `CosyVoice3`, and `OmniVoice` tags are native generation controls
+- `OmniVoice` editor insertion uses suite-default angle-tag aliases and the processor converts them internally to official native tags during generation
 
 ## SRT Editing
 

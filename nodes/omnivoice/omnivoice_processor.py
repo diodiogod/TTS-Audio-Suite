@@ -20,11 +20,10 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.audio.chunk_timing import ChunkTimingHelper
-from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from utils.text.character_parser import character_parser
+from utils.text.omnivoice_special_tags import convert_omnivoice_special_tags
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import ParameterValidator, apply_segment_parameters
-from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
 
 
@@ -232,9 +231,9 @@ class OmniVoiceProcessor:
         narrator_voice = narrator_info if isinstance(narrator_info, dict) else {"audio": narrator_info}
 
         base_config = self.config.copy()
-        segment_objects = character_parser.parse_text_segments(text)
+        segment_objects = character_parser.parse_text_segments(text, engine_type="omnivoice")
         if not segment_objects:
-            segment_objects = character_parser.parse_text_segments("narrator " + text)
+            segment_objects = character_parser.parse_text_segments("narrator " + text, engine_type="omnivoice")
 
         characters = list({seg.character for seg in segment_objects if seg.character})
         character_mapping = get_character_mapping(characters, engine_type="audio_only")
@@ -247,6 +246,7 @@ class OmniVoiceProcessor:
             segment_text = (seg.text or "").strip()
             if not segment_text:
                 continue
+            segment_text = convert_omnivoice_special_tags(segment_text)
 
             segment_params = seg.parameters if seg.parameters else {}
             current_config = base_config.copy()
@@ -293,7 +293,7 @@ class OmniVoiceProcessor:
                 if duration_value > 0:
                     explicit_duration = duration_value
 
-            def _append_text_item(text_content: str, edit_tags: list):
+            def _append_text_item(text_content: str):
                 text_content = (text_content or "").strip()
                 if not text_content:
                     return
@@ -301,7 +301,6 @@ class OmniVoiceProcessor:
                     {
                         "kind": "text",
                         "text": text_content,
-                        "edit_tags": edit_tags,
                         "config": current_config.copy(),
                         "seed": current_seed,
                         "voice_ref": voice_ref.copy() if isinstance(voice_ref, dict) else voice_ref,
@@ -317,8 +316,7 @@ class OmniVoiceProcessor:
                 raw_pause_segments, _ = PauseTagProcessor.parse_pause_tags(segment_text)
                 for frag_type, frag_content in raw_pause_segments:
                     if frag_type == "text":
-                        frag_clean, frag_edit_tags = get_edit_tags_for_segment(frag_content)
-                        _append_text_item(frag_clean, frag_edit_tags)
+                        _append_text_item(frag_content)
                     elif frag_type == "pause":
                         generation_items.append(
                             {
@@ -326,12 +324,10 @@ class OmniVoiceProcessor:
                                 "duration": float(frag_content),
                                 "effective_duration": float(frag_content),
                                 "text": f"[pause:{float(frag_content):.3f}s]",
-                                "edit_tags": [],
                             }
                         )
             else:
-                clean_text, edit_tags = get_edit_tags_for_segment(segment_text)
-                _append_text_item(clean_text, edit_tags)
+                _append_text_item(segment_text)
 
         return generation_items, base_config
 
@@ -408,7 +404,8 @@ class OmniVoiceProcessor:
         duration_budget: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         del enable_chunking, max_chars_per_chunk  # OmniVoice uses native duration-based chunking
-        generation_items, base_config = self._build_generation_items(
+        del apply_edit_postprocessing  # OmniVoice uses native inline tags instead of Step Audio EditX inline post-processing
+        generation_items, _base_config = self._build_generation_items(
             text=text,
             voice_mapping=voice_mapping,
             seed=seed,
@@ -440,7 +437,6 @@ class OmniVoiceProcessor:
                         "waveform": silence,
                         "sample_rate": self.SAMPLE_RATE,
                         "text": f"[pause:{silence_duration:.3f}s]",
-                        "edit_tags": [],
                     }
                 )
                 continue
@@ -478,12 +474,8 @@ class OmniVoiceProcessor:
                     "waveform": audio.cpu(),
                     "sample_rate": self.SAMPLE_RATE,
                     "text": item["text"],
-                    "edit_tags": item["edit_tags"],
                 }
             )
-
-        if apply_edit_postprocessing and segment_records and any(seg["edit_tags"] for seg in segment_records):
-            segment_records = apply_edit_post_processing(segment_records, engine_config=base_config)
 
         return segment_records
 

@@ -41,6 +41,10 @@ export function attachAllEventHandlers(
             wrapperTagSelect: cosyWrapperTagSelect,
             addWrapperTagBtn,
         },
+        omnivoice: {
+            tagSelect: omnivoiceTagSelect,
+            addTagBtn: addOmniVoiceTagBtn,
+        },
     } = inlineTagControls;
 
     // Block ComfyUI shortcuts when editor is focused, but allow Enter, Alt, and Ctrl combinations
@@ -1148,5 +1152,16 @@ export function attachAllEventHandlers(
         }
 
         wrapSelectionWithTag(tagName);
+    });
+
+    addOmniVoiceTagBtn.addEventListener("click", () => {
+        const tagName = omnivoiceTagSelect.value;
+        if (!tagName) {
+            showNotification("⚠️ Select an OmniVoice tag first", 2000);
+            return;
+        }
+
+        const tag = `<${tagName}>`;
+        insertTextSnippet(tag);
     });
 }

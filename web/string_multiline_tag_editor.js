@@ -2058,7 +2058,7 @@ function addStringMultilineTagEditorWidget(node) {
                 key: "inline-tags",
                 tabLabel: "Inline Tags",
                 title: "Inline Tags Guide",
-                intro: "This panel is engine-aware. Step Audio EditX uses post-process tags, while Higgs Audio v3 and CosyVoice3 use native generation tags.",
+                intro: "This panel is engine-aware. Step Audio EditX uses post-process tags, while Higgs Audio v3, CosyVoice3, and OmniVoice use native generation tags.",
                 rows: [
                     { syntax: "Step: <Laughter> / <Laughter:2>", purpose: "Post-process paralinguistic insertion", notes: "Step Audio EditX runs after TTS. Position matters because the sound is inserted where the tag appears." },
                     { syntax: "Step: <emotion:happy> / <style:whisper> / <speed:faster>", purpose: "Whole-segment post-process controls", notes: "Use the Step mode in the inline panel when you want convenience editing without chaining a separate Audio Editor node." },
@@ -2066,13 +2066,15 @@ function addStringMultilineTagEditorWidget(node) {
                     { syntax: "Higgs: <|emotion:amusement|>", purpose: "Native Higgs emotion control", notes: "Editor inserts canonical Higgs syntax. TTS Audio Suite also accepts alias input like <emotion:amusement>, but canonical output stays <|...|>." },
                     { syntax: "Higgs: <|style:whispering|> / <|prosody:pause|> / <|sfx:laughter|>", purpose: "Native Higgs style, timing, and SFX tags", notes: "These affect generation directly. Higgs does not use Step post-process tags in this panel." },
                     { syntax: "Cosy: <breath> / <laughter> / <cough>", purpose: "Native CosyVoice3 single tags", notes: "These are native generation tags, not Step Audio EditX tags." },
-                    { syntax: "Cosy: <laughing>text</laughing> / <strong>text</strong>", purpose: "Native CosyVoice3 wrapper tags", notes: "If text is selected, the editor can wrap the selection with the chosen Cosy wrapper tag." }
+                    { syntax: "Cosy: <laughing>text</laughing> / <strong>text</strong>", purpose: "Native CosyVoice3 wrapper tags", notes: "If text is selected, the editor can wrap the selection with the chosen Cosy wrapper tag." },
+                    { syntax: "Omni: <laughter> / <sigh> / <question-ei>", purpose: "Suite-default OmniVoice aliases", notes: "The editor inserts angle-tag aliases. The OmniVoice processor converts them internally to official native tags during generation." }
                 ],
                 bullets: [
                     "Pick the tag engine inside the Inline Tags panel instead of mixing syntaxes blindly.",
-                    "Step Audio EditX tags are post-process controls. Higgs Audio v3 and CosyVoice3 tags are native generation controls.",
+                    "Step Audio EditX tags are post-process controls. Higgs Audio v3, CosyVoice3, and OmniVoice tags are native generation controls.",
                     "Higgs editor insertion always uses canonical `<|...|>` syntax even though alias forms like `<emotion:amusement>` are accepted on input.",
                     "CosyVoice3 does not run Step Audio EditX post-processing here. Use native Cosy tags instead.",
+                    "OmniVoice uses suite-default angle-tag aliases in the editor, then converts them internally to official native tags at generation time.",
                     "Use the separate Audio Editor node when you want full manual Step Audio EditX workflows across generated audio."
                 ]
             },
