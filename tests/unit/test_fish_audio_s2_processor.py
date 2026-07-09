@@ -377,3 +377,137 @@ def test_second_character_uses_speaker2_override_when_narrator_not_reserved(monk
     turns, used_references = adapter.calls[0]
     assert turns == [(0, "Bonjour"), (1, "Salut")]
     assert used_references == [{"id": "narrator_voice"}, {"id": "speaker2_voice"}]
+
+
+@pytest.mark.unit
+def test_native_override_uses_effective_speaker_default_language_for_auto_inline_tag(monkeypatch):
+    parser = FakeCharacterParser()
+
+    def parse_single_bob(_text, engine_type=None):
+        assert engine_type == "fish_audio_s2"
+        return [
+            SimpleNamespace(
+                character="male_01",
+                original_character="Bob",
+                text="Bonjour",
+                parameters={},
+                language="fr",
+                explicit_language=False,
+            ),
+        ]
+
+    parser.parse_text_segments = parse_single_bob
+    monkeypatch.setattr(PROCESSOR_MODULE, "character_parser", parser)
+    monkeypatch.setattr(PROCESSOR_MODULE, "get_available_characters", lambda: [])
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_mapping",
+        lambda *_args, **_kwargs: {"male_01": ("bob.wav", "Bob ref")},
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_default_language",
+        lambda character: {"anna": "de", "male_01": "fr"}.get(character.lower()),
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "model_management",
+        SimpleNamespace(interrupt_processing=False),
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "voice_discovery",
+        SimpleNamespace(
+            get_character_aliases=lambda: {},
+            get_character_language_defaults=lambda: {},
+        ),
+    )
+
+    adapter = CapturingAdapter()
+    processor = PROCESSOR_MODULE.FishAudioS2Processor(
+        adapter,
+        {
+            "speaker_references": [{"character_name": "Anna"}],
+            "multi_speaker_mode": "Native Multi-Speaker",
+            "language_prompting": "Auto Inline Tag",
+        },
+    )
+
+    processor.process_text(
+        "subtitle",
+        {"narrator": {"character_name": "Joe"}},
+        seed=1,
+        reference_order=["narrator", "male_01"],
+        show_text_logging=False,
+    )
+
+    turns, used_references = adapter.calls[0]
+    assert turns == [(0, "<German> Bonjour")]
+    assert used_references == [{"character_name": "Anna"}]
+
+
+@pytest.mark.unit
+def test_native_override_with_unmapped_connected_voice_does_not_fall_back_to_alias_language(monkeypatch):
+    parser = FakeCharacterParser()
+
+    def parse_single_bob(_text, engine_type=None):
+        assert engine_type == "fish_audio_s2"
+        return [
+            SimpleNamespace(
+                character="male_01",
+                original_character="Bob",
+                text="Bonjour",
+                parameters={},
+                language="fr",
+                explicit_language=False,
+            ),
+        ]
+
+    parser.parse_text_segments = parse_single_bob
+    monkeypatch.setattr(PROCESSOR_MODULE, "character_parser", parser)
+    monkeypatch.setattr(PROCESSOR_MODULE, "get_available_characters", lambda: [])
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_mapping",
+        lambda *_args, **_kwargs: {"male_01": ("bob.wav", "Bob ref")},
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_default_language",
+        lambda character: None,
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "model_management",
+        SimpleNamespace(interrupt_processing=False),
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "voice_discovery",
+        SimpleNamespace(
+            get_character_aliases=lambda: {},
+            get_character_language_defaults=lambda: {},
+        ),
+    )
+
+    adapter = CapturingAdapter()
+    processor = PROCESSOR_MODULE.FishAudioS2Processor(
+        adapter,
+        {
+            "speaker_references": [{"character_name": "Tony"}],
+            "multi_speaker_mode": "Native Multi-Speaker",
+            "language_prompting": "Auto Inline Tag",
+        },
+    )
+
+    processor.process_text(
+        "subtitle",
+        {"narrator": {"character_name": "Joe"}},
+        seed=1,
+        reference_order=["narrator", "male_01"],
+        show_text_logging=False,
+    )
+
+    turns, used_references = adapter.calls[0]
+    assert turns == [(0, "Bonjour")]
+    assert used_references == [{"character_name": "Tony"}]

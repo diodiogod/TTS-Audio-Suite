@@ -247,6 +247,8 @@ def main() -> int:
     sys.stdout = sys.stderr
     _patch_upstream_project_root_probe()
     engine = None
+    compile_enabled = False
+    first_generation = True
 
     for line in sys.stdin:
         if not line.strip():
@@ -276,8 +278,11 @@ def main() -> int:
                 print(f"   Device: {device} | Precision: {precision} | Context: {context_length}")
                 if quantization != "none":
                     print(f"   Quantization: {quantization}")
-                if bool(payload.get("compile", False)):
+                compile_enabled = bool(payload.get("compile", False))
+                if compile_enabled:
                     print("   Compile: enabled, first load will be slower")
+                    if payload.get("compile_cache_dir"):
+                        print(f"   Compile cache: {payload['compile_cache_dir']}")
                 with _suppress_known_fish_transformers_noise():
                     with _suppress_noisy_fish_runtime_logs():
                         text_stage_t0 = time.perf_counter()
@@ -338,12 +343,15 @@ def main() -> int:
             if torch.cuda.is_available() and str(payload.get("device", "cuda")).startswith("cuda"):
                 torch.cuda.reset_peak_memory_stats()
             final = None
+            if compile_enabled and first_generation:
+                print("⏳ Fish Audio S2: preparing first compiled run before token generation starts")
             with _suppress_noisy_fish_runtime_logs():
                 for result in engine.inference(req):
                     if result.code == "error":
                         raise result.error or RuntimeError("Fish S2 generation failed")
                     if result.code == "final":
                         final = result.audio
+            first_generation = False
             if final is None:
                 raise RuntimeError("Fish S2 returned no final audio")
             sample_rate, audio = final

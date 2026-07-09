@@ -47,12 +47,29 @@ class FishAudioS2Proxy:
         self._initialized = False
         worker_env = os.environ.copy()
         worker_env.setdefault("PYTHONUTF8", "1")
+        self.compile_cache_dir = self._configure_compile_cache(worker_env)
         self._session = JsonLineWorkerSession(
             python_path=sys.executable,
             worker_script=str(PROJECT_ROOT / "utils/runtimes/workers/fish_audio_s2_worker.py"),
             env=worker_env,
         )
         self._initialize_remote_engine()
+
+    def _configure_compile_cache(self, worker_env):
+        try:
+            model_dir = Path(self.config.model_path)
+            cache_root = model_dir / "compile_cache"
+            inductor_dir = cache_root / "torchinductor"
+            triton_dir = cache_root / "triton"
+            inductor_dir.mkdir(parents=True, exist_ok=True)
+            triton_dir.mkdir(parents=True, exist_ok=True)
+            worker_env["TORCHINDUCTOR_FX_GRAPH_CACHE"] = "1"
+            worker_env["TORCHINDUCTOR_CACHE_DIR"] = str(inductor_dir)
+            worker_env["TRITON_CACHE_DIR"] = str(triton_dir)
+            return cache_root
+        except Exception as exc:
+            print(f"⚠️ Fish Audio S2: failed to configure compile cache directory: {exc}")
+            return None
 
     def _initialize_remote_engine(self):
         response = self._request("initialize", {
@@ -62,6 +79,7 @@ class FishAudioS2Proxy:
             "precision": self.config.additional_params.get("precision", "bfloat16"),
             "compile": bool(self.config.additional_params.get("compile", False)),
             "context_length": int(self.config.additional_params.get("context_length", 8192)),
+            "compile_cache_dir": str(self.compile_cache_dir) if self.compile_cache_dir else None,
         })
         self.sample_rate = int((response.result or {}).get("sample_rate", 44100))
         self._initialized = True

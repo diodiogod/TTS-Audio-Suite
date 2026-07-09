@@ -105,6 +105,7 @@ class FishAudioS2Adapter:
         if cache_key:
             cached = self.audio_cache.get_cached_audio(cache_key)
             if cached:
+                print("💾 Fish Audio S2: Using cached audio")
                 return cached[0]
         audio, sample_rate = self._engine().generate(
             text=text, references=references, **params,

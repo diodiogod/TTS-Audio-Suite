@@ -11,7 +11,12 @@ from utils.text.character_parser import character_parser
 from utils.text.fish_audio_s2_tags import get_fish_language_instruction
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import ParameterValidator, apply_segment_parameters
-from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
+from utils.voice.discovery import (
+    get_available_characters,
+    get_character_default_language,
+    get_character_mapping,
+    voice_discovery,
+)
 
 
 class FishAudioS2Processor:
@@ -62,6 +67,37 @@ class FishAudioS2Processor:
         if stripped.startswith("<"):
             return text
         return f"<{instruction}> {text}"
+
+    def _get_effective_language_instruction(self, segment, override_voice_ref: Dict[str, Any] | None) -> str | None:
+        explicit_language = bool(getattr(segment, "explicit_language", False))
+        if explicit_language:
+            return get_fish_language_instruction(
+                getattr(segment, "language", None),
+                explicit=True,
+            )
+        if isinstance(override_voice_ref, dict):
+            override_character = override_voice_ref.get("character_name")
+            if override_character:
+                override_language = get_character_default_language(str(override_character))
+                return get_fish_language_instruction(override_language, explicit=False)
+            return None
+        return get_fish_language_instruction(
+            getattr(segment, "language", None),
+            explicit=False,
+        )
+
+    def _apply_effective_language_instruction(
+        self, text: str, segment, override_voice_ref: Dict[str, Any] | None
+    ) -> tuple[str, str | None]:
+        if self.config.get("language_prompting", "Auto Inline Tag") != "Auto Inline Tag":
+            return text, None
+        instruction = self._get_effective_language_instruction(segment, override_voice_ref)
+        if not instruction:
+            return text, None
+        stripped = (text or "").lstrip()
+        if stripped.startswith("<"):
+            return text, instruction
+        return f"<{instruction}> {text}", instruction
 
     @staticmethod
     def _voice_for(character, voice_mapping, discovered, narrator):
@@ -244,12 +280,10 @@ class FishAudioS2Processor:
                 turn_text = str(content).strip()
                 if not turn_text:
                     continue
-                turn_text = self._apply_language_instruction(turn_text, segment)
+                turn_text, language_instruction = self._apply_effective_language_instruction(
+                    turn_text, segment, override_voice_ref if not custom_switching else None
+                )
                 if show_text_logging and self.config.get("language_prompting", "Auto Inline Tag") == "Auto Inline Tag":
-                    language_instruction = get_fish_language_instruction(
-                        getattr(segment, "language", None),
-                        explicit=bool(getattr(segment, "explicit_language", False)),
-                    )
                     if language_instruction:
                         print(f"  🌍 Fish Audio S2 prompting language via <{language_instruction}>")
                 if show_text_logging and custom_switching:
