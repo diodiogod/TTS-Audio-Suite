@@ -214,7 +214,7 @@ def test_explicit_english_language_prompt_is_preserved(monkeypatch):
 
 
 @pytest.mark.unit
-def test_single_character_native_call_keeps_positional_speaker_override(monkeypatch):
+def test_single_character_native_call_uses_narrator_as_speaker_one_when_no_global_narrator_exists(monkeypatch):
     parser = FakeCharacterParser()
 
     def parse_single_bob(_text, engine_type=None):
@@ -255,8 +255,125 @@ def test_single_character_native_call_keeps_positional_speaker_override(monkeypa
         },
     )
 
-    processor.process_text("subtitle", {}, seed=1, show_text_logging=False)
+    processor.process_text(
+        "subtitle",
+        {"narrator": {"id": "narrator_voice"}},
+        seed=1,
+        reference_order=["bob"],
+        show_text_logging=False,
+    )
 
     turns, used_references = adapter.calls[0]
     assert turns == [(0, "Bonjour")]
-    assert used_references == [{"id": "speaker1_female"}]
+    assert used_references == [{"id": "narrator_voice"}]
+
+
+@pytest.mark.unit
+def test_first_tagged_character_uses_speaker2_when_global_narrator_exists(monkeypatch):
+    parser = FakeCharacterParser()
+
+    def parse_single_bob(_text, engine_type=None):
+        assert engine_type == "fish_audio_s2"
+        return [
+            SimpleNamespace(character="bob", text="Bonjour", parameters={}, language="fr", explicit_language=False),
+        ]
+
+    parser.parse_text_segments = parse_single_bob
+    monkeypatch.setattr(PROCESSOR_MODULE, "character_parser", parser)
+    monkeypatch.setattr(PROCESSOR_MODULE, "get_available_characters", lambda: [])
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_mapping",
+        lambda *_args, **_kwargs: {"bob": ("bob.wav", "Bob ref")},
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "model_management",
+        SimpleNamespace(interrupt_processing=False),
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "voice_discovery",
+        SimpleNamespace(
+            get_character_aliases=lambda: {},
+            get_character_language_defaults=lambda: {},
+        ),
+    )
+
+    adapter = CapturingAdapter()
+    processor = PROCESSOR_MODULE.FishAudioS2Processor(
+        adapter,
+        {
+            "speaker_references": [{"id": "speaker2_voice"}],
+            "multi_speaker_mode": "Native Multi-Speaker",
+            "language_prompting": "Off",
+        },
+    )
+
+    processor.process_text(
+        "subtitle",
+        {"narrator": {"id": "narrator_voice"}},
+        seed=1,
+        reference_order=["narrator", "bob"],
+        show_text_logging=False,
+    )
+
+    turns, used_references = adapter.calls[0]
+    assert turns == [(0, "Bonjour")]
+    assert used_references == [{"id": "speaker2_voice"}]
+
+
+@pytest.mark.unit
+def test_second_character_uses_speaker2_override_when_narrator_not_reserved(monkeypatch):
+    parser = FakeCharacterParser()
+
+    def parse_bob_then_rick(_text, engine_type=None):
+        assert engine_type == "fish_audio_s2"
+        return [
+            SimpleNamespace(character="bob", text="Bonjour", parameters={}, language="fr", explicit_language=False),
+            SimpleNamespace(character="rick", text="Salut", parameters={}, language="fr", explicit_language=False),
+        ]
+
+    parser.parse_text_segments = parse_bob_then_rick
+    monkeypatch.setattr(PROCESSOR_MODULE, "character_parser", parser)
+    monkeypatch.setattr(PROCESSOR_MODULE, "get_available_characters", lambda: [])
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_mapping",
+        lambda *_args, **_kwargs: {"bob": ("bob.wav", "Bob ref"), "rick": ("rick.wav", "Rick ref")},
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "model_management",
+        SimpleNamespace(interrupt_processing=False),
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "voice_discovery",
+        SimpleNamespace(
+            get_character_aliases=lambda: {},
+            get_character_language_defaults=lambda: {},
+        ),
+    )
+
+    adapter = CapturingAdapter()
+    processor = PROCESSOR_MODULE.FishAudioS2Processor(
+        adapter,
+        {
+            "speaker_references": [{"id": "speaker2_voice"}],
+            "multi_speaker_mode": "Native Multi-Speaker",
+            "language_prompting": "Off",
+        },
+    )
+
+    processor.process_text(
+        "subtitle",
+        {"narrator": {"id": "narrator_voice"}},
+        seed=1,
+        reference_order=["bob", "rick"],
+        show_text_logging=False,
+    )
+
+    turns, used_references = adapter.calls[0]
+    assert turns == [(0, "Bonjour"), (1, "Salut")]
+    assert used_references == [{"id": "narrator_voice"}, {"id": "speaker2_voice"}]

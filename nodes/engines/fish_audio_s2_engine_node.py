@@ -16,7 +16,7 @@ base_module = importlib.util.module_from_spec(base_spec)
 sys.modules.setdefault("base_node_module", base_module)
 base_spec.loader.exec_module(base_module)
 
-SPEAKER_INPUT_PATTERN = re.compile(r"^speaker(\d+)$")
+SPEAKER_INPUT_PATTERN = re.compile(r"^speaker([2-9]\d*)$")
 
 
 class DynamicSpeakerInputs(dict):
@@ -89,9 +89,9 @@ class FishAudioS2EngineNode(base_module.BaseTTSNode):
                     "• Off: keep Fish language fully text-only and ignore alias/default language switching"
                 ),
             }),
-            "speaker1": ("*", {
+            "speaker2": ("*", {
                 "forceInput": True,
-                "tooltip": "Optional first native speaker reference. Additional speaker inputs appear automatically.",
+                "tooltip": "Optional second speaker reference. Speaker 1 is always the Unified node narrator/opt_narrator input. Additional speaker inputs appear automatically.",
             }),
         })
         return {"required": {
@@ -118,10 +118,10 @@ class FishAudioS2EngineNode(base_module.BaseTTSNode):
                              normalize=True, cache_reference=True, precision="bfloat16",
                              compile=False, model_variant="s2-pro", quantization="none",
                              multi_speaker_mode="Native Multi-Speaker", language_prompting="Auto Inline Tag",
-                             speaker1=None, **kwargs):
+                             speaker2=None, **kwargs):
         speakers = []
-        if speaker1 is not None:
-            speakers.append((1, speaker1))
+        if speaker2 is not None:
+            speakers.append((2, speaker2))
         for key, value in kwargs.items():
             match = SPEAKER_INPUT_PATTERN.fullmatch(key)
             if match and value is not None:

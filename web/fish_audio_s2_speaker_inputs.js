@@ -17,11 +17,11 @@ function syncSpeakerInputs(node) {
         }
         const speakers = (node.inputs || []).filter(isSpeakerInput);
         speakers.forEach((input, index) => {
-            input.name = `${PREFIX}${index + 1}`;
-            input.label = `speaker ${index + 1}`;
+            input.name = `${PREFIX}${index + 2}`;
+            input.label = `Speaker ${index + 2}`;
         });
         if (!speakers.length || speakers[speakers.length - 1].link != null) {
-            node.addInput(`${PREFIX}${speakers.length + 1}`, "*");
+            node.addInput(`${PREFIX}${speakers.length + 2}`, "*");
         }
         app.graph.setDirtyCanvas(true, true);
     } finally {
