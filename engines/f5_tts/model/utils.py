@@ -16,7 +16,8 @@ from torch.nn.utils.rnn import pad_sequence
 
 def seed_everything(seed=0):
     random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
+    # PYTHONHASHSEED is read before interpreter startup; changing it here has
+    # no effect on this process and can poison later isolated workers.
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)

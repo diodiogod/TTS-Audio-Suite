@@ -1,6 +1,7 @@
 /**
  * 🏷️ Widget Inline Tags Section
- * Builds an engine-aware inline tag panel for Step Audio EditX, Higgs Audio v3, and CosyVoice3.
+ * Builds an engine-aware inline tag panel for Step Audio EditX, Higgs Audio v3,
+ * CosyVoice3, and OmniVoice.
  */
 
 const HIGGS_TAGS = {
@@ -23,6 +24,12 @@ const COSY_SINGLE_TAGS = [
 ];
 
 const COSY_WRAPPER_TAGS = ["laughing", "strong"];
+
+const OMNIVOICE_NON_VERBAL_TAGS = [
+    "laughter", "sigh", "confirmation-en", "question-en", "question-ah",
+    "question-oh", "question-ei", "question-yi", "surprise-ah", "surprise-oh",
+    "surprise-wa", "surprise-yo", "dissatisfaction-hnn"
+];
 
 function stylePanelContainer(element, { separated = true } = {}) {
     element.style.marginBottom = "8px";
@@ -410,6 +417,46 @@ function buildCosySection(state, storageKey) {
     };
 }
 
+function buildOmniVoiceSection(state, storageKey) {
+    const section = document.createElement("div");
+    section.style.display = "flex";
+    section.style.flexDirection = "column";
+    section.style.gap = "8px";
+
+    const tagSection = document.createElement("div");
+    stylePanelContainer(tagSection, { separated: false });
+    const tagSelect = createSelect(
+        OMNIVOICE_NON_VERBAL_TAGS.map((value) => ({ value, label: value })),
+        "Select OmniVoice tag...",
+        state.lastOmniVoiceInlineTag || "laughter"
+    );
+    tagSelect.addEventListener("change", () => {
+        state.lastOmniVoiceInlineTag = tagSelect.value;
+        state.saveToLocalStorage(storageKey);
+    });
+    const tagHint = createInfoText(
+        "Editor inserts suite-default aliases like <laughter>. The OmniVoice processor converts them to official [laughter] tags at generation time.",
+        "OmniVoice also supports bracketed CMU pronunciation overrides like [B EY1 S], but those are typed manually."
+    );
+    const addTagBtn = createButton("Add OmniVoice Tag", "Insert suite-default OmniVoice tag like <laughter>");
+    tagSection.append(
+        createPanelLabel("Native Non-Verbal Tags", "#82d4ff"),
+        tagSelect,
+        tagHint,
+        addTagBtn
+    );
+
+    section.append(tagSection);
+
+    return {
+        panel: section,
+        controls: {
+            tagSelect,
+            addTagBtn,
+        },
+    };
+}
+
 export function buildInlineEditSection(state, storageKey) {
     const container = document.createElement("div");
     container.style.display = "flex";
@@ -425,6 +472,7 @@ export function buildInlineEditSection(state, storageKey) {
         { value: "step_audio_editx", label: "Step Audio EditX" },
         { value: "higgs_audio_v3", label: "Higgs Audio v3" },
         { value: "cosyvoice3", label: "CosyVoice3" },
+        { value: "omnivoice", label: "OmniVoice" },
     ], "Select inline tag engine...", state.activeInlineTagEngine || "step_audio_editx");
     inlineEngineSelect.addEventListener("change", () => {
         state.activeInlineTagEngine = inlineEngineSelect.value;
@@ -439,11 +487,13 @@ export function buildInlineEditSection(state, storageKey) {
     const stepSection = buildStepSection(state, storageKey);
     const higgsSection = buildHiggsSection(state, storageKey);
     const cosySection = buildCosySection(state, storageKey);
+    const omnivoiceSection = buildOmniVoiceSection(state, storageKey);
 
     const panels = {
         step_audio_editx: stepSection.panel,
         higgs_audio_v3: higgsSection.panel,
         cosyvoice3: cosySection.panel,
+        omnivoice: omnivoiceSection.panel,
     };
 
     const updateVisiblePanel = () => {
@@ -453,7 +503,7 @@ export function buildInlineEditSection(state, storageKey) {
         });
     };
 
-    container.append(engineSection, stepSection.panel, higgsSection.panel, cosySection.panel);
+    container.append(engineSection, stepSection.panel, higgsSection.panel, cosySection.panel, omnivoiceSection.panel);
     updateVisiblePanel();
 
     return {
@@ -463,6 +513,7 @@ export function buildInlineEditSection(state, storageKey) {
             step: stepSection.controls,
             higgs: higgsSection.controls,
             cosy: cosySection.controls,
+            omnivoice: omnivoiceSection.controls,
         },
         updateInlineEnginePanelVisibility: updateVisiblePanel,
     };

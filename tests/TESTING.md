@@ -4,18 +4,22 @@ This guide covers running tests for the TTS Audio Suite custom node.
 
 ## Quick Start
 
+For a split installation, first create the ignored `tests/.env.local` file described under [Path Configuration & Local Overrides](#path-configuration--local-overrides). The wrapper cannot infer paths when ComfyUI and this repository live in separate directory trees.
+
 ```bash
-cd C:\_stability_matrix\Data\Packages\Comfy-new\custom_nodes\TTS-Audio-Suite
+cd /path/to/ComfyUI/custom_nodes/TTS-Audio-Suite
 
 # Run all tests
-..\..\venv\Scripts\python -m pytest tests/ -v
+python tests/run_tests.py -v
 
 # Run only fast unit tests (no server needed)
-..\..\venv\Scripts\python -m pytest tests/unit/ -m unit -v
+python tests/run_tests.py unit/ -m unit -v
 
 # Run integration tests (requires ComfyUI running)
-..\..\venv\Scripts\python -m pytest tests/integration/ -m integration -v
+python tests/run_tests.py integration/ -m integration -v
 ```
+
+Always use `tests/run_tests.py`; it selects the configured Python, changes into the isolated test directory, and ensures the local pytest configuration wins.
 
 ---
 
@@ -47,10 +51,10 @@ Tests that run against a live ComfyUI server.
 
 ```bash
 # Run by marker
-pytest -m unit           # Fast, no server
-pytest -m integration    # Requires ComfyUI
-pytest -m slow           # Full generation tests
-pytest -m cosyvoice      # CosyVoice3 specific
+python tests/run_tests.py -m unit           # Fast, no server
+python tests/run_tests.py -m integration    # Requires ComfyUI
+python tests/run_tests.py -m slow           # Full generation tests
+python tests/run_tests.py -m cosyvoice      # CosyVoice3 specific
 ```
 
 ---
@@ -61,13 +65,27 @@ Integration tests require ComfyUI to be running:
 
 ```bash
 # Terminal 1: Start ComfyUI
-cd C:\_stability_matrix\Data\Packages\Comfy-new
-venv\Scripts\python main.py
+cd /path/to/ComfyUI
+/path/to/comfyui/python main.py
 
 # Terminal 2: Run tests
-cd custom_nodes\TTS-Audio-Suite
-..\..\venv\Scripts\python -m pytest tests/integration/ -m integration -v
+cd /path/to/ComfyUI/custom_nodes/TTS-Audio-Suite
+python tests/run_tests.py integration/ -m integration -v
 ```
+
+---
+
+## FL-MCP-Assisted Live Validation
+
+[ComfyUI_FL-MCP](https://github.com/filliptm/ComfyUI_FL-MCP) can drive and inspect a live ComfyUI session from an MCP-capable coding client. It complements pytest by exposing workflow state, browser screenshots, queue execution, history, errors, and output files. It is optional and is not a dependency of TTS Audio Suite.
+
+Use it for new-engine acceptance testing after the implementation and automated tests are complete. Follow [FL_MCP_VALIDATION.md](FL_MCP_VALIDATION.md) for prerequisites, the standard smoke sequence, required evidence, safety boundaries, and the manual fallback.
+
+New custom-node Python code is loaded only when ComfyUI starts. During implementation, follow the runbook's mandatory edit–restart–browser reconnect–validate loop. Keeping an old ComfyUI process open does not test newly written engine code.
+
+REST availability alone is insufficient for canvas inspection. Before live validation, bind the MCP client to the browser's persistent FL-MCP session ID and verify one bridge session reports both frontend and MCP connections.
+
+FL-MCP does not determine whether generated speech sounds good. A human must assess pronunciation, voice similarity, artifacts, pacing, and other subjective audio qualities.
 
 ---
 

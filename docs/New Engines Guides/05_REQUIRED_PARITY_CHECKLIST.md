@@ -25,7 +25,8 @@ Downloads and dependencies:
 - Do models download into organized ComfyUI/models/TTS/ folders?
 - Did you prevent silent downloads into random cache folders?
 - Did you document dependency conflicts or install.py changes?
-- Did you explicitly decide whether this engine belongs in Main Environment or needs runtime isolation?
+- Did you test `--no-deps` on Main/T5 and simple patching before falling back to the shared T4 runtime?
+- Did you avoid creating another environment or downloading/reinstalling Torch or Transformers without explicit maintainer approval?
 - If runtime isolation is needed, did you document the default mode and the reason in YAML/README?
 
 Audio format:
@@ -79,6 +80,21 @@ Manual tests:
 - Did parameter switching work?
 - Did Clear VRAM then regenerate work, and did unload actually tear down runtime/cache state instead of only moving weights to CPU?
 - Did interrupt/cancel work in long generation?
+
+Live ComfyUI integration evidence:
+- Was validation run in the canonical Windows ComfyUI environment?
+- Was ComfyUI restarted after the final Python changes, and can you show that the tested process started after those edits?
+- After restart, was the browser refreshed and the FL-MCP browser bridge confirmed connected before canvas checks?
+- If FL-MCP was available, did you follow tests/FL_MCP_VALIDATION.md and identify which MCP checks were run?
+- If FL-MCP was unavailable, did you perform and document the equivalent manual checks instead of claiming MCP validation?
+- Are the engine node and relevant unified nodes present without import or registration errors?
+- Does the saved workflow JSON contain the expected node types, links, and widget values?
+- Does the workflow load without missing/broken node state?
+- Was the workflow queued, and does execution history show successful completion or the full actionable error?
+- Does each successful run produce the expected audio output artifact?
+- Was a canvas screenshot captured for UI inspection without treating the screenshot as execution proof?
+- Did you record tested, failed, and skipped cases, including the reason for every skip?
+- Did a human assess subjective audio quality separately?
 ```
 
 ## Important Failures This Prevents

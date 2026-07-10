@@ -24,6 +24,7 @@ from utils.text.segment_parameters import apply_segment_parameters
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment, parse_edit_tags_with_iterations
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from utils.text.chatterbox_v2_special_tags import CHATTERBOX_V2_SPECIAL_TOKENS
+from utils.voice.character_logging import resolved_character_label
 
 
 def extract_edit_tags_for_chatterbox(text: str):
@@ -412,7 +413,11 @@ class ChatterboxOfficial23LangSRTProcessor:
                             print(f"🌍 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Language switching - {', '.join(languages)}")
                         elif subtitle_type != 'multisegment':
                             characters = list(set(char for char, _, _, _ in character_segments_with_lang))
-                            print(f"🎭 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(characters)}")
+                            resolved_characters = [
+                                resolved_character_label(char, voice_refs.get(char, voice_refs.get('narrator')))
+                                for char in characters
+                            ]
+                            print(f"🎭 ChatterBox Official 23-Lang SRT Segment {i+1} (Seq {subtitle.sequence}): Character switching - {', '.join(resolved_characters)}")
 
                         segment_audio_parts = []
                         subtitle_has_edit_tags = False  # Track if ANY segment has edit tags

@@ -24,6 +24,7 @@ from utils.text.pause_processor import PauseTagProcessor
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from engines.adapters.vibevoice_adapter import VibeVoiceEngineAdapter
+from utils.voice.character_logging import resolved_character_label
 
 
 class VibeVoiceProcessor:
@@ -183,9 +184,11 @@ class VibeVoiceProcessor:
 
         for group_idx, (character, segment_list) in enumerate(grouped_segments):
             # Check for interruption before processing each character block
+            voice_ref = voice_mapping.get(character)
+            display_name = resolved_character_label(character, voice_ref)
             if model_management.interrupt_processing:
-                raise InterruptedError(f"VibeVoice character block {group_idx + 1}/{len(grouped_segments)} ({character}) interrupted by user")
-            print(f"🎤 Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
+                raise InterruptedError(f"VibeVoice character block {group_idx + 1}/{len(grouped_segments)} ({display_name}) interrupted by user")
+            print(f"🎤 Block {group_idx + 1}: Character '{display_name}' with {len(segment_list)} segments")
 
             # Combine text blocks for this character (VibeVoice style)
             combined_text = '\n'.join(seg.text.strip() for seg in segment_list)
@@ -359,7 +362,8 @@ class VibeVoiceProcessor:
             if not isinstance(voice_ref, dict):
                 voice_note = " [⚠️ Zero-shot mode - no voice reference]"
 
-            print(f"🎭 CUSTOM CHARACTER BLOCK - Generating combined text for '{character}'{voice_note}:")
+            display_name = resolved_character_label(character, voice_ref)
+            print(f"🎭 CUSTOM CHARACTER BLOCK - Generating combined text for '{display_name}'{voice_note}:")
             print("="*60)
             print(combined_text)
             print("="*60)

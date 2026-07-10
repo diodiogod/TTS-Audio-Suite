@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 16 Engines
+## Quick Engine Comparison — 17 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -39,6 +39,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Native speaker attribution / diarization (plus model variant) |
 | **Step Audio EditX** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~7GB | Second Pass Speech Editing Node: 14 emotions, 32 speaking styles |
 | **Echo-TTS** | 🇺🇸 | ~5.3GB + ~1.8GB | Diffusion-based (~30s best), Force Speaker KV (speaker drift control) |
+| **Fish Audio S2 Pro** | 🌐 80+ languages | ~10.3GB / ~8.0GB | Free-form sub-word emotion/prosody tags, Zero-shot voice cloning and 80+ languages |
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **OmniVoice** | 🌐 600+ languages | ~3.7GB | 600+ language support, Instruction-based voice design |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 20-language generation, Long-form generation (TTSD/Delay) |
@@ -197,7 +198,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 - 🎨 **Audio Post-Processing** → **[📖 Inline Edit Tags Guide](docs/INLINE_EDIT_TAGS_USER_GUIDE.md)**
 - 🎭 **Character and Language Switching** → **[📖 Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
 - 📐 **Visual Tag Builder** → Preset-driven visual tag and attribute assembly for OmniVoice and other tag-based text workflows
-- 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)**
+- 🏷️ **Multiline TTS Tag Editor and Per-Segment Parameter Switching** → **[📖 Per-Segment Parameters](docs/PARAMETER_SWITCHING_GUIDE.md)** | **[📖 Multiline Tag Editor Guide](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)** | **[📖 OmniVoice Tags Guide](docs/OMNIVOICE_TAGS_GUIDE.md)**
 - 📝 **Intelligent Text Chunking** → **[📖 Text Chunking Guide](docs/TEXT_CHUNKING_GUIDE.md)**
 - 🤐 **Vocal/Noise Removal** → **[📖 Complete Guide](docs/VOCAL_REMOVAL_GUIDE.md)**
 - 🌊 **Audio Wave Analyzer** → **[📖 Complete Guide](docs/🌊_Audio_Wave_Analyzer-Complete_User_Guide.md)**
@@ -911,6 +912,7 @@ Description: "A deep, authoritative male voice with clear articulation"
 * **⏱️ Precise segment control**: this is the first engine in the suite where segment duration can be meaningfully guided at generation time, making precise TTS timing far more practical
 * **📺 Better SRT timing behavior**: subtitle generation can land much closer to target timings before any fallback timing correction, so stretch-to-fit has less work to do and results can stay more natural
 * **📐 Visual Tag Builder**: reusable preset-driven visual node for assembling tag or attribute strings, originally added for OmniVoice voice-design prompting and now generalized for broader tag-based text workflows
+* **🔊 Native inline non-verbal tags**: OmniVoice non-verbal controls are exposed in suite-default `<>` form like `<laughter>`, then converted internally for generation → **[📖 OmniVoice Tags Guide](docs/OMNIVOICE_TAGS_GUIDE.md)**
 
 **Practical note:**
 
@@ -1070,6 +1072,7 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 Beyond character switching and language control, you can now override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using inline tags. The new **🏷️ Multiline TTS Tag Editor** node makes building complex tags easier and more visual with:
 - **Rich Text Editor**: Multiline editor with resizable font sizes (2-120px), multiple font families, and customizable UI scaling
 - **Visual Tag Management**: Character/language/parameter dropdowns for quick selection, inline tag validation with syntax checking
+- **Engine-Aware Inline Tags**: dedicated editor modes for Step Audio EditX, Higgs Audio v3, CosyVoice3, and OmniVoice
 - **Preset System**: Save and load up to 3 preset configurations for rapid tag reuse
 - **Keyboard Shortcuts**: Alt+L/C/P for tag insertion, Alt+1/2/3 for preset loading
 - **History & Undo/Redo**: Full edit history with Alt+Z for undo (Alt+Shift+Z for redo)
@@ -1108,7 +1111,7 @@ This enables dynamic control over individual audio segments without modifying no
 - **VibeVoice**: seed, temperature, cfg, top_p, top_k, inference_steps
 - **IndexTTS-2**: seed, temperature, cfg, top_p, top_k, emotion_alpha
 
-**📖 Guides:** [Per-Segment Parameter Switching](docs/PARAMETER_SWITCHING_GUIDE.md) | [Multiline TTS Tag Editor](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)
+**📖 Guides:** [Per-Segment Parameter Switching](docs/PARAMETER_SWITCHING_GUIDE.md) | [Multiline TTS Tag Editor](docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md) | [OmniVoice Tags Guide](docs/OMNIVOICE_TAGS_GUIDE.md)
 
 Perfect for:
 
@@ -1467,6 +1470,7 @@ For offline/manual setup:
 | Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Granite ASR models; plus adds native diarization/timestamps, optional Qwen forced aligner reused lazily for timestamps/SRT fallback |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 | Dots TTS | `ComfyUI/models/TTS/dots_tts/` | ✅ | Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder |
+| Fish Audio S2 Pro | `ComfyUI/models/TTS/fish_audio_s2_pro/` | ✅ | Official BF16 or optional community FP8 checkpoint; the official checkpoint can be quantized on load with BNB INT8/NF4; main T5 environment with process teardown for Clear VRAM; Fish Audio Research License |
 | OmniVoice | `ComfyUI/models/TTS/omnivoice/` | ✅ | Official OmniVoice model. Voice cloning in this suite requires explicit reference text. |
 
 *Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*
@@ -1510,6 +1514,7 @@ Your support helps maintain and improve this project for the entire community!
 | **⚙️ Step Audio EditX Integration**            | Step Audio EditX TTS engine with zero-shot voice cloning   | ✅ **New in v4.14**   | [📁 JSON](example_workflows/Step%20Audio%20EditX%20Integration.json)                                                |
 | **⚙️ Higgs Audio v3 Integration**              | Higgs Audio v3 TTS with zero-shot voice cloning and native inline tags | ✅ **New in v4.27** | [📁 JSON](example_workflows/Higgs%20Audio%20v3%20Integration.json)                                                  |
 | **⚙️ OmniVoice Engine Integration**            | OmniVoice multilingual TTS with cloning, voice design, and native duration control | ✅ **New in v4.28** | [📁 JSON](example_workflows/OmniVoice%20Engine%20Integration.json)                                                  |
+| **⚙️ Fish Audio S2 Pro Integration**           | Fish S2 Pro multilingual cloning with native multi-speaker dialogue, inline control, and long-form generation | ✅ **New in v5.3** | [📁 JSON](example_workflows/Fish%20Audio%20S2%20integration.json)                                                  |
 | **🌈 IndexTTS-2 Integration**                  | IndexTTS-2 engine with advanced emotion control            | ✅ **New in v4.9**    | [📁 JSON](example_workflows/🌈%20IndexTTS-2%20integration.json)                                                     |
 | **📝 F5 TTS + Text Normalizer**                | F5-TTS with multilingual text processing and phonemization | ✅ **New in v4.10.0** | [📁 JSON](example_workflows/F5%20TTS%20integration%20+%20📝%20Phoneme%20Text%20Normalizer.json)                     |
 | **Qwen3 integration + ASR**                    | Qwen3-TTS voice generation with ASR transcription          | ✅ **New in v4.21**   | [📁 JSON](example_workflows/Qwen3%20integration%20+%20ASR.json)                                                     |

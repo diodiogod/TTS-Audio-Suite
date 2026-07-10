@@ -50,6 +50,15 @@ except Exception as e:
             raise ImportError(f"Dots TTS adapter not available: {e}")
 
 try:
+    from .fish_audio_s2_adapter import FishAudioS2Adapter
+    FISH_AUDIO_S2_ADAPTER_AVAILABLE = True
+except Exception as e:
+    FISH_AUDIO_S2_ADAPTER_AVAILABLE = False
+    class FishAudioS2Adapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"Fish Audio S2 adapter not available: {e}")
+
+try:
     from .omnivoice_adapter import OmniVoiceEngineAdapter
     OMNIVOICE_ADAPTER_AVAILABLE = True
 except Exception as e:

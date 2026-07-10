@@ -557,6 +557,33 @@ class DotsTTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class FishAudioS2CacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for Fish Audio S2 Pro."""
+
+    def generate_cache_key(self, **params) -> str:
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'model_variant': params.get('model_variant', 's2-pro'),
+            'quantization': params.get('quantization', 'none'),
+            'multi_speaker_mode': params.get('multi_speaker_mode', 'Native Multi-Speaker'),
+            'temperature': round(float(params.get('temperature', 0.8)), 3),
+            'top_p': round(float(params.get('top_p', 0.8)), 3),
+            'repetition_penalty': round(float(params.get('repetition_penalty', 1.1)), 3),
+            'chunk_length': params.get('chunk_length', 200),
+            'max_new_tokens': params.get('max_new_tokens', 1024),
+            'context_length': params.get('context_length', 8192),
+            'normalize': params.get('normalize', True),
+            'seed': params.get('seed', 0),
+            'character': params.get('character', 'narrator'),
+            'engine': 'fish_audio_s2',
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class OmniVoiceCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for OmniVoice engine."""
 
@@ -635,6 +662,7 @@ class AudioCache:
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
             'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
             'dots_tts': DotsTTSCacheKeyGenerator(),
+            'fish_audio_s2': FishAudioS2CacheKeyGenerator(),
             'omnivoice': OmniVoiceCacheKeyGenerator(),
             'moss_tts': MossTTSCacheKeyGenerator(),
             'echo_tts': EchoTTSCacheKeyGenerator()

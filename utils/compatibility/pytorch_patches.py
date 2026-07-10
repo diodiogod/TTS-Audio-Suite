@@ -211,6 +211,8 @@ class PyTorchPatches:
             return
 
         try:
+            from scipy.io.wavfile import WavFileWarning
+
             # Suppress specific torchaudio deprecation warnings
             warnings.filterwarnings(
                 'ignore',
@@ -221,6 +223,11 @@ class PyTorchPatches:
                 'ignore',
                 message='.*save_with_torchcodec.*',
                 category=UserWarning
+            )
+            warnings.filterwarnings(
+                'ignore',
+                message='.*Chunk \\(non-data\\) not understood, skipping it.*',
+                category=WavFileWarning
             )
 
             cls._patches_applied.add("torchaudio_warnings")

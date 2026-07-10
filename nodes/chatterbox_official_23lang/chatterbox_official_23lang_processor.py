@@ -40,6 +40,7 @@ BaseTTSNode = base_module.BaseTTSNode
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_characters, get_character_mapping
+from utils.voice.character_logging import resolved_character_label
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.character_parser import parse_character_text, character_parser
 from utils.text.segment_parameters import apply_segment_parameters
@@ -1562,7 +1563,8 @@ Back to the main narrator voice for the conclusion.""",
         # Sequential processing for all chunks
         segment_audio_chunks = []
         for chunk_i, chunk_text in enumerate(segment_chunks):
-            print(f"🎤 Generating ChatterBox segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}' (lang: {lang_code})...")
+            display_name = resolved_character_label(character, char_audio_prompt)
+            print(f"🎤 Generating ChatterBox segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{display_name}' (lang: {lang_code})...")
             
             # Generate audio with caching support for character segments
             chunk_audio = self._generate_tts_with_pause_tags(
@@ -1823,10 +1825,11 @@ Back to the main narrator voice for the conclusion.""",
 
             audio_segments_with_order.append((idx, segment_audio))
             # Use the original better format with proper emoji based on character type
+            display_name = resolved_character_label(char, char_audio_prompt)
             if char == "narrator":
-                print(f"🎤 Generating ChatterBox segment {idx+1}/{len(expanded_segments_with_lang)} for '{char}' (lang: {lang})")
+                print(f"🎤 Generating ChatterBox segment {idx+1}/{len(expanded_segments_with_lang)} for '{display_name}' (lang: {lang})")
             else:
-                print(f"🎭 Generating ChatterBox segment {idx+1}/{len(expanded_segments_with_lang)} for '{char}' (lang: {lang})")
+                print(f"🎭 Generating ChatterBox segment {idx+1}/{len(expanded_segments_with_lang)} for '{display_name}' (lang: {lang})")
 
         # Batch process edit tags if any
         if all_segments_for_editing:
@@ -1960,4 +1963,3 @@ Back to the main narrator voice for the conclusion.""",
         )
         
         print(f"🚀 Pre-loading complete: {len(self._streaming_model_manager.preloaded_models)} models ready")
-

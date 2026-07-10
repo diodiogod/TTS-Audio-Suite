@@ -316,6 +316,33 @@ Notes:
 - Both components are required and auto-downloaded on first use.
 - License: CC-BY-NC-SA (non-commercial).
 
+## Fish Audio S2 Pro
+
+```text
+ComfyUI/models/TTS/fish_audio_s2_pro/
+├── codec.pth
+├── config.json
+├── model-00001-of-00002.safetensors
+├── model-00002-of-00002.safetensors
+├── model.safetensors.index.json
+└── tokenizer.json
+```
+
+Optional FP8 variant:
+
+```text
+ComfyUI/models/TTS/fish_audio_s2_pro_fp8/
+├── codec.pth
+├── config.json
+├── model.safetensors
+├── quantization_info.json
+└── tokenizer.json
+```
+
+The complete official repository metadata and tokenizer files are downloaded alongside these files. License: Fish Audio Research License (non-commercial without a separate commercial license).
+
+The `s2-pro-bnb-int8` and `s2-pro-bnb-nf4` options reuse `fish_audio_s2_pro/` and quantize its official checkpoint while loading. They do not download another model copy and require `bitsandbytes`.
+
 ## Dots TTS
 
 ```text

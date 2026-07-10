@@ -105,7 +105,7 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         can_corrupt_on_reload=False,
         fallback_languages=["English"],
         supports_runtime_isolation=True,
-        default_runtime_profile="vibevoice_transformers4_shared",
+        default_runtime_profile=None,
     ),
 
     "index_tts": EngineCapabilities(
@@ -147,6 +147,15 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         multilingual_model_switching=False,
         can_corrupt_on_reload=False,
         fallback_languages=["English"],
+    ),
+
+    "fish_audio_s2": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+        supports_runtime_isolation=True,
+        default_runtime_profile="vibevoice_transformers4_shared",
     ),
 
     "omnivoice": EngineCapabilities(

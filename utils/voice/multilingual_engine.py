@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from utils.text.character_parser import character_parser
 from utils.voice.discovery import get_available_characters, get_character_mapping
+from utils.voice.character_logging import resolved_character_label
 from utils.text.pause_processor import PauseTagProcessor
 
 
@@ -264,16 +265,16 @@ class MultilingualEngine:
                         print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx}...")
                 else:
                     if segment_lang != 'en':
-                        print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{character}' in {segment_lang}")
+                        print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{resolved_character_label(character, char_audio)}' in {segment_lang}")
                     else:
-                        print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{character}'")
+                        print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{resolved_character_label(character, char_audio)}'")
                 
                 # Show what model is actually being used for generation (for verification)
                 current_model = getattr(engine_adapter.node, 'current_language', 'unknown')
                 print(f"🔧 ACTUAL MODEL: Generating segment {segment_display_idx} using '{current_model}' model")
                 
                 # Show the final text that will go to the TTS model
-                print(f"🔤 Final text to {self.engine_type.upper()} via multilingual engine ({character}): '{segment_text}'")
+                print(f"🔤 Final text to {self.engine_type.upper()} via multilingual engine ({resolved_character_label(character, char_audio)}): '{segment_text}'")
                 
                 # CRITICAL FIX: For language-only tags, use "narrator" as character for cache consistency
                 cache_character = character

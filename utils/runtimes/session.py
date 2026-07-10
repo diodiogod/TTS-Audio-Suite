@@ -36,6 +36,8 @@ class JsonLineWorkerSession:
             stdout=subprocess.PIPE,
             stderr=None,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             bufsize=1,
             env=self.env,
             cwd=str(Path(self.worker_script).resolve().parents[3]),

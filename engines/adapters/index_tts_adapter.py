@@ -13,6 +13,7 @@ from engines.index_tts.index_tts import IndexTTSEngine
 from engines.index_tts.index_tts_downloader import index_tts_downloader
 from utils.text.character_parser import character_parser
 from utils.voice.discovery import get_character_mapping, get_available_characters
+from utils.voice.character_logging import resolved_character_label
 from utils.audio.cache import get_audio_cache
 
 
@@ -391,7 +392,14 @@ class IndexTTSAdapter:
         if unique_characters:
             character_mapping = get_character_mapping(list(unique_characters), engine_type="index_tts")
         
-        print(f"🎭 IndexTTS-2: Processing {len(segments)} character segment(s) - {', '.join([s.get('character', 'narrator') for s in segments])}")
+        resolved_names = [
+            resolved_character_label(
+                segment.get('character', 'narrator'),
+                character_mapping.get(segment.get('character', 'narrator'), (default_speaker_audio, None)),
+            )
+            for segment in segments
+        ]
+        print(f"🎭 IndexTTS-2: Processing {len(segments)} character segment(s) - {', '.join(resolved_names)}")
         
         for segment in segments:
             character_name = segment.get('character', 'narrator')
@@ -407,7 +415,7 @@ class IndexTTSAdapter:
                 character_audio_path = character_mapping[character_name][0]
                 if character_audio_path:
                     speaker_audio = character_audio_path
-                    print(f"📖 Using character voice '{character_name}' | Ref: '{speaker_audio}'")
+                    print(f"📖 Using character voice '{resolved_character_label(character_name, speaker_audio)}' | Ref: '{speaker_audio}'")
                 else:
                     print(f"⚠️ Character '{character_name}' has no audio reference, using default")
             
@@ -430,7 +438,7 @@ class IndexTTSAdapter:
             # Check cache first
             cached_segment_audio = self.audio_cache.get_cached_audio(segment_cache_key)
             if cached_segment_audio:
-                print(f"💾 Using cached IndexTTS-2 segment for '{character_name}': '{segment_text[:30]}...'")
+                print(f"💾 Using cached IndexTTS-2 segment for '{resolved_character_label(character_name, speaker_audio)}': '{segment_text[:30]}...'")
                 segment_audio = cached_segment_audio[0]
             else:
                 # Generate audio for this segment with OOM protection

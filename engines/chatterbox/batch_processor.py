@@ -8,6 +8,7 @@ Works with character_grouper.py to process multiple segments simultaneously.
 from typing import Dict, List, Any
 import torch
 from .character_grouper import CharacterGroup
+from utils.voice.character_logging import resolved_character_label
 
 
 class BatchProcessor:
@@ -49,7 +50,8 @@ class BatchProcessor:
         character = character_group.character
         segments = character_group.segments
         
-        print(f"🚀 BATCH PROCESSING: {character} - {len(segments)} segments in {language}")
+        display_name = resolved_character_label(character, voice_refs.get(character))
+        print(f"🚀 BATCH PROCESSING: {display_name} - {len(segments)} segments in {language}")
         
         # Collect all texts for batching
         batch_texts = []
@@ -75,7 +77,7 @@ class BatchProcessor:
         char_audio_prompt = voice_refs[character]
         
         # THE ACTUAL BATCH PROCESSING - this is the key improvement
-        print(f"⚡ Batch generating {len(batch_texts)} chunks for {character}")
+        print(f"⚡ Batch generating {len(batch_texts)} chunks for {display_name}")
         print(f"🔧 DEBUG: batch_size from inputs = {inputs.get('batch_size', 4)}")
         try:
             batch_audio = self.tts_model.generate_batch(
@@ -137,15 +139,15 @@ class BatchProcessor:
         character = character_group.character
         segments = character_group.segments
         
-        print(f"→ SEQUENTIAL: {character} - {len(segments)} segments in {language}")
+        char_audio_prompt = voice_refs[character]
+        display_name = resolved_character_label(character, char_audio_prompt)
+        print(f"→ SEQUENTIAL: {display_name} - {len(segments)} segments in {language}")
         
         results = {}
-        char_audio_prompt = voice_refs[character]
-        
         for segment in segments:
             segment_display_idx = segment.original_idx + 1  # 1-based for display
             
-            print(f"🎤 Generating segment {segment_display_idx}/{total_segments} for '{character}' (lang: {language})")
+            print(f"🎤 Generating segment {segment_display_idx}/{total_segments} for '{display_name}' (lang: {language})")
             
             # Apply chunking
             if inputs["enable_chunking"] and len(segment.segment_text) > inputs["max_chars_per_chunk"]:

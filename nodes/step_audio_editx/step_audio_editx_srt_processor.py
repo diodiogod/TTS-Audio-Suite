@@ -22,6 +22,7 @@ if project_root not in sys.path:
 from utils.system.import_manager import import_manager
 from utils.text.character_parser import character_parser
 from utils.voice.discovery import get_available_characters, voice_discovery
+from utils.voice.character_logging import resolved_character_label
 
 # Import StepAudioEditXProcessor using file-based import (avoids package issues)
 import importlib.util
@@ -246,11 +247,11 @@ class StepAudioEditXSRTProcessor:
                         'prompt_audio_path': audio_path,
                         'prompt_text': ref_text
                     }
-                    print(f"🎭 SRT: Using character voice for '{character}'")
+                    print(f"🎭 SRT: Using character voice for '{resolved_character_label(character, voice_mapping[character])}'")
                 else:
                     # Fallback to narrator voice
                     voice_mapping[character] = narrator_ref
-                    print(f"🔄 SRT: Using narrator voice fallback for '{character}'")
+                    print(f"🔄 SRT: Using narrator voice fallback for '{resolved_character_label(character, narrator_ref)}'")
 
         return voice_mapping
 

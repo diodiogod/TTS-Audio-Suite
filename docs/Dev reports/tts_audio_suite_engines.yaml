@@ -1170,6 +1170,75 @@ engines:
       speed_performance: { supported: true, notes: "Fast (diffusion, realtime-capable)" }
       reference_free_tts: { supported: false, notes: "(reference audio required)" }
 
+  - id: fish-audio-s2-pro
+    name: Fish Audio S2 Pro
+    models: "S2 Pro 4B / FP8"
+    size: "~10.3GB / ~8.0GB"
+    license: "Fish Audio Research License"
+    commercial: false
+    language_summary_full: "80+ languages"
+    language_summary_compact: "🌐 80+ languages"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    runtime_isolation:
+      default_mode: "main_environment"
+      main_environment: true
+      shared_runtime: false
+      dedicated_runtime: false
+
+    special_features:
+      - "Free-form sub-word emotion/prosody tags"
+      - "Zero-shot voice cloning and 80+ languages"
+      - "Native multi-speaker and multi-turn dialogue with dynamic speaker references"
+      - "Optional per-segment custom character switching"
+      - "Configurable 4K-32K native context with reduced KV-cache VRAM"
+      - "Optional community FP8 weight-only checkpoint with BF16 activations"
+      - "Optional on-the-fly BitsAndBytes INT8/NF4 for the official checkpoint"
+
+    model_sources:
+      - component: "S2 Pro"
+        source_name: "fishaudio/s2-pro"
+        source_url: "https://huggingface.co/fishaudio/s2-pro"
+        size: "~10.3GB"
+        auto_download: true
+        notes: "Official 4B model and codec; BNB INT8/NF4 are optional load-time quantization modes that reuse these files; non-commercial license"
+      - component: "S2 Pro FP8"
+        source_name: "drbaph/s2-pro-fp8"
+        source_url: "https://huggingface.co/drbaph/s2-pro-fp8"
+        size: "~8.0GB"
+        auto_download: true
+        notes: "Community weight-only FP8 checkpoint; BF16 activations; RTX 4090/5090-class CUDA GPU required"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "Tier 1" }
+      zh: { supported: true, flag: "🇨🇳", notes: "Tier 1" }
+      ja: { supported: true, flag: "🇯🇵", notes: "Tier 1" }
+      ko: { supported: true, flag: "🇰🇷", notes: "Tier 2" }
+      es: { supported: true, flag: "🇪🇸", notes: "Tier 2" }
+      pt: { supported: true, flag: "🇵🇹", notes: "Tier 2" }
+      ar: { supported: true, flag: "🇦🇪", notes: "Tier 2" }
+      ru: { supported: true, flag: "🇷🇺", notes: "Tier 2" }
+      fr: { supported: true, flag: "🇫🇷", notes: "Tier 2" }
+      de: { supported: true, flag: "🇩🇪", notes: "Tier 2" }
+
+    features:
+      voice_cloning: { supported: true, notes: "Reference audio plus exact transcript" }
+      native_multi_speaker: { supported: true, notes: "Native dialogue is default; optional custom mode generates each [Character] segment independently as local speaker 0" }
+      voice_conversion: { supported: false, notes: "Not exposed by official S2 TTS inference" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: true, notes: "Free-form inline natural-language tags" }
+      native_long_form: { supported: true, notes: "Configurable 4K-32K native context; suite text chunking is bypassed" }
+      community_finetunes: { supported: false, notes: "No suite integration" }
+      vram_efficient: { supported: "partial", notes: "8K context measured at ~15.2GB BF16, ~11.2GB FP8, ~11.2GB BNB INT8, or ~8.9GB BNB NF4; BF16 codec and activations; BNB is a load-time option for the official checkpoint" }
+      speed_performance: { supported: true, notes: "Main-environment subprocess with reliable teardown; local compile measurements: ~40 it/s BF16, ~11.8 it/s NF4 at ~8.9GB VRAM, and ~3.7 it/s INT8 at ~11.2GB VRAM; quality comparison pending" }
+      reference_free_tts: { supported: true, notes: "Reference audio is optional" }
+
   - id: dots-tts
     name: Dots TTS
     models: "dots.tts-base, dots.tts-soar, dots.tts-mf"
@@ -1694,6 +1763,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/dots_tts/"
     auto_download: "✅"
     notes: "Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder"
+  - engine: "Fish Audio S2 Pro"
+    primary_model_path: "ComfyUI/models/TTS/fish_audio_s2_pro/"
+    auto_download: "✅"
+    notes: "Official BF16 or optional community FP8 checkpoint; the official checkpoint can be quantized on load with BNB INT8/NF4; main T5 environment with process teardown for Clear VRAM; Fish Audio Research License"
   - engine: "OmniVoice"
     primary_model_path: "ComfyUI/models/TTS/omnivoice/"
     auto_download: "✅"
@@ -2017,6 +2090,33 @@ model_layouts_markdown: |
 
   - Both components are required and auto-downloaded on first use.
   - License: CC-BY-NC-SA (non-commercial).
+
+  ## Fish Audio S2 Pro
+
+  ```text
+  ComfyUI/models/TTS/fish_audio_s2_pro/
+  ├── codec.pth
+  ├── config.json
+  ├── model-00001-of-00002.safetensors
+  ├── model-00002-of-00002.safetensors
+  ├── model.safetensors.index.json
+  └── tokenizer.json
+  ```
+
+  Optional FP8 variant:
+
+  ```text
+  ComfyUI/models/TTS/fish_audio_s2_pro_fp8/
+  ├── codec.pth
+  ├── config.json
+  ├── model.safetensors
+  ├── quantization_info.json
+  └── tokenizer.json
+  ```
+
+  The complete official repository metadata and tokenizer files are downloaded alongside these files. License: Fish Audio Research License (non-commercial without a separate commercial license).
+
+  The `s2-pro-bnb-int8` and `s2-pro-bnb-nf4` options reuse `fish_audio_s2_pro/` and quantize its official checkpoint while loading. They do not download another model copy and require `bitsandbytes`.
 
   ## Dots TTS
 

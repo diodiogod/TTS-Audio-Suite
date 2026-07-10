@@ -59,6 +59,7 @@
 - `PARAMETER_SWITCHING_GUIDE.md` - Per-segment parameter override syntax
 - `INLINE_EDIT_TAGS_USER_GUIDE.md` - Step Audio EditX inline tags
 - `HIGGS_AUDIO_V3_INLINE_TAGS.md` - Higgs Audio v3 native paralinguistic tags
+- `OMNIVOICE_TAGS_GUIDE.md` - OmniVoice native non-verbal tags and pronunciation overrides
 - `MOSS_TTS_PROMPT_FIELDS_GUIDE.md` - Official MOSS whole-segment prompt fields and inline `<>` translation limits
 - `COSYVOICE3_TAGS_GUIDE.md` - CosyVoice3 native paralinguistic tags
 - `CHATTERBOX_V2_SPECIAL_TOKENS.md` - ChatterBox v2 emotion tokens
@@ -172,6 +173,7 @@
 
 ### Other Utils
 - `utils/voice/discovery.py` - Voice file discovery with multi-path fallback
+- `utils/voice/character_logging.py` - Shared resolved voice labels and boxed prompt previews
 - `utils/downloads/unified_downloader.py` - Centralized HF download system
 - `utils/compatibility/transformers_patches.py` - transformers version compatibility patches
 - `utils/compatibility/numba_compat.py` - Numba/Librosa Python 3.13+ compatibility

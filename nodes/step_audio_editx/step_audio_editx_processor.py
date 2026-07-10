@@ -24,6 +24,10 @@ from utils.text.pause_processor import PauseTagProcessor
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from engines.adapters.step_audio_editx_adapter import StepAudioEditXEngineAdapter
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 
 
 class StepAudioEditXProcessor:
@@ -330,10 +334,9 @@ class StepAudioEditXProcessor:
             if edit_tags:
                 print(f"🎨 Found {len(edit_tags)} edit tag(s) for post-processing")
 
-            print(f"🎭 Step Audio EditX - Generating for '{character}'{voice_note}:")
-            print("="*60)
-            print(clean_text)
-            print("="*60)
+            display_name = resolved_character_label(character, voice_ref)
+            print(f"🎭 Step Audio EditX - Generating for '{display_name}'{voice_note}:")
+            print(format_resolved_character_block(character, clean_text, voice_ref))
 
             # Set current segment for time tracking (skip in SRT mode - managed at subtitle level)
             if not self._srt_mode:

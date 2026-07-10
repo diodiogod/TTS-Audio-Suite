@@ -45,6 +45,12 @@ export class TagUtilities {
 
     static COSY_WRAPPER_TAGS = new Set(["laughing", "strong"]);
 
+    static OMNIVOICE_NON_VERBAL_TAGS = new Set([
+        "laughter", "sigh", "confirmation-en", "question-en", "question-ah",
+        "question-oh", "question-ei", "question-yi", "surprise-ah", "surprise-oh",
+        "surprise-wa", "surprise-yo", "dissatisfaction-hnn"
+    ]);
+
     static parseExistingTags(text) {
         const tags = [];
         const tagPattern = /\[([^\]]+)\]/g;
@@ -192,6 +198,11 @@ export class TagUtilities {
             return { engines, kind: "cosy_wrapper", value: cosyWrapper[1], conversions };
         }
 
+        if (this.OMNIVOICE_NON_VERBAL_TAGS.has(content)) {
+            engines.add("omnivoice");
+            this._fillOmniVoiceConversions(content, conversions);
+        }
+
         if (this.COSY_SINGLE_TAGS.has(content)) {
             engines.add("cosyvoice3");
             this._fillCosySingleConversions(content, conversions);
@@ -336,7 +347,7 @@ export class TagUtilities {
     }
 
     static _combineConversions(parts) {
-        const engines = ["step_audio_editx", "higgs_audio_v3", "cosyvoice3"];
+        const engines = ["step_audio_editx", "higgs_audio_v3", "cosyvoice3", "omnivoice"];
         const result = {};
         engines.forEach((engine) => {
             const snippets = [];
@@ -358,13 +369,20 @@ export class TagUtilities {
             step_audio_editx: `<${name}>`,
         };
         const mapping = {
-            Laughter: { higgs: "<|sfx:laughter|>", cosy: "<laughter>" },
-            Sigh: { higgs: "<|sfx:sigh|>", cosy: "<sigh>" },
+            Laughter: { higgs: "<|sfx:laughter|>", cosy: "<laughter>", omnivoice: "<laughter>" },
+            Sigh: { higgs: "<|sfx:sigh|>", cosy: "<sigh>", omnivoice: "<sigh>" },
             Breathing: { cosy: "<breath>" },
+            "Surprise-oh": { omnivoice: "<surprise-oh>" },
+            "Surprise-ah": { omnivoice: "<surprise-ah>" },
+            "Surprise-wa": { omnivoice: "<surprise-wa>" },
+            "Confirmation-en": { omnivoice: "<confirmation-en>" },
+            "Question-ei": { omnivoice: "<question-ei>" },
+            "Dissatisfaction-hnn": { omnivoice: "<dissatisfaction-hnn>" },
         };
         const mapped = mapping[name];
         if (mapped?.higgs) conversions.higgs_audio_v3 = mapped.higgs;
         if (mapped?.cosy) conversions.cosyvoice3 = mapped.cosy;
+        if (mapped?.omnivoice) conversions.omnivoice = mapped.omnivoice;
         return conversions;
     }
 
@@ -413,8 +431,13 @@ export class TagUtilities {
                 cough: "<cough>",
                 sigh: "<sigh>",
             };
+            const omnivoiceMap = {
+                laughter: "<laughter>",
+                sigh: "<sigh>",
+            };
             if (stepMap[value]) conversions.step_audio_editx = stepMap[value];
             if (cosyMap[value]) conversions.cosyvoice3 = cosyMap[value];
+            if (omnivoiceMap[value]) conversions.omnivoice = omnivoiceMap[value];
             return;
         }
 
@@ -457,8 +480,40 @@ export class TagUtilities {
             cough: "<|sfx:cough|>",
             sigh: "<|sfx:sigh|>",
         };
+        const omnivoiceMap = {
+            laughter: "<laughter>",
+            sigh: "<sigh>",
+        };
         if (stepMap[value]) conversions.step_audio_editx = stepMap[value];
         if (higgsMap[value]) conversions.higgs_audio_v3 = higgsMap[value];
+        if (omnivoiceMap[value]) conversions.omnivoice = omnivoiceMap[value];
+    }
+
+    static _fillOmniVoiceConversions(value, conversions) {
+        conversions.omnivoice = `<${value}>`;
+
+        const stepMap = {
+            laughter: "<Laughter>",
+            sigh: "<Sigh>",
+            "confirmation-en": "<Confirmation-en>",
+            "question-ei": "<Question-ei>",
+            "surprise-ah": "<Surprise-ah>",
+            "surprise-oh": "<Surprise-oh>",
+            "surprise-wa": "<Surprise-wa>",
+            "dissatisfaction-hnn": "<Dissatisfaction-hnn>",
+        };
+        const higgsMap = {
+            laughter: "<|sfx:laughter|>",
+            sigh: "<|sfx:sigh|>",
+        };
+        const cosyMap = {
+            laughter: "<laughter>",
+            sigh: "<sigh>",
+        };
+
+        if (stepMap[value]) conversions.step_audio_editx = stepMap[value];
+        if (higgsMap[value]) conversions.higgs_audio_v3 = higgsMap[value];
+        if (cosyMap[value]) conversions.cosyvoice3 = cosyMap[value];
     }
 
     static insertTagAtPosition(text, tag, position, wrapSelection = false, selectionStart = -1, selectionEnd = -1) {

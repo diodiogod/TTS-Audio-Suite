@@ -170,6 +170,14 @@ except Exception as e:
     DOTS_TTS_ENGINE_AVAILABLE = False
 
 try:
+    fish_audio_s2_engine_module = load_node_module("fish_audio_s2_engine_node", "engines/fish_audio_s2_engine_node.py")
+    FishAudioS2EngineNode = fish_audio_s2_engine_module.FishAudioS2EngineNode
+    FISH_AUDIO_S2_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Fish Audio S2 Pro Engine failed: {e}")
+    FISH_AUDIO_S2_ENGINE_AVAILABLE = False
+
+try:
     omnivoice_engine_module = load_node_module("omnivoice_engine_node", "engines/omnivoice_engine_node.py")
     OmniVoiceEngineNode = omnivoice_engine_module.OmniVoiceEngineNode
     OMNIVOICE_ENGINE_AVAILABLE = True
@@ -624,6 +632,10 @@ if ECHO_TTS_ENGINE_AVAILABLE:
 if DOTS_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["DotsTTSEngineNode"] = DotsTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["DotsTTSEngineNode"] = "⚙️ Dots TTS Engine"
+
+if FISH_AUDIO_S2_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["FishAudioS2EngineNode"] = FishAudioS2EngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["FishAudioS2EngineNode"] = "⚙️ Fish Audio S2 Pro Engine"
 
 if OMNIVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceEngineNode"] = OmniVoiceEngineNode

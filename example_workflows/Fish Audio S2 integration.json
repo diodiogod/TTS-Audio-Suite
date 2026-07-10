@@ -1,0 +1,918 @@
+{
+  "id": "d7d0e47d-2b68-4f88-9a5e-f15a2d3c8b91",
+  "revision": 0,
+  "last_node_id": 24,
+  "last_link_id": 123,
+  "nodes": [
+    {
+      "id": 2,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -2660,
+        350
+      ],
+      "size": [
+        240,
+        186
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            101
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "tts_audio_suite",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "CharacterVoicesNode"
+      },
+      "widgets_values": [
+        "voices_examples/female/female_01.wav",
+        "",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 3,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -2660,
+        580
+      ],
+      "size": [
+        240,
+        186
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            102
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "tts_audio_suite",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "CharacterVoicesNode"
+      },
+      "widgets_values": [
+        "voices_examples/Clint_Eastwood CC3 (enhanced2).wav",
+        "",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 4,
+      "type": "StringMultilineTagEditor",
+      "pos": [
+        -1560,
+        570
+      ],
+      "size": [
+        900,
+        600
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            105
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "tts_audio_suite",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "StringMultilineTagEditor",
+        "ttsTagEditorInlineEngine": "step_audio_editx"
+      },
+      "widgets_values": [
+        "On Tuesdays, the pigeons held parliament.\n[Alice|seed:42] They debated the ethics of breadcrumbs and the metaphysics of flight.\n[Bob] One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\n[Cowboy] He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
+      ]
+    },
+    {
+      "id": 5,
+      "type": "StringMultilineTagEditor",
+      "pos": [
+        -1570,
+        1570
+      ],
+      "size": [
+        900,
+        600
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            106
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "tts_audio_suite",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "StringMultilineTagEditor",
+        "ttsTagEditorInlineEngine": "step_audio_editx"
+      },
+      "widgets_values": [
+        "1\n00:00:01,000 --> 00:00:04,000\nOn Tuesdays, the pigeons held parliament.\n\n2\n00:00:04,500 --> 00:00:09,500\n[Alice] They debated the ethics of breadcrumbs and the metaphysics of flight.\n\n3\n00:00:10,000 --> 00:00:14,000\n[Bob] One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\n\n4\n00:00:14,500 --> 00:00:20,000\n[Cowboy] He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."
+      ]
+    },
+    {
+      "id": 6,
+      "type": "FishAudioS2EngineNode",
+      "pos": [
+        -2240,
+        360
+      ],
+      "size": [
+        410,
+        474
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "Speaker 2",
+          "name": "speaker2",
+          "shape": 7,
+          "type": "*",
+          "link": 101
+        },
+        {
+          "label": "Speaker 3",
+          "name": "speaker3",
+          "shape": 7,
+          "type": "*",
+          "link": 102
+        },
+        {
+          "label": "Speaker 4",
+          "name": "speaker4",
+          "shape": 7,
+          "type": "*",
+          "link": 111
+        },
+        {
+          "label": "Speaker 5",
+          "name": "speaker5",
+          "shape": 7,
+          "type": "*",
+          "link": 112
+        },
+        {
+          "name": "speaker6",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            122
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "FishAudioS2EngineNode"
+      },
+      "widgets_values": [
+        "s2-pro",
+        "auto",
+        0.8,
+        0.8,
+        1.1,
+        200,
+        1024,
+        "8192",
+        true,
+        true,
+        "bfloat16",
+        true,
+        "none",
+        "Native Multi-Speaker",
+        "Auto Inline Tag"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 7,
+      "type": "UnifiedTTSTextNode",
+      "pos": [
+        -570,
+        360
+      ],
+      "size": [
+        420,
+        390
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 122
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 105
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            109
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "tts_audio_suite",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "UnifiedTTSTextNode"
+      },
+      "widgets_values": [
+        "",
+        "voices_examples/David_Attenborough CC3.wav",
+        1552347960,
+        "fixed",
+        true,
+        400,
+        "auto",
+        100,
+        true,
+        0
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 8,
+      "type": "UnifiedTTSSRTNode",
+      "pos": [
+        -570,
+        1490
+      ],
+      "size": [
+        440,
+        560
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 116
+        },
+        {
+          "name": "opt_narrator",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "srt_content",
+          "type": "STRING",
+          "widget": {
+            "name": "srt_content"
+          },
+          "link": 106
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            110
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "timing_report",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "Adjusted_SRT",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "UnifiedTTSSRTNode"
+      },
+      "widgets_values": [
+        "",
+        "voices_examples/David_Attenborough CC3.wav",
+        2286528432,
+        "fixed",
+        "pad_with_silence",
+        true,
+        0.01,
+        1,
+        0.5,
+        2,
+        0,
+        false
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 9,
+      "type": "PreviewAudio",
+      "pos": [
+        20,
+        430
+      ],
+      "size": [
+        440,
+        88
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 109
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 10,
+      "type": "PreviewAudio",
+      "pos": [
+        20,
+        1730
+      ],
+      "size": [
+        440,
+        88
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 110
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.39",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 12,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -2660,
+        810
+      ],
+      "size": [
+        240,
+        186
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            111
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "tts_audio_suite",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "CharacterVoicesNode"
+      },
+      "widgets_values": [
+        "voices_examples/female/female_02.wav",
+        "",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 13,
+      "type": "CharacterVoicesNode",
+      "pos": [
+        -2660,
+        1040
+      ],
+      "size": [
+        240,
+        186
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_audio_input",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            112
+          ]
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "tts_audio_suite",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "CharacterVoicesNode"
+      },
+      "widgets_values": [
+        "voices_examples/higgs_audio/belinda.wav",
+        "",
+        ""
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 14,
+      "type": "MarkdownNote",
+      "pos": [
+        -610,
+        870
+      ],
+      "size": [
+        460,
+        260
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# Fish Audio S2 Inline Instructions\n\nFish supports free-form inline instructions for emotion, prosody, accents, pauses, and speaking style.\n\nThe suite keeps its public instruction syntax as `<...>` and automatically converts it to Fish's native `[...]` syntax at the engine boundary.\n\n- Write Fish instructions with `<...>`.\n- Use `[Character]` for suite character switching.\n- Use `[fr:Alice]` to select Alice and request French.\n- `Auto Inline Tag` converts mapped character languages automatically.\n- Disable `Auto Inline Tag` when Fish should infer the language from the text.\n\nDo not manually replace suite instructions with Fish's square-bracket syntax.\n\nFor the complete suite syntax, see the [Character Switching Guide](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/CHARACTER_SWITCHING_GUIDE.md) and [Tag Editor Guide](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md). For Fish's prompting behavior, see the [Fish S2 model card](https://huggingface.co/fishaudio/s2-pro)."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 15,
+      "type": "MarkdownNote",
+      "pos": [
+        -2160,
+        950
+      ],
+      "size": [
+        350,
+        280
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# Fish Audio S2 Compilation\n\nCompilation is recommended for repeated Fish generation.\n\nThe first generation after loading the model takes longer because PyTorch compiles the inference path. Later generations reuse the compiled runtime and are significantly faster.\n\nIn our testing:\n\n- Non-compiled generation: approximately `6 it/s`\n- Compiled generation: approximately `40 it/s`\n- Observed speedup: roughly **6-7x faster**\n\nThe initial compilation delay is worth accepting when generating multiple segments, testing different seeds, or working with longer text.\n\n> Keep `Compile` enabled unless startup time is more important than generation speed."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 16,
+      "type": "MarkdownNote",
+      "pos": [
+        -3550,
+        190
+      ],
+      "size": [
+        750,
+        970
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# Fish Audio S2 Pro\n\n> Multilingual voice cloning with native multi-speaker dialogue, free-form inline control, and long-form generation.\n\nConnect the Fish Audio S2 Engine to the unified `TTS Text` or `TTS SRT` node.\n\n---\n\n## Voice Cloning\n\nFish requires both:\n\n- Reference audio\n- Matching reference text\n\nFor reliable cloning, use:\n\n- `🎭 Character Voices` with a matching `.reference.txt`\n- A narrator voice file with its matching `.reference.txt`\n\nDirect audio-only input does not provide the transcript required by Fish.\n\n---\n\n## Languages and Inline Control\n\nFish S2 supports **80+ languages** and has no separate language input.\n\nThe suite uses its normal `<...>` inline syntax and converts instructions automatically to Fish's native `[...]` syntax at the engine boundary.\n\n- Use `<...>` for Fish speech instructions.\n- Use `[Character]` for suite character switching.\n- Use `[fr:Alice]` to select Alice and request French.\n- `Auto Inline Tag` converts mapped character languages automatically.\n- Disable `Auto Inline Tag` when Fish should determine the language from the text.\n\nFish supports free-form instructions for expression, prosody, accents, pauses, and other speech behavior.\n\n---\n\n## Multi-Speaker Modes\n\n### Native Multi-Speaker\n\nSends all dialogue turns in one Fish request.\n\n- Might sound more natural\n\n### Custom Character Switching\n\nGenerates each parsed character segment independently.\n\n- Could be way more stable since it's independent character calls\n\n---\n\n## Long-Form Generation\n\nFish has its own native long-form orchestration through `native_chunk_length`.\n\nThis is Fish's internal grouping system and is separate from Custom Character Switching.\n\nFish does not provide native duration targeting.\nSRT timing is handled by the suite's shared timing and assembly system.\n\n---\n\n## Limitations\n\n- Fish does not support `🔄 Voice Changer`.\n- Voice cloning requires matching reference text.\n- The model does not provide native duration targeting.\n\n---\n\n## Documentation\n\n- [Character Switching Guide](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/CHARACTER_SWITCHING_GUIDE.md)\n- [Tag Editor Guide](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md)\n- [Fish S2 Model Card](https://huggingface.co/fishaudio/s2-pro)\n- [Official Fish Speech Repository](https://github.com/fishaudio/fish-speech)"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 19,
+      "type": "Reroute",
+      "pos": [
+        -1590,
+        1480
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 123
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            116
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 22,
+      "type": "FishAudioS2EngineNode",
+      "pos": [
+        -2160,
+        1480
+      ],
+      "size": [
+        410,
+        474
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "speaker2",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            123
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "chatterbox_srt_voice",
+        "ver": "26fa2ddf92b4e9d16fbcd585858401b509fa9c24",
+        "Node name for S&R": "FishAudioS2EngineNode"
+      },
+      "widgets_values": [
+        "s2-pro",
+        "auto",
+        0.8,
+        0.8,
+        1.1,
+        200,
+        1024,
+        "8192",
+        true,
+        true,
+        "bfloat16",
+        true,
+        "none",
+        "Native Multi-Speaker",
+        "Auto Inline Tag"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 23,
+      "type": "MarkdownNote",
+      "pos": [
+        -2660,
+        1320
+      ],
+      "size": [
+        360,
+        310
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "\n\n## 🔌 The Speaker Input Priority System\n\nWhen using **NATIVE Multi-Speaker**, you can connect specific voices to Speaker 1 (opt_narrator on the unified TTS node) , Speaker2, Speaker3... inputs on the Engine node and they will override tags!\n\n**What happens if using tags:**\n\n- `narrator` becomes Speaker 1 → uses Speaker 1 input voice\n- `[Alice]` becomes Speaker 2 → uses Speaker 2 input voice\n- `[Bob]` becomes Speaker 3 → uses Speaker 3 input voice\n- etc.\n\nSO If using \n\n## **[character]** \n\n tags in your text to switch narrators, you DON'T need to connect opt_narrator, Speaker2_voice, Speaker3_voice or speaker4_voice\n\nEither for Native or for Custom modes"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 24,
+      "type": "MarkdownNote",
+      "pos": [
+        -2520,
+        1780
+      ],
+      "size": [
+        310,
+        90
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## Without speakers connected, it will use the Character Tag switching system normally"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [
+      101,
+      2,
+      0,
+      6,
+      0,
+      "*"
+    ],
+    [
+      102,
+      3,
+      0,
+      6,
+      1,
+      "*"
+    ],
+    [
+      105,
+      4,
+      0,
+      7,
+      2,
+      "STRING"
+    ],
+    [
+      106,
+      5,
+      0,
+      8,
+      2,
+      "STRING"
+    ],
+    [
+      109,
+      7,
+      0,
+      9,
+      0,
+      "AUDIO"
+    ],
+    [
+      110,
+      8,
+      0,
+      10,
+      0,
+      "AUDIO"
+    ],
+    [
+      111,
+      12,
+      0,
+      6,
+      2,
+      "*"
+    ],
+    [
+      112,
+      13,
+      0,
+      6,
+      3,
+      "*"
+    ],
+    [
+      116,
+      19,
+      0,
+      8,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      122,
+      6,
+      0,
+      7,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      123,
+      22,
+      0,
+      19,
+      0,
+      "TTS_ENGINE"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Fish Audio S2 Engine and Voices (they will OVERRIDE the characters on the text)",
+      "bounding": [
+        -2750,
+        170,
+        1090,
+        2050
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "TTS TEXT",
+      "bounding": [
+        -1620,
+        160,
+        2260,
+        1230
+      ],
+      "color": "#8A8",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "SRT",
+      "bounding": [
+        -1610,
+        1430,
+        2250,
+        780
+      ],
+      "color": "#a1309b",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "frontendVersion": "1.38.13",
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "VHS_latentpreview": true,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true,
+    "workflowRendererVersion": "LG",
+    "ds": {
+      "scale": 0.33591950066247567,
+      "offset": [
+        4389.719106665517,
+        640.6871718697881
+      ]
+    }
+  },
+  "version": 0.4
+}

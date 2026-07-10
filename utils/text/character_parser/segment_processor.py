@@ -106,6 +106,8 @@ class SegmentProcessor:
         current_language = language_resolver.default_language
         current_emotion = None
         current_parameters = {}  # Track per-segment parameters
+        original_character = current_character
+        current_explicit_language = False
         
         # IMPORTANT: Each line starts fresh with narrator as default
         # If the line doesn't start with a character tag, everything is narrator
@@ -154,6 +156,9 @@ class SegmentProcessor:
         
         # Find all character tags in this line
         for match in self.CHARACTER_TAG_PATTERN.finditer(line):
+            # Parse language, character, emotion, and parameters from the tag
+            raw_tag_content = match.group(1)
+
             # Add text before this tag (if any) with current character (narrator)
             before_tag = line[current_pos:match.start()].strip()
             if before_tag:
@@ -168,18 +173,6 @@ class SegmentProcessor:
                     emotion=current_emotion,
                     parameters=current_parameters  # Use current parameters state
                 ))
-            
-            # Parse language, character, emotion, and parameters from the tag
-            raw_tag_content = match.group(1)
-
-            # Check if this is a ChatterBox v2 special token (not a character)
-            if raw_tag_content.lower() in character_parser.CHATTERBOX_V2_TOKENS:
-                # Skip this tag - it's a TTS control token like [laughter], not a character
-                # But warn in case user has a character with this name
-                if raw_tag_content.lower() in [c.lower() for c in character_parser.available_characters]:
-                    print(f"⚠️ Character Parser: [{raw_tag_content}] matches both a character AND a ChatterBox v2 token - treating as TTS token")
-                current_pos = match.end()
-                continue
 
             # Use flexible tag parser with parameter support to handle all syntax
             tag_info = language_resolver.parse_tag_with_parameters(raw_tag_content)
@@ -240,7 +233,7 @@ class SegmentProcessor:
                 end_pos=line_start_pos + len(line),
                 language=current_language,
                 original_character=original_character,
-                explicit_language=current_explicit_language if 'current_explicit_language' in locals() else False,
+                explicit_language=current_explicit_language,
                 emotion=current_emotion,
                 parameters=current_parameters  # Include current parameters
             ))
@@ -253,8 +246,8 @@ class SegmentProcessor:
                 start_pos=line_start_pos,
                 end_pos=line_start_pos + len(line),
                 language=current_language,
-                original_character=original_character if 'original_character' in locals() else current_character,
-                explicit_language=current_explicit_language if 'current_explicit_language' in locals() else False,
+                original_character=original_character,
+                explicit_language=current_explicit_language,
                 emotion=current_emotion,
                 parameters=current_parameters  # Include current parameters
             ))
