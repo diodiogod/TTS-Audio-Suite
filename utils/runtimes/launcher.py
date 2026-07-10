@@ -39,6 +39,7 @@ class IsolatedRuntimeLauncher:
 
     def build_env(self, profile: RuntimeProfile) -> Dict[str, str]:
         env = dict(os.environ)
+        self._sanitize_pythonhashseed(env)
         current_pythonpath = env.get("PYTHONPATH", "")
         inherited_paths = [
             path for path in sys.path
@@ -64,6 +65,21 @@ class IsolatedRuntimeLauncher:
         env = self._augment_windows_toolchain_env(env)
         env.update(profile.env_vars)
         return env
+
+    @staticmethod
+    def _sanitize_pythonhashseed(env: Dict[str, str]) -> None:
+        """Prevent invalid inherited hash seeds from crashing worker startup."""
+        value = env.get("PYTHONHASHSEED")
+        if value is None or value == "random":
+            return
+
+        try:
+            valid = 0 <= int(value) <= 4294967295
+        except (TypeError, ValueError):
+            valid = False
+
+        if not valid:
+            env.pop("PYTHONHASHSEED", None)
 
     @classmethod
     def _augment_windows_toolchain_env(cls, env: Dict[str, str]) -> Dict[str, str]:
