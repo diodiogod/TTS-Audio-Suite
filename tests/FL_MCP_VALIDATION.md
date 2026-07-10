@@ -50,6 +50,8 @@ Do not stop every `python.exe` process. Other engines and applications may use P
 
 If FL-MCP's embedded launcher starts and then shuts down ComfyUI on Windows, run `backend/server.py` in its own visible Windows Terminal window, launch ComfyUI in a separate window, then refresh the browser and reconnect the FL-MCP panel before auditing capabilities.
 
+For manual Windows mode, keep two visible service terminals: one running ComfyUI and one running FL-MCP `backend/server.py`; the MCP client (for example Codex) is a separate process that must be restarted or rebound with the browser session ID so one session reports both `has_frontend: true` and `has_mcp: true`.
+
 FL-MCP process-control permission is not required for this loop. An authorized coding agent can manage the canonical process through PowerShell. Keep `FL_MCP_ENABLE_COMFY_PROCESS_CONTROL=false` unless the user explicitly chooses FL-MCP-managed process control.
 
 ### MCP client session binding

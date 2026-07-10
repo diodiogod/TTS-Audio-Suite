@@ -1,8 +1,8 @@
 {
   "id": "d7d0e47d-2b68-4f88-9a5e-f15a2d3c8b91",
   "revision": 0,
-  "last_node_id": 11,
-  "last_link_id": 110,
+  "last_node_id": 15,
+  "last_link_id": 112,
   "nodes": [
     {
       "id": 1,
@@ -64,12 +64,12 @@
       "pos": [-350, 80],
       "size": [850, 560],
       "flags": {},
-      "order": 3,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [{"name": "text", "type": "STRING", "links": [105]}],
       "properties": {"Node name for S&R": "StringMultilineTagEditor", "cnr_id": "tts_audio_suite"},
-      "widgets_values": ["Hello! This is Fish Audio S2 with native character switching.\n[Alice] Hi there! I'm Alice.\n[Bob] And I'm Bob.\nBack to the narrator voice."]
+      "widgets_values": ["On Tuesdays, the pigeons held parliament.\n[Alice] They debated the ethics of breadcrumbs and the metaphysics of flight.\n[Bob] One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\n[Cowboy] He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."]
     },
     {
       "id": 5,
@@ -77,12 +77,12 @@
       "pos": [-350, 760],
       "size": [850, 560],
       "flags": {},
-      "order": 4,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [{"name": "text", "type": "STRING", "links": [106]}],
       "properties": {"Node name for S&R": "StringMultilineTagEditor", "cnr_id": "tts_audio_suite"},
-      "widgets_values": ["1\n00:00:01,000 --> 00:00:04,000\nHello! This is the narrator.\n\n2\n00:00:04,500 --> 00:00:09,500\n[Alice] Hi there! I'm Alice speaking with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\n[Bob] And I'm Bob! The audio matches these exact SRT timings.\nBack to the narrator voice."]
+      "widgets_values": ["1\n00:00:01,000 --> 00:00:04,000\nOn Tuesdays, the pigeons held parliament.\n\n2\n00:00:04,500 --> 00:00:09,500\n[Alice] They debated the ethics of breadcrumbs and the metaphysics of flight.\n\n3\n00:00:10,000 --> 00:00:14,000\n[Bob] One particularly philosophical pigeon named Thistle believed gravity was just a suggestion.\n\n4\n00:00:14,500 --> 00:00:20,000\n[Cowboy] He once floated for three minutes straight, fueled by sheer conviction and a gust of rebellious wind."]
     },
     {
       "id": 6,
@@ -90,11 +90,13 @@
       "pos": [-850, 140],
       "size": [410, 470],
       "flags": {},
-      "order": 5,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {"name": "speaker2", "shape": 7, "type": "*", "link": 101},
-        {"name": "speaker3", "shape": 7, "type": "*", "link": 102}
+        {"name": "speaker3", "shape": 7, "type": "*", "link": 102},
+        {"name": "speaker4", "shape": 7, "type": "*", "link": 111},
+        {"name": "speaker5", "shape": 7, "type": "*", "link": 112}
       ],
       "outputs": [{"name": "TTS_engine", "type": "TTS_ENGINE", "links": [107, 108]}],
       "properties": {"Node name for S&R": "FishAudioS2EngineNode"},
@@ -108,7 +110,7 @@
       "pos": [650, 160],
       "size": [420, 390],
       "flags": {},
-      "order": 6,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {"name": "TTS_engine", "type": "TTS_ENGINE", "link": 107},
@@ -120,7 +122,7 @@
         {"name": "generation_info", "type": "STRING", "links": null}
       ],
       "properties": {"Node name for S&R": "UnifiedTTSTextNode", "cnr_id": "tts_audio_suite"},
-      "widgets_values": ["", "none", 1552347959, true, 400, "auto", 100, true, 0],
+      "widgets_values": ["", "none", 1552347959, "fixed", true, 400, "auto", 100, true, 0],
       "color": "#223",
       "bgcolor": "#335"
     },
@@ -130,7 +132,7 @@
       "pos": [650, 780],
       "size": [440, 560],
       "flags": {},
-      "order": 7,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {"name": "TTS_engine", "type": "TTS_ENGINE", "link": 108},
@@ -144,7 +146,7 @@
         {"name": "Adjusted_SRT", "type": "STRING", "links": null}
       ],
       "properties": {"Node name for S&R": "UnifiedTTSSRTNode"},
-      "widgets_values": ["", "none", 2286528432, "pad_with_silence", true, 0.01, 1, 0.5, 2, 0, false],
+      "widgets_values": ["", "none", 2286528432, "fixed", "pad_with_silence", true, 0.01, 1, 0.5, 2, 0, false],
       "color": "#223",
       "bgcolor": "#335"
     },
@@ -154,7 +156,7 @@
       "pos": [1160, 220],
       "size": [440, 88],
       "flags": {},
-      "order": 8,
+      "order": 10,
       "mode": 0,
       "inputs": [{"name": "audio", "type": "AUDIO", "link": 109}],
       "outputs": [],
@@ -167,7 +169,7 @@
       "pos": [1160, 840],
       "size": [440, 88],
       "flags": {},
-      "order": 9,
+      "order": 11,
       "mode": 0,
       "inputs": [{"name": "audio", "type": "AUDIO", "link": 110}],
       "outputs": [],
@@ -180,12 +182,74 @@
       "pos": [-350, 1380],
       "size": [850, 220],
       "flags": {},
-      "order": 10,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "properties": {},
-      "widgets_values": ["# Fish Audio S2\n\nUse `[Character]` for suite character switching. Fish's official inline instructions remain written as `<instruction>` in the suite and are converted internally at the engine boundary.\n\nSpeaker 1 is the narrator input. Connect additional Character Voices nodes to Speaker 2 and Speaker 3. Native Multi-Speaker keeps turns in one Fish request; Custom Character Switching generates each segment independently."]
+      "widgets_values": ["# Fish Audio S2 integration\n\nThis workflow demonstrates both normal TTS Text and SRT generation with Fish Audio S2 Pro. The default example is the pigeon-parliament dialogue below.\n\n- `[Character]` is the suite's public character-switching syntax.\n- Speaker 1 is always the connected `opt_narrator`; Speaker 2-5 are positional Fish references.\n- Native Multi-Speaker keeps all turns in one Fish request. Custom Character Switching generates each parsed segment independently.\n- Every connected voice must have an exact reference transcript. Character Voices loads `.reference.txt` automatically when available.\n\nDocs: [Character Switching Guide](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/CHARACTER_SWITCHING_GUIDE.md) | [Tag Editor Guide](https://github.com/diodiogod/TTS-Audio-Suite/blob/main/docs/MULTILINE_TTS_TAG_EDITOR_GUIDE.md) | [Official Fish Speech](https://github.com/fishaudio/fish-speech)"]
+    },
+    {
+      "id": 12,
+      "type": "CharacterVoicesNode",
+      "pos": [-1450, 810],
+      "size": [240, 186],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [{"name": "opt_audio_input", "shape": 7, "type": "AUDIO", "link": null}],
+      "outputs": [
+        {"name": "opt_narrator", "type": "NARRATOR_VOICE", "links": [111]},
+        {"name": "character_name", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "CharacterVoicesNode", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["voices_examples/female/female_02.wav", ""],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 13,
+      "type": "CharacterVoicesNode",
+      "pos": [-1450, 1040],
+      "size": [240, 186],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [{"name": "opt_audio_input", "shape": 7, "type": "AUDIO", "link": null}],
+      "outputs": [
+        {"name": "opt_narrator", "type": "NARRATOR_VOICE", "links": [112]},
+        {"name": "character_name", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "CharacterVoicesNode", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["voices_examples/higgs_audio/belinda.wav", ""],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 14,
+      "type": "MarkdownNote",
+      "pos": [650, 620],
+      "size": [900, 260],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": ["# Fish inline instructions\n\nThe suite keeps its public inline-tag syntax as `<instruction>`, for example:\n\n`[Alice] Hello <excited> everyone.`\n\nAt the Fish adapter boundary, supported Fish instructions are converted to Fish's native `[instruction]` syntax. Character tags remain suite tags and are never blindly converted. Fish has no separate language parameter; with `Auto Inline Tag`, mapped alias languages become natural-language instructions such as `<French>`. Set `language_prompting` to `Off` when the text should control language alone.\n\nSee the [Fish S2 model card](https://huggingface.co/fishaudio/s2-pro) for official prompting examples."]
+    },
+    {
+      "id": 15,
+      "type": "MarkdownNote",
+      "pos": [650, 1120],
+      "size": [900, 250],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": ["# Performance and model options\n\n- `compile=True` is recommended after the first slower compilation run.\n- `quantization=bnb_nf4` can substantially reduce VRAM, while `bnb_int8` is generally slower.\n- The model dropdown lists local checkpoints first when available, followed by downloadable options.\n- Fish native duration targeting is not exposed here because it is not a Fish S2 feature; SRT timing is handled by the suite's standard timing engine.\n\nThe first text and SRT branches are ready to run independently. Preview the branch you want to test."]
     }
   ],
   "links": [
@@ -198,10 +262,12 @@
     [107, 6, 0, 7, 0, "TTS_ENGINE"],
     [108, 6, 0, 8, 0, "TTS_ENGINE"],
     [109, 7, 0, 9, 0, "AUDIO"],
-    [110, 8, 0, 10, 0, "AUDIO"]
+    [110, 8, 0, 10, 0, "AUDIO"],
+    [111, 12, 0, 6, 2, "*"],
+    [112, 13, 0, 6, 3, "*"]
   ],
   "groups": [
-    {"id": 1, "title": "Fish Audio S2 Engine and Voices", "bounding": [-1480, 70, 1080, 700], "color": "#3f789e", "font_size": 24, "flags": {}},
+    {"id": 1, "title": "Fish Audio S2 Engine and Voices", "bounding": [-1480, 70, 1080, 1200], "color": "#3f789e", "font_size": 24, "flags": {}},
     {"id": 2, "title": "Text with Character Tags", "bounding": [-390, 40, 1520, 650], "color": "#8A8", "font_size": 24, "flags": {}},
     {"id": 3, "title": "SRT with Character Tags", "bounding": [-390, 720, 1520, 700], "color": "#a1309b", "font_size": 24, "flags": {}}
   ],
