@@ -179,8 +179,8 @@
     {
       "id": 11,
       "type": "MarkdownNote",
-      "pos": [-350, 1380],
-      "size": [850, 220],
+      "pos": [-2300, 1130],
+      "size": [750, 300],
       "flags": {},
       "order": 12,
       "mode": 0,
@@ -228,8 +228,8 @@
     {
       "id": 14,
       "type": "MarkdownNote",
-      "pos": [650, 620],
-      "size": [900, 260],
+      "pos": [-2300, 80],
+      "size": [750, 520],
       "flags": {},
       "order": 13,
       "mode": 0,
@@ -241,8 +241,8 @@
     {
       "id": 15,
       "type": "MarkdownNote",
-      "pos": [650, 1120],
-      "size": [900, 250],
+      "pos": [-2300, 650],
+      "size": [750, 430],
       "flags": {},
       "order": 14,
       "mode": 0,
@@ -268,8 +268,8 @@
   ],
   "groups": [
     {"id": 1, "title": "Fish Audio S2 Engine and Voices", "bounding": [-1480, 70, 1080, 1200], "color": "#3f789e", "font_size": 24, "flags": {}},
-    {"id": 2, "title": "Text with Character Tags", "bounding": [-390, 40, 1520, 650], "color": "#8A8", "font_size": 24, "flags": {}},
-    {"id": 3, "title": "SRT with Character Tags", "bounding": [-390, 720, 1520, 700], "color": "#a1309b", "font_size": 24, "flags": {}}
+    {"id": 2, "title": "TTS TEXT", "bounding": [-390, 40, 1520, 650], "color": "#8A8", "font_size": 24, "flags": {}},
+    {"id": 3, "title": "SRT", "bounding": [-390, 720, 1520, 700], "color": "#a1309b", "font_size": 24, "flags": {}}
   ],
   "config": {},
   "extra": {"frontendVersion": "1.38.13", "ue_links": [], "links_added_by_ue": [], "VHS_latentpreview": true, "VHS_latentpreviewrate": 0, "VHS_MetadataImage": true, "VHS_KeepIntermediate": true, "workflowRendererVersion": "LG"},
