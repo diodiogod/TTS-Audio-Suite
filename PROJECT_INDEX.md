@@ -53,6 +53,7 @@
 **README.md** - Main project docs, installation, features overview
 **CLAUDE.md** - Dev guidelines for Claude Code
 **CHANGELOG.md** - Full version history
+**docs/BUMP_SCRIPT_INSTRUCTIONS.md** - Version bump process
 
 ### User Docs (`docs/`)
 - `CHARACTER_SWITCHING_GUIDE.md` - [CharacterName] tag system
@@ -74,7 +75,6 @@
 ### Dev Docs (`docs/Dev reports/`)
 - `tts_audio_suite_engines.yaml` - **Source of truth** for all engine metadata
 - `tts_audio_suite_aux_models.yaml` - **Source of truth** for helper/post-process model metadata
-- `BUMP_SCRIPT_INSTRUCTIONS.md` - Version bump process
 - `SRT_IMPLEMENTATION.md` - SRT timing technical details
 - `ISOLATED_RUNTIMES_PLAN.md` - original runtime isolation plan and scope
 - `TRANSFORMERS_5_QWEN3_TTS_REPORT.md` - why Qwen3-TTS moved to shared legacy T4 runtime

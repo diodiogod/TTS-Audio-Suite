@@ -7,7 +7,15 @@ Also injects condensed table into README.md between markers.
 
 import yaml
 import re
+import sys
 from pathlib import Path
+
+
+def configure_utf8_console() -> None:
+    """Keep Windows console output from failing on non-UTF-8 locales."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 def load_data():
@@ -645,4 +653,5 @@ def main():
 
 
 if __name__ == "__main__":
+    configure_utf8_console()
     main()

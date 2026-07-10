@@ -348,7 +348,7 @@ Selects the audio format for separated stems:
                     import torch
                     import torch.nn.functional as F
                     from tqdm import tqdm
-                    import librosa
+                    from utils.audio.librosa_fallback import safe_resample
                     from comfy.utils import load_torch_file, ProgressBar
                     from comfy import model_management as mm
                     
@@ -398,7 +398,11 @@ Selects the audio format for separated stems:
                     # Resample to 44100 if needed
                     if sample_rate != 44100:
                         print(f"Resampling from {sample_rate} to 44100 Hz")
-                        audio_waveform = librosa.resample(audio_waveform, orig_sr=sample_rate, target_sr=44100, axis=-1)
+                        audio_waveform = safe_resample(
+                            audio_waveform,
+                            orig_sr=sample_rate,
+                            target_sr=44100,
+                        )
                         sample_rate = 44100
                     
                     # Convert to torch tensor

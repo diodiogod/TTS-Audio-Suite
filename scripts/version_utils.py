@@ -39,7 +39,7 @@ class VersionManager:
         """Get current version from nodes.py"""
         try:
             nodes_file = os.path.join(self.project_root, 'nodes.py')
-            with open(nodes_file, 'r') as f:
+            with open(nodes_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             match = re.search(self.version_files['nodes.py']['pattern'], content)
@@ -58,7 +58,7 @@ class VersionManager:
             
             config = self.version_files[relative_path]
             
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             # Find and replace version
@@ -69,7 +69,7 @@ class VersionManager:
                 print(f"Warning: No version found in {relative_path}")
                 return False
             
-            with open(file_path, 'w') as f:
+            with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(updated_content)
             
             print(f"✓ Updated {relative_path}")
@@ -284,7 +284,7 @@ This matches the F5-TTS dropdown behavior for consistent user experience across 
         try:
             changelog_path = os.path.join(self.project_root, 'CHANGELOG.md')
             
-            with open(changelog_path, 'r') as f:
+            with open(changelog_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             # Generate changelog entry content using extracted method
@@ -305,7 +305,7 @@ This matches the F5-TTS dropdown behavior for consistent user experience across 
             # Insert the new entry with proper spacing
             lines.insert(insert_index, new_entry.rstrip())
             
-            with open(changelog_path, 'w') as f:
+            with open(changelog_path, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(lines))
             
             print(f"✓ Added changelog entry for v{version}")
@@ -321,7 +321,7 @@ This matches the F5-TTS dropdown behavior for consistent user experience across 
         for file_path in self.version_files.keys():
             full_path = os.path.join(self.project_root, file_path)
             if os.path.exists(full_path):
-                with open(full_path, 'r') as f:
+                with open(full_path, 'r', encoding='utf-8') as f:
                     backups[file_path] = f.read()
         return backups
     
@@ -330,7 +330,7 @@ This matches the F5-TTS dropdown behavior for consistent user experience across 
         try:
             for file_path, content in backups.items():
                 full_path = os.path.join(self.project_root, file_path)
-                with open(full_path, 'w') as f:
+                with open(full_path, 'w', encoding='utf-8') as f:
                     f.write(content)
             return True
         except Exception as e:

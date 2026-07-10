@@ -21,10 +21,25 @@ import subprocess
 import argparse
 from version_utils import VersionManager
 
+
+def configure_utf8_console() -> None:
+    """Keep Windows console output from failing on non-UTF-8 locales."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def run_git_command(command: str) -> bool:
     """Run git command and return success status"""
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         if result.returncode != 0:
             print(f"Git command failed: {command}")
             print(f"Error: {result.stderr}")
@@ -93,9 +108,9 @@ def main():
     elif args.commit_file and args.changelog_file:
         # File input mode
         try:
-            with open(args.commit_file, 'r') as f:
+            with open(args.commit_file, 'r', encoding='utf-8') as f:
                 commit_description = f.read().strip()
-            with open(args.changelog_file, 'r') as f:
+            with open(args.changelog_file, 'r', encoding='utf-8') as f:
                 changelog_description = f.read().strip()
         except Exception as e:
             print(f"Error reading files: {e}")
@@ -146,7 +161,7 @@ def main():
     elif args.file:
         # Legacy file mode - same description for both
         try:
-            with open(args.file, 'r') as f:
+            with open(args.file, 'r', encoding='utf-8') as f:
                 description = f.read().strip()
                 commit_description = description
                 changelog_description = description
@@ -246,7 +261,9 @@ def main():
                 [sys.executable, table_gen_path, "--readme"],
                 cwd=vm.project_root,
                 capture_output=True,
-                text=True
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             if result.returncode != 0:
                 print(f"Warning: Table generation had issues:\n{result.stderr}")
@@ -285,7 +302,12 @@ def main():
                     
                     # Write commit message to temp file for complex messages
                     import tempfile
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+                    with tempfile.NamedTemporaryFile(
+                        mode='w',
+                        suffix='.txt',
+                        delete=False,
+                        encoding='utf-8',
+                    ) as f:
                         f.write(commit_message)
                         temp_file = f.name
                     
@@ -321,4 +343,5 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
+    configure_utf8_console()
     main()

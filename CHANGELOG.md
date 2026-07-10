@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.1] - 2026-07-10
+
+### Added
+
+- Prevents MelBand vocal removal from failing during sample-rate conversion on some Python 3.13 environments.
+- Corrects the documented location of the version bump instructions.
+- Makes future version bumps reliable on Windows installations with non-UTF-8 locales.
+
+### Fixed
+
+- Tentative fix for MelBand audio separation failures
 ## [5.4.0] - 2026-07-10
 
 ### Added
