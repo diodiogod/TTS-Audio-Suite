@@ -19,7 +19,20 @@ SPEC.loader.exec_module(NODE_MODULE)
 
 
 @pytest.mark.unit
-def test_bnb_quantization_disables_compile(capsys):
+def test_model_is_first_and_compile_defaults_enabled():
+    inputs = NODE_MODULE.FishAudioS2EngineNode.INPUT_TYPES()
+
+    assert list(inputs["required"])[0] == "model"
+    assert "s2-pro" in inputs["required"]["model"][0]
+    assert inputs["optional"]["compile"][1]["default"] is True
+
+    node = NODE_MODULE.FishAudioS2EngineNode()
+    (engine_config,) = node.create_engine_config()
+    assert engine_config["config"]["compile"] is True
+
+
+@pytest.mark.unit
+def test_bnb_quantization_preserves_compile():
     node = NODE_MODULE.FishAudioS2EngineNode()
 
     (engine_config,) = node.create_engine_config(
@@ -36,11 +49,8 @@ def test_bnb_quantization_disables_compile(capsys):
     )
 
     config = engine_config["config"]
-    assert config["compile"] is False
+    assert config["compile"] is True
     assert config["quantization"] == "bnb_int8"
-    captured = capsys.readouterr().out
-    assert "torch.compile disabled for BNB quantization" in captured
-    assert "Settings:" in captured
 
 
 @pytest.mark.unit

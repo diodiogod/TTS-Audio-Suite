@@ -199,7 +199,8 @@ class FishAudioS2Processor:
                 if connected_speakers:
                     print(f"🎤 Fish speaker inputs connected: {connected_speakers}")
                 mapping_display = ", ".join(
-                    f"{character}->Speaker {global_speaker_number.get(character, speaker_idx + 1)}"
+                    f"{character}->local Speaker {speaker_idx + 1} "
+                    f"(global Speaker {global_speaker_number.get(character, speaker_idx + 1)})"
                     for character, speaker_idx in sorted(speaker_map.items(), key=lambda item: item[1])
                 )
                 if mapping_display:

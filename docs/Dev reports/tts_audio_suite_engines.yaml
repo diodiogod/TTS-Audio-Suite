@@ -1235,8 +1235,8 @@ engines:
       emotion_control: { supported: true, notes: "Free-form inline natural-language tags" }
       native_long_form: { supported: true, notes: "Configurable 4K-32K native context; suite text chunking is bypassed" }
       community_finetunes: { supported: false, notes: "No suite integration" }
-      vram_efficient: { supported: "partial", notes: "8K context measured at 15.20GB BF16, 11.17GB FP8, 11.27GB BNB INT8, or 9.19GB BNB NF4; BF16 codec and activations; BNB is a load-time option for the official checkpoint" }
-      speed_performance: { supported: true, notes: "Main-environment subprocess with reliable teardown" }
+      vram_efficient: { supported: "partial", notes: "8K context measured at ~15.2GB BF16, ~11.2GB FP8, ~11.2GB BNB INT8, or ~8.9GB BNB NF4; BF16 codec and activations; BNB is a load-time option for the official checkpoint" }
+      speed_performance: { supported: true, notes: "Main-environment subprocess with reliable teardown; local compile measurements: ~40 it/s BF16, ~11.8 it/s NF4 at ~8.9GB VRAM, and ~3.7 it/s INT8 at ~11.2GB VRAM; quality comparison pending" }
       reference_free_tts: { supported: true, notes: "Reference audio is optional" }
 
   - id: dots-tts

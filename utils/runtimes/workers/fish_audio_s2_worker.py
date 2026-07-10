@@ -53,6 +53,11 @@ def _suppress_known_fish_transformers_noise():
                 message=r".*torch\.nn\.utils\.weight_norm is deprecated.*",
                 category=FutureWarning,
             )
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*weight_norm.*deprecated.*",
+                category=FutureWarning,
+            )
             yield
     finally:
         for logger in transformer_loggers:
@@ -67,6 +72,29 @@ def _patch_upstream_project_root_probe() -> None:
     import pyrootutils
 
     pyrootutils.setup_root = lambda *args, **kwargs: PROJECT_ROOT
+
+
+def _load_references_preserving_current_speaker_tags(self, references, use_cache):
+    """Reuse encoded audio, but never reuse a prior request's speaker-tagged text."""
+    from hashlib import sha256
+
+    prompt_tokens, prompt_texts = [], []
+    for reference in references:
+        audio_hash = sha256(reference.audio).hexdigest()
+        cached = self.ref_by_hash.get(audio_hash)
+        if use_cache == "off" or cached is None:
+            token = self.encode_reference(
+                reference_audio=reference.audio,
+                enable_reference_audio=True,
+            )
+            self.ref_by_hash[audio_hash] = token
+        else:
+            # Older Fish cache entries stored ``(token, tagged_text)``.
+            token = cached[0] if isinstance(cached, tuple) else cached
+        prompt_tokens.append(token)
+        prompt_texts.append(reference.text)
+
+    return prompt_tokens, prompt_texts
 
 
 def _patch_fish_reference_loader_backend() -> None:
@@ -104,6 +132,7 @@ def _patch_fish_reference_loader_backend() -> None:
         return waveform.squeeze().numpy()
 
     ReferenceLoader.load_audio = load_audio_without_legacy_backend
+    ReferenceLoader.load_by_hash = _load_references_preserving_current_speaker_tags
     ReferenceLoader._tts_suite_backend_patch_applied = True
 
 

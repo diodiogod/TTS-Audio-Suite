@@ -51,6 +51,75 @@ class CapturingAdapter:
 
 
 @pytest.mark.unit
+def test_late_global_character_uses_local_reference_order(monkeypatch):
+    parser = FakeCharacterParser()
+
+    def parse_subtitle_three(text, engine_type=None):
+        if text == "subtitle3":
+            return [
+                SimpleNamespace(character="male_01", text="Bob line", parameters={}, language="en"),
+                SimpleNamespace(character="narrator", text="Narrator line", parameters={}, language="en"),
+            ]
+        return [
+            SimpleNamespace(character="narrator", text="Narrator", parameters={}, language="en"),
+            SimpleNamespace(character="female_01", text="Alice", parameters={}, language="en"),
+            SimpleNamespace(character="clint_eastwood cc3 (enhanced2)", text="Cowboy", parameters={}, language="en"),
+            SimpleNamespace(character="male_01", text="Bob", parameters={}, language="en"),
+        ]
+
+    parser.parse_text_segments = parse_subtitle_three
+    monkeypatch.setattr(PROCESSOR_MODULE, "character_parser", parser)
+    monkeypatch.setattr(PROCESSOR_MODULE, "get_available_characters", lambda: [])
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_mapping",
+        lambda *_args, **_kwargs: {"male_01": ("male_01.wav", "Bob reference")},
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "model_management",
+        SimpleNamespace(interrupt_processing=False),
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "voice_discovery",
+        SimpleNamespace(
+            get_character_aliases=lambda: {},
+            get_character_language_defaults=lambda: {},
+        ),
+    )
+
+    adapter = CapturingAdapter()
+    processor = PROCESSOR_MODULE.FishAudioS2Processor(
+        adapter,
+        {
+            "speaker_references": [
+                {"character_name": "Ana"},
+                {"character_name": "Tony"},
+            ],
+            "multi_speaker_mode": "Native Multi-Speaker",
+            "language_prompting": "Off",
+        },
+    )
+
+    reference_order = processor.get_character_order("all")
+    processor.process_text(
+        "subtitle3",
+        {"narrator": {"character_name": "Joe"}},
+        seed=1,
+        reference_order=reference_order,
+        show_text_logging=False,
+    )
+
+    turns, used_references = adapter.calls[0]
+    assert turns == [(0, "Bob line"), (1, "Narrator line")]
+    assert used_references == [
+        {"audio_path": "male_01.wav", "reference_text": "Bob reference"},
+        {"character_name": "Joe"},
+    ]
+
+
+@pytest.mark.unit
 def test_srt_uses_global_reference_lookup_with_local_speaker_ids(monkeypatch):
     parser = FakeCharacterParser()
     monkeypatch.setattr(PROCESSOR_MODULE, "character_parser", parser)

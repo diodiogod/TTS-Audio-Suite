@@ -124,6 +124,8 @@ class IsolatedRuntimeLauncher:
                     check=False,
                     capture_output=True,
                     text=True,
+                    encoding="mbcs" if os.name == "nt" else "utf-8",
+                    errors="replace",
                     env=dict(os.environ),
                 )
             finally:
@@ -176,6 +178,8 @@ class IsolatedRuntimeLauncher:
                     check=False,
                     capture_output=True,
                     text=True,
+                    encoding="mbcs" if os.name == "nt" else "utf-8",
+                    errors="replace",
                 )
                 installation_path = completed.stdout.strip()
                 if installation_path:
@@ -268,6 +272,8 @@ class IsolatedRuntimeLauncher:
                 check=False,
                 capture_output=True,
                 text=True,
+                encoding="mbcs" if os.name == "nt" else "utf-8",
+                errors="replace",
                 env=self.build_env(profile),
             )
 

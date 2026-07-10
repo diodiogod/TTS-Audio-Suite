@@ -32,6 +32,72 @@ class FishAudioS2Downloader:
     }
 
     @classmethod
+    def is_model_complete(cls, model_path: str) -> bool:
+        """Recognize a local Fish S2 checkpoint without loading model code."""
+        if not os.path.isdir(model_path):
+            return False
+        required = ("config.json", "codec.pth", "tokenizer.json")
+        if not all(os.path.isfile(os.path.join(model_path, name)) for name in required):
+            return False
+        try:
+            return any(
+                name.endswith(".safetensors")
+                and os.path.getsize(os.path.join(model_path, name)) > 0
+                for name in os.listdir(model_path)
+            )
+        except OSError:
+            return False
+
+    @classmethod
+    def local_model_paths(cls) -> list[str]:
+        """Return complete local Fish checkpoints from all configured TTS paths."""
+        try:
+            from utils.models.extra_paths import get_all_tts_model_paths
+            search_paths = get_all_tts_model_paths("TTS")
+        except Exception:
+            search_paths = [os.path.join(folder_paths.models_dir, "TTS")]
+
+        found = {}
+        for base_path in search_paths:
+            if not os.path.isdir(base_path):
+                continue
+            try:
+                entries = os.listdir(base_path)
+            except OSError:
+                continue
+            for entry in entries:
+                candidate = os.path.join(base_path, entry)
+                if cls.is_model_complete(candidate):
+                    found.setdefault(entry, candidate)
+        return [found[name] for name in sorted(found)]
+
+    @classmethod
+    def resolve_local_model_path(cls, selection: str) -> str:
+        """Resolve a `local:<folder>` UI selection to its filesystem path."""
+        name = str(selection).removeprefix("local:")
+        for path in cls.local_model_paths():
+            if os.path.basename(os.path.normpath(path)) == name:
+                return path
+        raise FileNotFoundError(f"Local Fish Audio S2 model not found: {selection}")
+
+    @classmethod
+    def resolve_model_variant(cls, selection: str, model_path: str | None = None) -> str:
+        """Map a UI selection/path to the runtime's known variant behavior."""
+        if selection in cls.VARIANTS:
+            return selection
+        path = model_path or selection
+        if os.path.isfile(os.path.join(path, "quantization_info.json")) or "fp8" in os.path.basename(path).lower():
+            return "s2-pro-fp8"
+        return "s2-pro"
+
+    @classmethod
+    def resolve_model_path(cls, selection: str) -> str:
+        """Resolve local selections or download the selected official variant."""
+        if str(selection).startswith("local:"):
+            return cls.resolve_local_model_path(selection)
+        return cls.ensure_model(selection)
+
+    @classmethod
     def model_dir(cls, variant: str = "s2-pro") -> str:
         if variant not in cls.VARIANTS:
             raise ValueError(f"Unknown Fish Audio S2 model variant: {variant}")

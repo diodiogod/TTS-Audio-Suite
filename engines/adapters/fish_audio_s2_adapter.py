@@ -10,6 +10,7 @@ from utils.audio.cache import get_audio_cache
 from utils.audio.processing import AudioProcessingUtils
 from utils.models.factory_config import ModelLoadConfig
 from utils.text.fish_audio_s2_tags import translate_fish_s2_inline_tags
+from utils.voice.character_logging import resolved_voice_name
 
 
 class FishAudioS2Adapter:
@@ -25,9 +26,10 @@ class FishAudioS2Adapter:
 
     def _engine(self):
         from utils.models.unified_model_interface import unified_model_interface
-        model_variant = self.config.get("model_variant", "s2-pro")
+        model_selection = self.config.get("model_variant", "s2-pro")
         quantization = self.config.get("quantization", "none")
-        model_path = FishAudioS2Downloader.ensure_model(model_variant)
+        model_path = FishAudioS2Downloader.resolve_model_path(model_selection)
+        model_variant = FishAudioS2Downloader.resolve_model_variant(model_selection, model_path)
         self._model_config = ModelLoadConfig(
             engine_name="fish_audio_s2", model_type="tts", model_name=model_variant,
             model_path=model_path, device=self.config.get("device", "auto"),
@@ -75,6 +77,7 @@ class FishAudioS2Adapter:
             return torch.zeros(1, 0)
 
         references = []
+        reference_labels = []
         components = []
         reference_texts = []
         for speaker_index, voice_ref in enumerate(voice_refs):
@@ -86,8 +89,13 @@ class FishAudioS2Adapter:
                     "audio_path": ref_path,
                     "text": f"<|speaker:{speaker_index}|>{ref_text}",
                 })
+                reference_labels.append(
+                    f"local Speaker {speaker_index + 1}={resolved_voice_name(voice_ref)}"
+                )
             components.append(component)
             reference_texts.append(ref_text)
+        if references:
+            print(f"🎤 Fish local reference order: {', '.join(reference_labels)}")
 
         params = {
             "model_variant": self.config.get("model_variant", "s2-pro"),
