@@ -4,6 +4,13 @@ This document tracks architectural issues and inconsistencies that need refactor
 
 ## SRT Processing Architecture Issues
 
+### Problem: VibeVoice Native Multi-Speaker SRT Uses Non-Contiguous Global Slots
+- **Issue**: Later subtitles can request global `Speaker 2`/`Speaker 3` IDs while VibeVoice truncates and renumbers the supplied voice prompts from zero.
+- **Impact**: A subtitle containing only later global speakers can bind the wrong reference or leave a requested speaker without a matching voice prompt.
+- **Solution**: Use the global character map only to select references, then compact each subtitle to request-local speakers `0..N-1` with references in the same order.
+- **Regression test**: Cover subtitle 1 `[Alice]...[Bob]...`, followed by subtitle 2 `[Bob]...[Rick]...`.
+- **Priority**: High
+
 ### Problem: Inconsistent SRT Implementation Approaches
 Different engines use completely different patterns for SRT processing:
 

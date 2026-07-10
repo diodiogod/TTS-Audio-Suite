@@ -26,6 +26,10 @@ Produce a short scope document with:
 8. What manual tests will prove the integration works?
 ```
 
+## Runtime Decision Order
+
+Test the official package with `--no-deps` in the main T5 environment first. Prefer a small compatibility patch when practical; use the existing shared T4 SHRED runtime only if T5 is genuinely incompatible. Never create another environment or download/reinstall Torch or Transformers without explicit maintainer approval.
+
 ## Node Types To Choose From
 
 Decide whether the engine needs:

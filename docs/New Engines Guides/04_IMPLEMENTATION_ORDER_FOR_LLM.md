@@ -91,12 +91,42 @@ Follow this order:
 13. Add interrupt checks in long loops.
 14. Add progress feedback for long generation.
 15. Update docs/YAML metadata.
-16. Run manual ComfyUI tests.
+16. Run automated and live ComfyUI validation. Use FL-MCP-assisted validation when it is installed and connected; otherwise perform the same checks manually. Follow `tests/FL_MCP_VALIDATION.md`.
 17. Run the required parity checklist.
+
+## Live ComfyUI Validation Rule
+
+Passing imports or pytest is not enough for a new engine. Validate it in the canonical Windows ComfyUI installation after implementation.
+
+If [ComfyUI_FL-MCP](https://github.com/filliptm/ComfyUI_FL-MCP) is available, the LLM should use it to inspect and operate the live ComfyUI instance. Treat it as an optional test driver, not a project dependency and not a substitute for the existing test suite.
+
+The LLM should:
+
+- After changing Python code, restart the canonical Windows ComfyUI process before testing. An already-running process still has the old modules loaded.
+- Use PowerShell to identify the process listening on port `8188`, verify its command line belongs to the canonical ComfyUI `main.py`, stop only that process, and relaunch it with the canonical Windows Python.
+- Wait for `http://127.0.0.1:8188/system_stats` to respond before using FL-MCP.
+- Refresh the existing ComfyUI browser tab after restart and confirm the FL-MCP browser bridge has reconnected before calling canvas-only tools.
+- Confirm the engine node and the relevant unified node are registered.
+- Load or construct the smallest useful workflow.
+- Inspect workflow JSON for the expected node types, links, and widget values.
+- Queue the workflow and wait for completion.
+- Inspect execution history and report the full actionable error if execution fails.
+- Confirm the expected audio output artifact exists.
+- Capture a canvas screenshot for UI and broken-node inspection.
+- Exercise TTS Text and SRT for every TTS engine, plus any other scoped capability.
+- Record what was actually tested, what was skipped, and why.
+
+Screenshots prove only visible workflow state. They do not prove that generation succeeded or that audio is correct. Execution history and output artifacts are required evidence, and the user must still judge subjective audio quality.
+
+Do not install FL-MCP, alter its safety settings, or enable destructive tools unless the user authorizes it. If FL-MCP is unavailable, report that fact and follow the manual fallback in `tests/FL_MCP_VALIDATION.md`.
+
+Repeat the edit, restart, reconnect, and validation cycle after every implementation fix that changes imported Python code. Frontend-only changes may require a hard browser refresh as well. Do not claim that a fix was tested against a ComfyUI process started before the fix was written.
 
 ## Architecture Rule
 
 Unified nodes should stay thin.
+
+Reference engines are examples only. Every engine must have dedicated processors and adapters; share only engine-neutral utilities.
 
 Do not put hundreds of lines of engine-specific orchestration into:
 
