@@ -48,7 +48,16 @@ ComfyUI imports custom-node Python code at startup. Editing an engine does not u
 
 Do not stop every `python.exe` process. Other engines and applications may use Python. Resolve the owner of port `8188`, verify its executable/command line, and stop only the intended ComfyUI process.
 
-If FL-MCP's embedded launcher starts and then shuts down ComfyUI on Windows, run `backend/server.py` in its own visible Windows Terminal window, launch ComfyUI in a separate window, then refresh the browser and reconnect the FL-MCP panel before auditing capabilities.
+### Windows external bridge fallback
+
+If a ComfyUI console interrupt also stops FL-MCP's embedded backend, do not describe that as the backend shutting down ComfyUI. Both processes are receiving the same console signal. Separate them instead:
+
+1. In FL-MCP's local, untracked `.env`, set `BACKEND_LAUNCH_MODE=manual`, `AUTO_START_BACKEND=false`, and `AUTO_RESTART_BACKEND=false`.
+2. Start `backend/server.py` in its own visible Windows Terminal window using FL-MCP's dedicated Python environment.
+3. Start ComfyUI in a separate visible Windows Terminal window using its canonical launcher.
+4. Confirm the bridge backend is healthy, refresh the ComfyUI browser tab, and reconnect the FL-MCP panel before auditing capabilities.
+
+Do not leave the embedded launcher enabled while manually running `backend/server.py`; that can create competing bridge processes on the same port.
 
 For manual Windows mode, keep two visible service terminals: one running ComfyUI and one running FL-MCP `backend/server.py`; the MCP client (for example Codex) is a separate process that must be restarted or rebound with the browser session ID so one session reports both `has_frontend: true` and `has_mcp: true`.
 
