@@ -35,6 +35,7 @@ BaseF5TTSNode = f5tts_base_module.BaseF5TTSNode
 from utils.system.import_manager import import_manager
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
+from utils.voice.character_logging import resolved_character_label
 from utils.text.character_parser import parse_character_text, character_parser
 from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
@@ -537,18 +538,6 @@ Hello! This is F5-TTS SRT with character switching.
                     # Check for interruption
                     self.check_interruption(f"F5-TTS character segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence})")
                     
-                    # Show generation message
-                    if character == "narrator":
-                        if language != 'en':
-                            print(f"🎤 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence}) in {language}...")
-                        else:
-                            print(f"🎤 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence})...")
-                    else:
-                        if language != 'en':
-                            print(f"🎭 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} using '{character}' in {language}")
-                        else:
-                            print(f"🎭 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} using '{character}'")
-                    
                     # PRIORITY FIX: For "narrator" character, always use main reference when provided
                     # This ensures Character Voices node and dropdown selection work correctly
                     if character == "narrator" and audio_prompt and validated_ref_text:
@@ -569,6 +558,14 @@ Hello! This is F5-TTS SRT with character switching.
                             print(f"🔄 F5-TTS: Using main reference fallback for '{character}'")
                         else:
                             print(f"🎭 F5-TTS: Using character-specific voice for '{character}'")
+
+                    display_name = resolved_character_label(character, (char_audio, char_text))
+                    if character == "narrator":
+                        suffix = f" in {language}" if language != 'en' else ""
+                        print(f"🎤 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} (Seq {subtitle.sequence}) for '{display_name}'{suffix}...")
+                    else:
+                        suffix = f" in {language}" if language != 'en' else ""
+                        print(f"🎭 Generating F5-TTS segment {subtitle_idx+1}.{seg_idx+1} using '{display_name}'{suffix}")
                     
                     # Validate and clamp nfe_step to prevent ODE solver issues
                     safe_nfe_step = max(1, min(nfe_step, 71))
@@ -1040,11 +1037,11 @@ Hello! This is F5-TTS SRT with character switching.
                     # Set phonemization setting for consistency (even when using cache)
                     import os
                     os.environ['F5TTS_AUTO_PHONEMIZATION'] = str(auto_phonemization).lower()
-                    print(f"💾 F5-TTS SRT streaming: Cache hit for {character} segment {original_idx}")
+                    print(f"💾 F5-TTS SRT streaming: Cache hit for {resolved_character_label(character, ref_audio_path)} segment {original_idx}")
                     return cached_audio[0]
             
             # Generate audio for this segment
-            print(f"🔄 F5-TTS SRT streaming: Generating {character} segment {original_idx} in {language}")
+            print(f"🔄 F5-TTS SRT streaming: Generating {resolved_character_label(character, ref_audio_path)} segment {original_idx} in {language}")
             
             # Generate with F5-TTS (using base class method)
             wav = self.generate_f5tts_with_pause_tags(

@@ -32,6 +32,10 @@ from utils.voice.discovery import (
     get_character_mapping,
     voice_discovery,
 )
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 
 
 class MossTTSProcessor:
@@ -802,7 +806,8 @@ class MossTTSProcessor:
 
         if enable_chunking and len(clean_text) > max_chars:
             chunks = self.chunker.split_into_chunks(clean_text, max_chars)
-            print(f"📝 MOSS-TTS: Chunking '{character}' into {len(chunks)} chunk(s) (language={language})")
+            display_name = resolved_character_label(character, voice_ref)
+            print(f"📝 MOSS-TTS: Chunking '{display_name}' into {len(chunks)} chunk(s) (language={language})")
         else:
             chunks = [clean_text]
 
@@ -811,7 +816,7 @@ class MossTTSProcessor:
                 raise InterruptedError("MOSS-TTS generation interrupted by user")
 
             chunk_note = f" chunk {chunk_idx}/{len(chunks)}" if len(chunks) > 1 else ""
-            print(f"🎭 MOSS-TTS - Generating for '{character}' (language={language}){chunk_note}:")
+            print(f"🎭 MOSS-TTS - Generating for '{display_name}' (language={language}){chunk_note}:")
             for field_name in self.OFFICIAL_INLINE_FIELDS:
                 field_value = generation_params.get(field_name)
                 if field_value:
@@ -819,9 +824,7 @@ class MossTTSProcessor:
                         f"  🔹 {field_name}: "
                         f"{self._format_prompt_field_log(field_name, field_value, generation_params)}"
                     )
-            print("=" * 60)
-            print(chunk)
-            print("=" * 60)
+            print(format_resolved_character_block(character, chunk, voice_ref))
 
             audio_tensor = self.adapter.generate_with_pause_tags(chunk, voice_ref, generation_params, True, character)
             if audio_tensor.dim() == 1:

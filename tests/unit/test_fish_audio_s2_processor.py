@@ -214,6 +214,60 @@ def test_explicit_english_language_prompt_is_preserved(monkeypatch):
 
 
 @pytest.mark.unit
+def test_custom_override_logs_connected_voice_and_does_not_inherit_alias_language(monkeypatch, capsys):
+    parser = FakeCharacterParser()
+
+    def parse_bob(_text, engine_type=None):
+        assert engine_type == "fish_audio_s2"
+        return [
+            SimpleNamespace(character="bob", text="Bonjour", parameters={}, language="fr"),
+        ]
+
+    parser.parse_text_segments = parse_bob
+    monkeypatch.setattr(PROCESSOR_MODULE, "character_parser", parser)
+    monkeypatch.setattr(PROCESSOR_MODULE, "get_available_characters", lambda: [])
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "get_character_mapping",
+        lambda *_args, **_kwargs: {"bob": ("bob.wav", "Bob ref")},
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "model_management",
+        SimpleNamespace(interrupt_processing=False),
+    )
+    monkeypatch.setattr(
+        PROCESSOR_MODULE,
+        "voice_discovery",
+        SimpleNamespace(
+            get_character_aliases=lambda: {},
+            get_character_language_defaults=lambda: {},
+        ),
+    )
+
+    adapter = CapturingAdapter()
+    processor = PROCESSOR_MODULE.FishAudioS2Processor(
+        adapter,
+        {
+            "speaker_references": [{"id": "tony", "character_name": "Tony"}],
+            "multi_speaker_mode": "Custom Character Switching",
+            "language_prompting": "Auto Inline Tag",
+        },
+    )
+    processor.process_text(
+        "subtitle",
+        {"narrator": {"audio_path": "joe.wav", "character_name": "Joe"}},
+        seed=1,
+        reference_order=["narrator", "bob"],
+    )
+
+    output = capsys.readouterr().out
+    assert "Speaker 2 input overrides ['bob'] alias" in output
+    assert "[Tony] Bonjour" in output
+    assert "<French>" not in output
+
+
+@pytest.mark.unit
 def test_single_character_native_call_uses_narrator_as_speaker_one_when_no_global_narrator_exists(monkeypatch):
     parser = FakeCharacterParser()
 

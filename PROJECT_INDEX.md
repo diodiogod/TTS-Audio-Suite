@@ -173,6 +173,7 @@
 
 ### Other Utils
 - `utils/voice/discovery.py` - Voice file discovery with multi-path fallback
+- `utils/voice/character_logging.py` - Shared resolved voice labels and boxed prompt previews
 - `utils/downloads/unified_downloader.py` - Centralized HF download system
 - `utils/compatibility/transformers_patches.py` - transformers version compatibility patches
 - `utils/compatibility/numba_compat.py` - Numba/Librosa Python 3.13+ compatibility

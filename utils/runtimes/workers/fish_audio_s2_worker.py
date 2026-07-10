@@ -113,8 +113,8 @@ def _emit(stream, response):
 
 
 @contextmanager
-def _suppress_noisy_fish_runtime_logs():
-    """Drop only the verbose Fish loguru chatter; keep tqdm and useful throughput lines."""
+def _suppress_noisy_fish_runtime_logs(show_compilation_time=True):
+    """Keep tqdm and useful throughput lines without repeating compile timings."""
     from fish_speech.conversation import Conversation
     from loguru import logger as fish_logger
 
@@ -149,6 +149,8 @@ def _suppress_noisy_fish_runtime_logs():
 
     def _filtered_info(message, *args, **kwargs):
         rendered = str(message)
+        if not show_compilation_time and "Compilation time:" in rendered:
+            return
         if any(pattern in rendered for pattern in suppressed_patterns):
             return
         return original_info(message, *args, **kwargs)
@@ -389,7 +391,9 @@ def main() -> int:
             final = None
             if compile_enabled and first_generation:
                 print("⏳ Fish Audio S2: preparing first compiled run before token generation starts")
-            with _suppress_noisy_fish_runtime_logs():
+            with _suppress_noisy_fish_runtime_logs(
+                show_compilation_time=not (compile_enabled and not first_generation)
+            ):
                 for result in engine.inference(req):
                     if result.code == "error":
                         raise result.error or RuntimeError("Fish S2 generation failed")

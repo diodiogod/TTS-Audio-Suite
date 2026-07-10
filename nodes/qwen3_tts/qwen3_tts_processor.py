@@ -25,6 +25,10 @@ from engines.adapters.qwen3_tts_adapter import Qwen3TTSEngineAdapter
 from utils.models.language_mapper import resolve_language_alias
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 
 
 class Qwen3TTSProcessor:
@@ -523,7 +527,8 @@ class Qwen3TTSProcessor:
             combined_text_clean, combined_text_edit_tags = get_edit_tags_for_segment(combined_text)
 
             chunks = self.chunker.split_into_chunks(combined_text_clean, max_chars)
-            print(f"📝 Chunking {character}'s combined text into {len(chunks)} chunks (Language: {segment_lang}){voice_note}")
+            display_name = resolved_character_label(character, voice_ref)
+            print(f"📝 Chunking {display_name}'s combined text into {len(chunks)} chunks (Language: {segment_lang}){voice_note}")
 
             for chunk_idx, chunk in enumerate(chunks):
                 # Check for interruption during chunk processing
@@ -573,10 +578,9 @@ class Qwen3TTSProcessor:
             # Extract inline edit tags BEFORE generation
             combined_text_clean, combined_text_edit_tags = get_edit_tags_for_segment(combined_text)
 
-            print(f"🎭 Qwen3-TTS - Generating for '{character}' (Language: {segment_lang}){voice_note}:")
-            print("="*60)
-            print(combined_text_clean)
-            print("="*60)
+            display_name = resolved_character_label(character, voice_ref)
+            print(f"🎭 Qwen3-TTS - Generating for '{display_name}' (Language: {segment_lang}){voice_note}:")
+            print(format_resolved_character_block(character, combined_text_clean, voice_ref))
 
             # Set current segment for time tracking (skip in SRT mode - managed at subtitle level)
             if not self._srt_mode:

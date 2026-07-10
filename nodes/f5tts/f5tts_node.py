@@ -34,6 +34,7 @@ BaseF5TTSNode = f5tts_base_module.BaseF5TTSNode
 from utils.text.chunking import ImprovedChatterBoxChunker
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_voices, load_voice_reference, get_available_characters, get_character_mapping
+from utils.voice.character_logging import resolved_character_label
 from utils.text.character_parser import parse_character_text, character_parser
 from utils.text.step_audio_editx_special_tags import parse_edit_tags_with_iterations
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
@@ -607,7 +608,8 @@ Back to the main narrator voice for the conclusion.""",
                         # Generate audio for each chunk of this character segment
                         segment_audio_chunks = []
                         for chunk_i, chunk_text in enumerate(segment_chunks):
-                            print(f"🎤 Generating F5-TTS segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{character}' (lang: {lang_code})...")
+                            display_name = resolved_character_label(character, (char_audio, char_text))
+                            print(f"🎤 Generating F5-TTS segment {segment_display_idx}/{total_segments} chunk {chunk_i+1}/{len(segment_chunks)} for '{display_name}' (lang: {lang_code})...")
                             
                             # Create cache function for this character if caching is enabled (uses per-segment parameters)
                             cache_fn = None

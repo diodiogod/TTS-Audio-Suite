@@ -24,6 +24,10 @@ from utils.audio.edit_post_processor import process_segments as apply_edit_post_
 from utils.voice.discovery import get_available_characters, voice_discovery, get_character_mapping
 from utils.text.character_parser import character_parser
 from utils.audio.chunk_timing import ChunkTimingHelper
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 
 
 class EchoTTSProcessor:
@@ -233,10 +237,9 @@ class EchoTTSProcessor:
                         print(f"📝 Echo-TTS: Chunking '{seg.character}' into {len(chunks)} chunks (max {max_chars_per_chunk} chars each)")
 
                     for chunk_idx, chunk in enumerate(chunks):
-                        print(f"🎤 Echo-TTS - Generating for '{seg.character}'" + (f" (chunk {chunk_idx + 1}/{len(chunks)})" if len(chunks) > 1 else "") + ":")
-                        print("=" * 60)
-                        print(chunk)
-                        print("=" * 60)
+                        display_name = resolved_character_label(char_name, speaker_audio)
+                        print(f"🎤 Echo-TTS - Generating for '{display_name}'" + (f" (chunk {chunk_idx + 1}/{len(chunks)})" if len(chunks) > 1 else "") + ":")
+                        print(format_resolved_character_block(char_name, chunk, speaker_audio))
                         audio = _generate_single(chunk).cpu()
                         if audio.dim() == 1:
                             audio = audio.unsqueeze(0)

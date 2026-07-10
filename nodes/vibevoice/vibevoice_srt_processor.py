@@ -34,6 +34,7 @@ from utils.text.segment_parameters import apply_segment_parameters
 from utils.text.pause_processor import PauseTagProcessor
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import get_available_characters, get_character_mapping
+from utils.voice.character_logging import resolved_character_label
 from engines.adapters.vibevoice_adapter import VibeVoiceEngineAdapter
 
 
@@ -448,10 +449,11 @@ class VibeVoiceSRTProcessor:
                 )
             else:
                 # Multiple segments for same character - combine in VibeVoice format
-                print(f"🎤 SRT Block {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
+                display_name = resolved_character_label(character, voice_ref)
+                print(f"🎤 SRT Block {group_idx + 1}: Character '{display_name}' with {len(text_list)} segments")
                 combined_text = '\n'.join(f"Speaker 1: {text.strip()}" for text in text_list)
 
-                print(f"🎭 SRT CHARACTER BLOCK - Generating combined text for '{character}':")
+                print(f"🎭 SRT CHARACTER BLOCK - Generating combined text for '{display_name}':")
                 print("="*60)
                 print(combined_text)
                 print("="*60)
@@ -552,10 +554,11 @@ class VibeVoiceSRTProcessor:
                 )
             else:
                 # Multiple segments for same character with same parameters - combine in VibeVoice format
-                print(f"🎤 SRT Block {group_idx + 1}: Character '{character}' with {len(segment_list)} segments")
+                display_name = resolved_character_label(character, voice_ref)
+                print(f"🎤 SRT Block {group_idx + 1}: Character '{display_name}' with {len(segment_list)} segments")
                 combined_text = '\n'.join(f"Speaker 1: {seg.text.strip()}" for seg in segment_list)
 
-                print(f"🎭 SRT CHARACTER BLOCK - Generating combined text for '{character}':")
+                print(f"🎭 SRT CHARACTER BLOCK - Generating combined text for '{display_name}':")
                 print("="*60)
                 print(combined_text)
                 print("="*60)

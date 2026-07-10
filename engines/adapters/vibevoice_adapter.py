@@ -25,6 +25,7 @@ from engines.vibevoice_engine.vibevoice_downloader import (
     is_kugelaudio_variant_name,
 )
 from utils.models.manager import model_manager
+from utils.voice.character_logging import resolved_character_label
 
 
 class VibeVoiceEngineAdapter:
@@ -466,7 +467,8 @@ class VibeVoiceEngineAdapter:
         
         # Generate each character group using VibeVoice format
         for group_idx, (character, text_list) in enumerate(character_groups):
-            print(f"🎤 Group {group_idx + 1}: Character '{character}' with {len(text_list)} segments")
+            display_name = resolved_character_label(character, voice_mapping.get(character))
+            print(f"🎤 Group {group_idx + 1}: Character '{display_name}' with {len(text_list)} segments")
             
             # Format as Speaker 1 entries (VibeVoice style) and combine
             formatted_lines = []

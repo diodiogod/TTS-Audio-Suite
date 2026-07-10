@@ -17,6 +17,11 @@ from utils.voice.discovery import (
     get_character_mapping,
     voice_discovery,
 )
+from utils.voice.character_logging import (
+    format_character_override_warning,
+    resolved_character_label,
+    resolved_voice_name,
+)
 
 
 class FishAudioS2Processor:
@@ -108,18 +113,6 @@ class FishAudioS2Processor:
             return {"audio_path": audio_path, "reference_text": ref_text or ""}
         return dict(narrator)
 
-    @staticmethod
-    def _speaker_display_name(speaker_number: int, voice_ref: Dict[str, Any] | None) -> str:
-        if isinstance(voice_ref, dict):
-            if voice_ref.get("character_name"):
-                return str(voice_ref["character_name"])
-            if voice_ref.get("audio_path"):
-                import os
-                return os.path.splitext(os.path.basename(str(voice_ref["audio_path"])))[0]
-        if speaker_number == 1:
-            return "Speaker 1 (Narrator)"
-        return f"Speaker {speaker_number}"
-
     def process_text(self, text: str, voice_mapping: Dict[str, Any], seed: int,
                      enable_chunking: bool = True, max_chars_per_chunk: int = 400,
                      chunk_combination_method: str = "auto", silence_between_chunks_ms: int = 100,
@@ -148,7 +141,7 @@ class FishAudioS2Processor:
         configured_refs = list(self.config.get("speaker_references") or [])
         speaker_map = {character: index for index, character in enumerate(characters)}
         voice_refs = []
-        narrator_has_reference = bool(narrator)
+        narrator_has_reference = bool(narrator_value)
         for character in characters:
             effective_speaker_number = global_speaker_number.get(character, speaker_map[character] + 1)
             if narrator_has_reference and narrator_exists_globally and character == "narrator":
@@ -245,8 +238,7 @@ class FishAudioS2Processor:
             configured_index = effective_speaker_number - 2
             override_voice_ref = None
             if (
-                not custom_switching
-                and narrator_has_reference
+                narrator_has_reference
                 and (
                     (narrator_exists_globally and character == "narrator")
                     or (not narrator_exists_globally and effective_speaker_number == 1)
@@ -257,16 +249,20 @@ class FishAudioS2Processor:
                 if discovered_ref and show_text_logging:
                     override_key = (speaker_idx, character)
                     if override_key not in logged_priority_overrides:
-                        print(f"⚠️ Fish priority: Speaker 1 (Narrator) input overrides ['{original_character}'] alias")
+                        print(format_character_override_warning(
+                            "Fish", "Speaker 1 (Narrator)", original_character
+                        ))
                         logged_priority_overrides.add(override_key)
-            elif not custom_switching and 0 <= configured_index < len(configured_refs):
+            elif 0 <= configured_index < len(configured_refs):
                 configured_ref = configured_refs[configured_index]
                 override_voice_ref = configured_ref
                 discovered_ref = discovered.get(character, (None, None))[0]
                 if configured_ref is not None and discovered_ref:
                     override_key = (speaker_idx, character)
                     if override_key not in logged_priority_overrides and show_text_logging:
-                        print(f"⚠️ Fish priority: Speaker {effective_speaker_number} input overrides ['{original_character}'] alias")
+                        print(format_character_override_warning(
+                            "Fish", f"Speaker {effective_speaker_number}", original_character
+                        ))
                         logged_priority_overrides.add(override_key)
             if pending_config is not None and generation_key(config) != generation_key(pending_config):
                 flush_turns()
@@ -289,7 +285,7 @@ class FishAudioS2Processor:
                 if not turn_text:
                     continue
                 turn_text, language_instruction = self._apply_effective_language_instruction(
-                    turn_text, segment, override_voice_ref if not custom_switching else None
+                    turn_text, segment, override_voice_ref
                 )
                 if show_text_logging and self.config.get("language_prompting", "Auto Inline Tag") == "Auto Inline Tag":
                     if language_instruction:
@@ -298,9 +294,9 @@ class FishAudioS2Processor:
                     flush_turns()
                     log_label = character
                     if narrator_has_reference and character == "narrator":
-                        log_label = self._speaker_display_name(1, narrator)
+                        log_label = resolved_voice_name(narrator, "Speaker 1 (Narrator)")
                     elif override_voice_ref is not None:
-                        log_label = self._speaker_display_name(effective_speaker_number, override_voice_ref)
+                        log_label = resolved_character_label(character, override_voice_ref)
                     print_custom_segment_preview(log_label, turn_text)
                     self.adapter.update_config(config)
                     audio = self.adapter.generate_dialogue(
@@ -317,10 +313,9 @@ class FishAudioS2Processor:
                     group_index += 1
                 else:
                     pending_turns.append((speaker_map[character], turn_text))
-                    if override_voice_ref is not None:
-                        log_label = self._speaker_display_name(effective_speaker_number, override_voice_ref)
-                    else:
-                        log_label = character
+                    log_label = resolved_character_label(
+                        character, voice_ref_by_character.get(character)
+                    )
                     pending_logs.append((log_label, turn_text))
         flush_turns()
         return records

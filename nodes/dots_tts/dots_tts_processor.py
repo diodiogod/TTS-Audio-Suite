@@ -22,6 +22,10 @@ from utils.audio.edit_post_processor import process_segments as apply_edit_post_
 from engines.dots_tts.languages import format_dots_language_display, normalize_dots_language
 from utils.text.character_parser import character_parser
 from utils.text.pause_processor import PauseTagProcessor
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 from utils.text.segment_parameters import ParameterValidator, apply_segment_parameters
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
@@ -63,16 +67,15 @@ class DotsTTSProcessor:
         show_text_content: bool = True,
     ) -> None:
         voice_note = self._voice_log_note(voice_ref)
-        print(f"🎭 Dots TTS - Generating for '{character_name}' (Language: {language}){voice_note}:")
+        display_name = resolved_character_label(character_name, voice_ref)
+        print(f"🎭 Dots TTS - Generating for '{display_name}' (Language: {language}){voice_note}:")
         if parameter_log:
             print(f"🎛️ Dots TTS params: {parameter_log}")
         if show_text_content:
-            print("=" * 60)
-            print(text_content)
-            print("=" * 60)
+            print(format_resolved_character_block(character_name, text_content, voice_ref))
         if chunk_count > 1:
             print(
-                f"📝 Chunking {character_name}'s text into {chunk_count} chunks "
+                f"📝 Chunking {display_name}'s text into {chunk_count} chunks "
                 f"(Language: {language}){voice_note}"
             )
 

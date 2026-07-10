@@ -23,6 +23,7 @@ from engines.cosyvoice.cosyvoice import CosyVoiceEngine
 from engines.cosyvoice.cosyvoice_downloader import cosyvoice_downloader
 from utils.text.character_parser import character_parser
 from utils.voice.discovery import get_character_mapping, get_available_characters
+from utils.voice.character_logging import resolved_character_label
 from utils.audio.cache import get_audio_cache
 
 
@@ -336,7 +337,7 @@ class CosyVoiceAdapter:
                     speaker_audio = char_audio
                     if char_text:
                         reference_text = char_text
-                    print(f"📖 Using character voice '{character_name}'")
+                    print(f"📖 Using character voice '{resolved_character_label(character_name, speaker_audio)}'")
 
             # Generate cache key for this segment
             segment_cache_key = self._generate_cache_key(
@@ -352,7 +353,7 @@ class CosyVoiceAdapter:
             # Check cache first
             cached_segment_audio = self.audio_cache.get_cached_audio(segment_cache_key)
             if cached_segment_audio:
-                print(f"💾 Using cached CosyVoice3 segment for '{character_name}'")
+                print(f"💾 Using cached CosyVoice3 segment for '{resolved_character_label(character_name, speaker_audio)}'")
                 segment_audio = cached_segment_audio[0]
             else:
                 # Convert CosyVoice paralinguistic tags from <tag> to [tag]

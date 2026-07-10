@@ -58,6 +58,7 @@
 
 ### Engine Settings Logging
 - **Missing standard print**: New engines should print the usual `Settings:` summary once per run with the active generation/load parameters so validation can confirm what actually executed
+- **Resolved prompt preview**: Reuse `utils.voice.character_logging.format_resolved_character_block()` for boxed text previews so logs show the voice that will actually speak, not only the parser alias
 
 ### Model Lifecycle - __del__ Destructor
 - **CRITICAL**: Remove `__del__` from engine classes - causes automatic unload after generation ends (when object goes out of scope)

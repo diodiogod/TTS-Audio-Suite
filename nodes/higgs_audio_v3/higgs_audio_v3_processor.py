@@ -22,6 +22,10 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.text.character_parser import character_parser
 from utils.text.segment_parameters import apply_segment_parameters
 from utils.voice.discovery import get_available_characters, voice_discovery
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 
 
 DELIVERY_PROSODY_VALUES = {
@@ -329,10 +333,9 @@ class HiggsAudioV3Processor:
             prefix = _delivery_state_prefix(delivery_state, skip_categories)
             prompt_text = prefix + chunk
             chunk_note = f" chunk {chunk_idx + 1}/{len(chunks)}" if len(chunks) > 1 else ""
-            print(f"🎭 Higgs Audio v3 - Generating for '{character}'{chunk_note}:")
-            print("=" * 60)
-            print(prompt_text)
-            print("=" * 60)
+            display_name = resolved_character_label(character, voice_ref)
+            print(f"🎭 Higgs Audio v3 - Generating for '{display_name}'{chunk_note}:")
+            print(format_resolved_character_block(character, prompt_text, voice_ref))
 
             audio_tensor = self.adapter.generate_with_pause_tags(
                 prompt_text,

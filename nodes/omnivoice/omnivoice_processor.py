@@ -23,6 +23,10 @@ from utils.audio.chunk_timing import ChunkTimingHelper
 from utils.text.character_parser import character_parser
 from utils.text.omnivoice_special_tags import convert_omnivoice_special_tags
 from utils.text.pause_processor import PauseTagProcessor
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 from utils.text.segment_parameters import ParameterValidator, apply_segment_parameters
 from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
 
@@ -98,13 +102,12 @@ class OmniVoiceProcessor:
         show_text_content: bool = True,
     ) -> None:
         voice_note = self._voice_log_note(voice_ref)
-        print(f"🎭 OmniVoice - Generating for '{character_name}' (Language: {language}){voice_note}:")
+        display_name = resolved_character_label(character_name, voice_ref)
+        print(f"🎭 OmniVoice - Generating for '{display_name}' (Language: {language}){voice_note}:")
         if parameter_log:
             print(f"🎛️ OmniVoice params: {parameter_log}")
         if show_text_content:
-            print("=" * 60)
-            print(text_content)
-            print("=" * 60)
+            print(format_resolved_character_block(character_name, text_content, voice_ref))
 
     @staticmethod
     def _format_parameter_log(

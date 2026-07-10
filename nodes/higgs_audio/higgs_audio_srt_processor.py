@@ -18,6 +18,7 @@ if project_root not in sys.path:
 
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
+from utils.voice.character_logging import resolved_character_label
 
 
 class HiggsAudioSRTProcessor:
@@ -236,7 +237,8 @@ class HiggsAudioSRTProcessor:
                                     higgs_text = f"[{display_name}] {segment_text}"
 
                                 # Log what's actually being processed
-                                print(f"📺 Processing SRT segment {i+1}/{len(srt_segments)} ({character}): '{higgs_text[:50]}...' ({expected_duration:.2f}s)")
+                                display_name = resolved_character_label(character, char_audio_dict)
+                                print(f"📺 Processing SRT segment {i+1}/{len(srt_segments)} ({display_name}): '{higgs_text[:50]}...' ({expected_duration:.2f}s)")
 
                                 # Apply per-segment parameters
                                 current_params = dict(generation_params)
