@@ -1,0 +1,211 @@
+{
+  "id": "d7d0e47d-2b68-4f88-9a5e-f15a2d3c8b91",
+  "revision": 0,
+  "last_node_id": 11,
+  "last_link_id": 110,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "CharacterVoicesNode",
+      "pos": [-1450, 120],
+      "size": [240, 186],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [{"name": "opt_audio_input", "shape": 7, "type": "AUDIO", "link": null}],
+      "outputs": [
+        {"name": "opt_narrator", "type": "NARRATOR_VOICE", "links": [103, 104]},
+        {"name": "character_name", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "CharacterVoicesNode", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["voices_examples/male/male_01.wav", ""],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "CharacterVoicesNode",
+      "pos": [-1450, 350],
+      "size": [240, 186],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [{"name": "opt_audio_input", "shape": 7, "type": "AUDIO", "link": null}],
+      "outputs": [
+        {"name": "opt_narrator", "type": "NARRATOR_VOICE", "links": [101]},
+        {"name": "character_name", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "CharacterVoicesNode", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["voices_examples/female/female_01.wav", ""],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 3,
+      "type": "CharacterVoicesNode",
+      "pos": [-1450, 580],
+      "size": [240, 186],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [{"name": "opt_audio_input", "shape": 7, "type": "AUDIO", "link": null}],
+      "outputs": [
+        {"name": "opt_narrator", "type": "NARRATOR_VOICE", "links": [102]},
+        {"name": "character_name", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "CharacterVoicesNode", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["voices_examples/Clint_Eastwood CC3 (enhanced2).wav", ""],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 4,
+      "type": "StringMultilineTagEditor",
+      "pos": [-350, 80],
+      "size": [850, 560],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "text", "type": "STRING", "links": [105]}],
+      "properties": {"Node name for S&R": "StringMultilineTagEditor", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["Hello! This is Fish Audio S2 with native character switching.\n[Alice] Hi there! I'm Alice.\n[Bob] And I'm Bob.\nBack to the narrator voice."]
+    },
+    {
+      "id": 5,
+      "type": "StringMultilineTagEditor",
+      "pos": [-350, 760],
+      "size": [850, 560],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "text", "type": "STRING", "links": [106]}],
+      "properties": {"Node name for S&R": "StringMultilineTagEditor", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["1\n00:00:01,000 --> 00:00:04,000\nHello! This is the narrator.\n\n2\n00:00:04,500 --> 00:00:09,500\n[Alice] Hi there! I'm Alice speaking with precise timing.\n\n3\n00:00:10,000 --> 00:00:14,000\n[Bob] And I'm Bob! The audio matches these exact SRT timings.\nBack to the narrator voice."]
+    },
+    {
+      "id": 6,
+      "type": "FishAudioS2EngineNode",
+      "pos": [-850, 140],
+      "size": [410, 470],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "speaker2", "shape": 7, "type": "*", "link": 101},
+        {"name": "speaker3", "shape": 7, "type": "*", "link": 102}
+      ],
+      "outputs": [{"name": "TTS_engine", "type": "TTS_ENGINE", "links": [107, 108]}],
+      "properties": {"Node name for S&R": "FishAudioS2EngineNode"},
+      "widgets_values": ["s2-pro", "auto", 0.8, 0.8, 1.1, 200, 1024, "8192", true, true, "bfloat16", true, "none", "Native Multi-Speaker", "Auto Inline Tag"],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 7,
+      "type": "UnifiedTTSTextNode",
+      "pos": [650, 160],
+      "size": [420, 390],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "TTS_engine", "type": "TTS_ENGINE", "link": 107},
+        {"name": "opt_narrator", "shape": 7, "type": "*", "link": 103},
+        {"name": "text", "type": "STRING", "widget": {"name": "text"}, "link": 105}
+      ],
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [109]},
+        {"name": "generation_info", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "UnifiedTTSTextNode", "cnr_id": "tts_audio_suite"},
+      "widgets_values": ["", "none", 1552347959, true, 400, "auto", 100, true, 0],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 8,
+      "type": "UnifiedTTSSRTNode",
+      "pos": [650, 780],
+      "size": [440, 560],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "TTS_engine", "type": "TTS_ENGINE", "link": 108},
+        {"name": "opt_narrator", "shape": 7, "type": "*", "link": 104},
+        {"name": "srt_content", "type": "STRING", "widget": {"name": "srt_content"}, "link": 106}
+      ],
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [110]},
+        {"name": "generation_info", "type": "STRING", "links": null},
+        {"name": "timing_report", "type": "STRING", "links": null},
+        {"name": "Adjusted_SRT", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "UnifiedTTSSRTNode"},
+      "widgets_values": ["", "none", 2286528432, "pad_with_silence", true, 0.01, 1, 0.5, 2, 0, false],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 9,
+      "type": "PreviewAudio",
+      "pos": [1160, 220],
+      "size": [440, 88],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [{"name": "audio", "type": "AUDIO", "link": 109}],
+      "outputs": [],
+      "properties": {"Node name for S&R": "PreviewAudio", "cnr_id": "comfy-core", "ver": "0.3.39"},
+      "widgets_values": []
+    },
+    {
+      "id": 10,
+      "type": "PreviewAudio",
+      "pos": [1160, 840],
+      "size": [440, 88],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [{"name": "audio", "type": "AUDIO", "link": 110}],
+      "outputs": [],
+      "properties": {"Node name for S&R": "PreviewAudio", "cnr_id": "comfy-core", "ver": "0.3.39"},
+      "widgets_values": []
+    },
+    {
+      "id": 11,
+      "type": "MarkdownNote",
+      "pos": [-350, 1380],
+      "size": [850, 220],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": ["# Fish Audio S2\n\nUse `[Character]` for suite character switching. Fish's official inline instructions remain written as `<instruction>` in the suite and are converted internally at the engine boundary.\n\nSpeaker 1 is the narrator input. Connect additional Character Voices nodes to Speaker 2 and Speaker 3. Native Multi-Speaker keeps turns in one Fish request; Custom Character Switching generates each segment independently."]
+    }
+  ],
+  "links": [
+    [101, 2, 0, 6, 0, "*"],
+    [102, 3, 0, 6, 1, "*"],
+    [103, 1, 0, 7, 1, "NARRATOR_VOICE"],
+    [104, 1, 0, 8, 1, "NARRATOR_VOICE"],
+    [105, 4, 0, 7, 2, "STRING"],
+    [106, 5, 0, 8, 2, "STRING"],
+    [107, 6, 0, 7, 0, "TTS_ENGINE"],
+    [108, 6, 0, 8, 0, "TTS_ENGINE"],
+    [109, 7, 0, 9, 0, "AUDIO"],
+    [110, 8, 0, 10, 0, "AUDIO"]
+  ],
+  "groups": [
+    {"id": 1, "title": "Fish Audio S2 Engine and Voices", "bounding": [-1480, 70, 1080, 700], "color": "#3f789e", "font_size": 24, "flags": {}},
+    {"id": 2, "title": "Text with Character Tags", "bounding": [-390, 40, 1520, 650], "color": "#8A8", "font_size": 24, "flags": {}},
+    {"id": 3, "title": "SRT with Character Tags", "bounding": [-390, 720, 1520, 700], "color": "#a1309b", "font_size": 24, "flags": {}}
+  ],
+  "config": {},
+  "extra": {"frontendVersion": "1.38.13", "ue_links": [], "links_added_by_ue": [], "VHS_latentpreview": true, "VHS_latentpreviewrate": 0, "VHS_MetadataImage": true, "VHS_KeepIntermediate": true, "workflowRendererVersion": "LG"},
+  "version": 0.4
+}
