@@ -1,6 +1,7 @@
 """Fish Audio S2 Pro engine configuration node."""
 
 import importlib.util
+import json
 import os
 import re
 import sys
@@ -112,6 +113,40 @@ class FishAudioS2EngineNode(base_module.BaseTTSNode):
     RETURN_NAMES = ("TTS_engine",)
     FUNCTION = "create_engine_config"
     CATEGORY = "TTS Audio Suite/⚙️ Engines"
+
+    @classmethod
+    def IS_CHANGED(cls, device, temperature, top_p, repetition_penalty,
+                   native_chunk_length, max_new_tokens, context_length,
+                   normalize=True, cache_reference=True, precision="bfloat16",
+                   compile=False, model_variant="s2-pro", quantization="none",
+                   multi_speaker_mode="Native Multi-Speaker", language_prompting="Auto Inline Tag",
+                   speaker2=None, **kwargs):
+        speaker_keys = sorted(
+            key for key in kwargs.keys()
+            if SPEAKER_INPUT_PATTERN.fullmatch(key) is not None
+        )
+        fingerprint = {
+            "device": device,
+            "temperature": float(temperature),
+            "top_p": float(top_p),
+            "repetition_penalty": float(repetition_penalty),
+            "native_chunk_length": int(native_chunk_length),
+            "max_new_tokens": int(max_new_tokens),
+            "context_length": str(context_length),
+            "normalize": bool(normalize),
+            "cache_reference": bool(cache_reference),
+            "precision": precision,
+            "compile": bool(compile),
+            "model_variant": model_variant,
+            "quantization": quantization,
+            "multi_speaker_mode": multi_speaker_mode,
+            "language_prompting": language_prompting,
+            "speaker2_connected": speaker2 is not None,
+            "dynamic_speakers_connected": {
+                key: kwargs.get(key) is not None for key in speaker_keys
+            },
+        }
+        return json.dumps(fingerprint, sort_keys=True)
 
     def create_engine_config(self, device, temperature, top_p, repetition_penalty,
                              native_chunk_length, max_new_tokens, context_length,

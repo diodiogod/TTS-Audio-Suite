@@ -188,6 +188,14 @@ class FishAudioS2Processor:
                 "max_new_tokens", "normalize", "cache_reference",
             ))
 
+        def print_custom_segment_preview(log_label: str, turn_text: str):
+            if not show_text_logging:
+                return
+            print("🎭 Fish Audio S2 custom segment:")
+            print("============================================================")
+            print(f"[{log_label}] {turn_text}")
+            print("============================================================")
+
         def flush_turns():
             nonlocal pending_turns, pending_logs, group_index
             if not pending_turns:
@@ -286,16 +294,21 @@ class FishAudioS2Processor:
                 if show_text_logging and self.config.get("language_prompting", "Auto Inline Tag") == "Auto Inline Tag":
                     if language_instruction:
                         print(f"  🌍 Fish Audio S2 prompting language via <{language_instruction}>")
-                if show_text_logging and custom_switching:
-                    print(f"🎭 Fish Audio S2 Pro - {character}: {turn_text}")
                 if custom_switching:
                     flush_turns()
+                    log_label = character
+                    if narrator_has_reference and character == "narrator":
+                        log_label = self._speaker_display_name(1, narrator)
+                    elif override_voice_ref is not None:
+                        log_label = self._speaker_display_name(effective_speaker_number, override_voice_ref)
+                    print_custom_segment_preview(log_label, turn_text)
                     self.adapter.update_config(config)
                     audio = self.adapter.generate_dialogue(
                         turns=[(0, turn_text)],
                         voice_refs=[voice_ref_by_character[character]],
                         seed=int(config.get("seed", seed)) + group_index,
                         enable_audio_cache=enable_audio_cache,
+                        cache_character=character,
                     )
                     records.append({
                         "waveform": audio.cpu(), "sample_rate": self.SAMPLE_RATE,

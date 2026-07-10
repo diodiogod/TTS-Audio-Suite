@@ -59,10 +59,12 @@ class FishAudioS2Adapter:
 
     def generate_single(self, text, voice_ref, seed=0, enable_audio_cache=True, character_name=None):
         return self.generate_dialogue(
-            [(character_name or "narrator", text)], [voice_ref], seed, enable_audio_cache
+            [(0, text)], [voice_ref], seed, enable_audio_cache,
+            cache_character=character_name or "narrator",
         )
 
-    def generate_dialogue(self, turns, voice_refs, seed=0, enable_audio_cache=True):
+    def generate_dialogue(self, turns, voice_refs, seed=0, enable_audio_cache=True,
+                          cache_character="native_dialogue"):
         formatted_turns = []
         for speaker_index, turn_text in turns:
             clean_text = translate_fish_s2_inline_tags((turn_text or "").strip())
@@ -71,6 +73,7 @@ class FishAudioS2Adapter:
         text = "\n".join(formatted_turns)
         if not text:
             return torch.zeros(1, 0)
+
         references = []
         components = []
         reference_texts = []
@@ -85,6 +88,7 @@ class FishAudioS2Adapter:
                 })
             components.append(component)
             reference_texts.append(ref_text)
+
         params = {
             "model_variant": self.config.get("model_variant", "s2-pro"),
             "quantization": self.config.get("quantization", "none"),
@@ -100,16 +104,14 @@ class FishAudioS2Adapter:
         }
         cache_key = self.audio_cache.generate_cache_key(
             "fish_audio_s2", text=text, audio_component="|".join(components),
-            reference_text="|".join(reference_texts), character="native_dialogue", **params,
+            reference_text="|".join(reference_texts), character=cache_character, **params,
         ) if enable_audio_cache else None
         if cache_key:
             cached = self.audio_cache.get_cached_audio(cache_key)
             if cached:
                 print("💾 Fish Audio S2: Using cached audio")
                 return cached[0]
-        audio, sample_rate = self._engine().generate(
-            text=text, references=references, **params,
-        )
+        audio, sample_rate = self._engine().generate(text=text, references=references, **params)
         if sample_rate != self.SAMPLE_RATE:
             raise RuntimeError(f"Fish S2 returned unexpected sample rate {sample_rate}")
         audio = audio.detach().float().cpu()

@@ -211,9 +211,12 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
 
             if engine_type == "fish_audio_s2":
-                stable_params['model_variant'] = 's2-pro'
+                stable_params['model_variant'] = config.get('model_variant', 's2-pro')
                 stable_params['precision'] = config.get('precision', 'bfloat16')
                 stable_params['compile'] = config.get('compile', False)
+                stable_params['quantization'] = config.get('quantization', 'none')
+                stable_params['multi_speaker_mode'] = config.get('multi_speaker_mode', 'Native Multi-Speaker')
+                stable_params['language_prompting'] = config.get('language_prompting', 'Auto Inline Tag')
 
             if engine_type == "omnivoice":
                 stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
@@ -1459,6 +1462,10 @@ Back to the main narrator voice for the conclusion.""",
                 import re
                 from utils.audio.chunk_timing import ChunkTimingHelper
 
+                print(
+                    f"   Audio cache: {'enabled' if enable_audio_cache else 'disabled'} "
+                    "(TTS Text node)"
+                )
                 voice_mapping = {}
                 if audio_tensor is not None or audio_path:
                     voice_mapping['narrator'] = {

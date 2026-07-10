@@ -48,6 +48,11 @@ def _suppress_known_fish_transformers_noise():
                 "ignore",
                 message=r".*model of type `fish_qwen3_omni` to instantiate a model of type.*",
             )
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*torch\.nn\.utils\.weight_norm is deprecated.*",
+                category=FutureWarning,
+            )
             yield
     finally:
         for logger in transformer_loggers:
@@ -62,6 +67,44 @@ def _patch_upstream_project_root_probe() -> None:
     import pyrootutils
 
     pyrootutils.setup_root = lambda *args, **kwargs: PROJECT_ROOT
+
+
+def _patch_fish_reference_loader_backend() -> None:
+    """
+    Fish still passes torchaudio.load(..., backend=...) in ReferenceLoader.
+    On torchaudio 2.9+, load() routes through TorchCodec and ignores backend,
+    so the old backend-selection code is stale and emits warnings.
+    """
+    import io
+    from pathlib import Path
+
+    import torch
+    import torchaudio
+    from fish_speech.inference_engine.reference_loader import ReferenceLoader
+
+    if getattr(ReferenceLoader, "_tts_suite_backend_patch_applied", False):
+        return
+
+    def load_audio_without_legacy_backend(self, reference_audio: bytes | str, sr: int):
+        if len(reference_audio) > 255 or not Path(reference_audio).exists():
+            audio_data = reference_audio
+            reference_audio = io.BytesIO(audio_data)
+
+        waveform, original_sr = torchaudio.load(reference_audio)
+
+        if waveform.shape[0] > 1:
+            waveform = torch.mean(waveform, dim=0, keepdim=True)
+
+        if original_sr != sr:
+            resampler = torchaudio.transforms.Resample(
+                orig_freq=original_sr, new_freq=sr
+            )
+            waveform = resampler(waveform)
+
+        return waveform.squeeze().numpy()
+
+    ReferenceLoader.load_audio = load_audio_without_legacy_backend
+    ReferenceLoader._tts_suite_backend_patch_applied = True
 
 
 def _emit(stream, response):
@@ -265,6 +308,7 @@ def main() -> int:
             if action == "initialize":
                 from fish_speech.inference_engine import TTSInferenceEngine
 
+                _patch_fish_reference_loader_backend()
                 model_path = payload["model_path"]
                 model_variant = payload.get("model_variant", "s2-pro")
                 quantization = payload.get("quantization", "none")

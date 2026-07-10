@@ -213,9 +213,12 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
 
             if engine_type == "fish_audio_s2":
-                stable_params['model_variant'] = 's2-pro'
+                stable_params['model_variant'] = config.get('model_variant', 's2-pro')
                 stable_params['precision'] = config.get('precision', 'bfloat16')
                 stable_params['compile'] = config.get('compile', False)
+                stable_params['quantization'] = config.get('quantization', 'none')
+                stable_params['multi_speaker_mode'] = config.get('multi_speaker_mode', 'Native Multi-Speaker')
+                stable_params['language_prompting'] = config.get('language_prompting', 'Auto Inline Tag')
 
             if engine_type == "omnivoice":
                 stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
@@ -1294,6 +1297,10 @@ Hello! This is unified SRT TTS with character switching.
                 )
 
             elif engine_type == "fish_audio_s2":
+                print(
+                    f"   Audio cache: {'enabled' if enable_audio_cache else 'disabled'} "
+                    "(TTS SRT node)"
+                )
                 timing_params = {
                     'fade_for_StretchToFit': fade_for_StretchToFit,
                     'max_stretch_ratio': max_stretch_ratio,

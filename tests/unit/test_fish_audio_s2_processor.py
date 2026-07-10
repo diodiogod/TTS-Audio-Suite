@@ -71,7 +71,7 @@ def test_srt_uses_global_reference_lookup_with_local_speaker_ids(monkeypatch):
     )
 
     adapter = CapturingAdapter()
-    references = [{"id": "alice"}, {"id": "bob"}, {"id": "rick"}]
+    references = [{"id": "bob"}, {"id": "rick"}]
     processor = PROCESSOR_MODULE.FishAudioS2Processor(
         adapter,
         {"speaker_references": references},
@@ -106,7 +106,7 @@ def test_custom_switching_generates_each_segment_as_local_speaker_zero(monkeypat
     )
 
     adapter = CapturingAdapter()
-    references = [{"id": "alice"}, {"id": "bob"}, {"id": "rick"}]
+    references = [{"id": "bob"}, {"id": "rick"}]
     processor = PROCESSOR_MODULE.FishAudioS2Processor(
         adapter,
         {
