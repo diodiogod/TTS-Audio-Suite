@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.3] - 2026-07-10
+
+### Added
+
+- Keep emotion radar controls aligned at the original node size
+- Prevent the radar chart from overflowing its node
+- Make emotion vector export selectable and downloadable on demand
+- Show confirmation after importing emotion vectors
+
+### Fixed
+
+- Fix IndexTTS-2 emotion vector controls
 ## [5.4.2] - 2026-07-10
 
 ### Added

@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 import { EmotionRadarUI } from "./emotion_radar_ui.js";
 import { EmotionRadarEvents } from "./emotion_radar_events.js";
 import { EmotionRadarVisualization } from "./emotion_radar_visualization.js";
+import { exportEmotionConfiguration } from "./emotion_radar_export.js";
 
 /**
  * Core Emotion Radar Chart Interface
@@ -227,12 +228,6 @@ export class EmotionRadarInterface {
     // Export current emotion configuration
     exportEmotionConfig() {
         const config = { ...this.emotionValues };
-        const configText = JSON.stringify(config, null, 2);
-
-        navigator.clipboard.writeText(configText).then(() => {
-            this.showMessage('Emotion configuration copied to clipboard');
-        }).catch(() => {
-            alert(`Emotion Configuration:\n${configText}`);
-        });
+        exportEmotionConfiguration(config);
     }
 }

@@ -3,6 +3,8 @@
  * Draws directly on ComfyUI canvas - no DOM positioning issues
  */
 
+import { exportEmotionConfiguration, showEmotionFeedback } from "./emotion_radar_export.js";
+
 export function createEmotionRadarCanvasWidget(node) {
     const WIDGET_HEIGHT = 350; // Increased to prevent overflow
 
@@ -315,6 +317,7 @@ export function createEmotionRadarCanvasWidget(node) {
 
             if (importedCount > 0) {
                 console.log(`🎭 Successfully imported ${importedCount} emotion values`);
+                showEmotionFeedback(`Imported ${importedCount} emotion vector${importedCount === 1 ? "" : "s"}.`);
                 // Force redraw
                 if (node.graph && node.graph.setDirtyCanvas) {
                     node.graph.setDirtyCanvas(true);
@@ -332,12 +335,15 @@ export function createEmotionRadarCanvasWidget(node) {
     function drawRadarChart(ctx, width, widgetY) {
         const chartY = widgetY + 10;
 
-        // Clear background
+        // Fixed-size node with a clipped canvas: no drawing can escape the
+        // radar widget even if an older workflow has an unusual node size.
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, widgetY, width, WIDGET_HEIGHT);
+        ctx.clip();
+
         ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(0, chartY, width, WIDGET_HEIGHT);
-
-        // Save context
-        ctx.save();
         ctx.translate(0, chartY);
 
         // Draw grid circles
@@ -624,7 +630,7 @@ export function createEmotionRadarCanvasWidget(node) {
                         });
                         return true;
                     } else if (localX >= rightButtonX && localX <= rightButtonX + buttonWidth) {
-                        // Export button - copy emotion configuration to clipboard
+                        // Export button - open selectable JSON
                         const config = {
                             "Happy": emotionValues["Happy"],
                             "Angry": emotionValues["Angry"],
@@ -636,28 +642,7 @@ export function createEmotionRadarCanvasWidget(node) {
                             "Melancholic": emotionValues["Melancholic"]
                         };
 
-                        const configText = JSON.stringify(config, null, 2);
-
-                        // Try to copy to clipboard
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            navigator.clipboard.writeText(configText).then(() => {
-                                console.log("🎭 Emotion configuration copied to clipboard");
-                                // Show brief success feedback by temporarily changing button color
-                                setTimeout(() => {
-                                    // Force a redraw to show feedback
-                                    if (node.graph && node.graph.setDirtyCanvas) {
-                                        node.graph.setDirtyCanvas(true);
-                                    }
-                                }, 50);
-                            }).catch((err) => {
-                                console.error("Failed to copy to clipboard:", err);
-                                // Fallback to alert
-                                alert(`Emotion Configuration (copied to clipboard failed):\n\n${configText}`);
-                            });
-                        } else {
-                            // Fallback for browsers without clipboard API
-                            alert(`Emotion Configuration:\n\n${configText}\n\nCopy this text manually.`);
-                        }
+                        exportEmotionConfiguration(config);
                         return true;
                     } else if (localX >= rightButtonX + buttonWidth + spacing && localX <= rightButtonX + 2*buttonWidth + spacing) {
                         // Import button (right side) - load emotion configuration from clipboard

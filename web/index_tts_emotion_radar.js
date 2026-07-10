@@ -25,8 +25,10 @@ app.registerExtension({
                     originalNodeCreated.apply(this, arguments);
                 }
 
-                // Set appropriate node size for the radar chart (compact default)
-                this.setSize([340, 580]); // Width, Height to accommodate sliders + radar
+                // The radar uses a fixed canvas layout. Keeping the node fixed
+                // prevents its controls from drifting away from their hit areas.
+                this.resizable = false;
+                this.setSize([340, 580]);
 
                 try {
                     // Create and add the radar chart canvas widget
