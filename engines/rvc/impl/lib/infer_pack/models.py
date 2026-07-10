@@ -41,9 +41,11 @@ class TextEncoder256(nn.Module):
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
     def forward(self, phone, pitch, lengths):
-        if pitch == None:
+        phone = phone.to(dtype=self.emb_phone.weight.dtype)
+        if pitch is None:
             x = self.emb_phone(phone)
         else:
+            pitch = pitch.to(dtype=torch.long)
             x = self.emb_phone(phone) + self.emb_pitch(pitch)
         x = x * math.sqrt(self.hidden_channels)  # [b, t, h]
         x = self.lrelu(x)
@@ -88,9 +90,11 @@ class TextEncoder768(nn.Module):
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
     def forward(self, phone, pitch, lengths):
+        phone = phone.to(dtype=self.emb_phone.weight.dtype)
         if pitch is None:
             x = self.emb_phone(phone)
         else:
+            pitch = pitch.to(dtype=torch.long)
             x = self.emb_phone(phone) + self.emb_pitch(pitch)
         x = x * math.sqrt(self.hidden_channels)  # [b, t, h]
         x = self.lrelu(x)

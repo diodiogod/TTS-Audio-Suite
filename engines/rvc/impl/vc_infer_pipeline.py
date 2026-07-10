@@ -215,7 +215,8 @@ class VC(FeatureExtractor):
                 f0_max=f0_max,
             )
             p_len = min(pitch.shape[0], pitchf.shape[0])
-            pitch = pitch[:p_len].astype(np.int64 if self.device != 'mps' else np.float32)
+            # Pitch values are categorical embedding indices, including on MPS.
+            pitch = pitch[:p_len].astype(np.int64)
             pitchf = pitchf[:p_len].astype(np.float32)
             pitch = torch.from_numpy(pitch).to(self.device).unsqueeze(0)
             pitchf = torch.from_numpy(pitchf).to(self.device).unsqueeze(0)
