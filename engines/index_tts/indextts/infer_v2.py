@@ -139,6 +139,10 @@ class IndexTTS2:
 
         # Initialize QwenEmotion for text-based emotion control if available
         self.qwen_emo = None
+        # A text-emotion model failure must not abort an otherwise valid TTS run.
+        # Once it fails, skip it for the lifetime of this engine instance instead
+        # of repeatedly hitting a poisoned CUDA/accelerate state on later segments.
+        self._qwen_emo_disabled = False
         self.qwen_emo_path = None  # Store path for lazy loading
         
         try:
@@ -162,7 +166,7 @@ class IndexTTS2:
                     print(f"⚠️ QwenEmotion model incomplete - missing files: {missing_files}")
                     print("ℹ️ Falling back to audio emotion only")
                 else:
-                    self.qwen_emo = QwenEmotion(normalized_path)
+                    self.qwen_emo = QwenEmotion(normalized_path, preferred_device=self.device)
                     print("✅ QwenEmotion loaded - text emotion support enabled")
             else:
                 print("ℹ️ QwenEmotion not available - audio emotion only")
@@ -578,16 +582,32 @@ class IndexTTS2:
 
         if use_emo_text:
             # automatically generate emotion vectors from text prompt
-            if self.qwen_emo is None:
-                print("⚠️ QwenEmotion model not available - cannot use text emotion. Ignoring use_emo_text=True")
+            if self.qwen_emo is None or self._qwen_emo_disabled:
+                print("⚠️ QwenEmotion text analysis unavailable - continuing without text emotion")
                 use_emo_text = False
             else:
                 if emo_text is None:
                     emo_text = text  # use main text prompt
-                emo_dict = self.qwen_emo.inference(emo_text)
-                print(f"detected emotion vectors from text: {emo_dict}")
-                # convert ordered dict to list of vectors; the order is VERY important!
-                emo_vector = list(emo_dict.values())
+                try:
+                    emo_dict = self.qwen_emo.inference(emo_text)
+                except Exception as exc:
+                    # QwenEmotion is an optional classifier.  CUDA/accelerate
+                    # failures here should degrade to ordinary IndexTTS-2
+                    # synthesis, rather than discarding every audio segment.
+                    self._qwen_emo_disabled = True
+                    use_emo_text = False
+                    # Do not silently substitute a stale/global vector for the
+                    # requested text emotion.  Continue with voice-derived
+                    # conditioning instead.
+                    emo_vector = None
+                    print(
+                        "⚠️ QwenEmotion text analysis failed; continuing without "
+                        f"text emotion ({type(exc).__name__}: {exc})"
+                    )
+                else:
+                    print(f"detected emotion vectors from text: {emo_dict}")
+                    # convert ordered dict to list of vectors; the order is VERY important!
+                    emo_vector = list(emo_dict.values())
 
         if emo_vector is not None:
             # Apply normalization to prevent voice identity loss
@@ -1027,11 +1047,18 @@ def find_most_similar_cosine(query_vector, matrix):
     return most_similar_index
 
 class QwenEmotion:
-    def __init__(self, model_dir):
+    def __init__(self, model_dir, preferred_device=None):
         self.model_dir = model_dir
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
         import torch
-        load_kwargs = {"device_map": "auto"}
+        # Auto-sharding split this small classifier across both GPUs in some
+        # ComfyUI setups.  Accelerate then tried to move Qwen's cache between
+        # devices and produced CUDA ``invalid argument`` errors.  Keep Qwen on
+        # one GPU; prefer the device with the most available memory.
+        qwen_device = self._select_device(preferred_device)
+        load_kwargs = {"device_map": {"": qwen_device}} if qwen_device else {}
+        if qwen_device:
+            print(f"🤖 QwenEmotion loading on {qwen_device} (single device)")
         try:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_dir,
@@ -1080,6 +1107,20 @@ class QwenEmotion:
         self.max_score = 1.2
         self.min_score = 0.0
 
+    @staticmethod
+    def _select_device(preferred_device=None):
+        preferred = str(preferred_device) if preferred_device is not None else None
+        if not torch.cuda.is_available():
+            return preferred or "cpu"
+
+        # QwenEmotion is small enough for one GPU.  Selecting the roomiest GPU
+        # avoids forcing it onto a nearly-full IndexTTS device.
+        try:
+            free_memory = [torch.cuda.mem_get_info(index)[0] for index in range(torch.cuda.device_count())]
+            return f"cuda:{max(range(len(free_memory)), key=free_memory.__getitem__)}"
+        except Exception:
+            return preferred if preferred and preferred.startswith("cuda") else "cuda:0"
+
     def clamp_score(self, value):
         return max(self.min_score, min(self.max_score, value))
 
@@ -1113,15 +1154,25 @@ class QwenEmotion:
             add_generation_prompt=True,
             enable_thinking=False,
         )
-        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
+        # With device_map="auto", model.device is the input/first device exposed
+        # by accelerate.  Keep the move explicit instead of relying on a chained
+        # BatchEncoding operation, which has triggered invalid CUDA arguments on
+        # some transformers/accelerate combinations.
+        input_device = getattr(self.model, "device", None)
+        if input_device is None or str(input_device) == "meta":
+            input_device = next(self.model.parameters()).device
+        model_inputs = self.tokenizer([text], return_tensors="pt")
+        model_inputs = {key: value.to(input_device) for key, value in model_inputs.items()}
 
         # conduct text completion
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens=32768,
+            # The classifier returns a tiny JSON object; an unbounded 32k-token
+            # generation wastes VRAM and makes CUDA failures more likely.
+            max_new_tokens=256,
             pad_token_id=self.tokenizer.eos_token_id
         )
-        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+        output_ids = generated_ids[0][len(model_inputs["input_ids"][0]):].tolist()
 
         # parsing thinking content
         try:

@@ -441,6 +441,33 @@ export function attachAllEventHandlers(
         return selection;
     };
 
+    const replaceCharacterComponentInColonTag = (text, caretPos, character) => {
+        const tagStart = text.lastIndexOf("[", caretPos);
+        const tagEnd = text.indexOf("]", caretPos);
+        if (tagStart < 0 || tagEnd < caretPos) return null;
+
+        const content = text.slice(tagStart + 1, tagEnd);
+        const colonIndex = content.indexOf(":");
+        if (colonIndex <= 0) return null;
+
+        const first = content.slice(0, colonIndex).trim();
+        const secondEndRelative = content.indexOf("|", colonIndex);
+        const secondEnd = secondEndRelative >= 0 ? secondEndRelative : content.length;
+        const second = content.slice(colonIndex + 1, secondEnd).trim();
+        const parameterKey = /^(seed|temp|temperature|cfg|cfg_weight|emotion_alpha|vector|emotion|speed|top_p|top_k|steps|instruction|quality|sound_event|ambient_sound)$/i;
+        if (parameterKey.test(first) || /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(second)) return null;
+
+        const caretRelative = caretPos - (tagStart + 1);
+        const replacingFirst = caretRelative <= colonIndex;
+        const componentStart = replacingFirst ? 0 : colonIndex + 1;
+        const componentEnd = replacingFirst ? colonIndex : secondEnd;
+        const newContent = content.slice(0, componentStart) + character + content.slice(componentEnd);
+        return {
+            newText: text.slice(0, tagStart + 1) + newContent + text.slice(tagEnd),
+            newCaretPos: tagStart + 1 + componentStart + character.length,
+        };
+    };
+
     // Add character button
     addCharBtn.addEventListener("click", () => {
         const char = charInput.value.trim() || charSelect.value;
@@ -458,6 +485,20 @@ export function attachAllEventHandlers(
             caretPos = selection.start + leadingWhitespace + 1; // position after [
         } else {
             caretPos = selection ? selection.start : getCaretPos();
+        }
+
+        const colonComponentResult = replaceCharacterComponentInColonTag(text, caretPos, char);
+        if (colonComponentResult) {
+            setEditorText(colonComponentResult.newText);
+            setTimeout(() => {
+                setCaretPos(colonComponentResult.newCaretPos);
+                state.addToHistory(colonComponentResult.newText, colonComponentResult.newCaretPos);
+                state.saveToLocalStorage(storageKey);
+                editor.focus();
+            }, 0);
+            widget.callback?.(widget.value);
+            historyStatus.textContent = state.getHistoryStatus();
+            return;
         }
 
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
