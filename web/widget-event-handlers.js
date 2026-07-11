@@ -1225,6 +1225,25 @@ export function attachAllEventHandlers(
         return content.split("|").every(part => new RegExp(`^(?:${emotionNames}):[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$`, "i").test(part.trim()));
     };
 
+    const appendIndexTTSParameterToTag = (existingTag, replacement) => {
+        if (!/^\[[^\[\]]+\]$/.test(existingTag) || isIndexTTSEmotionTag(existingTag)) return null;
+
+        const parameter = replacement.slice(1, -1).trim();
+        const parameterKey = parameter.split(":", 1)[0].trim().toLowerCase();
+        if (!/^(?:vector|emotion|happy|angry|sad|afraid|disgusted|melancholic|surprised|calm)$/.test(parameterKey)) {
+            return null;
+        }
+
+        const parts = existingTag.slice(1, -1).split("|").map(part => part.trim()).filter(Boolean);
+        const existingIndex = parts.findIndex((part, index) => {
+            if (index === 0 || !part.includes(":")) return false;
+            return part.split(":", 1)[0].trim().toLowerCase() === parameterKey;
+        });
+        if (existingIndex >= 0) parts[existingIndex] = parameter;
+        else parts.push(parameter);
+        return `[${parts.join("|")}]`;
+    };
+
     const insertOrReplaceIndexTTSTag = (replacement) => {
         const text = getPlainText();
         const caretPos = getCaretPos();
@@ -1236,6 +1255,14 @@ export function attachAllEventHandlers(
                 const newText = text.slice(0, start) + replacement + text.slice(closingIndex + 1);
                 commitEditorTextChange(newText, start + replacement.length);
                 showNotification(`✓ Updated: ${replacement}`, 1500);
+                return;
+            }
+
+            const composed = appendIndexTTSParameterToTag(existing, replacement);
+            if (composed) {
+                const newText = text.slice(0, start) + composed + text.slice(closingIndex + 1);
+                commitEditorTextChange(newText, start + composed.length);
+                showNotification(`✓ Added emotion parameter: ${composed}`, 1500);
                 return;
             }
         }

@@ -64,7 +64,7 @@
 - `MOSS_TTS_PROMPT_FIELDS_GUIDE.md` - Official MOSS whole-segment prompt fields and inline `<>` translation limits
 - `COSYVOICE3_TAGS_GUIDE.md` - CosyVoice3 native paralinguistic tags
 - `CHATTERBOX_V2_SPECIAL_TOKENS.md` - ChatterBox v2 emotion tokens
-- `IndexTTS2_Emotion_Control_Guide.md` - IndexTTS-2 emotion vectors
+- `IndexTTS2_Emotion_Control_Guide.md` - IndexTTS-2 vector, text, audio, and blended emotion controls
 - `VOCAL_REMOVAL_GUIDE.md` - Vocal separation guide
 - `qwen3_tts_optimizations.md` - Qwen3-TTS torch.compile setup
 - `MODEL_DOWNLOAD_SOURCES.md` - All HF repo links (auto-generated)

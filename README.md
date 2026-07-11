@@ -33,7 +33,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **VibeVoice** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +21 | 5.4GB / 18GB | 90-min long-form, Native 4-speaker (Base models) |
 | **Higgs Audio 2** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇰🇷 | ~9GB | 3 multi-speaker, CUDA graphs (55+ tokens/sec) |
 | **Higgs Audio v3** | 🌐 100+ languages | ~8GB | Native inline emotion/style/prosody/SFX tags, Zero-shot voice cloning |
-| **IndexTTS-2** | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Text as reference |
+| **IndexTTS-2** | 🇺🇸​🇨🇳​🇯🇵 | ~4.7GB | Emotion Control: 8 vectors, Qwen text analysis, audio reference, and blending |
 | **CosyVoice3** | 🇺🇸​🇨🇳​🇯🇵​🇰🇷 | ~5.4GB | Paralinguistic tags |
 | **Qwen3-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +4 | ~3-6GB | Voice design, ASR (Automatic Speech Recognition) |
 | **Granite ASR** | 🇺🇸​🇩🇪​🇪🇸​🇫🇷​🇯🇵​🇵🇹 | ~4.6GB | ASR (Automatic Speech Recognition), Native speaker attribution / diarization (plus model variant) |
@@ -710,19 +710,19 @@ Both versions fully support character switching, language switching, and pause t
 <details>
 <summary><h3>IndexTTS-2 With Emotion Control</h3></summary>
 
-**NEW in v4.9.0**: Revolutionary IndexTTS-2 engine with advanced emotion control and unified emotion architecture!
+**NEW in v4.9.0**: Revolutionary IndexTTS-2 engine with advanced emotion control and dual-source emotion blending!
 
-* **Unified Emotion Control**: Single `emotion_control` input supporting multiple emotion methods with intelligent priority system
+* **Separate Emotion Inputs**: Connect vectors or Qwen text emotion to `emotion_control` and audio references to `emotion_audio`; both can be used together
 * **Dynamic Text Emotion**: AI-powered QwenEmotion analysis with dynamic `{seg}` template processing for contextual per-segment emotions
-* **Direct Audio Reference**: Use any audio file as emotion reference for natural emotional expression
-* **Character Voices Integration**: Use Character Voices `opt_narrator` output as emotion reference with automatic detection
+* **Direct Audio Reference**: Use any audio file on `emotion_audio` as an emotion reference for natural expression
+* **Character Voices Integration**: Use Character Voices `opt_narrator` on `emotion_audio`, including per-character `[Character:emotion_ref]` references
 * **8-Emotion Vector Control**: Manual precision control over Happy, Angry, Sad, Surprised, Afraid, Disgusted, Calm, and Melancholic emotions
-* **Character Tag Emotions**: Per-character emotion control using `[Character:emotion_ref]` syntax (highest priority)
+* **Character Tag Emotions**: Per-character audio emotion control using `[Character:emotion_ref]` syntax, blendable with vector/text emotion
 * **Emotion Alpha Control**: Fine-tune emotion intensity from 0.0 (neutral) to 2.0 (maximum dramatic expression)
 
 **Key Features:**
 
-- **Emotion Priority System**: Character tags > Global emotion control with intelligent override handling
+- **Emotion Blending**: Audio references and vector/text emotion are blended in IndexTTS-2's latent conditioning space; character tags select segment-local audio references
 - **Dynamic Templates**: Use `{seg}` placeholder for contextual emotion analysis (e.g., "Worried parent speaking: {seg}")
 - **Universal Compatibility**: Works with existing TTS Text and TTS SRT nodes seamlessly
 - **Advanced Caching**: Stable audio content hashing for reliable cache hits across sessions

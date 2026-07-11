@@ -127,7 +127,7 @@ Parameters are applied **only to the current segment** and automatically revert 
 | `cfg` | — | float | 0.0-20.0 | CFG strength |
 | `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
 | `top_k` | `topk` | int | 1-100 | Top-k sampling |
-| `emotion_alpha` | — | float | 0.0-1.0 | Emotion control strength |
+| `emotion_alpha` | — | float | 0.0-2.0 | Shared audio/vector/text emotion intensity |
 
 IndexTTS-2 also supports inline emotion controls. Named unsigned values replace
 that dimension; explicitly signed values adjust the connected vector:
@@ -161,6 +161,16 @@ the current segment before QwenEmotion analysis:
 Click a numeric emotion tag in the TTS Tag Editor to open a contextual radar
 directly beside that tag. The editor also creates and manages text
 presets in `models/TTS/IndexTTS/emotion_presets.json`.
+
+IndexTTS-2 has separate engine inputs for these sources: connect vector or text
+emotion to `emotion_control` and audio emotion references to `emotion_audio`.
+Both may be connected simultaneously; IndexTTS-2 blends them during emotion
+conditioning. Inline vector/text controls override the connected vector/text
+values for their segment, while `[Character:emotion_ref]` selects a
+segment-local audio reference that can still blend with vector/text emotion.
+When an emotion control is inserted with the caret inside a character/audio tag,
+the editor appends or updates it as another pipe parameter, for example
+`[Bob:br_ivan_raiva3|sad:+0.25]`.
 
 ---
 
