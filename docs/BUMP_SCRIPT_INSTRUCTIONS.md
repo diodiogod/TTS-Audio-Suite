@@ -12,21 +12,26 @@
 
 **⚠️ IMPORTANT: Use positional arguments, NOT --commit/--changelog flags**
 
-```bash
-# EASIEST: Just use 'patch' - script auto-increments the version
-python3 scripts/bump_version_enhanced.py patch "<commit_desc>" "<changelog_desc>"
+```powershell
+# Windows: use the canonical ComfyUI environment for this project
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' patch "<commit_desc>" "<changelog_desc>"
 
-# OR: Specify exact version if needed
-python3 scripts/bump_version_enhanced.py <version> "<commit_desc>" "<changelog_desc>"
+# OR: specify an exact version if needed
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' <version> "<commit_desc>" "<changelog_desc>"
+```
+
+```bash
+# Linux/macOS: use the available Python 3 interpreter
+python3 scripts/bump_version_enhanced.py patch "<commit_desc>" "<changelog_desc>"
 ```
 
 ### Examples
 
 #### Multiline Format (Recommended Standard)
 
-```bash
+```powershell
 # Patch release (bug fixes) - CORRECT FORMAT
-python3 scripts/bump_version_enhanced.py 3.2.9 "Fix character alias resolution
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' 3.2.9 "Fix character alias resolution
 
 Technical details:
 - Fix parser bypassing character tags in single mode
@@ -37,8 +42,8 @@ Technical details:
 - Improve character name recognition accuracy
 - Better error handling for invalid character names"
 
-# Minor release (new features) - CORRECT FORMAT  
-python3 scripts/bump_version_enhanced.py 3.3.0 "Add Higgs Audio 2 TTS engine
+# Minor release (new features) - CORRECT FORMAT
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' 3.3.0 "Add Higgs Audio 2 TTS engine
 
 Implementation details:
 - Integrate boson_multimodal voice cloning system
@@ -50,7 +55,7 @@ Implementation details:
 - Multiple built-in voice presets available"
 
 # Major release (breaking changes) - CORRECT FORMAT
-python3 scripts/bump_version_enhanced.py 4.0.0 "Complete unified architecture implementation
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' 4.0.0 "Complete unified architecture implementation
 
 Breaking changes:
 - Migrate all nodes to unified interface pattern
@@ -64,22 +69,22 @@ Breaking changes:
 ```
 
 #### Auto-Increment Examples (Recommended)
-```bash
-# Auto-increment patch version (4.5.25 → 4.5.26) - CORRECT FORMAT
-python3 scripts/bump_version_enhanced.py patch "Fix character parsing issues" "Fix character name handling in TTS generation"
+```powershell
+# Auto-increment patch version (4.5.25 → 4.5.26) - Windows
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' patch "Fix character parsing issues" "Fix character name handling in TTS generation"
 
-# Auto-increment minor version (4.5.25 → 4.6.0) - CORRECT FORMAT  
-python3 scripts/bump_version_enhanced.py minor "Add new TTS engine support" "Add Higgs Audio 2 TTS engine with voice cloning"
+# Auto-increment minor version (4.5.25 → 4.6.0) - Windows
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' minor "Add new TTS engine support" "Add Higgs Audio 2 TTS engine with voice cloning"
 ```
 
 #### Single-Line Format (Only for Super Minor Changes)
-```bash
-python3 scripts/bump_version_enhanced.py patch "Fix typo in node tooltip" "Fix typo in audio analyzer tooltip"
+```powershell
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' patch "Fix typo in node tooltip" "Fix typo in audio analyzer tooltip"
 ```
 
 #### Dry-Run Preview (Test Before Committing)
-```bash
-python3 scripts/bump_version_enhanced.py patch "Fix preview issues" "Fix preview not reflecting filter parameters" --dry-run
+```powershell
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' patch "Fix preview issues" "Fix preview not reflecting filter parameters" --dry-run
 ```
 
 #### Auto-Categorization System
@@ -99,21 +104,22 @@ python3 scripts/bump_version_enhanced.py patch "Fix preview issues" "Fix preview
   - **Commit**: Technical implementation details for developers
   - **Changelog**: User-facing benefits and impacts
 
-**Bash Syntax Notes:**
+**Command Syntax Notes:**
 - Multiline strings need proper quoting (opening quote on first line, closing quote on last line)
-- Use `\` (backslash) for line continuation in bash commands
+- The Windows command uses PowerShell's `&` call operator and the canonical project Python path
+- The Linux/macOS command uses `python3`
 - Don't add manual category prefixes like "Fixed:" - script handles categorization automatically!
 
 ### Interactive Mode (Recommended for Complex Changes)
 
-```bash
-python3 scripts/bump_version_enhanced.py 3.2.9 --interactive
+```powershell
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' 3.2.9 --interactive
 ```
 
 ### Legacy Mode (Same Description for Both)
 
-```bash
-python3 scripts/bump_version_enhanced.py 3.2.9 "Fix bugs and improve stability"
+```powershell
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' 3.2.9 "Fix bugs and improve stability"
 ```
 
 ### What the Script Does
@@ -239,13 +245,14 @@ git commit -m "Prepare for version bump"
 - Use semantic versioning: `4.5.25` (not `v4.5.25` or `4.5`)
 - Or use auto-increment: `patch`, `minor`, `major`
 
-**Bash syntax errors with multiline**
-- Make sure opening quote is on same line as `--commit` or `--changelog`  
+**Command syntax errors with multiline**
+- Make sure opening quote is on same line as `--commit` or `--changelog`
 - Make sure closing quote is on its own line
-- Use `\` for line continuation
+- On Windows, use the PowerShell command shown above
+- On Linux/macOS, use `python3`
 
 **Want to see what will happen before committing?**
-```bash
+```powershell
 # Add --dry-run to preview changelog categorization
-python3 scripts/bump_version_enhanced.py patch "description" "changelog" --dry-run
+& 'J:\stablediffusion1111s2\Data\Packages\ComfyUIPy129\test_env_error\Scripts\python.exe' 'scripts\bump_version_enhanced.py' patch "description" "changelog" --dry-run
 ```
