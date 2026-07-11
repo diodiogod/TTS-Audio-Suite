@@ -898,6 +898,7 @@ def register_index_tts_factory():
         use_cuda_kernel = config.additional_params.get("use_cuda_kernel", None) if config.additional_params else None
         use_deepspeed = config.additional_params.get("use_deepspeed", False) if config.additional_params else False
         use_torch_compile = config.additional_params.get("use_torch_compile", False) if config.additional_params else False
+        use_accel = config.additional_params.get("use_accel", False) if config.additional_params else False
         low_vram = config.additional_params.get("low_vram", False) if config.additional_params else False
         
         if not model_path or not os.path.exists(model_path):
@@ -966,6 +967,7 @@ def register_index_tts_factory():
                 use_cuda_kernel=use_cuda_kernel,
                 use_deepspeed=use_deepspeed,
                 use_torch_compile=use_torch_compile,
+                use_accel=use_accel,
                 low_vram=low_vram
             )
             

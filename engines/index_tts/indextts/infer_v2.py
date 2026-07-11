@@ -46,7 +46,7 @@ from utils.audio.librosa_fallback import safe_load
 class IndexTTS2:
     def __init__(
             self, cfg_path="checkpoints/config.yaml", model_dir="checkpoints", use_fp16=False, device=None,
-            use_cuda_kernel=None,use_deepspeed=False, use_torch_compile=False, low_vram=False
+            use_cuda_kernel=None,use_deepspeed=False, use_torch_compile=False, use_accel=False, low_vram=False
     ):
         """
         Args:
@@ -57,10 +57,12 @@ class IndexTTS2:
             use_cuda_kernel (None | bool): whether to use BigVGan custom fused activation CUDA kernel, only for CUDA device.
             use_deepspeed (bool): whether to use DeepSpeed or not.
             use_torch_compile (bool): whether to use torch.compile for optimization or not.
+            use_accel (bool): whether to enable GPT2 FlashAttention acceleration.
         """
         use_fp16 = self._coerce_bool_flag(use_fp16)
         use_deepspeed = self._coerce_bool_flag(use_deepspeed)
         use_torch_compile = self._coerce_bool_flag(use_torch_compile)
+        use_accel = self._coerce_bool_flag(use_accel)
         low_vram = self._coerce_bool_flag(low_vram)
 
         if device is not None:
@@ -131,6 +133,7 @@ class IndexTTS2:
         if use_torch_compile:
             self._validate_torch_compile_support()
         self.use_torch_compile = use_torch_compile
+        self.use_accel = use_accel
         self.low_vram = low_vram
         
         # Determine device for initial model loading
@@ -176,7 +179,9 @@ class IndexTTS2:
             print("ℹ️ Falling back to audio emotion only")
 
         print("🔄 IndexTTS-2: Loading GPT model...")
-        self.gpt = UnifiedVoice(**self.cfg.gpt)
+        gpt_config = OmegaConf.to_container(self.cfg.gpt, resolve=True)
+        gpt_config["use_accel"] = self.use_accel
+        self.gpt = UnifiedVoice(**gpt_config)
         self.gpt_path = os.path.join(self.model_dir, self.cfg.gpt_checkpoint)
         load_checkpoint(self.gpt, self.gpt_path)
         print(f"🔄 IndexTTS-2: Moving GPT to {self.load_device}...")
@@ -1124,6 +1129,13 @@ class QwenEmotion:
             return preferred if preferred and preferred.startswith("cuda") else "cuda:0"
 
     def clamp_score(self, value):
+        try:
+            value = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"QwenEmotion returned a non-numeric emotion score {value!r}. "
+                "Please retry the request."
+            ) from exc
         return max(self.min_score, min(self.max_score, value))
 
     def convert(self, content):

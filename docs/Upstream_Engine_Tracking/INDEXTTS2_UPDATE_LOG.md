@@ -207,6 +207,47 @@ This document tracks updates applied to our bundled IndexTTS-2 code from the ups
 
 ---
 
+---
+
+## 2026-07-11: Upstream Audit Before Release
+
+**Upstream repository checked:** `index-tts/index-tts` (`main`)
+**Upstream head observed:** `b5bd657` (2026-07-08)
+**Check performed:** 2026-07-11
+
+### Relevant upstream changes reviewed
+
+| Commit | Upstream change | Bundled status | Release action |
+|---|---|---|---|
+| `843972e` | Coerce QwenEmotion JSON emotion scores to `float` and reject non-numeric values clearly | **Applied** in bundled `clamp_score()` | Run a text-emotion generation with numeric-string classifier output |
+| `b154a1b` | WebUI text/vector preset save/load management | **Already covered differently** by the ComfyUI-native preset manager and `emotion_presets.json` integration | No direct port needed |
+| `b5bd657` | Expose `--accel` and `--torch-compile`, add optional acceleration extras and WebUI settings | **Applied selectively**; suite now forwards `use_accel` into the bundled GPT path, while retaining ComfyUI-owned dependency handling | Validate acceleration fallback on compatible and non-accelerated setups |
+| `7264ce2` | Improve IndexTTS-2 model resource checks and HF cache handling | **Suite-owned downloader differs** and needs a separate comparison if download failures are reported | No blind copy into bundled code |
+
+### Findings
+
+- No upstream change was found that invalidates the current eight-emotion vector order,
+  Qwen text-emotion syntax, audio-reference blending, or the suite's inline tag format.
+- The upstream QwenEmotion string-score fix is directly relevant to the suite's text-emotion
+  path and should be applied before a release.
+- The upstream acceleration work is not a drop-in replacement because this repository
+  bundles and adapts IndexTTS-2. The suite already contains the acceleration modules, but
+  `utils/models/unified_model_interface.py` should be checked so `use_accel` reaches the
+  bundled `IndexTTS2` constructor.
+- Upstream WebUI presets are not copied verbatim: the suite's ComfyUI editor has a richer
+  vector/radar, inline-tag, sidebar, and filesystem preset implementation.
+
+### Release follow-up checklist
+
+- [x] Apply the upstream `clamp_score()` numeric coercion.
+- [x] Pass `use_accel` through the unified IndexTTS-2 factory; validate fallback behavior.
+- [ ] Run a Qwen text-emotion generation using numeric-string classifier output.
+- [ ] Verify acceleration flags on a compatible CUDA installation and on a setup without
+      optional acceleration dependencies.
+- [ ] Recheck bundled model-resource validation against the current upstream `check` logic.
+
+---
+
 ## Next Update Check: 2025-11-20
 
 **Monitoring:** Watch for commits to `indextts/infer_v2.py` in https://github.com/index-tts/index-tts

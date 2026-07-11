@@ -700,6 +700,7 @@ function addStringMultilineTagEditorWidget(node) {
                 }
 
                 const tagSpan = document.createElement("span");
+                tagSpan.className = "string-multiline-tag-editor-tag-token";
                 tagSpan.style.color = "#38d7ae";
                 tagSpan.style.fontWeight = "700";
                 tagSpan.textContent = match[0];
@@ -1275,10 +1276,10 @@ function addStringMultilineTagEditorWidget(node) {
         html = html
             .replace(/\x00NUM_START_(\d+)\x00(.*?)\x00NUM_END\x00/g, (_, cueIndex, cueNumber) => buildSRTCueNumberMarkup(cueNumber, Number(cueIndex)))
             .replace(/\x00SRT_START\x00(.*?)\x00SRT_END\x00/g, (_, timingText) => buildSRTTimingMarkup(stripInternalMarkers(timingText).replace(/&gt;/g, ">"), timingHandleIndex++))
-            .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span style="color: #38d7ae; font-weight: 700;">$1</span>')
-            .replace(/\x00EDIT_INVALID\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #ff5555; font-weight: 700; text-decoration: underline wavy #ff5555;">$1</span>')
-            .replace(/\x00EDIT_FOREIGN\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #e67e22; font-weight: 700; text-decoration: underline wavy #e67e22;">$1</span>')
-            .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span style="color: #a6d700; font-weight: 700;">$1</span>')
+            .replace(/\x00TAG_START\x00(.*?)\x00TAG_END\x00/g, '<span class="string-multiline-tag-editor-tag-token" style="color: #38d7ae; font-weight: 700;">$1</span>')
+            .replace(/\x00EDIT_INVALID\x00(.*?)\x00EDIT_END\x00/g, '<span class="string-multiline-tag-editor-tag-token" style="color: #ff5555; font-weight: 700; text-decoration: underline wavy #ff5555;">$1</span>')
+            .replace(/\x00EDIT_FOREIGN\x00(.*?)\x00EDIT_END\x00/g, '<span class="string-multiline-tag-editor-tag-token" style="color: #e67e22; font-weight: 700; text-decoration: underline wavy #e67e22;">$1</span>')
+            .replace(/\x00EDIT_START\x00(.*?)\x00EDIT_END\x00/g, '<span class="string-multiline-tag-editor-tag-token" style="color: #a6d700; font-weight: 700;">$1</span>')
             .replace(/\x00COMMA_START\x00(.*?)\x00COMMA_END\x00/g, '<span style="color: #7bd6a7; font-weight: bold;">$1</span>')
             .replace(/\x00PERIOD_START\x00(.*?)\x00PERIOD_END\x00/g, '<span style="color: #e3be69; font-weight: bold;">$1</span>')
             .replace(/\x00PUNCT_START\x00(.*?)\x00PUNCT_END\x00/g, '<span style="color: #f0a1a1;">$1</span>')
@@ -1809,6 +1810,8 @@ function addStringMultilineTagEditorWidget(node) {
         return { text, position, start, end: end + 1, tag: text.slice(start, end + 1) };
     };
 
+    const isQuotedEmotionTextTag = tag => /^\[emotion:["'][\s\S]*["']\]$/i.test(tag);
+
     inlineTagControls.indexTTS.managePresetsBtn.addEventListener("click", () => {
         const position = getCaretPos();
         openEmotionPopupForRange(position, position, null, { showPresets: true });
@@ -1840,6 +1843,8 @@ function addStringMultilineTagEditorWidget(node) {
             return;
         }
 
+        if (isQuotedEmotionTextTag(match.tag)) return;
+
         const presetMatch = match.tag.match(/^\[emotion:([A-Za-z0-9_-]+)\]$/i);
         if (presetMatch) {
             openIndexTTSEmotionPresetPicker({
@@ -1851,14 +1856,6 @@ function addStringMultilineTagEditorWidget(node) {
                     const finalText = transaction.originalText.slice(0, match.start) + replacement + transaction.originalText.slice(match.end);
                     editorEventApi.commitExternalTransaction(transaction, finalText, match.start + replacement.length);
                 }
-            });
-            return;
-        }
-
-        if (isEmotionTextTag(match.tag)) {
-            openEmotionPopupForRange(match.start, match.end, match.tag, {
-                anchorRect,
-                showPresets: true,
             });
             return;
         }
@@ -1916,7 +1913,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     editor.addEventListener("dblclick", () => {
         const match = emotionTagAtCaret();
-        if (match && isEmotionTextTag(match.tag)) {
+        if (match && isEmotionTextTag(match.tag) && !isQuotedEmotionTextTag(match.tag)) {
             openEmotionPopupForRange(match.start, match.end, match.tag, { showPresets: true });
         }
     });

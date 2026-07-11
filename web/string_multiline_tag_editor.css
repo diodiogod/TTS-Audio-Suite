@@ -945,6 +945,12 @@
     overflow-wrap: inherit;
 }
 
+.string-multiline-tag-editor-tag-token {
+    white-space: inherit;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .string-multiline-tag-editor-editor-line::before {
     content: attr(data-line-number);
     position: absolute;

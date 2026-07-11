@@ -172,6 +172,12 @@ When an emotion control is inserted with the caret inside a character/audio tag,
 the editor appends or updates it as another pipe parameter, for example
 `[Bob:br_ivan_raiva3|sad:+0.25]`.
 
+The tag editor's quick-swap palette is engine-aware: parameter choices are
+filtered to the selected inline engine, while each engine's supported native
+emotion/style/prosody/sound tags use their own replacement choices. Named
+emotion presets can be swapped from the text; quoted `[emotion:"..."]` text is
+intentionally left as direct editable content rather than treated as a preset.
+
 ---
 
 ## 🎯 Advanced Usage

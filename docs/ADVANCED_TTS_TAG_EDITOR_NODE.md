@@ -2,7 +2,7 @@
 
 ## Overview
 
-Advanced multiline string editor node that extends ComfyUI's standard multiline widget with a sidebar containing context-aware controls for TTS-specific tags (character switching, parameters, pauses). The node features real-time tag generation, preset management, and intelligent syntax support based on the CHARACTER_SWITCHING_GUIDE and PARAMETER_SWITCHING_GUIDE.
+Advanced multiline string editor node that extends ComfyUI's standard multiline widget with a sidebar containing context-aware controls for TTS-specific tags (character switching, parameters, pauses, and engine-native inline controls). The node features real-time tag generation, preset management, engine-aware quick swapping, and intelligent syntax support based on the CHARACTER_SWITCHING_GUIDE and PARAMETER_SWITCHING_GUIDE.
 
 ---
 
@@ -88,7 +88,11 @@ Advanced multiline string editor node that extends ComfyUI's standard multiline 
 #### Tag Inspector
 - Show existing tags in selection/current line
 - Checkbox UI to toggle tags on/off temporarily
-- Quick-edit dialog for existing tag values
+- Click a character, language, audio-reference, parameter, or supported engine-native inline tag to open a color-coded quick-swap palette
+- Click a palette option once to keep the palette open, then click again to commit; press-and-hold, drag, and release selects in one gesture
+- Palette choices follow the selected inline engine (including IndexTTS-2, Higgs Audio v3, Step Audio EditX, CosyVoice3, and OmniVoice)
+- Quoted IndexTTS-2 text emotion tags remain direct editable text and do not open a replacement palette
+- Long bracket and angle tags wrap inside the editor rather than overflowing horizontally
 
 #### Auto-Formatting
 - Button: "Auto-Format Tags" → organize tags consistently

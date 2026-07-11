@@ -1073,6 +1073,9 @@ Beyond character switching and language control, you can now override generation
 - **Rich Text Editor**: Multiline editor with resizable font sizes (2-120px), multiple font families, and customizable UI scaling
 - **Visual Tag Management**: Character/language/parameter dropdowns for quick selection, inline tag validation with syntax checking
 - **Engine-Aware Inline Tags**: dedicated editor modes for Step Audio EditX, Higgs Audio v3, CosyVoice3, and OmniVoice
+- **One-Click Tag Swapping**: click a character, language, audio reference, parameter, or supported native inline tag to open an engine-aware replacement palette; click again or press-drag-release to apply
+- **IndexTTS-2 Emotion Editing**: insert vectors, named emotion values, presets, quoted text, and `{seg}` dynamic emotion controls directly from the Inline Tags panel
+- **Safe Long-Tag Layout**: long bracket and angle tags wrap inside the editor instead of overflowing the text area; quoted emotion text remains directly editable
 - **Preset System**: Save and load up to 3 preset configurations for rapid tag reuse
 - **Keyboard Shortcuts**: Alt+L/C/P for tag insertion, Alt+1/2/3 for preset loading
 - **History & Undo/Redo**: Full edit history with Alt+Z for undo (Alt+Shift+Z for redo)
