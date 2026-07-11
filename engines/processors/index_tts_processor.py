@@ -286,7 +286,7 @@ class IndexTTSProcessor:
                 current_config = dict(self.config)
                 if segment_params:
                     current_config = apply_segment_parameters(current_config, segment_params, "index_tts")
-                current_config, has_inline_emotion = resolve_inline_emotion(current_config)
+                current_config, _ = resolve_inline_emotion(current_config)
 
                 if '[' in text_content and ']' in text_content:
                     # Handle character switching with emotion parsing using modularized parser
@@ -329,8 +329,10 @@ class IndexTTSProcessor:
                             else:
                                 print(f"🐛 Could not resolve emotion reference '{emotion}'")
 
-                        # Fall back to config emotion_audio if no tag emotion
-                        if not emotion_audio_path and not has_inline_emotion:
+                        # Fall back to connected emotion audio if no character
+                        # reference was specified.  Inline vector/text emotion
+                        # can now be blended with this audio source.
+                        if not emotion_audio_path:
                             emotion_from_config = self.config.get('emotion_audio')
                             # Process emotion audio for this character
                             if emotion_from_config:
@@ -352,22 +354,15 @@ class IndexTTSProcessor:
                             else:
                                 print(f"🎭 No emotion audio for character: {character} (no tag emotion, no connected engine emotion)")
                         
-                        # Prioritize character emotion reference over global emotion controls
-                        # If character has specific emotion ref, disable global emotion controls
-                        if emotion_audio_path:
-                            # Character has specific emotion - use only that emotion reference
-                            character_emotion_vector = None
-                            character_use_emotion_text = False
-                            character_emotion_text = None
-                        else:
-                            # No character emotion - use global emotion settings (from current_config with segment params)
-                            character_emotion_vector = current_config.get('emotion_vector')
-                            character_use_emotion_text = current_config.get('use_emotion_text', False)
-                            character_emotion_text = current_config.get('emotion_text')
+                        # Audio and vector/text controls are blended by
+                        # IndexTTS-2 when both are present.
+                        character_emotion_vector = current_config.get('emotion_vector')
+                        character_use_emotion_text = current_config.get('use_emotion_text', False)
+                        character_emotion_text = current_config.get('emotion_text')
 
-                            # Handle dynamic QwenEmotion template
-                            if character_use_emotion_text and character_emotion_text and current_config.get('is_dynamic_template', False):
-                                character_emotion_text = self._process_dynamic_emotion_template(character_emotion_text, segment_text)
+                        # Handle dynamic QwenEmotion template
+                        if character_use_emotion_text and character_emotion_text and current_config.get('is_dynamic_template', False):
+                            character_emotion_text = self._process_dynamic_emotion_template(character_emotion_text, segment_text)
 
                         # Generate audio for this character segment (use parameters from current_config with segment overrides)
                         segment_result = generate_with_context(
@@ -447,7 +442,7 @@ class IndexTTSProcessor:
                             )
                         else:
                             print(f"⚠️ Could not resolve emotion reference '{emotion_reference}'")
-                    if not emotion_audio_path and not has_inline_emotion:
+                    if not emotion_audio_path:
                         emotion_audio_path = self.config.get('emotion_audio')
                     # Process emotion audio from config
                     if emotion_audio_path and isinstance(emotion_audio_path, dict) and 'waveform' in emotion_audio_path:
@@ -467,22 +462,15 @@ class IndexTTSProcessor:
                     else:
                         print(f"🎭 No emotion audio for simple text segment (no connected engine emotion)")
 
-                    # Prioritize connected emotion_audio over global emotion controls
-                    # For simple text, use emotion_audio from config if available, else use global settings (with segment params)
-                    if emotion_audio_path:
-                        # Engine emotion_audio connected - use only that
-                        simple_emotion_vector = None
-                        simple_use_emotion_text = False
-                        simple_emotion_text = None
-                    else:
-                        # No engine emotion_audio - use global emotion settings (from current_config with segment params)
-                        simple_emotion_vector = current_config.get('emotion_vector')
-                        simple_use_emotion_text = current_config.get('use_emotion_text', False)
-                        simple_emotion_text = current_config.get('emotion_text')
+                    # Audio and vector/text controls are blended by
+                    # IndexTTS-2 when both are present.
+                    simple_emotion_vector = current_config.get('emotion_vector')
+                    simple_use_emotion_text = current_config.get('use_emotion_text', False)
+                    simple_emotion_text = current_config.get('emotion_text')
 
-                        # Handle dynamic QwenEmotion template
-                        if simple_use_emotion_text and simple_emotion_text and current_config.get('is_dynamic_template', False):
-                            simple_emotion_text = self._process_dynamic_emotion_template(simple_emotion_text, text_content)
+                    # Handle dynamic QwenEmotion template
+                    if simple_use_emotion_text and simple_emotion_text and current_config.get('is_dynamic_template', False):
+                        simple_emotion_text = self._process_dynamic_emotion_template(simple_emotion_text, text_content)
 
                     result = generate_with_context(
                         f"text={text_content[:120]!r}",

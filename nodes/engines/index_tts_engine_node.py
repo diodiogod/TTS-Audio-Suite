@@ -147,11 +147,16 @@ class IndexTTSEngineNode(BaseTTSNode):
             "optional": {
                 # Unified Emotion Control - Using multitype input for better connection suggestions
                 "emotion_control": (any_typ, {
-                    "tooltip": """• 🌈 Emotion Vectors - Manual emotion control sliders
-• 🎭 Character Voices (opt_narrator) - Audio-based emotion reference
+                    "tooltip": """Vector/text emotion control (legacy unified input):
+• 🌈 Emotion Vectors - Manual emotion control sliders
 • 🌈 Text Emotion - AI-analyzed emotion from text
-• Direct AUDIO - Any audio input for emotion reference
-Character emotion tags [Alice:emotion_ref] will override this for specific characters."""
+Connect audio separately to 'emotion_audio' when you want to blend both.
+Character emotion tags [Alice:emotion_ref] can provide per-segment audio emotion."""
+                }),
+                "emotion_audio": (any_typ, {
+                    "tooltip": """Dedicated emotion-reference audio input.
+Connect Character Voices, opt_narrator, or AUDIO here.
+This can be connected together with the vector/text emotion input above; IndexTTS-2 blends both."""
                 }),
 
                 # CUDA Kernel Option
@@ -253,6 +258,7 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
         stream_return: bool = False,
         more_segment_before: int = 0,
         low_vram: bool = False,
+        emotion_audio = None,
     ):
         """
         Create IndexTTS-2 engine adapter with configuration.
@@ -261,21 +267,38 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
             Tuple containing IndexTTS-2 engine configuration data
         """
         try:
-            # Process unified emotion control
+            # Process vector/text control independently from dedicated audio.
+            connected_emotion_audio = emotion_audio
             emotion_audio = None
             emotion_vector = None
             use_emotion_text = False
             emotion_text = None
             is_dynamic_template = False
 
-            if emotion_control:
-                if isinstance(emotion_control, dict):
+            def is_audio_control(value):
+                return isinstance(value, dict) and any(
+                    key in value for key in ("audio_path", "waveform", "audio")
+                )
+
+            # Keep old workflows working when audio was connected to the
+            # original unified socket.  The new dedicated socket wins when
+            # both are connected.
+            legacy_audio_control = emotion_control if is_audio_control(emotion_control) else None
+            vector_text_control = None if legacy_audio_control is not None else emotion_control
+            emotion_audio = (
+                connected_emotion_audio
+                if connected_emotion_audio is not None
+                else legacy_audio_control
+            )
+
+            if vector_text_control:
+                if isinstance(vector_text_control, dict):
                     # Check the type of emotion control
-                    emotion_type = emotion_control.get("type")
+                    emotion_type = vector_text_control.get("type")
 
                     if emotion_type == "emotion_vectors":
                         # Emotion vectors from options node
-                        emotion_vectors = emotion_control.get("emotion_vectors", {})
+                        emotion_vectors = vector_text_control.get("emotion_vectors", {})
                         emotions = [
                             emotion_vectors.get("happy", 0.0),
                             emotion_vectors.get("angry", 0.0),
@@ -291,17 +314,9 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
 
                     elif emotion_type == "qwen_emotion":
                         # QwenEmotion text analysis
-                        use_emotion_text = emotion_control.get("use_emotion_text", False)
-                        emotion_text = emotion_control.get("emotion_text", "")
-                        is_dynamic_template = emotion_control.get("is_dynamic_template", False)
-
-                    elif "waveform" in emotion_control or "audio" in emotion_control:
-                        # Direct audio input (NARRATOR_VOICE from Character Voices or AUDIO)
-                        emotion_audio = emotion_control
-
-                elif hasattr(emotion_control, 'get') and ("waveform" in emotion_control or "audio" in emotion_control):
-                    # Direct audio input
-                    emotion_audio = emotion_control
+                        use_emotion_text = vector_text_control.get("use_emotion_text", False)
+                        emotion_text = vector_text_control.get("emotion_text", "")
+                        is_dynamic_template = vector_text_control.get("is_dynamic_template", False)
             
             # Parse CUDA kernel option
             cuda_kernel_option = None
@@ -321,7 +336,7 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
             config = {
                 "model_path": model_path,
                 "device": device,
-                "emotion_audio": emotion_audio,  # Will be None if not connected, audio dict if connected
+                "emotion_audio": emotion_audio,  # Dedicated audio emotion input
                 "emotion_alpha": emotion_alpha,
                 "use_emotion_text": use_emotion_text,
                 "emotion_text": emotion_text if emotion_text and emotion_text.strip() else None,
@@ -355,6 +370,14 @@ Character emotion tags [Alice:emotion_ref] will override this for specific chara
             emotion_desc = f"alpha={emotion_alpha}, use_text={use_emotion_text}"
             if is_dynamic_template:
                 emotion_desc += " (dynamic template)"
+            emotion_sources = []
+            if emotion_audio is not None:
+                emotion_sources.append("audio")
+            if emotion_vector is not None:
+                emotion_sources.append("vector")
+            if use_emotion_text:
+                emotion_sources.append("text")
+            emotion_desc += f", sources={'+'.join(emotion_sources) if emotion_sources else 'none'}"
             print(f"   Emotion: {emotion_desc}")
             print(f"   Generation: temp={temperature}, top_p={top_p}, top_k={top_k}, do_sample={do_sample}, num_beams={num_beams}")
             print(f"   Chunking: max_tokens={max_text_tokens_per_segment}, silence={interval_silence}ms")

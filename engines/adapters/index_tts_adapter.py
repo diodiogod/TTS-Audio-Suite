@@ -77,6 +77,25 @@ class IndexTTSAdapter:
         )
         
     
+    @staticmethod
+    def _normalize_emotion_audio(emotion_audio):
+        """Return a path or waveform dict accepted by IndexTTS-2."""
+        if not isinstance(emotion_audio, dict):
+            return emotion_audio
+        if emotion_audio.get("audio_path"):
+            print(
+                "🎭 Using Character Voices emotion audio: "
+                f"{emotion_audio.get('character_name', 'unknown')} -> "
+                f"{emotion_audio['audio_path']}"
+            )
+            return emotion_audio["audio_path"]
+        if "waveform" in emotion_audio:
+            return emotion_audio
+        nested_audio = emotion_audio.get("audio")
+        if isinstance(nested_audio, dict) and "waveform" in nested_audio:
+            return nested_audio
+        return emotion_audio
+
     def generate(self,
                 text: str,
                 speaker_audio: Optional[str] = None,
@@ -158,19 +177,10 @@ class IndexTTSAdapter:
         # Determine final speaker and emotion audio
         final_speaker_audio = speaker_audio
 
-        # Handle Character Voices emotion_audio format
-        if emotion_audio and isinstance(emotion_audio, dict):
-            if "audio_path" in emotion_audio:
-                # Character Voices format: {'audio': {...}, 'audio_path': 'path', ...}
-                final_emotion_audio = emotion_audio["audio_path"]
-                print(f"🎭 Using Character Voices emotion audio: {emotion_audio.get('character_name', 'unknown')} -> {final_emotion_audio}")
-            elif "waveform" in emotion_audio:
-                # Direct AUDIO format: {'waveform': tensor, 'sample_rate': rate}
-                final_emotion_audio = emotion_audio
-            else:
-                final_emotion_audio = emotion_audio
-        else:
-            final_emotion_audio = emotion_audio
+        # Normalize the two supported audio-reference shapes:
+        # Character Voices returns {audio: {waveform, sample_rate}, audio_path: ...},
+        # while ComfyUI AUDIO returns {waveform, sample_rate} directly.
+        final_emotion_audio = self._normalize_emotion_audio(emotion_audio)
         
         # Only do character mapping if we actually have character tags
         if has_character_tags:
@@ -264,18 +274,11 @@ class IndexTTSAdapter:
         engine_kwargs['stream_return'] = stream_return
         engine_kwargs['more_segment_before'] = more_segment_before
 
-        # Apply consistent emotion priority: emotion_audio takes precedence over other emotion controls
-        # This ensures consistent behavior whether using character tags or direct engine inputs
-        if final_emotion_audio:
-            # emotion_audio connected - disable other emotion controls
-            final_emotion_vector = None
-            final_use_emotion_text = False
-            final_emotion_text = None
-        else:
-            # No emotion_audio - use provided emotion controls
-            final_emotion_vector = emotion_vector
-            final_use_emotion_text = use_emotion_text
-            final_emotion_text = emotion_text
+        # Audio emotion and vector/text emotion are independent conditioning
+        # sources.  IndexTTS-2 blends them in its latent emotion space.
+        final_emotion_vector = emotion_vector
+        final_use_emotion_text = use_emotion_text
+        final_emotion_text = emotion_text
 
         # Generate audio with OOM protection
         try:
@@ -551,6 +554,8 @@ class IndexTTSAdapter:
 
         # Use our centralized audio hashing utility
         from utils.audio.audio_hash import generate_stable_audio_component
+        if isinstance(audio_path, dict):
+            return generate_stable_audio_component(reference_audio=audio_path)
         return generate_stable_audio_component(audio_file_path=audio_path)
     
     def get_supported_formats(self) -> List[str]:

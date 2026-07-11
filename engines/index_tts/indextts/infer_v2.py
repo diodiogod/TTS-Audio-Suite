@@ -575,10 +575,9 @@ class IndexTTS2:
                   f"emo_text:{emo_text}")
         start_time = time.perf_counter()
 
-        if use_emo_text or emo_vector is not None:
-            # we're using a text or emotion vector guidance; so we must remove
-            # "emotion reference voice", to ensure we use correct emotion mixing!
-            emo_audio_prompt = None
+        # Text/vector emotion and an external emotion reference can be used
+        # together.  The vector is projected into the same conditioning space
+        # later and blended with the audio-derived conditioning.
 
         if use_emo_text:
             # automatically generate emotion vectors from text prompt
@@ -634,6 +633,9 @@ class IndexTTS2:
                 emo_vector = [int(x * emo_vector_scale * 10000) / 10000 for x in emo_vector]
                 emo_vector_scaled_display = [round(x, 3) for x in emo_vector]
                 print(f"🎭 Scaled by alpha {emo_vector_scale}: {emo_vector_scaled_display}")
+
+        if emo_audio_prompt is not None and emo_vector is not None:
+            print("🎭 Blending emotion-reference audio with vector/text emotion")
 
         if emo_audio_prompt is None:
             # we are not using any external "emotion reference voice"; use
