@@ -1855,6 +1855,14 @@ function addStringMultilineTagEditorWidget(node) {
             return;
         }
 
+        if (isEmotionTextTag(match.tag)) {
+            openEmotionPopupForRange(match.start, match.end, match.tag, {
+                anchorRect,
+                showPresets: true,
+            });
+            return;
+        }
+
         openTagSwap(match, anchorRect);
     });
 
