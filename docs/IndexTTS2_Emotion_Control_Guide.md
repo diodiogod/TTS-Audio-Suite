@@ -213,6 +213,10 @@ The editor's **Inline Tags** tab also includes an **IndexTTS-2** engine panel fo
 inserting full absolute/delta vectors, named emotion values, saved text presets,
 quoted descriptions, and dynamic descriptions containing `{seg}`.
 
+Emotion controls can be composed directly on character tags: place the caret on
+`[Bob:audio_reference]` and add a vector or text emotion to append it as a pipe
+parameter.
+
 The named-emotion panel includes a magnitude slider and a press-drag-release
 radial picker: direction chooses the emotion and distance chooses its value.
 The operation dropdown determines whether that value is absolute, a positive

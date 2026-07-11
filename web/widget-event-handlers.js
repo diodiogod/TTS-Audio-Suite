@@ -78,11 +78,17 @@ export function attachAllEventHandlers(
         if (e.key === "Enter" && document.activeElement === editor) {
             e.preventDefault();
             e.stopPropagation();
-            document.execCommand("insertLineBreak");
-            // Trigger input event to update history
-            setTimeout(() => {
-                editor.dispatchEvent(new Event("input", { bubbles: true }));
-            }, 0);
+            const plainText = getPlainText();
+            const selection = getSelectionRange();
+            const start = selection?.start ?? getCaretPos();
+            const end = selection?.end ?? start;
+            setEditorText(plainText.slice(0, start) + "\n" + plainText.slice(end));
+            setCaretPos(start + 1);
+            editor.dispatchEvent(new InputEvent("input", {
+                bubbles: true,
+                inputType: "insertLineBreak",
+                data: null,
+            }));
         }
     });
 

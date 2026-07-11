@@ -1752,8 +1752,61 @@ function addStringMultilineTagEditorWidget(node) {
         const start = text.lastIndexOf("[", position);
         const end = text.indexOf("]", position);
         if (start < 0 || end < start) return null;
+        if (text.slice(start, position).includes("]") || text.slice(position, end).includes("[")) return null;
         const tag = text.slice(start, end + 1);
         return { text, position, start, end: end + 1, tag };
+    };
+
+    const getSelectOptions = select => [...(select?.options || [])]
+        .filter(option => option.value)
+        .map(option => ({ value: option.value, label: option.textContent || option.value }));
+
+    const openTagSwap = async (match, anchorRect, holdPointerId = null) => {
+        const previousUserSelect = editor.style.userSelect;
+        let holdSelectionLocked = false;
+        const releaseHoldSelection = () => {
+            if (!holdSelectionLocked) return;
+            holdSelectionLocked = false;
+            editor.style.userSelect = previousUserSelect;
+        };
+        try {
+            if (holdPointerId !== null) {
+                const activationCaret = getCaretPos();
+                setCaretPos(activationCaret);
+                editor.style.userSelect = "none";
+                holdSelectionLocked = true;
+            }
+            const { openTagSwapPopup } = await import("./tag_swap_popup.js");
+            const transaction = editorEventApi.beginExternalTransaction();
+            const popup = openTagSwapPopup({
+                tag: match.tag,
+                cursorOffset: match.position - match.start,
+                anchorRect,
+                characterOptions: getSelectOptions(charSelect),
+                languageOptions: getSelectOptions(langSelect),
+                engine: inlineTagControls.inlineEngineSelect.value || "step_audio_editx",
+                holdPointerId,
+                onGestureEnd: releaseHoldSelection,
+                onSelect: replacement => {
+                    const finalText = transaction.originalText.slice(0, match.start) + replacement + transaction.originalText.slice(match.end);
+                    editorEventApi.commitExternalTransaction(transaction, finalText, match.start + replacement.length);
+                },
+            });
+            if (!popup) releaseHoldSelection();
+        } catch (error) {
+            releaseHoldSelection();
+            console.error("TTS tag quick-swap failed to load:", error);
+        }
+    };
+
+    const angleTagAtCaret = () => {
+        const text = getPlainText();
+        const position = getCaretPos();
+        const start = text.lastIndexOf("<", position);
+        const end = text.indexOf(">", position);
+        if (start < 0 || end < start) return null;
+        if (text.slice(start, position).includes(">") || text.slice(position, end).includes("<")) return null;
+        return { text, position, start, end: end + 1, tag: text.slice(start, end + 1) };
     };
 
     inlineTagControls.indexTTS.managePresetsBtn.addEventListener("click", () => {
@@ -1761,7 +1814,15 @@ function addStringMultilineTagEditorWidget(node) {
         openEmotionPopupForRange(position, position, null, { showPresets: true });
     });
 
+    let suppressTagSwapClick = false;
+    const tagSwapClickIsSuppressed = () => {
+        if (!suppressTagSwapClick) return false;
+        setTimeout(() => { suppressTagSwapClick = false; }, 0);
+        return true;
+    };
+
     editor.addEventListener("click", (event) => {
+        if (tagSwapClickIsSuppressed()) return;
         const match = emotionTagAtCaret();
         if (!match) return;
 
@@ -1791,7 +1852,58 @@ function addStringMultilineTagEditorWidget(node) {
                     editorEventApi.commitExternalTransaction(transaction, finalText, match.start + replacement.length);
                 }
             });
+            return;
         }
+
+        openTagSwap(match, anchorRect);
+    });
+
+    editor.addEventListener("click", event => {
+        if (tagSwapClickIsSuppressed()) return;
+        const match = angleTagAtCaret();
+        if (!match) return;
+        openTagSwap(match, { left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY });
+    });
+
+    let tagSwapHoldTimer = null;
+    let tagSwapHoldCleanup = null;
+    editor.addEventListener("pointerdown", event => {
+        if (event.button !== 0) return;
+        const pointerId = event.pointerId;
+        const originX = event.clientX;
+        const originY = event.clientY;
+        const anchorRect = { left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY };
+        const cleanup = () => {
+            if (tagSwapHoldTimer !== null) clearTimeout(tagSwapHoldTimer);
+            tagSwapHoldTimer = null;
+            window.removeEventListener("pointermove", cancelForTextSelection, true);
+            window.removeEventListener("pointerup", cleanup, true);
+            window.removeEventListener("pointercancel", cleanup, true);
+            if (tagSwapHoldCleanup === cleanup) tagSwapHoldCleanup = null;
+        };
+        const cancelForTextSelection = moveEvent => {
+            if (moveEvent.pointerId !== pointerId) return;
+            if (Math.hypot(moveEvent.clientX - originX, moveEvent.clientY - originY) > 6) cleanup();
+        };
+        tagSwapHoldCleanup?.();
+        tagSwapHoldCleanup = cleanup;
+        window.addEventListener("pointermove", cancelForTextSelection, true);
+        window.addEventListener("pointerup", cleanup, true);
+        window.addEventListener("pointercancel", cleanup, true);
+        tagSwapHoldTimer = setTimeout(() => {
+            tagSwapHoldTimer = null;
+            const bracket = emotionTagAtCaret();
+            const angle = angleTagAtCaret();
+            const match = bracket || angle;
+            if (!match || (bracket && (parseVectorTag(match.tag) || isEmotionTextTag(match.tag)))) {
+                cleanup();
+                return;
+            }
+            window.removeEventListener("pointermove", cancelForTextSelection, true);
+            setCaretPos(getCaretPos());
+            suppressTagSwapClick = true;
+            openTagSwap(match, anchorRect, pointerId);
+        }, 180);
     });
 
     editor.addEventListener("dblclick", () => {
