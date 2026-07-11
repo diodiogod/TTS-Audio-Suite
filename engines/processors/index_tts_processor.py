@@ -55,6 +55,7 @@ from utils.audio.edit_post_processor import process_segments as apply_edit_post_
 from utils.text.character_parser import CharacterParser
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import apply_segment_parameters
+from utils.text.index_tts_emotion import resolve_inline_emotion
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
 from utils.voice.discovery import get_character_mapping
 from engines.adapters.index_tts_adapter import IndexTTSAdapter
@@ -257,6 +258,7 @@ class IndexTTSProcessor:
                 current_config = dict(self.config)
                 if segment_params:
                     current_config = apply_segment_parameters(current_config, segment_params, "index_tts")
+                current_config, has_inline_emotion = resolve_inline_emotion(current_config)
 
                 if '[' in text_content and ']' in text_content:
                     # Handle character switching with emotion parsing using modularized parser
@@ -300,7 +302,7 @@ class IndexTTSProcessor:
                                 print(f"🐛 Could not resolve emotion reference '{emotion}'")
 
                         # Fall back to config emotion_audio if no tag emotion
-                        if not emotion_audio_path:
+                        if not emotion_audio_path and not has_inline_emotion:
                             emotion_from_config = self.config.get('emotion_audio')
                             # Process emotion audio for this character
                             if emotion_from_config:
@@ -400,7 +402,7 @@ class IndexTTSProcessor:
                                 speaker_audio_path = tmp_file.name
                     
                     # Handle emotion_audio - convert tensor to file path if needed
-                    emotion_audio_path = self.config.get('emotion_audio')
+                    emotion_audio_path = None if has_inline_emotion else self.config.get('emotion_audio')
                     # Process emotion audio from config
                     if emotion_audio_path and isinstance(emotion_audio_path, dict) and 'waveform' in emotion_audio_path:
                         # Convert tensor to temporary file

@@ -9,8 +9,14 @@ Parameters override node defaults for a single segment, then revert after.
 
 from typing import Dict, List, Tuple, Optional, Any
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+INDEX_TTS_EMOTIONS = (
+    'happy', 'angry', 'sad', 'afraid', 'disgusted',
+    'melancholic', 'surprised', 'calm'
+)
 
 
 # Parameter aliases: user_input -> canonical_name
@@ -78,7 +84,11 @@ PARAMETER_ALIASES = {
     'inference_steps': 'inference_steps',
     'steps': 'inference_steps',
     'emotion_alpha': 'emotion_alpha',
-    # NOTE: 'emotion' intentionally NOT aliased to avoid confusion with emotion reference syntax [Alice:Bob]
+    'vector': 'emotion_vector_inline',
+    'emotion': 'emotion_text_inline',
+    **{name: f'emotion_{name}_inline' for name in INDEX_TTS_EMOTIONS},
+    # [emotion:...] is reserved for IndexTTS text emotion. Character audio
+    # references remain unambiguous because their key is the character name.
 }
 
 # Parameter compatibility matrix: canonical_name -> set of engine_types
@@ -215,7 +225,10 @@ PARAMETER_ENGINES = {
     },
     'emotion_alpha': {
         'index_tts'
-    }
+    },
+    'emotion_vector_inline': {'index_tts'},
+    'emotion_text_inline': {'index_tts'},
+    **{f'emotion_{name}_inline': {'index_tts'} for name in INDEX_TTS_EMOTIONS},
 }
 
 # Parameter type validation: canonical_name -> (type, min, max, description)
@@ -262,7 +275,13 @@ PARAMETER_VALIDATION = {
     'sound_event': (str, None, None, "MOSS-TTS whole-segment sound event hint"),
     'ambient_sound': (str, None, None, "MOSS-TTS whole-segment ambient sound hint"),
     'inference_steps': (int, 1, 100, "Number of inference steps"),
-    'emotion_alpha': (float, 0.0, 1.0, "Emotion strength (IndexTTS-2 only)")
+    'emotion_alpha': (float, 0.0, 1.0, "Emotion strength (IndexTTS-2 only)"),
+    # Keep inline emotion values as strings so an explicit leading sign remains
+    # available to distinguish deltas from absolute replacements.
+    'emotion_vector_inline': (str, None, None, "Ordered IndexTTS-2 emotion vector"),
+    'emotion_text_inline': (str, None, None, "IndexTTS-2 emotion preset or quoted text"),
+    **{f'emotion_{name}_inline': (str, None, None, f"IndexTTS-2 {name} value")
+       for name in INDEX_TTS_EMOTIONS},
 }
 
 # Mapping of canonical parameter names to node config keys (handles engine-specific naming)
@@ -310,7 +329,10 @@ PARAMETER_NODE_KEYS = {
     'sound_event': 'sound_event',
     'ambient_sound': 'ambient_sound',
     'inference_steps': 'inference_steps',
-    'emotion_alpha': 'emotion_alpha'
+    'emotion_alpha': 'emotion_alpha',
+    'emotion_vector_inline': 'emotion_vector_inline',
+    'emotion_text_inline': 'emotion_text_inline',
+    **{f'emotion_{name}_inline': f'emotion_{name}_inline' for name in INDEX_TTS_EMOTIONS},
 }
 
 
@@ -464,6 +486,14 @@ class SegmentParameterParser:
 
                 # Try to normalize parameter name (handles aliases and case-insensitivity)
                 canonical_name = ParameterValidator.normalize_parameter_name(key_stripped)
+
+                # A character may legitimately be named after an emotion. Only a
+                # numeric value turns [sad:...] into an inline vector control;
+                # [sad:audio_ref] must remain a character emotion-reference tag.
+                if key_stripped.lower() in INDEX_TTS_EMOTIONS and not re.fullmatch(
+                    r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)', value
+                ):
+                    canonical_name = None
 
                 if canonical_name:
                     # It's a parameter - validate and add

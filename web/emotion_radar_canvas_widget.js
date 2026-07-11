@@ -5,26 +5,37 @@
 
 import { exportEmotionConfiguration, showEmotionFeedback } from "./emotion_radar_export.js";
 
-export function createEmotionRadarCanvasWidget(node) {
+export const INDEX_TTS_EMOTION_VISUALS = [
+    { name: 'Happy', color: '#FFD700', angle: 0 },
+    { name: 'Surprised', color: '#FF69B4', angle: Math.PI / 4 },
+    { name: 'Angry', color: '#FF4500', angle: Math.PI / 2 },
+    { name: 'Disgusted', color: '#8B4513', angle: 3 * Math.PI / 4 },
+    { name: 'Sad', color: '#4169E1', angle: Math.PI },
+    { name: 'Afraid', color: '#9370DB', angle: 5 * Math.PI / 4 },
+    { name: 'Calm', color: '#20B2AA', angle: 3 * Math.PI / 2 },
+    { name: 'Melancholic', color: '#708090', angle: 7 * Math.PI / 4 }
+];
+
+export function createEmotionRadarCanvasWidget(node, options = {}) {
     const WIDGET_HEIGHT = 350; // Increased to prevent overflow
+    const modernControls = options.modernControls === true;
+    const controlButtonWidth = modernControls ? 68 : 50;
+    const controlButtonSpacing = modernControls ? 6 : 8;
+    const controlButtonMargin = modernControls ? 8 : 10;
 
     // Emotion configuration
-    const emotions = [
-        { name: 'Happy', color: '#FFD700', angle: 0 },
-        { name: 'Surprised', color: '#FF69B4', angle: Math.PI / 4 },
-        { name: 'Angry', color: '#FF4500', angle: Math.PI / 2 },
-        { name: 'Disgusted', color: '#8B4513', angle: 3 * Math.PI / 4 },
-        { name: 'Sad', color: '#4169E1', angle: Math.PI },
-        { name: 'Afraid', color: '#9370DB', angle: 5 * Math.PI / 4 },
-        { name: 'Calm', color: '#20B2AA', angle: 3 * Math.PI / 2 },
-        { name: 'Melancholic', color: '#708090', angle: 7 * Math.PI / 4 }
-    ];
+    const emotions = INDEX_TTS_EMOTION_VISUALS;
 
     // Current emotion values
     const emotionValues = {};
     emotions.forEach(emotion => {
         emotionValues[emotion.name] = 0.0;
     });
+
+    const getEmotionSign = (emotionName) => {
+        const sign = options.getEmotionSign?.(emotionName);
+        return sign === -1 ? -1 : 1;
+    };
 
     // Chart configuration
     const centerX = 160;
@@ -346,6 +357,23 @@ export function createEmotionRadarCanvasWidget(node) {
         ctx.fillRect(0, chartY, width, WIDGET_HEIGHT);
         ctx.translate(0, chartY);
 
+        // Contextual delta editors may mark individual axes as negative.
+        // Keep the emotion palette intact while tinting the negative side red.
+        emotions.forEach(emotion => {
+            if (getEmotionSign(emotion.name) >= 0 || emotionValues[emotion.name] <= 0) return;
+            const halfSector = Math.PI / 8;
+            const canvasAngle = emotion.angle - Math.PI / 2;
+            const negativeGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+            negativeGradient.addColorStop(0, 'rgba(255, 70, 85, 0.04)');
+            negativeGradient.addColorStop(1, 'rgba(255, 70, 85, 0.24)');
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, maxRadius + 8, canvasAngle - halfSector, canvasAngle + halfSector);
+            ctx.closePath();
+            ctx.fillStyle = negativeGradient;
+            ctx.fill();
+        });
+
         // Draw grid circles
         ctx.strokeStyle = '#333333';
         ctx.lineWidth = 1;
@@ -375,6 +403,22 @@ export function createEmotionRadarCanvasWidget(node) {
             ctx.stroke();
             ctx.globalAlpha = 1.0;
 
+            const isNegative = getEmotionSign(emotion.name) < 0 && emotionValues[emotion.name] > 0;
+            if (isNegative) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(endPoint.x, endPoint.y);
+                ctx.strokeStyle = '#ff4655';
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = 0.78;
+                ctx.setLineDash([5, 4]);
+                ctx.shadowColor = '#ff4655';
+                ctx.shadowBlur = 7;
+                ctx.stroke();
+                ctx.restore();
+            }
+
             // Draw emotion label with click effects
             const labelPoint = polarToCartesian(centerX, centerY, maxRadius + 20, emotion.angle);
 
@@ -397,6 +441,16 @@ export function createEmotionRadarCanvasWidget(node) {
             ctx.textBaseline = 'middle';
             ctx.fillText(emotion.name, labelPoint.x, labelPoint.y);
 
+            if (isNegative) {
+                ctx.save();
+                ctx.font = 'bold 11px Arial';
+                ctx.fillStyle = '#ff5b68';
+                ctx.shadowColor = '#ff4655';
+                ctx.shadowBlur = 6;
+                ctx.fillText('−', labelPoint.x, labelPoint.y + 14);
+                ctx.restore();
+            }
+
             // Clear shadow for subsequent drawing
             if (hasGlow) {
                 ctx.shadowBlur = 0;
@@ -406,7 +460,8 @@ export function createEmotionRadarCanvasWidget(node) {
             if (clickedLabel === emotion && emotionClickCounts[emotion.name] > 0) {
                 ctx.font = '9px Arial';
                 ctx.fillStyle = '#ffffff';
-                const increaseText = `+${(emotionClickCounts[emotion.name] * 0.1).toFixed(1)}`;
+                const direction = getEmotionSign(emotion.name) < 0 ? '-' : '+';
+                const increaseText = `${direction}${(emotionClickCounts[emotion.name] * 0.1).toFixed(1)}`;
                 ctx.fillText(increaseText, labelPoint.x, labelPoint.y + 15);
             }
 
@@ -456,14 +511,16 @@ export function createEmotionRadarCanvasWidget(node) {
 
                 const isClicked = clickedEmotion === emotion;
                 const isBeingDragged = isDragging && clickedEmotion === emotion;
+                const isNegative = getEmotionSign(emotion.name) < 0;
 
                 // Show glow effect when clicked or dragging
                 if (isClicked || isBeingDragged) {
                     const glowRadius = isBeingDragged ? 12 : 10;
                     const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, glowRadius);
-                    gradient.addColorStop(0, emotion.color);
-                    gradient.addColorStop(0.6, emotion.color + '80');
-                    gradient.addColorStop(1, emotion.color + '00');
+                    const glowColor = isNegative ? '#ff4655' : emotion.color;
+                    gradient.addColorStop(0, glowColor);
+                    gradient.addColorStop(0.6, glowColor + '80');
+                    gradient.addColorStop(1, glowColor + '00');
 
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
@@ -477,6 +534,15 @@ export function createEmotionRadarCanvasWidget(node) {
                 ctx.beginPath();
                 ctx.arc(point.x, point.y, handleRadius, 0, 2 * Math.PI);
                 ctx.fill();
+
+                if (isNegative) {
+                    ctx.strokeStyle = '#ff4655';
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = '#ff4655';
+                    ctx.shadowBlur = 8;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
 
                 // Inner highlight
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -511,28 +577,52 @@ export function createEmotionRadarCanvasWidget(node) {
     function drawButtons(ctx, width) {
         // Position buttons at bottom with proper spacing
         const buttonY = WIDGET_HEIGHT - 30;
-        const buttonWidth = 50;
+        const buttonWidth = controlButtonWidth;
         const buttonHeight = 20;
-        const spacing = 8;
+        const spacing = controlButtonSpacing;
+        const margin = controlButtonMargin;
+
+        if (modernControls) {
+            const drawModernButton = (x, label) => {
+                ctx.beginPath();
+                ctx.roundRect(x, buttonY, buttonWidth, buttonHeight, 4);
+                ctx.fillStyle = '#25272c';
+                ctx.fill();
+                ctx.strokeStyle = '#555a64';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.fillStyle = '#d9dbe1';
+                ctx.font = '9px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, x + buttonWidth / 2, buttonY + buttonHeight / 2);
+            };
+            const rightButtonX = width - 2 * buttonWidth - spacing - margin;
+            drawModernButton(margin, '⤨  Random');
+            drawModernButton(margin + buttonWidth + spacing, '↻  Reset');
+            drawModernButton(rightButtonX, '⇩  Export');
+            drawModernButton(rightButtonX + buttonWidth + spacing, '⇧  Import');
+            return;
+        }
 
         // Left side buttons
         // Random button
         ctx.fillStyle = '#4ecdc4';
-        ctx.fillRect(10, buttonY, buttonWidth, buttonHeight);
+        ctx.fillRect(margin, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 9px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Random', 10 + buttonWidth/2, buttonY + buttonHeight/2);
+        ctx.fillText('Random', margin + buttonWidth/2, buttonY + buttonHeight/2);
 
         // Reset button
         ctx.fillStyle = '#ff6b6b';
-        ctx.fillRect(10 + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight);
+        ctx.fillRect(margin + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Reset', 10 + buttonWidth + spacing + buttonWidth/2, buttonY + buttonHeight/2);
+        ctx.fillText('Reset', margin + buttonWidth + spacing + buttonWidth/2, buttonY + buttonHeight/2);
 
         // Right side buttons (to avoid Sad label overlap)
-        const rightButtonX = width - 2*(buttonWidth + spacing) - 10;
+        const rightButtonX = width - 2*(buttonWidth + spacing) - margin;
 
         // Export button (right side)
         ctx.fillStyle = '#45b7d1';
@@ -612,18 +702,19 @@ export function createEmotionRadarCanvasWidget(node) {
 
                 // Check button clicks with new positioning
                 const buttonY = WIDGET_HEIGHT - 30;
-                const buttonWidth = 50;
-                const spacing = 8;
-                const rightButtonX = this.lastWidth - 2*(buttonWidth + spacing) - 10;
+                const buttonWidth = controlButtonWidth;
+                const spacing = controlButtonSpacing;
+                const margin = controlButtonMargin;
+                const rightButtonX = this.lastWidth - 2*(buttonWidth + spacing) - margin;
 
                 if (localY >= buttonY && localY <= buttonY + 20) {
-                    if (localX >= 10 && localX <= 10 + buttonWidth) {
+                    if (localX >= margin && localX <= margin + buttonWidth) {
                         // Random button (left side)
                         emotions.forEach(emotion => {
                             setEmotionValue(emotion.name, Math.random() * 1.2);
                         });
                         return true;
-                    } else if (localX >= 10 + buttonWidth + spacing && localX <= 10 + 2*buttonWidth + spacing) {
+                    } else if (localX >= margin + buttonWidth + spacing && localX <= margin + 2*buttonWidth + spacing) {
                         // Reset button (left side)
                         emotions.forEach(emotion => {
                             setEmotionValue(emotion.name, 0.0);

@@ -4,6 +4,15 @@
  * CosyVoice3, and OmniVoice.
  */
 
+import { api } from "/scripts/api.js";
+import { INDEX_TTS_EMOTION_VISUALS } from "./emotion_radar_canvas_widget.js";
+
+const INDEX_TTS_EMOTIONS = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"];
+const INDEX_TTS_RADIAL_EMOTIONS = ["happy", "surprised", "angry", "disgusted", "sad", "afraid", "calm", "melancholic"];
+const INDEX_TTS_EMOTION_COLORS = Object.fromEntries(
+    INDEX_TTS_EMOTION_VISUALS.map(({ name, color }) => [name.toLowerCase(), color])
+);
+
 const HIGGS_TAGS = {
     emotion: [
         "elation", "amusement", "enthusiasm", "determination", "pride", "contentment", "affection",
@@ -457,6 +466,245 @@ function buildOmniVoiceSection(state, storageKey) {
     };
 }
 
+function createIndexTTSRadialPicker(onPick) {
+    const button = createButton("Press + drag to pick emotion", "Drag toward an emotion; distance sets its magnitude");
+    button.style.background = `linear-gradient(90deg, ${INDEX_TTS_RADIAL_EMOTIONS.map(emotion => INDEX_TTS_EMOTION_COLORS[emotion]).join(", ")})`;
+
+    button.addEventListener("pointerdown", event => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const size = 220;
+        const center = size / 2;
+        const maxRadius = 82;
+        const originX = event.clientX;
+        const originY = event.clientY;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        Object.assign(canvas.style, {
+            position: "fixed", left: `${originX - center}px`, top: `${originY - center}px`,
+            width: `${size}px`, height: `${size}px`, zIndex: "100002", pointerEvents: "none",
+            borderRadius: "50%", filter: "drop-shadow(0 8px 20px rgba(0,0,0,.85))"
+        });
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext("2d");
+        let selectedIndex = 0;
+        let magnitude = 0;
+
+        const draw = () => {
+            ctx.clearRect(0, 0, size, size);
+            const selectedEmotion = INDEX_TTS_RADIAL_EMOTIONS[selectedIndex];
+            const selectedColor = INDEX_TTS_EMOTION_COLORS[selectedEmotion];
+            ctx.fillStyle = "rgba(25,25,27,.96)";
+            ctx.beginPath();
+            ctx.arc(center, center, 104, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = selectedColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            const selectedAngle = selectedIndex * Math.PI / 4 - Math.PI / 2;
+            ctx.fillStyle = `${selectedColor}38`;
+            ctx.beginPath();
+            ctx.moveTo(center, center);
+            ctx.arc(center, center, 100, selectedAngle - Math.PI / 8, selectedAngle + Math.PI / 8);
+            ctx.closePath();
+            ctx.fill();
+
+            INDEX_TTS_RADIAL_EMOTIONS.forEach((emotion, index) => {
+                const angle = index * Math.PI / 4 - Math.PI / 2;
+                const x = center + Math.cos(angle) * maxRadius;
+                const y = center + Math.sin(angle) * maxRadius;
+                ctx.fillStyle = index === selectedIndex ? INDEX_TTS_EMOTION_COLORS[emotion] : "#aaa";
+                ctx.font = index === selectedIndex ? "bold 11px Arial" : "10px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(emotion, x, y);
+            });
+
+            ctx.fillStyle = selectedColor;
+            ctx.beginPath();
+            ctx.arc(center, center, 28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = selectedEmotion === "happy" ? "#201b00" : "#f5f5f5";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(magnitude.toFixed(2), center, center);
+        };
+
+        const update = pointerEvent => {
+            const dx = pointerEvent.clientX - originX;
+            const dy = pointerEvent.clientY - originY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            let angle = Math.atan2(dy, dx) + Math.PI / 2;
+            if (angle < 0) angle += Math.PI * 2;
+            selectedIndex = Math.round(angle / (Math.PI / 4)) % 8;
+            magnitude = Math.min(1.2, Math.max(0, distance / maxRadius * 1.2));
+            onPick(INDEX_TTS_RADIAL_EMOTIONS[selectedIndex], magnitude, false);
+            draw();
+        };
+
+        const finish = pointerEvent => {
+            update(pointerEvent);
+            window.removeEventListener("pointermove", update, true);
+            window.removeEventListener("pointerup", finish, true);
+            window.removeEventListener("pointercancel", cancel, true);
+            canvas.remove();
+            onPick(INDEX_TTS_RADIAL_EMOTIONS[selectedIndex], magnitude, true);
+        };
+        const cancel = () => {
+            window.removeEventListener("pointermove", update, true);
+            window.removeEventListener("pointerup", finish, true);
+            window.removeEventListener("pointercancel", cancel, true);
+            canvas.remove();
+        };
+        window.addEventListener("pointermove", update, true);
+        window.addEventListener("pointerup", finish, true);
+        window.addEventListener("pointercancel", cancel, true);
+        draw();
+    });
+    return button;
+}
+
+function buildIndexTTSSection(state, storageKey) {
+    const section = document.createElement("div");
+    Object.assign(section.style, { display: "flex", flexDirection: "column", gap: "8px" });
+
+    const vectorSection = document.createElement("div");
+    stylePanelContainer(vectorSection);
+    const vectorModeSelect = createSelect([
+        { value: "absolute", label: "Absolute vector" },
+        { value: "delta", label: "Delta vector" },
+    ], "Vector mode...", state.lastIndexTTSVectorMode || "absolute");
+    vectorModeSelect.addEventListener("change", () => {
+        state.lastIndexTTSVectorMode = vectorModeSelect.value;
+        state.saveToLocalStorage(storageKey);
+    });
+    const addVectorBtn = createButton("Add Vector Tag", "Insert a full vector tag; click it in the editor to open the radar");
+    vectorSection.append(
+        createPanelLabel("Full Vector Radar", "#45b7d1"),
+        vectorModeSelect,
+        createInfoText("Insert the tag, then click it in the editor for live radar editing."),
+        addVectorBtn
+    );
+
+    const namedSection = document.createElement("div");
+    stylePanelContainer(namedSection);
+    const namedEmotionSelect = createSelect(
+        INDEX_TTS_EMOTIONS.map(value => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })),
+        "Select emotion...",
+        state.lastIndexTTSNamedEmotion || "happy"
+    );
+    const namedOperationSelect = createSelect([
+        { value: "absolute", label: "Absolute value" },
+        { value: "positive", label: "Positive delta (+)" },
+        { value: "negative", label: "Negative delta (−)" },
+    ], "Operation...", state.lastIndexTTSNamedOperation || "absolute");
+    const namedValueInput = document.createElement("input");
+    namedValueInput.type = "range";
+    namedValueInput.min = "0";
+    namedValueInput.max = "1.2";
+    namedValueInput.step = "0.05";
+    namedValueInput.value = state.lastIndexTTSNamedValue ?? "0.5";
+    Object.assign(namedValueInput.style, { width: "100%", boxSizing: "border-box", marginBottom: "4px" });
+    const namedValueLabel = createInfoText(`Magnitude: ${Number(namedValueInput.value).toFixed(2)}`);
+    const updateNamedSliderFill = () => {
+        const ratio = Math.max(0, Math.min(100, Number(namedValueInput.value) / 1.2 * 100));
+        const color = INDEX_TTS_EMOTION_COLORS[namedEmotionSelect.value] || "#20B2AA";
+        namedValueInput.dataset.fillColor = color;
+        namedValueInput.style.accentColor = color;
+        namedValueInput.style.background = `linear-gradient(90deg, ${color} 0%, ${color} ${ratio}%, rgba(53,53,52,.9) ${ratio}%, rgba(53,53,52,.9) 100%)`;
+    };
+    const saveNamedState = (persist = true) => {
+        state.lastIndexTTSNamedEmotion = namedEmotionSelect.value;
+        state.lastIndexTTSNamedOperation = namedOperationSelect.value;
+        state.lastIndexTTSNamedValue = namedValueInput.value;
+        if (persist) state.saveToLocalStorage(storageKey);
+    };
+    namedEmotionSelect.addEventListener("change", saveNamedState);
+    namedOperationSelect.addEventListener("change", saveNamedState);
+    namedValueInput.addEventListener("input", () => {
+        namedValueLabel.textContent = `Magnitude: ${Number(namedValueInput.value).toFixed(2)}`;
+        updateNamedSliderFill();
+        saveNamedState();
+    });
+    const radialPickerBtn = createIndexTTSRadialPicker((emotion, magnitude, isFinal) => {
+        namedEmotionSelect.value = emotion;
+        namedValueInput.value = magnitude.toFixed(2);
+        namedValueLabel.textContent = `Magnitude: ${magnitude.toFixed(2)} · ${emotion}`;
+        updateNamedSliderFill();
+        saveNamedState(isFinal);
+    });
+    namedEmotionSelect.addEventListener("change", updateNamedSliderFill);
+    updateNamedSliderFill();
+    const addNamedEmotionBtn = createButton("Add Named Emotion", "Insert [sad:0.5], [sad:+0.5], or [sad:-0.5]");
+    namedSection.append(
+        createPanelLabel("Named Emotion Value", "#ffcc66"),
+        radialPickerBtn,
+        namedEmotionSelect, namedOperationSelect, namedValueLabel, namedValueInput, addNamedEmotionBtn
+    );
+
+    const textSection = document.createElement("div");
+    stylePanelContainer(textSection, { separated: false });
+    const presetSelect = createSelect([], "Select saved preset...");
+    const populateTextPresets = (presets = {}) => {
+        const previous = presetSelect.value;
+        while (presetSelect.options.length > 1) presetSelect.remove(1);
+        Object.entries(presets)
+            .filter(([, preset]) => preset?.type === "text" || preset?.type === "vector")
+            .sort(([a], [b]) => a.localeCompare(b))
+            .forEach(([name, preset]) => {
+                const option = document.createElement("option");
+                option.value = name;
+                option.textContent = `${name} (${preset.type})`;
+                option.dataset.presetType = preset.type;
+                if (preset.type === "vector") option.dataset.vectorValues = JSON.stringify(preset.values || []);
+                presetSelect.appendChild(option);
+            });
+        if ([...presetSelect.options].some(option => option.value === previous)) presetSelect.value = previous;
+    };
+    const refreshTextPresets = () => api.fetchApi("/api/tts-audio-suite/index-tts-emotion-presets")
+        .then(response => response.json())
+        .then(({ presets = {} }) => populateTextPresets(presets))
+        .catch(error => console.warn("Could not load IndexTTS emotion presets", error));
+    refreshTextPresets();
+    presetSelect.addEventListener("focus", refreshTextPresets);
+    window.addEventListener("tts-audio-suite:index-tts-presets-changed", event => {
+        populateTextPresets(event.detail?.presets || {});
+    });
+    const addTextPresetBtn = createButton("Add Preset Tag", "Insert a saved text or vector emotion preset");
+    const managePresetsBtn = createButton("Manage Emotion Presets", "Open the IndexTTS emotion preset editor");
+    managePresetsBtn.style.marginBottom = "5px";
+    const emotionTextInput = document.createElement("input");
+    emotionTextInput.type = "text";
+    emotionTextInput.placeholder = "Emotion description; {seg} makes it dynamic";
+    emotionTextInput.value = state.lastIndexTTSEmotionText || "";
+    Object.assign(emotionTextInput.style, { width: "100%", boxSizing: "border-box", padding: "3px", margin: "4px 0", fontSize: "10px", color: "#eee", background: "#2a2a2a", border: "1px solid #444" });
+    emotionTextInput.addEventListener("change", () => {
+        state.lastIndexTTSEmotionText = emotionTextInput.value;
+        state.saveToLocalStorage(storageKey);
+    });
+    const addEmotionTextBtn = createButton("Add Quoted Text", "Insert a quoted text emotion; include {seg} for dynamic analysis");
+    textSection.append(
+        createPanelLabel("Text Emotion", "#d78cff"),
+        managePresetsBtn,
+        presetSelect, addTextPresetBtn,
+        emotionTextInput, addEmotionTextBtn
+    );
+
+    section.append(vectorSection, namedSection, textSection);
+    return {
+        panel: section,
+        controls: {
+            vectorModeSelect, addVectorBtn,
+            namedEmotionSelect, namedOperationSelect, namedValueInput, addNamedEmotionBtn,
+            presetSelect, addTextPresetBtn, managePresetsBtn, emotionTextInput, addEmotionTextBtn,
+        },
+    };
+}
+
 export function buildInlineEditSection(state, storageKey) {
     const container = document.createElement("div");
     container.style.display = "flex";
@@ -473,6 +721,7 @@ export function buildInlineEditSection(state, storageKey) {
         { value: "higgs_audio_v3", label: "Higgs Audio v3" },
         { value: "cosyvoice3", label: "CosyVoice3" },
         { value: "omnivoice", label: "OmniVoice" },
+        { value: "index_tts", label: "IndexTTS-2" },
     ], "Select inline tag engine...", state.activeInlineTagEngine || "step_audio_editx");
     inlineEngineSelect.addEventListener("change", () => {
         state.activeInlineTagEngine = inlineEngineSelect.value;
@@ -488,12 +737,14 @@ export function buildInlineEditSection(state, storageKey) {
     const higgsSection = buildHiggsSection(state, storageKey);
     const cosySection = buildCosySection(state, storageKey);
     const omnivoiceSection = buildOmniVoiceSection(state, storageKey);
+    const indexTTSSection = buildIndexTTSSection(state, storageKey);
 
     const panels = {
         step_audio_editx: stepSection.panel,
         higgs_audio_v3: higgsSection.panel,
         cosyvoice3: cosySection.panel,
         omnivoice: omnivoiceSection.panel,
+        index_tts: indexTTSSection.panel,
     };
 
     const updateVisiblePanel = () => {
@@ -503,7 +754,7 @@ export function buildInlineEditSection(state, storageKey) {
         });
     };
 
-    container.append(engineSection, stepSection.panel, higgsSection.panel, cosySection.panel, omnivoiceSection.panel);
+    container.append(engineSection, stepSection.panel, higgsSection.panel, cosySection.panel, omnivoiceSection.panel, indexTTSSection.panel);
     updateVisiblePanel();
 
     return {
@@ -514,6 +765,7 @@ export function buildInlineEditSection(state, storageKey) {
             higgs: higgsSection.controls,
             cosy: cosySection.controls,
             omnivoice: omnivoiceSection.controls,
+            indexTTS: indexTTSSection.controls,
         },
         updateInlineEnginePanelVisibility: updateVisiblePanel,
     };

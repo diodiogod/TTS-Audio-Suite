@@ -45,6 +45,18 @@ export function attachAllEventHandlers(
             tagSelect: omnivoiceTagSelect,
             addTagBtn: addOmniVoiceTagBtn,
         },
+        indexTTS: {
+            vectorModeSelect: indexTTSVectorModeSelect,
+            addVectorBtn: addIndexTTSVectorBtn,
+            namedEmotionSelect: indexTTSNamedEmotionSelect,
+            namedOperationSelect: indexTTSNamedOperationSelect,
+            namedValueInput: indexTTSNamedValueInput,
+            addNamedEmotionBtn: addIndexTTSNamedEmotionBtn,
+            presetSelect: indexTTSPresetSelect,
+            addTextPresetBtn: addIndexTTSTextPresetBtn,
+            emotionTextInput: indexTTSEmotionTextInput,
+            addEmotionTextBtn: addIndexTTSEmotionTextBtn,
+        },
     } = inlineTagControls;
 
     // Block ComfyUI shortcuts when editor is focused, but allow Enter, Alt, and Ctrl combinations
@@ -1164,4 +1176,118 @@ export function attachAllEventHandlers(
         const tag = `<${tagName}>`;
         insertTextSnippet(tag);
     });
+
+    const isIndexTTSEmotionTag = (tag) => {
+        if (/^\[(?:vector|emotion):/i.test(tag)) return true;
+        const content = tag.slice(1, -1);
+        const emotionNames = "happy|angry|sad|afraid|disgusted|melancholic|surprised|calm";
+        return content.split("|").every(part => new RegExp(`^(?:${emotionNames}):[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$`, "i").test(part.trim()));
+    };
+
+    const insertOrReplaceIndexTTSTag = (replacement) => {
+        const text = getPlainText();
+        const caretPos = getCaretPos();
+        const start = text.lastIndexOf("[", caretPos);
+        const closingIndex = text.indexOf("]", caretPos);
+        if (start >= 0 && closingIndex >= caretPos) {
+            const existing = text.slice(start, closingIndex + 1);
+            if (isIndexTTSEmotionTag(existing)) {
+                const newText = text.slice(0, start) + replacement + text.slice(closingIndex + 1);
+                commitEditorTextChange(newText, start + replacement.length);
+                showNotification(`✓ Updated: ${replacement}`, 1500);
+                return;
+            }
+        }
+        insertTextSnippet(replacement);
+    };
+
+    addIndexTTSVectorBtn.addEventListener("click", () => {
+        const relative = indexTTSVectorModeSelect.value === "delta";
+        const values = Array(8).fill(relative ? "+0" : "0");
+        insertOrReplaceIndexTTSTag(`[vector:${values.join(",")}]`);
+    });
+
+    addIndexTTSNamedEmotionBtn.addEventListener("click", () => {
+        const emotion = indexTTSNamedEmotionSelect.value;
+        const magnitude = Math.max(0, Math.min(1.2, Number(indexTTSNamedValueInput.value) || 0));
+        const operation = indexTTSNamedOperationSelect.value;
+        const prefix = operation === "positive" ? "+" : operation === "negative" ? "-" : "";
+        insertOrReplaceIndexTTSTag(`[${emotion}:${prefix}${magnitude}]`);
+    });
+
+    addIndexTTSTextPresetBtn.addEventListener("click", () => {
+        const preset = indexTTSPresetSelect.value;
+        if (!preset) {
+            showNotification("⚠️ Select an IndexTTS text preset first", 2000);
+            return;
+        }
+        const selectedOption = indexTTSPresetSelect.selectedOptions[0];
+        if (selectedOption?.dataset.presetType === "vector") {
+            const values = JSON.parse(selectedOption.dataset.vectorValues || "[]");
+            if (values.length !== 8) {
+                showNotification("⚠️ This vector preset is invalid", 2000);
+                return;
+            }
+            insertOrReplaceIndexTTSTag(`[vector:${values.join(",")}]`);
+            return;
+        }
+        insertOrReplaceIndexTTSTag(`[emotion:${preset}]`);
+    });
+
+    addIndexTTSEmotionTextBtn.addEventListener("click", () => {
+        const description = indexTTSEmotionTextInput.value.trim();
+        if (!description) {
+            showNotification("⚠️ Enter an emotion description first", 2000);
+            return;
+        }
+        const quoted = !description.includes('"')
+            ? `"${description}"`
+            : !description.includes("'")
+                ? `'${description}'`
+                : `"${description.replaceAll('"', '”')}"`;
+        insertOrReplaceIndexTTSTag(`[emotion:${quoted}]`);
+    });
+
+    return {
+        beginExternalTransaction() {
+            flushPendingHistory();
+            return {
+                originalText: getPlainText(),
+                originalCaretPos: getCaretPos(),
+            };
+        },
+        previewExternalTransaction(transaction, newText, caretPos) {
+            setEditorText(newText);
+            state.text = newText;
+            widget.value = newText;
+            widget.callback?.(newText);
+            if (Number.isFinite(caretPos)) state.lastCursorPosition = caretPos;
+        },
+        cancelExternalTransaction(transaction) {
+            const originalText = transaction.originalText;
+            const caretPos = getClampedCaretPos(originalText, transaction.originalCaretPos, 0);
+            setEditorText(originalText);
+            state.text = originalText;
+            widget.value = originalText;
+            widget.callback?.(originalText);
+            lastHistoryText = originalText;
+            state.saveToLocalStorage(storageKey);
+            historyStatus.textContent = state.getHistoryStatus();
+            setTimeout(() => setCaretPos(caretPos), 0);
+        },
+        commitExternalTransaction(transaction, finalText, caretPos) {
+            const finalCaretPos = getClampedCaretPos(finalText, caretPos, transaction.originalCaretPos);
+            setEditorText(finalText);
+            state.text = finalText;
+            if (finalText !== transaction.originalText) {
+                state.addToHistory(finalText, finalCaretPos);
+            }
+            widget.value = finalText;
+            widget.callback?.(finalText);
+            lastHistoryText = finalText;
+            state.saveToLocalStorage(storageKey);
+            historyStatus.textContent = state.getHistoryStatus();
+            setTimeout(() => setCaretPos(finalCaretPos), 0);
+        },
+    };
 }

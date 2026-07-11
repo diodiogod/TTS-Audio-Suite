@@ -129,6 +129,39 @@ Parameters are applied **only to the current segment** and automatically revert 
 | `top_k` | `topk` | int | 1-100 | Top-k sampling |
 | `emotion_alpha` | — | float | 0.0-1.0 | Emotion control strength |
 
+IndexTTS-2 also supports inline emotion controls. Named unsigned values replace
+that dimension; explicitly signed values adjust the connected vector:
+
+```text
+[sad:0.7|calm:0.2] Absolute values for this segment.
+[sad:+0.3|calm:-0.2] Adjust the connected vector for this segment.
+```
+
+All eight values can be supplied in the official order `happy, angry, sad,
+afraid, disgusted, melancholic, surprised, calm`:
+
+```text
+[vector:0,0,0.7,0,0,0.4,0,0.2] Absolute replacement.
+[vector:+0,+0,+0.3,+0,+0,+0,+0,-0.2] Relative adjustment.
+```
+
+Full relative vectors require an explicit sign on every value. Results are
+clamped to IndexTTS-2's supported range and revert to the connected vector at
+the next segment.
+
+Text emotion can use a saved preset or quoted text. `{seg}` is expanded with
+the current segment before QwenEmotion analysis:
+
+```text
+[emotion:restrained_anger] A saved preset.
+[emotion:"Quiet grief masking frustration"] A direct description.
+[emotion:"Infer nervous anticipation from this line: {seg}"] Dynamic analysis.
+```
+
+Click a numeric emotion tag in the TTS Tag Editor to open a contextual radar
+directly beside that tag. The editor also creates and manages text
+presets in `models/TTS/IndexTTS/emotion_presets.json`.
+
 ---
 
 ## 🎯 Advanced Usage

@@ -126,6 +126,64 @@ Result: Anxious, concerned vocal expression
 
 ---
 
+## Inline Emotion Switching
+
+Numeric emotion tags can replace or adjust the vector for one text segment:
+
+```text
+[sad:0.7|calm:0.2] This uses explicit absolute values.
+[sad:+0.3|calm:-0.2] This modifies the connected vector.
+[vector:0,0,0.7,0,0,0.4,0,0.2] This supplies all eight absolute values.
+[vector:+0,+0,+0.3,+0,+0,+0,+0,-0.2] This supplies eight deltas.
+```
+
+The full-vector order is `happy, angry, sad, afraid, disgusted, melancholic,
+surprised, calm`. Unsigned named values are absolute; `+` and `-` named values
+are relative. A full vector is relative only when every value carries a sign.
+
+Text-emotion controls support saved presets and quoted descriptions:
+
+```text
+[emotion:restrained_anger] Text using a saved preset.
+[emotion:"Restrained anger masking disappointment"] Direct text control.
+[emotion:"Analyze this delivery as nervous anticipation: {seg}"] Dynamic control.
+```
+
+Inline controls override a connected global emotion control. A character audio
+emotion reference such as `[Alice:sad_reference]` remains the highest-priority
+control for that segment. Inline settings revert at the next segment and do not
+mutate the connected vector.
+
+The TTS Tag Editor provides the same interactive radar used by the IndexTTS-2
+Emotion Vectors node. Click an existing numeric emotion tag to open its radar
+as a contextual popover beside the tag. Create tags from **Inline Tags →
+IndexTTS-2**, and use **Manage Emotion Presets** in its Text Emotion section for
+the preset library. Text and vector presets are stored in
+`models/TTS/IndexTTS/emotion_presets.json`.
+
+Radar changes appear in the editor text immediately. Intermediate drag/input
+states are not added to undo history: closing the popover commits one undoable
+change, while Cancel or Escape restores the tag exactly as it was when opened.
+
+The editor's **Inline Tags** tab also includes an **IndexTTS-2** engine panel for
+inserting full absolute/delta vectors, named emotion values, saved text presets,
+quoted descriptions, and dynamic descriptions containing `{seg}`.
+
+The named-emotion panel includes a magnitude slider and a press-drag-release
+radial picker: direction chooses the emotion and distance chooses its value.
+The operation dropdown determines whether that value is absolute, a positive
+delta, or a negative delta. Saved text and vector presets refresh in the sidebar
+immediately after they are changed in the preset manager.
+
+Clicking a saved `[emotion:preset_name]` tag in the editor opens a small anchored
+preset dropdown, allowing that line's preset to be swapped without opening the
+full manager. Adding any IndexTTS emotion control while the caret is already
+inside another IndexTTS emotion tag replaces that whole tag instead of nesting it.
+
+Named tags remain readable while only some emotions are active. If radar editing
+activates all eight emotions, the editor automatically converts the result to the
+shorter ordered `[vector:...]` form.
+
 ## Character Tag Emotion Control
 
 Control emotions per character using inline tags in your text: `[Character:emotion_ref]`

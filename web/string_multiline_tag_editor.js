@@ -18,6 +18,7 @@ import { buildInlineEditSection } from "./widget-inline-edit-section.js";
 import { SRTTimingDragController, buildSRTTimingMarkup } from "./string_multiline_tag_editor_timing_drag.js";
 import { SRTCueEditController, buildSRTCueNumberMarkup } from "./string_multiline_tag_editor_srt_cue_ops.js";
 import { findTextMatches, replaceMatches } from "./string_multiline_tag_editor_find_replace.js";
+import { openIndexTTSEmotionEditor, openIndexTTSEmotionPresetPicker, parseVectorTag, isEmotionTextTag } from "./index_tts_emotion_tag_popup.js";
 
 
 // Counter to ensure unique storage keys even when node.id is -1
@@ -150,7 +151,8 @@ function addStringMultilineTagEditorWidget(node) {
         const max = Number(input.max || 100);
         const value = Number(input.value || min);
         const ratio = max > min ? ((value - min) / (max - min)) * 100 : 0;
-        input.style.background = `linear-gradient(90deg, rgba(0, 225, 174, 0.88) 0%, rgba(0, 225, 174, 0.88) ${ratio}%, rgba(53, 53, 52, 0.9) ${ratio}%, rgba(53, 53, 52, 0.9) 100%)`;
+        const fillColor = input.dataset.fillColor || "rgba(0, 225, 174, 0.88)";
+        input.style.background = `linear-gradient(90deg, ${fillColor} 0%, ${fillColor} ${ratio}%, rgba(53, 53, 52, 0.9) ${ratio}%, rgba(53, 53, 52, 0.9) 100%)`;
     };
 
     const topBar = document.createElement("div");
@@ -1701,7 +1703,7 @@ function addStringMultilineTagEditorWidget(node) {
         showNotification
     });
 
-    attachAllEventHandlers(
+    const editorEventApi = attachAllEventHandlers(
         editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, getSelectionRange,
         undoBtn, redoBtn, historyStatus, charSelect, charInput, addCharBtn, langSelect, addLangBtn,
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
@@ -1710,6 +1712,94 @@ function addStringMultilineTagEditorWidget(node) {
         inlineTagControls,
         openFindReplace, focusNextFindMatch, focusPreviousFindMatch
     );
+
+    const openEmotionPopupForRange = (start, end, tag = null, options = {}) => {
+        const transaction = editorEventApi.beginExternalTransaction();
+        const textWithReplacement = (replacement) => (
+            transaction.originalText.slice(0, start) + replacement + transaction.originalText.slice(end)
+        );
+        openIndexTTSEmotionEditor({
+            tag,
+            ...options,
+            onApply: (replacement) => {
+                editorEventApi.commitExternalTransaction(
+                    transaction,
+                    textWithReplacement(replacement),
+                    start + replacement.length
+                );
+            },
+            onPreview: (replacement) => {
+                editorEventApi.previewExternalTransaction(
+                    transaction,
+                    textWithReplacement(replacement),
+                    start + replacement.length
+                );
+            },
+            onCommit: (replacement) => {
+                editorEventApi.commitExternalTransaction(
+                    transaction,
+                    textWithReplacement(replacement),
+                    start + replacement.length
+                );
+            },
+            onCancel: () => editorEventApi.cancelExternalTransaction(transaction),
+        });
+    };
+
+    const emotionTagAtCaret = () => {
+        const text = getPlainText();
+        const position = getCaretPos();
+        const start = text.lastIndexOf("[", position);
+        const end = text.indexOf("]", position);
+        if (start < 0 || end < start) return null;
+        const tag = text.slice(start, end + 1);
+        return { text, position, start, end: end + 1, tag };
+    };
+
+    inlineTagControls.indexTTS.managePresetsBtn.addEventListener("click", () => {
+        const position = getCaretPos();
+        openEmotionPopupForRange(position, position, null, { showPresets: true });
+    });
+
+    editor.addEventListener("click", (event) => {
+        const match = emotionTagAtCaret();
+        if (!match) return;
+
+        const target = event.target instanceof Element ? event.target : null;
+        const targetText = target?.textContent?.trim();
+        const anchorRect = target && target !== editor && targetText === match.tag
+            ? target.getBoundingClientRect()
+            : { left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY };
+
+        if (parseVectorTag(match.tag)) {
+            openEmotionPopupForRange(match.start, match.end, match.tag, {
+                anchorRect,
+                showPresets: false
+            });
+            return;
+        }
+
+        const presetMatch = match.tag.match(/^\[emotion:([A-Za-z0-9_-]+)\]$/i);
+        if (presetMatch) {
+            openIndexTTSEmotionPresetPicker({
+                presetName: presetMatch[1],
+                anchorRect,
+                onSelect: presetName => {
+                    const transaction = editorEventApi.beginExternalTransaction();
+                    const replacement = `[emotion:${presetName}]`;
+                    const finalText = transaction.originalText.slice(0, match.start) + replacement + transaction.originalText.slice(match.end);
+                    editorEventApi.commitExternalTransaction(transaction, finalText, match.start + replacement.length);
+                }
+            });
+        }
+    });
+
+    editor.addEventListener("dblclick", () => {
+        const match = emotionTagAtCaret();
+        if (match && isEmotionTextTag(match.tag)) {
+            openEmotionPopupForRange(match.start, match.end, match.tag, { showPresets: true });
+        }
+    });
 
     const stopFindBarShortcutLeak = (event) => {
         event.stopPropagation();

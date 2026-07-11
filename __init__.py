@@ -310,6 +310,31 @@ def setup_api_routes():
         def _get_omnivoice_preset_library_path():
             return os.path.join(_get_ui_data_dir(), "omnivoice_instruction_builder_presets.json")
 
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/index-tts-emotion-presets")
+        async def get_index_tts_emotion_presets_endpoint(request):
+            """Return presets stored beside the IndexTTS resources under models/TTS."""
+            try:
+                from .utils.text.index_tts_emotion import load_emotion_presets
+                return web.json_response({"presets": load_emotion_presets()})
+            except Exception as e:
+                print(f"⚠️ Error retrieving IndexTTS emotion presets: {e}")
+                return web.json_response({"presets": {}, "error": str(e)}, status=500)
+
+        @PromptServer.instance.routes.post("/api/tts-audio-suite/index-tts-emotion-presets")
+        async def save_index_tts_emotion_presets_endpoint(request):
+            """Atomically persist the IndexTTS emotion preset library."""
+            try:
+                from .utils.text.index_tts_emotion import save_emotion_presets
+                data = await request.json()
+                presets = data.get("presets", {})
+                path = save_emotion_presets(presets)
+                return web.json_response({"status": "success", "count": len(presets), "path": path})
+            except ValueError as e:
+                return web.json_response({"error": str(e)}, status=400)
+            except Exception as e:
+                print(f"⚠️ Error saving IndexTTS emotion presets: {e}")
+                return web.json_response({"status": "error", "error": str(e)}, status=500)
+
         @PromptServer.instance.routes.get("/api/tts-audio-suite/available-characters")
         async def get_available_characters_endpoint(request):
             """API endpoint to get available TTS character voices including aliases"""
