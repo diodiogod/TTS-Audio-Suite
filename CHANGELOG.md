@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.4] - 2026-07-11
+
+### Added
+
+- Add faster character, parameter, preset, and emotion swapping
+- Support combining IndexTTS audio emotion references with vector or text emotions
+
+### Changed
+
+- Improve Multiline TTS Tag Editor emotion switching
+- Improve long inline tag wrapping inside the editor
+
+### Fixed
+
+- Fix incorrect tag detection and extra blank lines when pressing Enter
 ## [5.4.3] - 2026-07-10
 
 ### Added
