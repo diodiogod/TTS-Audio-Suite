@@ -1165,6 +1165,11 @@ class TTSAudioInstaller:
         """Install Fish S2 without changing the suite's core ML stack."""
         self.log("Installing Fish Audio S2 support in the main T5 environment", "INFO")
 
+        # The adapter uses Fish's official inference_engine API. Pin the tested
+        # S2 release because distribution metadata alone cannot verify that API.
+        fish_source = "git+https://github.com/fishaudio/fish-speech.git@v2.0.0-beta"
+        fish_runtime_module = "fish_speech.inference_engine"
+
         packages = [
             ("lightning", "lightning"),
             ("pytorch_lightning", "pytorch-lightning"),
@@ -1186,14 +1191,29 @@ class TTSAudioInstaller:
                 ignore_errors=True,
             )
 
-        if self.check_package_installed("fish-speech"):
-            self.log("fish-speech already satisfied - skipping", "SUCCESS")
+        if self.verify_python_import(fish_runtime_module):
+            self.log("Fish S2 inference runtime already satisfied - skipping", "SUCCESS")
             return
+
+        if self.check_package_installed("fish-speech"):
+            self.log(
+                "fish-speech distribution is installed but the required Fish S2 inference runtime is missing - repairing",
+                "WARNING",
+            )
+
         self.run_pip_command(
-            ["install", "git+https://github.com/fishaudio/fish-speech.git", "--no-deps"],
-            "Installing official fish-speech from GitHub (--no-deps)",
+            ["install", "--upgrade", "--force-reinstall", fish_source, "--no-deps"],
+            "Installing tested Fish S2 runtime from GitHub (--no-deps)",
             ignore_errors=True,
         )
+
+        if self.verify_python_import(fish_runtime_module):
+            self.log("Fish S2 inference runtime installed successfully", "SUCCESS")
+        else:
+            self.log(
+                "Fish S2 inference runtime is still unavailable after installation; Fish Audio S2 will not work until the package is repaired",
+                "ERROR",
+            )
 
     def install_f5tts_multilingual_support(self):
         """Install phonemization support for F5-TTS multilingual models (Polish, German, French, Spanish, etc.)"""
