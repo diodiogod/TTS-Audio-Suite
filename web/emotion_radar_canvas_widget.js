@@ -3,7 +3,11 @@
  * Draws directly on ComfyUI canvas - no DOM positioning issues
  */
 
-import { exportEmotionConfiguration, showEmotionFeedback } from "./emotion_radar_export.js";
+import {
+    exportEmotionConfiguration,
+    importEmotionConfiguration,
+    showEmotionFeedback
+} from "./emotion_radar_export.js";
 
 export const INDEX_TTS_EMOTION_VISUALS = [
     { name: 'Happy', color: '#FFD700', angle: 0 },
@@ -276,69 +280,47 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
     }
 
     function importEmotionConfig() {
-        // Try to read from clipboard first
-        if (navigator.clipboard && navigator.clipboard.readText) {
-            navigator.clipboard.readText().then(text => {
-                processImportedText(text);
-            }).catch(err => {
-                console.log("Clipboard read failed, falling back to prompt:", err);
-                fallbackImportPrompt();
-            });
-        } else {
-            // Fallback for browsers without clipboard API
-            fallbackImportPrompt();
-        }
-    }
-
-    function fallbackImportPrompt() {
-        const importedText = prompt(
-            "Paste your emotion configuration (JSON format):\n\n" +
-            "Example:\n" +
-            '{\n  "Happy": 0.5,\n  "Angry": 0.3,\n  ...\n}'
-        );
-
-        if (importedText) {
-            processImportedText(importedText);
-        }
+        importEmotionConfiguration(processImportedText);
     }
 
     function processImportedText(text) {
         try {
             const config = JSON.parse(text.trim());
 
-            // Validate that it's an object
-            if (typeof config !== 'object' || config === null) {
-                throw new Error("Configuration must be a JSON object");
+            if (typeof config !== "object" || config === null || Array.isArray(config)) {
+                return { ok: false, message: "Configuration must be a JSON object." };
             }
 
-            let importedCount = 0;
-            const validEmotions = emotions.map(e => e.name);
+            const validEmotionNames = new Set(emotions.map(emotion => emotion.name));
+            const entries = Object.entries(config);
+            if (!entries.length) {
+                return { ok: false, message: "Configuration must contain at least one emotion value." };
+            }
 
-            // Apply valid emotion values
-            validEmotions.forEach(emotionName => {
-                if (config.hasOwnProperty(emotionName)) {
-                    const value = parseFloat(config[emotionName]);
-                    if (!isNaN(value)) {
-                        const clampedValue = Math.max(0.0, Math.min(1.2, value));
-                        setEmotionValue(emotionName, clampedValue);
-                        importedCount++;
-                    }
+            for (const [emotionName, value] of entries) {
+                if (!validEmotionNames.has(emotionName)) {
+                    return { ok: false, message: `Unknown emotion: ${emotionName}.` };
                 }
+                if (typeof value !== "number" || !Number.isFinite(value)) {
+                    return { ok: false, message: `${emotionName} must be a number.` };
+                }
+                if (value < 0.0 || value > 1.2) {
+                    return { ok: false, message: `${emotionName} must be between 0.0 and 1.2.` };
+                }
+            }
+
+            entries.forEach(([emotionName, value]) => {
+                setEmotionValue(emotionName, value);
             });
 
-            if (importedCount > 0) {
-                console.log(`🎭 Successfully imported ${importedCount} emotion values`);
-                showEmotionFeedback(`Imported ${importedCount} emotion vector${importedCount === 1 ? "" : "s"}.`);
-                // Force redraw
-                if (node.graph && node.graph.setDirtyCanvas) {
-                    node.graph.setDirtyCanvas(true);
-                }
-            } else {
-                alert("No valid emotion values found in the imported configuration.");
+            console.log(`🎭 Successfully imported ${entries.length} emotion values`);
+            showEmotionFeedback(`Imported ${entries.length} emotion vector${entries.length === 1 ? "" : "s"}.`);
+            if (node.graph && node.graph.setDirtyCanvas) {
+                node.graph.setDirtyCanvas(true);
             }
-
+            return { ok: true };
         } catch (error) {
-            alert(`Import failed: ${error.message}\n\nPlease check that you've copied a valid JSON emotion configuration.`);
+            return { ok: false, message: `Invalid JSON: ${error.message}` };
         }
     }
 

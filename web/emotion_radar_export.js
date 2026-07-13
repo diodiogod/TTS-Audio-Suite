@@ -107,7 +107,8 @@ function createButton(label, background, onClick) {
     return button;
 }
 
-function showExportModal(text, filename) {
+function showEmotionConfigModal({ mode, text = "", filename = DEFAULT_FILENAME, onApply }) {
+    const isImport = mode === "import";
     const existingModal = document.getElementById(MODAL_ID);
     closeModal(existingModal);
 
@@ -159,13 +160,18 @@ function showExportModal(text, filename) {
     title.style.cssText = "margin: 0; font-size: 16px;";
 
     const description = document.createElement("div");
-    description.textContent = `Exported as ${filename}. Select or copy the JSON below.`;
+    description.textContent = isImport
+        ? "Paste or edit a JSON emotion configuration, then apply it."
+        : `Exported as ${filename}. Select or copy the JSON below.`;
     description.style.cssText = "color: #bbb; font-size: 12px;";
 
     const textarea = document.createElement("textarea");
     textarea.value = text;
-    textarea.readOnly = true;
-    textarea.setAttribute("aria-label", "Emotion vector JSON");
+    textarea.readOnly = !isImport;
+    textarea.placeholder = isImport
+        ? '{\n  "Happy": 0.5,\n  "Angry": 0.0,\n  "Sad": 0.2\n}'
+        : "";
+    textarea.setAttribute("aria-label", isImport ? "Emotion vector JSON to import" : "Emotion vector JSON");
     textarea.style.cssText = `
         width: 100%;
         min-height: 220px;
@@ -180,39 +186,60 @@ function showExportModal(text, filename) {
     `;
 
     const status = document.createElement("div");
-    status.style.cssText = "min-height: 16px; color: #8fd694; font-size: 12px;";
-    status.textContent = "Use Download JSON when you are ready to save a file.";
+    status.style.cssText = `min-height: 16px; color: ${isImport ? "#bbb" : "#8fd694"}; font-size: 12px;`;
+    status.textContent = isImport
+        ? "Paste JSON above, then choose Apply."
+        : "Use Download JSON when you are ready to save a file.";
 
     const actions = document.createElement("div");
     actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px;";
 
-    const copyButton = createButton("Copy", "#45b7d1", async () => {
-        try {
-            const copied = await copyText(text);
-            status.textContent = copied ? "Copied to clipboard." : "Copy was not available; select the text manually.";
-            status.style.color = copied ? "#8fd694" : "#f0c674";
-        } catch (error) {
-            console.warn("Emotion vector clipboard copy failed:", error);
-            status.textContent = "Copy was blocked; select the text manually.";
-            status.style.color = "#f0c674";
-        }
-    });
+    if (isImport) {
+        const applyButton = createButton("Apply", "#4ecdc4", () => {
+            try {
+                const result = onApply?.(textarea.value);
+                if (!result?.ok) {
+                    status.textContent = result?.message || "Import failed. Check the JSON and try again.";
+                    status.style.color = "#f0c674";
+                    return;
+                }
+                closeModalAndCleanup();
+            } catch (error) {
+                console.error("Emotion vector import failed:", error);
+                status.textContent = `Import failed: ${error.message}`;
+                status.style.color = "#f0c674";
+            }
+        });
+        const cancelButton = createButton("Cancel", "#666", closeModalAndCleanup);
+        actions.append(applyButton, cancelButton);
+    } else {
+        const copyButton = createButton("Copy", "#45b7d1", async () => {
+            try {
+                const copied = await copyText(text);
+                status.textContent = copied ? "Copied to clipboard." : "Copy was not available; select the text manually.";
+                status.style.color = copied ? "#8fd694" : "#f0c674";
+            } catch (error) {
+                console.warn("Emotion vector clipboard copy failed:", error);
+                status.textContent = "Copy was blocked; select the text manually.";
+                status.style.color = "#f0c674";
+            }
+        });
 
-    const downloadButton = createButton("Download JSON", "#4ecdc4", () => {
-        try {
-            downloadJson(text, filename);
-            status.textContent = "JSON download started.";
-            status.style.color = "#8fd694";
-        } catch (error) {
-            console.error("Emotion vector JSON download failed:", error);
-            status.textContent = "Download failed; select and save the JSON manually.";
-            status.style.color = "#f0c674";
-        }
-    });
+        const downloadButton = createButton("Download JSON", "#4ecdc4", () => {
+            try {
+                downloadJson(text, filename);
+                status.textContent = "JSON download started.";
+                status.style.color = "#8fd694";
+            } catch (error) {
+                console.error("Emotion vector JSON download failed:", error);
+                status.textContent = "Download failed; select and save the JSON manually.";
+                status.style.color = "#f0c674";
+            }
+        });
 
-    const closeButton = createButton("Close", "#666", closeModalAndCleanup);
-
-    actions.append(copyButton, downloadButton, closeButton);
+        const closeButton = createButton("Close", "#666", closeModalAndCleanup);
+        actions.append(copyButton, downloadButton, closeButton);
+    }
     dialog.append(title, description, textarea, status, actions);
     modal.appendChild(dialog);
     modal.addEventListener("click", event => {
@@ -224,11 +251,17 @@ function showExportModal(text, filename) {
     document.addEventListener("keydown", closeOnEscape);
 
     textarea.focus();
-    textarea.select();
+    if (!isImport) {
+        textarea.select();
+    }
 }
 
 export function exportEmotionConfiguration(config, filename = DEFAULT_FILENAME) {
     const text = JSON.stringify(config, null, 2);
-    showExportModal(text, filename);
+    showEmotionConfigModal({ mode: "export", text, filename });
     return text;
+}
+
+export function importEmotionConfiguration(onApply) {
+    showEmotionConfigModal({ mode: "import", onApply });
 }
