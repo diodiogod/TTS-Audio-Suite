@@ -223,18 +223,23 @@ class MossTTSProcessor:
 
     @staticmethod
     def _make_voice_ref(audio: Any, reference_text: str = "", audio_path: Optional[str] = None):
-        if audio_path:
-            return {"audio_path": audio_path, "reference_text": reference_text or ""}
-        if audio is None:
-            return None
         if isinstance(audio, dict) and "waveform" in audio:
-            return {"audio": audio, "reference_text": reference_text or ""}
+            return {
+                "audio": audio,
+                "audio_path": audio_path,
+                "reference_text": reference_text or "",
+            }
         if torch.is_tensor(audio):
             return {
                 "waveform": audio,
                 "sample_rate": MossTTSProcessor.SAMPLE_RATE,
+                "audio_path": audio_path,
                 "reference_text": reference_text or "",
             }
+        if audio_path:
+            return {"audio_path": audio_path, "reference_text": reference_text or ""}
+        if audio is None:
+            return None
         if isinstance(audio, str):
             return {"audio_path": audio, "reference_text": reference_text or ""}
         return {"audio": audio, "reference_text": reference_text or ""}

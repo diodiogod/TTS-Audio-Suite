@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 import torch
 
 from utils.models.factory_config import ModelLoadConfig
+from utils.voice.reference import effective_voice_audio
 from .bootstrap import PROJECT_ROOT, ensure_runtime
 from .launcher import IsolatedRuntimeLauncher
 from .profiles import RuntimeProfile, get_runtime_profile
@@ -141,16 +142,16 @@ class VibeVoiceIsolatedProxy:
         reference_text = voice_ref.get("reference_text") or voice_ref.get("text") or ""
         character_name = voice_ref.get("character_name") or "narrator"
 
-        audio_path = voice_ref.get("audio_path")
-        if audio_path:
+        effective_audio = effective_voice_audio(voice_ref)
+        if isinstance(effective_audio, str):
             return {
                 "kind": "audio_path",
-                "audio_path": audio_path,
+                "audio_path": effective_audio,
                 "reference_text": reference_text,
                 "character_name": character_name,
             }
 
-        nested_audio = voice_ref.get("audio")
+        nested_audio = effective_audio
         if isinstance(nested_audio, dict):
             nested_audio_path = nested_audio.get("audio_path")
             if nested_audio_path:

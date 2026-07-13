@@ -21,6 +21,7 @@ from utils.audio.cache import get_audio_cache
 from utils.audio.processing import AudioProcessingUtils
 from utils.models.factory_config import ModelLoadConfig
 from utils.models.language_mapper import resolve_language_alias
+from utils.voice.reference import effective_voice_audio
 from engines.dots_tts.languages import normalize_dots_language
 
 
@@ -104,12 +105,7 @@ class DotsTTSEngineAdapter:
             or ""
         ).strip()
 
-        ref_audio = (
-            voice_ref.get("prompt_audio_path")
-            or voice_ref.get("audio_path")
-            or voice_ref.get("audio")
-            or voice_ref.get("waveform")
-        )
+        ref_audio = effective_voice_audio(voice_ref)
 
         if ref_audio is None:
             return None, prompt_text, "default_voice"

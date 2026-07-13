@@ -1,0 +1,317 @@
+// Interaction design inspired by WhatDreamsCost LoadAudioUI:
+// https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI
+// Reimplemented for TTS Audio Suite Character Voices; no source code is copied here.
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function formatTime(seconds) {
+    const value = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    if (value < 60) {
+        return `${value.toFixed(2)}s`;
+    }
+    const minutes = Math.floor(value / 60);
+    return `${minutes}:${(value % 60).toFixed(1).padStart(4, "0")}`;
+}
+
+export function hideNativeWidget(widget) {
+    if (!widget) return;
+    widget.hidden = true;
+    widget.options = widget.options || {};
+    widget.options.hidden = true;
+    widget.computeSize = () => [0, -4];
+    widget.draw = () => {};
+    if (widget.element) {
+        widget.element.style.display = "none";
+    }
+}
+
+function createNumberInput(labelText) {
+    const wrapper = document.createElement("label");
+    Object.assign(wrapper.style, {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        color: "#aaa",
+        fontSize: "11px",
+    });
+
+    const label = document.createElement("span");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.step = "0.01";
+    Object.assign(input.style, {
+        width: "78px",
+        padding: "3px 5px",
+        color: "#ddd",
+        background: "#181818",
+        border: "1px solid #444",
+        borderRadius: "4px",
+    });
+    wrapper.append(label, input);
+    return { wrapper, input };
+}
+
+export function createCharacterVoiceTrimUI(onRangeChange) {
+    const root = document.createElement("div");
+    Object.assign(root.style, {
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        width: "100%",
+        padding: "10px",
+        boxSizing: "border-box",
+        borderRadius: "6px",
+        color: "#ddd",
+        background: "rgba(24, 24, 24, 0.94)",
+        fontFamily: "sans-serif",
+    });
+
+    const header = document.createElement("div");
+    Object.assign(header.style, {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "8px",
+        minWidth: "0",
+    });
+    const title = document.createElement("span");
+    Object.assign(title.style, {
+        overflow: "hidden",
+        color: "#aaa",
+        fontSize: "11px",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+    });
+    title.textContent = "No library voice selected";
+    const badge = document.createElement("span");
+    Object.assign(badge.style, {
+        flexShrink: "0",
+        padding: "2px 6px",
+        borderRadius: "999px",
+        color: "#9ca3af",
+        background: "rgba(156, 163, 175, 0.12)",
+        fontSize: "10px",
+        fontWeight: "600",
+    });
+    badge.textContent = "NO VOICE";
+    header.append(title, badge);
+
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.preload = "metadata";
+    audio.classList.add("comfy-audio");
+    Object.assign(audio.style, { width: "100%", height: "40px", outline: "none" });
+
+    const trimArea = document.createElement("div");
+    Object.assign(trimArea.style, {
+        display: "flex",
+        flexDirection: "column",
+        gap: "6px",
+        padding: "9px",
+        border: "1px solid rgba(255,255,255,0.07)",
+        borderRadius: "6px",
+        background: "rgba(0,0,0,0.3)",
+    });
+
+    const ruler = document.createElement("div");
+    Object.assign(ruler.style, {
+        display: "flex",
+        justifyContent: "space-between",
+        color: "#777",
+        fontSize: "10px",
+        userSelect: "none",
+    });
+    const rulerStart = document.createElement("span");
+    const rulerMiddle = document.createElement("span");
+    const rulerEnd = document.createElement("span");
+    ruler.append(rulerStart, rulerMiddle, rulerEnd);
+
+    const track = document.createElement("div");
+    Object.assign(track.style, {
+        position: "relative",
+        width: "100%",
+        height: "26px",
+        borderRadius: "4px",
+        background: "#101010",
+        backgroundImage: "repeating-linear-gradient(90deg, transparent 0, transparent calc(25% - 1px), rgba(255,255,255,0.08) 25%)",
+        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.7)",
+        cursor: "pointer",
+        touchAction: "none",
+        userSelect: "none",
+    });
+    const selection = document.createElement("div");
+    Object.assign(selection.style, {
+        position: "absolute",
+        top: "0",
+        height: "100%",
+        borderRadius: "3px",
+        background: "rgba(56, 189, 248, 0.30)",
+        pointerEvents: "none",
+    });
+
+    const makeHandle = () => {
+        const handle = document.createElement("div");
+        Object.assign(handle.style, {
+            position: "absolute",
+            top: "0",
+            width: "8px",
+            height: "100%",
+            borderRadius: "2px",
+            background: "#38bdf8",
+            boxShadow: "0 0 4px rgba(0,0,0,0.85)",
+            transform: "translateX(-50%)",
+            pointerEvents: "none",
+        });
+        return handle;
+    };
+    const startHandle = makeHandle();
+    const endHandle = makeHandle();
+    track.append(selection, startHandle, endHandle);
+
+    const controls = document.createElement("div");
+    Object.assign(controls.style, {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "8px",
+        flexWrap: "wrap",
+    });
+    const startControl = createNumberInput("Start");
+    const endControl = createNumberInput("End");
+    const length = document.createElement("span");
+    Object.assign(length.style, { color: "#38bdf8", fontSize: "11px", fontWeight: "600" });
+    controls.append(startControl.wrapper, endControl.wrapper, length);
+    const trimWarning = document.createElement("div");
+    Object.assign(trimWarning.style, {
+        display: "none",
+        color: "#fbbf24",
+        fontSize: "10px",
+        lineHeight: "1.25",
+    });
+    trimWarning.textContent = "Trimmed reference: review the transcription so it matches only the selected speech.";
+    trimArea.append(ruler, track, controls, trimWarning);
+    root.append(header, audio, trimArea);
+
+    let duration = 0;
+    let start = 0;
+    let end = 0;
+    let dragMode = null;
+    let dragOffset = 0;
+    let dragWidth = 0;
+    let suppressInputs = false;
+
+    const render = () => {
+        const safeDuration = Math.max(duration, 0);
+        const startPercent = safeDuration ? (start / safeDuration) * 100 : 0;
+        const endPercent = safeDuration ? (end / safeDuration) * 100 : 100;
+        startHandle.style.left = `${startPercent}%`;
+        endHandle.style.left = `${endPercent}%`;
+        selection.style.left = `${startPercent}%`;
+        selection.style.width = `${Math.max(0, endPercent - startPercent)}%`;
+        rulerStart.textContent = "0.00s";
+        rulerMiddle.textContent = formatTime(safeDuration / 2);
+        rulerEnd.textContent = formatTime(safeDuration);
+        length.textContent = `Selected: ${formatTime(Math.max(0, end - start))}`;
+        suppressInputs = true;
+        startControl.input.value = start.toFixed(2);
+        endControl.input.value = end.toFixed(2);
+        startControl.input.max = String(safeDuration || 100000);
+        endControl.input.max = String(safeDuration || 100000);
+        suppressInputs = false;
+    };
+
+    const setRange = (nextStart, nextEnd, notify = false) => {
+        const max = Math.max(duration, 0);
+        start = clamp(Number(nextStart) || 0, 0, max);
+        end = clamp(Number(nextEnd) || max, start, max);
+        render();
+        if (notify) onRangeChange(start, end);
+    };
+
+    const updateFromPointer = (event) => {
+        if (!duration || !dragMode) return;
+        const rect = track.getBoundingClientRect();
+        const time = clamp((event.clientX - rect.left) / rect.width, 0, 1) * duration;
+        if (dragMode === "start") {
+            setRange(Math.min(time, end), end, true);
+        } else if (dragMode === "end") {
+            setRange(start, Math.max(time, start), true);
+        } else {
+            let nextStart = time - dragOffset;
+            let nextEnd = nextStart + dragWidth;
+            if (nextStart < 0) {
+                nextStart = 0;
+                nextEnd = dragWidth;
+            } else if (nextEnd > duration) {
+                nextEnd = duration;
+                nextStart = duration - dragWidth;
+            }
+            setRange(nextStart, nextEnd, true);
+        }
+    };
+
+    track.addEventListener("pointerdown", (event) => {
+        if (!duration) return;
+        const rect = track.getBoundingClientRect();
+        const time = clamp((event.clientX - rect.left) / rect.width, 0, 1) * duration;
+        const tolerance = (10 / Math.max(rect.width, 1)) * duration;
+        if (time > start + tolerance && time < end - tolerance) {
+            dragMode = "center";
+            dragOffset = time - start;
+            dragWidth = end - start;
+        } else {
+            dragMode = Math.abs(time - start) <= Math.abs(time - end) ? "start" : "end";
+        }
+        track.setPointerCapture(event.pointerId);
+        updateFromPointer(event);
+    });
+    track.addEventListener("pointermove", updateFromPointer);
+    const stopDragging = (event) => {
+        dragMode = null;
+        if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId);
+    };
+    track.addEventListener("pointerup", stopDragging);
+    track.addEventListener("pointercancel", stopDragging);
+
+    const onNumericInput = () => {
+        if (suppressInputs) return;
+        setRange(Number(startControl.input.value), Number(endControl.input.value), true);
+    };
+    startControl.input.addEventListener("change", onNumericInput);
+    endControl.input.addEventListener("change", onNumericInput);
+
+    render();
+    return {
+        element: root,
+        audio,
+        setDuration(value) {
+            duration = Number.isFinite(value) ? Math.max(0, value) : 0;
+            setRange(start, end || duration, false);
+        },
+        setRange,
+        getDuration: () => duration,
+        getRange: () => ({ start, end }),
+        setTitle(value) {
+            title.textContent = value || "No library voice selected";
+        },
+        setCustomState(isCustom, sourceName = "") {
+            title.textContent = isCustom && sourceName
+                ? `Custom — based on ${sourceName}`
+                : sourceName || "No library voice selected";
+            badge.textContent = isCustom ? "CUSTOM" : sourceName ? "LIBRARY" : "NO VOICE";
+            badge.style.color = isCustom ? "#fbbf24" : sourceName ? "#86efac" : "#9ca3af";
+            badge.style.background = isCustom
+                ? "rgba(251, 191, 36, 0.14)"
+                : sourceName
+                    ? "rgba(134, 239, 172, 0.12)"
+                    : "rgba(156, 163, 175, 0.12)";
+        },
+        setTrimWarning(visible) {
+            trimWarning.style.display = visible ? "block" : "none";
+        },
+    };
+}

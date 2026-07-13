@@ -27,6 +27,7 @@ from utils.voice.character_logging import (
     format_resolved_character_block,
     resolved_character_label,
 )
+from utils.voice.reference import effective_voice_audio
 from utils.text.segment_parameters import ParameterValidator, apply_segment_parameters
 from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
 
@@ -80,11 +81,7 @@ class OmniVoiceProcessor:
     def _voice_log_note(voice_ref: Dict[str, Any]) -> str:
         if not isinstance(voice_ref, dict):
             return " [auto/default voice]"
-        audio_ref = OmniVoiceProcessor._first_non_none(
-            voice_ref.get("audio_path"),
-            voice_ref.get("audio"),
-            voice_ref.get("waveform"),
-        )
+        audio_ref = effective_voice_audio(voice_ref)
         if audio_ref is None:
             return " [auto/default voice]"
         reference_text = voice_ref.get("reference_text")

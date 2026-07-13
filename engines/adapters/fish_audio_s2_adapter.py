@@ -11,6 +11,7 @@ from utils.audio.processing import AudioProcessingUtils
 from utils.models.factory_config import ModelLoadConfig
 from utils.text.fish_audio_s2_tags import translate_fish_s2_inline_tags
 from utils.voice.character_logging import resolved_voice_name
+from utils.voice.reference import effective_voice_audio
 
 
 class FishAudioS2Adapter:
@@ -48,14 +49,16 @@ class FishAudioS2Adapter:
         if not isinstance(voice_ref, dict):
             return None, "", "default_voice"
         text = (voice_ref.get("reference_text") or voice_ref.get("prompt_text") or "").strip()
-        path = voice_ref.get("audio_path") or voice_ref.get("prompt_audio_path")
-        audio = voice_ref.get("audio")
-        if audio is None:
-            audio = voice_ref.get("waveform")
-        if not path and isinstance(audio, dict):
-            path = AudioProcessingUtils.save_audio_to_temp_file(audio["waveform"], audio.get("sample_rate", 44100))
-        elif not path and torch.is_tensor(audio):
-            path = AudioProcessingUtils.save_audio_to_temp_file(audio, voice_ref.get("sample_rate", 44100))
+        effective_audio = effective_voice_audio(voice_ref)
+        path = effective_audio if isinstance(effective_audio, str) else None
+        if isinstance(effective_audio, dict):
+            path = AudioProcessingUtils.save_audio_to_temp_file(
+                effective_audio["waveform"], effective_audio.get("sample_rate", self.SAMPLE_RATE)
+            )
+        elif torch.is_tensor(effective_audio):
+            path = AudioProcessingUtils.save_audio_to_temp_file(
+                effective_audio, voice_ref.get("sample_rate", self.SAMPLE_RATE)
+            )
         component = generate_stable_audio_component(audio_file_path=path) if path else "default_voice"
         return path, text, component
 

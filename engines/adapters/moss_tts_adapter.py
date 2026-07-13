@@ -21,6 +21,7 @@ from utils.audio.audio_hash import generate_stable_audio_component
 from utils.audio.cache import get_audio_cache
 from utils.models.factory_config import ModelLoadConfig
 from utils.text.pause_processor import PauseTagProcessor
+from utils.voice.reference import effective_voice_audio
 
 
 class MossTTSEngineAdapter:
@@ -207,12 +208,7 @@ class MossTTSEngineAdapter:
         if not voice_ref or not isinstance(voice_ref, dict):
             return None, None, "default_voice"
 
-        ref_audio = (
-            voice_ref.get("audio_path")
-            or voice_ref.get("prompt_audio_path")
-            or voice_ref.get("audio")
-            or voice_ref.get("waveform")
-        )
+        ref_audio = effective_voice_audio(voice_ref)
         if ref_audio is None:
             return None, None, "default_voice"
 
@@ -248,12 +244,7 @@ class MossTTSEngineAdapter:
             print(f"❌ MOSS-TTSD {speaker_label}: invalid voice reference type {type(voice_ref).__name__}")
             return None, "invalid_voice"
 
-        ref_audio = (
-            voice_ref.get("audio_path")
-            or voice_ref.get("prompt_audio_path")
-            or voice_ref.get("audio")
-            or voice_ref.get("waveform")
-        )
+        ref_audio = effective_voice_audio(voice_ref)
         reference_text = (
             voice_ref.get("reference_text")
             or voice_ref.get("text")

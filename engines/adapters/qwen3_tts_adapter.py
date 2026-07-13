@@ -20,6 +20,7 @@ if project_root not in sys.path:
 from engines.qwen3_tts.qwen3_tts import Qwen3TTSEngine
 from utils.text.pause_processor import PauseTagProcessor
 from utils.audio.cache import get_audio_cache
+from utils.voice.reference import effective_voice_audio
 import folder_paths
 
 
@@ -529,17 +530,15 @@ class Qwen3TTSEngineAdapter:
         # This ensures different voices generate different cache keys
         from utils.audio.audio_hash import generate_stable_audio_component
         if voice_ref and isinstance(voice_ref, dict):
-            # Check if voice_ref has audio tensor or file path
-            if "audio" in voice_ref:
-                # Unified Character Voices format: {"audio": {"waveform": ..., "sample_rate": ...}, "audio_path": ..., ...}
-                audio_dict = voice_ref.get("audio")
-                audio_component = generate_stable_audio_component(reference_audio=audio_dict)
-            elif ref_audio_original is not None and isinstance(ref_audio_original, str):
-                # File path format: {"audio_path": "/path/to/file.wav", "reference_text": "..."}
+            if isinstance(ref_audio_original, str):
                 audio_component = generate_stable_audio_component(audio_file_path=ref_audio_original)
-            elif "waveform" in voice_ref:
-                # Direct tensor format: {"waveform": tensor, "sample_rate": 24000}
-                audio_component = generate_stable_audio_component(reference_audio=voice_ref)
+            elif isinstance(ref_audio_original, dict) and "waveform" in ref_audio_original:
+                audio_component = generate_stable_audio_component(reference_audio=ref_audio_original)
+            elif torch.is_tensor(ref_audio_original):
+                audio_component = generate_stable_audio_component(reference_audio={
+                    "waveform": ref_audio_original,
+                    "sample_rate": voice_ref.get("sample_rate", 24000),
+                })
             else:
                 audio_component = "default_voice"
         elif ref_audio_original is not None and isinstance(ref_audio_original, str):
@@ -687,10 +686,7 @@ class Qwen3TTSEngineAdapter:
             return None, None, False
 
         # Extract reference audio (multiple possible keys)
-        ref_audio_original = (voice_ref.get('prompt_audio_path') or
-                             voice_ref.get('audio_path') or
-                             voice_ref.get('audio') or
-                             voice_ref.get('waveform'))
+        ref_audio_original = effective_voice_audio(voice_ref)
 
         # Extract reference text (multiple possible keys)
         ref_text = (voice_ref.get('prompt_text') or

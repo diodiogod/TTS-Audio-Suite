@@ -1,326 +1,314 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
+import { createCharacterVoiceTrimUI, hideNativeWidget } from "./character_voices_trim_ui.js";
 
-function findWidgetByName(node, name) {
-    return node.widgets ? node.widgets.find((w) => w.name === name) : null;
+function findWidget(node, name) {
+    return node.widgets?.find((widget) => widget.name === name) || null;
 }
 
-function ensurePreviewState(node) {
-    if (!node.__ttsVoicePreviewState) {
-        node.__ttsVoicePreviewState = {
-            audio: null, // Fallback Audio() when addDOMWidget is unavailable
-            audioElement: null, // DOM <audio> player for seek/scrub/volume controls
-            audioWidget: null,
-            isPlaying: false,
-            currentVoice: null,
-            playWidget: null,
-            hasDomPlayer: false,
+function ensureState(node) {
+    if (!node.__ttsCharacterVoiceState) {
+        node.__ttsCharacterVoiceState = {
+            editor: null,
+            fallbackAudio: null,
+            canonicalText: null,
+            duration: 0,
+            suppressWidgetCallbacks: false,
+            configuring: false,
+            resetTrimOnMetadata: false,
+            metadataRequest: 0,
         };
     }
-    return node.__ttsVoicePreviewState;
+    return node.__ttsCharacterVoiceState;
 }
 
-function updatePlayButtonLabel(node) {
-    const state = ensurePreviewState(node);
-    if (!state.playWidget) {
+function setWidgetValue(node, widget, value) {
+    if (!widget || widget.value === value) return;
+    const state = ensureState(node);
+    state.suppressWidgetCallbacks = true;
+    widget.value = value;
+    state.suppressWidgetCallbacks = false;
+    app.graph?.setDirtyCanvas(true, false);
+}
+
+function buildVoiceUrl(route, voiceName) {
+    const params = new URLSearchParams({ voice_name: voiceName });
+    return api.apiURL(`/api/tts-audio-suite/${route}?${params.toString()}`);
+}
+
+function buildVoiceRoute(route, voiceName) {
+    const params = new URLSearchParams({ voice_name: voiceName });
+    return `/api/tts-audio-suite/${route}?${params.toString()}`;
+}
+
+function selectedRange(node) {
+    const state = ensureState(node);
+    const start = Math.max(0, Number(findWidget(node, "trim_start")?.value) || 0);
+    const rawEnd = Number(findWidget(node, "trim_end")?.value) || 0;
+    const end = rawEnd > 0 ? rawEnd : state.duration;
+    return { start, end };
+}
+
+function computeCustomState(node) {
+    const state = ensureState(node);
+    const voiceName = findWidget(node, "voice_name")?.value;
+    if (!voiceName || voiceName === "none") {
+        return Boolean(findWidget(node, "reference_text")?.value?.trim());
+    }
+
+    const { start, end } = selectedRange(node);
+    const trimChanged = state.duration > 0 && (start > 0.005 || end < state.duration - 0.005);
+    const currentText = String(findWidget(node, "reference_text")?.value || "");
+    const textChanged = state.canonicalText !== null && currentText !== state.canonicalText;
+    return trimChanged || textChanged;
+}
+
+function setCustomState(node, isCustom) {
+    const state = ensureState(node);
+    const voiceName = findWidget(node, "voice_name")?.value;
+    setWidgetValue(node, findWidget(node, "customized"), Boolean(isCustom));
+    state.editor?.setCustomState(
+        Boolean(isCustom),
+        voiceName && voiceName !== "none" ? voiceName : "",
+    );
+    const { start, end } = selectedRange(node);
+    const isTrimmed = state.duration > 0 && (start > 0.005 || end < state.duration - 0.005);
+    state.editor?.setTrimWarning(isTrimmed);
+}
+
+function refreshCustomState(node) {
+    setCustomState(node, computeCustomState(node));
+}
+
+function setTrimRange(node, start, end, userInitiated = false) {
+    const state = ensureState(node);
+    setWidgetValue(node, findWidget(node, "trim_start"), Number(start.toFixed(2)));
+    setWidgetValue(node, findWidget(node, "trim_end"), Number(end.toFixed(2)));
+    state.editor?.setRange(start, end, false);
+    if (userInitiated) {
+        const audio = state.editor?.audio;
+        if (audio && Number.isFinite(audio.duration)) {
+            audio.currentTime = start;
+        }
+        refreshCustomState(node);
+    }
+}
+
+function clearPlayer(node) {
+    const state = ensureState(node);
+    const audio = state.editor?.audio || state.fallbackAudio;
+    if (audio) {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load?.();
+    }
+    state.duration = 0;
+    state.editor?.setDuration(0);
+    state.editor?.setTitle("No library voice selected");
+    state.editor?.setCustomState(false, "");
+    state.editor?.setTrimWarning(false);
+}
+
+function loadPlayer(node, voiceName) {
+    const state = ensureState(node);
+    const audio = state.editor?.audio || state.fallbackAudio;
+    if (!audio || !voiceName || voiceName === "none") {
+        clearPlayer(node);
         return;
     }
-    state.playWidget.name = state.isPlaying ? "⏹ Stop Voice" : "▶ Play Voice";
+    audio.pause();
+    audio.src = buildVoiceUrl("voice-preview", voiceName);
+    audio.load();
+    state.editor?.setTitle(voiceName);
 }
 
-function stopVoicePreview(node) {
-    const state = ensurePreviewState(node);
-    if (state.audioElement) {
-        try {
-            state.audioElement.pause();
-            state.audioElement.currentTime = 0;
-        } catch (e) {
-            console.warn("Character Voices DOM preview pause failed:", e);
-        }
-    }
-
-    if (state.audio) {
-        try {
-            state.audio.pause();
-        } catch (e) {
-            console.warn("Character Voices preview pause failed:", e);
-        }
-        state.audio.src = "";
-        state.audio = null;
-    }
-    state.isPlaying = false;
-    state.currentVoice = null;
-    updatePlayButtonLabel(node);
-}
-
-function buildVoicePreviewUrl(voiceName) {
-    const params = new URLSearchParams({
-        voice_name: voiceName,
-    });
-    return api.apiURL(`/api/tts-audio-suite/voice-preview?${params.toString()}`);
-}
-
-function loadVoiceIntoDomPlayer(node, voiceName) {
-    const state = ensurePreviewState(node);
-    if (!state.audioElement || !voiceName || voiceName === "none") {
-        return false;
-    }
-
-    if (state.currentVoice === voiceName && state.audioElement.src) {
-        return true;
-    }
-
-    state.audioElement.src = buildVoicePreviewUrl(voiceName);
-    state.audioElement.load();
-    state.currentVoice = voiceName;
-    state.isPlaying = false;
-    updatePlayButtonLabel(node);
-    return true;
-}
-
-function clearDomPlayer(node) {
-    const state = ensurePreviewState(node);
-    if (!state.audioElement) {
+async function loadVoiceMetadata(node, voiceName, applyCanonicalText) {
+    const state = ensureState(node);
+    const requestId = ++state.metadataRequest;
+    if (!voiceName || voiceName === "none") {
+        state.canonicalText = "";
         return;
     }
+
     try {
-        state.audioElement.pause();
-        state.audioElement.removeAttribute("src");
-        state.audioElement.load();
-    } catch (e) {
-        console.warn("Character Voices DOM preview clear failed:", e);
-    }
-    state.currentVoice = null;
-    state.isPlaying = false;
-    updatePlayButtonLabel(node);
-}
-
-function syncPreviewToSelectedVoice(node, voiceWidget) {
-    const selectedVoice = voiceWidget?.value;
-    stopVoicePreview(node);
-    if (selectedVoice && selectedVoice !== "none") {
-        loadVoiceIntoDomPlayer(node, selectedVoice);
-    } else {
-        clearDomPlayer(node);
+        const response = await api.fetchApi(buildVoiceRoute("voice-info", voiceName));
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (requestId !== state.metadataRequest) return;
+        state.canonicalText = String(data.reference_text || "");
+        if (applyCanonicalText && !findWidget(node, "customized")?.value) {
+            setWidgetValue(node, findWidget(node, "reference_text"), state.canonicalText);
+        }
+        refreshCustomState(node);
+    } catch (error) {
+        console.warn(`Character Voices metadata failed to load for ${voiceName}:`, error);
     }
 }
 
-function restoreVoiceWidgetValueFromConfig(node, voiceWidget, info) {
-    if (!info || !Array.isArray(info.widgets_values) || !node.widgets) {
-        return false;
+function resetForVoiceSelection(node, voiceName) {
+    const state = ensureState(node);
+    state.metadataRequest += 1;
+    state.canonicalText = null;
+    state.resetTrimOnMetadata = true;
+    setWidgetValue(node, findWidget(node, "customized"), false);
+    setWidgetValue(node, findWidget(node, "trim_start"), 0);
+    setWidgetValue(node, findWidget(node, "trim_end"), 0);
+
+    if (!voiceName || voiceName === "none") {
+        setWidgetValue(node, findWidget(node, "reference_text"), "");
+        clearPlayer(node);
+        return;
+    }
+    loadPlayer(node, voiceName);
+    loadVoiceMetadata(node, voiceName, true);
+}
+
+function restoreSerializedWidgets(node, info) {
+    if (!Array.isArray(info?.widgets_values) || !node.widgets) return;
+    const names = new Set(["voice_name", "reference_text", "trim_start", "trim_end", "customized"]);
+    node.widgets.forEach((widget, index) => {
+        if (names.has(widget.name) && index < info.widgets_values.length) {
+            const savedValue = info.widgets_values[index];
+            if (savedValue !== undefined) widget.value = savedValue;
+        }
+    });
+}
+
+function syncRestoredVoice(node) {
+    const voiceName = findWidget(node, "voice_name")?.value;
+    if (!voiceName || voiceName === "none") {
+        clearPlayer(node);
+        return;
+    }
+    loadPlayer(node, voiceName);
+    const preserveCustomText = Boolean(findWidget(node, "customized")?.value);
+    loadVoiceMetadata(node, voiceName, !preserveCustomText);
+}
+
+function wrapWidgetCallbacks(node) {
+    const state = ensureState(node);
+    const voiceWidget = findWidget(node, "voice_name");
+    const referenceWidget = findWidget(node, "reference_text");
+
+    const originalVoiceCallback = voiceWidget?.callback;
+    if (voiceWidget) {
+        voiceWidget.callback = function () {
+            const result = originalVoiceCallback?.apply(this, arguments);
+            if (!state.suppressWidgetCallbacks && !state.configuring) {
+                resetForVoiceSelection(node, voiceWidget.value);
+            }
+            return result;
+        };
     }
 
-    const widgetIndex = node.widgets.findIndex((w) => w === voiceWidget);
-    if (widgetIndex < 0 || widgetIndex >= info.widgets_values.length) {
-        return false;
+    const originalReferenceCallback = referenceWidget?.callback;
+    if (referenceWidget) {
+        referenceWidget.callback = function () {
+            const result = originalReferenceCallback?.apply(this, arguments);
+            if (!state.suppressWidgetCallbacks && !state.configuring) {
+                if (state.canonicalText === null) setCustomState(node, true);
+                else refreshCustomState(node);
+            }
+            return result;
+        };
     }
+}
 
-    const savedValue = info.widgets_values[widgetIndex];
-    if (!savedValue || savedValue === "none") {
-        return false;
-    }
+function setupDomEditor(node) {
+    const state = ensureState(node);
+    if (typeof node.addDOMWidget !== "function") return false;
 
-    voiceWidget.value = savedValue;
+    const editor = createCharacterVoiceTrimUI((start, end) => {
+        setTrimRange(node, start, end, true);
+    });
+    const audio = editor.audio;
+    state.editor = editor;
+
+    audio.addEventListener("loadedmetadata", () => {
+        state.duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        editor.setDuration(state.duration);
+        if (state.resetTrimOnMetadata) {
+            setTrimRange(node, 0, state.duration, false);
+            state.resetTrimOnMetadata = false;
+        } else {
+            const range = selectedRange(node);
+            setTrimRange(
+                node,
+                Math.min(range.start, state.duration),
+                Math.min(range.end || state.duration, state.duration),
+                false,
+            );
+        }
+        refreshCustomState(node);
+    });
+    audio.addEventListener("play", () => {
+        const { start, end } = selectedRange(node);
+        if (audio.currentTime < start || audio.currentTime >= end) audio.currentTime = start;
+    });
+    audio.addEventListener("timeupdate", () => {
+        const { start, end } = selectedRange(node);
+        if (end > start && audio.currentTime >= end) {
+            audio.pause();
+            audio.currentTime = start;
+        }
+    });
+
+    const domWidget = node.addDOMWidget("voice_reference_editor", "audioUI", editor.element, {
+        serialize: false,
+        hideOnZoom: false,
+    });
+    domWidget.computeSize = (width) => [Math.max(320, (node.size?.[0] || width || 430) - 20), 215];
+    hideNativeWidget(findWidget(node, "trim_start"));
+    hideNativeWidget(findWidget(node, "trim_end"));
+    hideNativeWidget(findWidget(node, "customized"));
+    node.setSize([Math.max(node.size?.[0] || 0, 430), node.computeSize()[1]]);
     return true;
 }
 
-function schedulePreviewSync(node, voiceWidget, delays = [0, 30, 120]) {
-    for (const delay of delays) {
-        setTimeout(() => {
-            syncPreviewToSelectedVoice(node, voiceWidget);
-        }, delay);
-    }
+function setupFallbackPlayer(node) {
+    const state = ensureState(node);
+    state.fallbackAudio = new Audio();
+    node.addWidget("button", "▶ Play/Pause Voice", "", () => {
+        const voiceName = findWidget(node, "voice_name")?.value;
+        if (!voiceName || voiceName === "none") return;
+        if (!state.fallbackAudio.src) loadPlayer(node, voiceName);
+        if (state.fallbackAudio.paused) state.fallbackAudio.play();
+        else state.fallbackAudio.pause();
+    }, { serialize: false });
 }
 
-function playVoicePreview(node, voiceName) {
-    const state = ensurePreviewState(node);
+function setupCharacterVoices(node) {
+    if (node.__ttsCharacterVoicesSetup) return;
+    node.__ttsCharacterVoicesSetup = true;
+    const state = ensureState(node);
 
-    // Preferred path: use in-node DOM audio player with scrub/seek/volume controls.
-    if (state.audioElement) {
-        const loaded = loadVoiceIntoDomPlayer(node, voiceName);
-        if (!loaded) {
-            return;
-        }
+    if (!setupDomEditor(node)) setupFallbackPlayer(node);
+    wrapWidgetCallbacks(node);
 
-        if (!state.audioElement.paused) {
-            state.audioElement.pause();
-            state.isPlaying = false;
-            updatePlayButtonLabel(node);
-            return;
-        }
-
-        const playPromise = state.audioElement.play();
-        if (playPromise && typeof playPromise.catch === "function") {
-            playPromise.catch((e) => {
-                console.warn(`Character Voices DOM preview playback failed: ${voiceName}`, e);
-                state.isPlaying = false;
-                updatePlayButtonLabel(node);
-            });
-        }
-        return;
-    }
-
-    // Fallback path: browser Audio() without embedded controls.
-    stopVoicePreview(node);
-
-    const audio = new Audio();
-    audio.src = buildVoicePreviewUrl(voiceName);
-    audio.preload = "auto";
-
-    audio.addEventListener("ended", () => {
-        state.isPlaying = false;
-        state.currentVoice = null;
-        updatePlayButtonLabel(node);
-    });
-
-    audio.addEventListener("error", () => {
-        console.warn(`Character Voices preview failed to load: ${voiceName}`);
-        state.isPlaying = false;
-        state.currentVoice = null;
-        updatePlayButtonLabel(node);
-    });
-
-    const playPromise = audio.play();
-    if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch((e) => {
-            console.warn(`Character Voices preview playback failed: ${voiceName}`, e);
-            state.isPlaying = false;
-            state.currentVoice = null;
-            updatePlayButtonLabel(node);
-        });
-    }
-
-    state.audio = audio;
-    state.isPlaying = true;
-    state.currentVoice = voiceName;
-    updatePlayButtonLabel(node);
-}
-
-function setupCharacterVoicesPreview(node) {
-    if (node.__ttsCharacterVoicesPreviewSetup) {
-        return;
-    }
-    node.__ttsCharacterVoicesPreviewSetup = true;
-
-    const voiceWidget = findWidgetByName(node, "voice_name");
-    if (!voiceWidget) {
-        return;
-    }
-
-    const state = ensurePreviewState(node);
-
-    // Add a native audio player inside the node when DOM widgets are available.
-    if (typeof node.addDOMWidget === "function") {
-        const audioElement = document.createElement("audio");
-        audioElement.controls = true;
-        audioElement.classList.add("comfy-audio");
-        audioElement.style.width = "100%";
-        audioElement.style.maxWidth = "100%";
-
-        try {
-            const audioWidget = node.addDOMWidget(
-                "voice_preview_player",
-                "audioUI",
-                audioElement,
-                {
-                    serialize: false,
-                    hideOnZoom: false,
-                }
-            );
-            state.audioElement = audioElement;
-            state.audioWidget = audioWidget;
-            state.hasDomPlayer = true;
-
-            audioElement.addEventListener("play", () => {
-                state.isPlaying = true;
-                updatePlayButtonLabel(node);
-            });
-            audioElement.addEventListener("pause", () => {
-                state.isPlaying = false;
-                updatePlayButtonLabel(node);
-            });
-            audioElement.addEventListener("ended", () => {
-                state.isPlaying = false;
-                updatePlayButtonLabel(node);
-            });
-            audioElement.addEventListener("error", () => {
-                state.isPlaying = false;
-                updatePlayButtonLabel(node);
-            });
-        } catch (e) {
-            console.warn("Character Voices preview: failed to create DOM audio widget, using fallback audio only.", e);
-            state.hasDomPlayer = false;
-            state.audioElement = null;
-            state.audioWidget = null;
-        }
-    }
-
-    // Only add explicit play/stop button in fallback mode.
-    // When DOM audio controls are available, the built-in player handles play/pause/seek/volume.
-    if (!state.hasDomPlayer) {
-        state.playWidget = node.addWidget(
-            "button",
-            "▶ Play/Pause Voice",
-            "",
-            () => {
-                const selectedVoice = voiceWidget.value;
-                if (!selectedVoice || selectedVoice === "none") {
-                    stopVoicePreview(node);
-                    clearDomPlayer(node);
-                    return;
-                }
-
-                playVoicePreview(node, selectedVoice);
-            },
-            { serialize: false }
-        );
-        updatePlayButtonLabel(node);
-    } else {
-        state.playWidget = null;
-    }
-
-    // Stop currently playing preview whenever dropdown value changes.
-    const originalCallback = voiceWidget.callback;
-    voiceWidget.callback = function () {
-        syncPreviewToSelectedVoice(node, voiceWidget);
-        if (originalCallback) {
-            return originalCallback.apply(this, arguments);
-        }
-    };
-
-    // Preload currently selected voice into the player (if any), matching Load Audio UX.
-    if (voiceWidget.value && voiceWidget.value !== "none") {
-        loadVoiceIntoDomPlayer(node, voiceWidget.value);
-    }
-
-    // Workflow reload restores widget values after node creation. Without this,
-    // the audio player can still point at an empty/default source until the user
-    // manually changes the dropdown once.
     const originalOnConfigure = node.onConfigure?.bind(node);
     node.onConfigure = function (info) {
+        state.configuring = true;
         const result = originalOnConfigure ? originalOnConfigure(info) : undefined;
-        restoreVoiceWidgetValueFromConfig(node, voiceWidget, info);
-        schedulePreviewSync(node, voiceWidget);
+        restoreSerializedWidgets(node, info);
+        state.configuring = false;
+        setTimeout(() => syncRestoredVoice(node), 0);
         return result;
     };
 
-    // Stop on node removal.
     const originalOnRemoved = node.onRemoved;
     node.onRemoved = function () {
-        stopVoicePreview(node);
-        clearDomPlayer(node);
-        if (originalOnRemoved) {
-            return originalOnRemoved.apply(this, arguments);
-        }
+        clearPlayer(node);
+        state.metadataRequest += 1;
+        if (originalOnRemoved) return originalOnRemoved.apply(this, arguments);
     };
+
+    const voiceName = findWidget(node, "voice_name")?.value;
+    if (voiceName && voiceName !== "none") syncRestoredVoice(node);
 }
 
 app.registerExtension({
-    name: "tts-audio-suite.character-voices.preview",
+    name: "tts-audio-suite.character-voices.editor",
     nodeCreated(node) {
-        if (node.comfyClass !== "CharacterVoicesNode") {
-            return;
-        }
-        setupCharacterVoicesPreview(node);
+        if (node.comfyClass === "CharacterVoicesNode") setupCharacterVoices(node);
     },
 });

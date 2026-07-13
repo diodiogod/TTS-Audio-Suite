@@ -20,6 +20,7 @@ from utils.audio.audio_hash import generate_stable_audio_component
 from utils.audio.cache import get_audio_cache
 from utils.models.factory_config import ModelLoadConfig
 from utils.models.language_mapper import resolve_language_alias
+from utils.voice.reference import effective_voice_audio
 
 
 class OmniVoiceEngineAdapter:
@@ -125,12 +126,7 @@ class OmniVoiceEngineAdapter:
             or ""
         ).strip()
 
-        ref_audio = self._first_non_none(
-            voice_ref.get("prompt_audio_path"),
-            voice_ref.get("audio_path"),
-            voice_ref.get("audio"),
-            voice_ref.get("waveform"),
-        )
+        ref_audio = effective_voice_audio(voice_ref)
 
         if ref_audio is None:
             return None, prompt_text, "default_voice"

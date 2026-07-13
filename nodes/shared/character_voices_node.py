@@ -74,7 +74,25 @@ ENGINE REQUIREMENTS:
 • Higgs Audio 2: Optional but uses reference text if provided
 • ChatterBox/VibeVoice/IndexTTS: Don't use reference text
 
-Leave empty to use text from selected character's files."""
+Selecting a library voice loads its transcription here automatically. Edits are temporary workflow overrides and never modify the source .txt file."""
+                }),
+                "trim_start": ("FLOAT", {
+                    "default": 0.0,
+                    "min": 0.0,
+                    "max": 100000.0,
+                    "step": 0.01,
+                    "tooltip": "Start of the derived reference clip in seconds. The custom timeline controls this value."
+                }),
+                "trim_end": ("FLOAT", {
+                    "default": 0.0,
+                    "min": 0.0,
+                    "max": 100000.0,
+                    "step": 0.01,
+                    "tooltip": "End of the derived reference clip in seconds. 0 means the end of the source audio."
+                }),
+                "customized": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Internal UI state: the selected library voice has a temporary text or trim override."
                 }),
             },
             "optional": {
@@ -84,12 +102,68 @@ Leave empty to use text from selected character's files."""
             }
         }
 
-    RETURN_TYPES = ("NARRATOR_VOICE", "STRING")
-    RETURN_NAMES = ("opt_narrator", "character_name")
+    RETURN_TYPES = ("NARRATOR_VOICE", "STRING", "AUDIO")
+    RETURN_NAMES = ("opt_narrator", "character_name", "reference_audio_only")
     FUNCTION = "get_voice_reference"
     CATEGORY = "TTS Audio Suite/🎭 Voice & Character"
 
-    def get_voice_reference(self, voice_name: str, reference_text: str, opt_audio_input=None):
+    @staticmethod
+    def _trim_audio(audio_tensor, trim_start: float, trim_end: float):
+        """Return the effective audio and whether a non-full trim was applied."""
+        if not isinstance(audio_tensor, dict):
+            return audio_tensor, False
+
+        waveform = audio_tensor.get("waveform")
+        sample_rate = int(audio_tensor.get("sample_rate", 0) or 0)
+        if waveform is None or sample_rate <= 0:
+            return audio_tensor, False
+
+        total_samples = int(waveform.shape[-1])
+        duration = total_samples / sample_rate
+        start = max(0.0, min(float(trim_start or 0.0), duration))
+        requested_end = float(trim_end or 0.0)
+        end = duration if requested_end <= 0.0 else max(0.0, min(requested_end, duration))
+
+        trim_applied = start > 1e-6 or end < duration - 1e-6
+        if not trim_applied:
+            return audio_tensor, False
+        if end <= start:
+            raise ValueError(
+                f"Invalid Character Voices trim range: start {start:.2f}s must be before end {end:.2f}s"
+            )
+
+        start_sample = min(total_samples, max(0, round(start * sample_rate)))
+        end_sample = min(total_samples, max(start_sample + 1, round(end * sample_rate)))
+        return {
+            "waveform": waveform[..., start_sample:end_sample].contiguous(),
+            "sample_rate": sample_rate,
+        }, True
+
+    @staticmethod
+    def _format_audio_output(audio_tensor):
+        """Format the effective reference as a standard ComfyUI AUDIO output."""
+        if not isinstance(audio_tensor, dict) or "waveform" not in audio_tensor:
+            return None
+
+        waveform = audio_tensor["waveform"]
+        if waveform.dim() == 1:
+            waveform = waveform.unsqueeze(0).unsqueeze(0)
+        elif waveform.dim() == 2:
+            waveform = waveform.unsqueeze(0)
+        return {
+            "waveform": waveform.cpu().float(),
+            "sample_rate": int(audio_tensor["sample_rate"]),
+        }
+
+    def get_voice_reference(
+        self,
+        voice_name: str,
+        reference_text: str,
+        opt_audio_input=None,
+        trim_start: float = 0.0,
+        trim_end: float = 0.0,
+        customized: bool = False,
+    ):
         """
         Get voice reference for TTS engines.
         
@@ -97,13 +171,18 @@ Leave empty to use text from selected character's files."""
             voice_name: Selected voice from dropdown
             reference_text: Text reference for voice cloning
             opt_audio_input: Optional direct audio input
+            trim_start: Start of the effective reference range in seconds
+            trim_end: End of the effective reference range, or 0 for source end
+            customized: Whether the UI transcription is a derived override
             
         Returns:
-            Tuple of (narrator_voice_data, character_name)
+            Tuple of (narrator_voice_data, character_name, effective_audio)
         """
         try:
             used_folder_text = False
             voice_source = None
+            source_audio_path = None
+            canonical_reference_text = ""
             # Determine audio source and character name
             if opt_audio_input is not None:
                 # Use direct audio input
@@ -111,10 +190,13 @@ Leave empty to use text from selected character's files."""
                 audio_tensor = opt_audio_input
                 character_name = "direct_input"
                 voice_source = "direct"
+                customized = True
                 print("🎭 Character Voices: Using direct audio input")
             elif voice_name != "none":
                 # Load from voice folder
                 audio_path, folder_reference_text = load_voice_reference(voice_name)
+                source_audio_path = audio_path
+                canonical_reference_text = folder_reference_text or ""
                 
                 if audio_path and os.path.exists(audio_path):
                     # Load audio tensor when possible, but do not fail the node if local
@@ -138,32 +220,44 @@ Leave empty to use text from selected character's files."""
                     character_name = os.path.splitext(os.path.basename(voice_name))[0]
                     voice_source = "folder"
 
-                    # When voice is selected from dropdown, ALWAYS use folder reference text
-                    # Manual text field is only used for direct audio input
-                    if folder_reference_text:
-                        reference_text = folder_reference_text
+                    # Restored legacy workflows keep canonical disk text. New frontend
+                    # edits explicitly mark the selected library voice as customized.
+                    if not customized or not (reference_text and reference_text.strip()):
+                        reference_text = canonical_reference_text
                         used_folder_text = True
                 else:
                     print(f"⚠️ Character Voices: Voice file not found: {voice_name}")
-                    return None, ""
+                    return None, "", None
                     
             else:
                 # No voice specified
                 print("⚠️ Character Voices: No voice specified - provide voice_name or opt_audio_input")
-                return None, ""
+                return None, "", None
+
+            audio_tensor, trim_applied = self._trim_audio(audio_tensor, trim_start, trim_end)
+            customized = bool(customized or trim_applied or voice_source == "direct")
+
+            # A customized library voice must never expose the original untrimmed path
+            # as effective audio. Keep it only as provenance for the UI and diagnostics.
+            effective_audio_path = None if customized and audio_tensor is not None else audio_path
 
             # Create narrator voice data structure
             narrator_voice_data = {
                 "audio": audio_tensor,
-                "audio_path": audio_path if 'audio_path' in locals() else None,
+                "audio_path": effective_audio_path,
+                "source_audio_path": source_audio_path,
                 "reference_text": reference_text.strip() if reference_text else "",
+                "canonical_reference_text": canonical_reference_text,
                 "character_name": character_name,
-                "source": voice_source
+                "source": voice_source,
+                "customized": customized,
+                "trim_start": float(trim_start or 0.0),
+                "trim_end": float(trim_end or 0.0),
             }
             
             # Add validation info
             has_audio = audio_tensor is not None or bool(narrator_voice_data.get("audio_path"))
-            has_text = bool(reference_text.strip())
+            has_text = bool(reference_text and reference_text.strip())
             
             if has_audio and has_text:
                 compatibility = "F5-TTS, ChatterBox, and future engines"
@@ -175,13 +269,13 @@ Leave empty to use text from selected character's files."""
             ref_source = f" (text from {voice_name})" if used_folder_text else ""
             print(f"💬 Narrator Voice: {character_name} ready for {compatibility}{ref_source}")
             
-            return narrator_voice_data, character_name
+            return narrator_voice_data, character_name, self._format_audio_output(audio_tensor)
             
         except Exception as e:
             print(f"❌ Character Voices error: {e}")
             import traceback
             traceback.print_exc()
-            return None, ""
+            return None, "", None
 
 
 # Register the node class

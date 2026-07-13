@@ -514,6 +514,15 @@ print(json.dumps({"devices": devices}))
                 print(f"⚠️ Error setting inline tag settings: {e}")
                 return web.json_response({"status": "error", "error": str(e)})
 
+        def resolve_character_voice(voice_name):
+            """Resolve a dropdown key through the same isolated discovery path used by previews."""
+            voice_discovery_path = os.path.join(os.path.dirname(__file__), "utils", "voice", "discovery.py")
+            spec = importlib.util.spec_from_file_location("voice_discovery_preview_module", voice_discovery_path)
+            voice_discovery_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(voice_discovery_module)
+            voice_discovery_module.get_available_voices(force_refresh=False)
+            return voice_discovery_module.load_voice_reference(voice_name)
+
         @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-preview")
         async def get_voice_preview_endpoint(request):
             """
@@ -527,15 +536,7 @@ print(json.dumps({"devices": devices}))
                 if not voice_name or voice_name == "none":
                     return web.json_response({"error": "voice_name is required and cannot be 'none'"}, status=400)
 
-                # Load voice discovery directly by file path to avoid package import issues
-                voice_discovery_path = os.path.join(os.path.dirname(__file__), "utils", "voice", "discovery.py")
-                spec = importlib.util.spec_from_file_location("voice_discovery_module", voice_discovery_path)
-                voice_discovery_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(voice_discovery_module)
-
-                # Use cached discovery for fast preview playback.
-                voice_discovery_module.get_available_voices(force_refresh=False)
-                audio_path, _ = voice_discovery_module.load_voice_reference(voice_name)
+                audio_path, _ = resolve_character_voice(voice_name)
 
                 if not audio_path or not os.path.exists(audio_path):
                     return web.json_response({"error": f"Voice file not found: {voice_name}"}, status=404)
@@ -546,6 +547,28 @@ print(json.dumps({"devices": devices}))
                 return response
             except Exception as e:
                 print(f"⚠️ Error serving voice preview audio: {e}")
+                return web.json_response({"error": str(e)}, status=500)
+
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-info")
+        async def get_voice_info_endpoint(request):
+            """Return canonical metadata for a Character Voices dropdown entry."""
+            try:
+                voice_name = request.query.get("voice_name", "").strip()
+                if not voice_name or voice_name == "none":
+                    return web.json_response({"error": "voice_name is required and cannot be 'none'"}, status=400)
+
+                audio_path, reference_text = resolve_character_voice(voice_name)
+                if not audio_path or not os.path.exists(audio_path):
+                    return web.json_response({"error": f"Voice file not found: {voice_name}"}, status=404)
+
+                response = web.json_response({
+                    "voice_name": voice_name,
+                    "reference_text": reference_text or "",
+                })
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+                return response
+            except Exception as e:
+                print(f"⚠️ Error serving voice metadata: {e}")
                 return web.json_response({"error": str(e)}, status=500)
 
         @PromptServer.instance.routes.post("/api/tts-audio-suite/audio-analyzer-preview")

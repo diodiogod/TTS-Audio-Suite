@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.7] - 2026-07-13
+
+### Added
+
+- Add automatic reference transcription loading with live workflow editing
+- Add draggable audio trimming with bounded playback and precise time controls
+- Add a reference-audio-only output for reuse in audio workflows
+
+### Changed
+
+- Enhance Character Voices reference editing
+- Improve customized voice handling across Unified Text and SRT engines
+
+### Fixed
+
+- Fix trimmed character voices using the original untrimmed source in some engines
 ## [5.4.6] - 2026-07-13
 
 ### Added
