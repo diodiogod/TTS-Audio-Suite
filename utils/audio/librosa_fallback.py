@@ -254,13 +254,17 @@ def get_python313_status():
 
 
 def log_fallback_usage(function_name, reason="librosa compatibility"):
-    """Log when fallback functions are used"""
+    """Report a successful compatibility fallback without dumping its traceback."""
     if not get_python313_status():
         return
 
-    key = (function_name, reason)
+    key = function_name
     if key in _logged_fallbacks:
         return
 
     _logged_fallbacks.add(key)
-    print(f"🔄 Using fallback for {function_name} ({reason})")
+    print(f"ℹ️ {function_name} is unavailable in this environment; using the compatible fallback.")
+
+    if os.environ.get("TTS_AUDIO_SUITE_DEBUG_FALLBACKS") == "1":
+        detail = next((line.strip() for line in str(reason).splitlines() if line.strip()), "unknown")
+        print(f"   Fallback detail: {detail[:240]}")
