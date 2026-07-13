@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.9] - 2026-07-13
+
+### Added
+
+- Refine Character Voices waveform and discovery
+- Add a compact normalized waveform to Character Voices trim controls
+- Add playback progress and a smooth playhead within the waveform
+
+### Changed
+
+- Improve trim warning stability without shifting the node layout
+
+### Fixed
+
+- Fix repeated Character Voices discovery scans and console messages
 ## [5.4.8] - 2026-07-13
 
 ### Added

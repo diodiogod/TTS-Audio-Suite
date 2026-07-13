@@ -41,9 +41,9 @@ class CharacterVoicesNode(BaseTTSNode):
     
     @classmethod
     def INPUT_TYPES(cls):
-        # Get available reference audio files from voice folders
-        # Force refresh to support ComfyUI's R key refresh without restart
-        reference_files = get_available_voices(force_refresh=True)
+        # INPUT_TYPES can be queried repeatedly by ComfyUI. Use the discovery
+        # cache here; explicit rescans belong to the Refresh Voice Cache node.
+        reference_files = get_available_voices()
 
         return {
             "required": {

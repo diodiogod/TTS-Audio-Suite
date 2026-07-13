@@ -2,6 +2,8 @@
 // https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI
 // Reimplemented for TTS Audio Suite Character Voices; no source code is copied here.
 
+import { createWaveformRenderer } from "./character_voices_waveform.js";
+
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
@@ -58,6 +60,7 @@ function createNumberInput(labelText) {
 export function createCharacterVoiceTrimUI(onRangeChange) {
     const root = document.createElement("div");
     Object.assign(root.style, {
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         gap: "8px",
@@ -134,14 +137,24 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
     Object.assign(track.style, {
         position: "relative",
         width: "100%",
-        height: "26px",
-        borderRadius: "4px",
-        background: "#101010",
-        backgroundImage: "repeating-linear-gradient(90deg, transparent 0, transparent calc(25% - 1px), rgba(255,255,255,0.08) 25%)",
-        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.7)",
+        height: "42px",
+        overflow: "hidden",
+        border: "1px solid rgba(148, 163, 184, 0.12)",
+        borderRadius: "6px",
+        background: "linear-gradient(180deg, rgba(30, 41, 59, 0.42), rgba(2, 6, 23, 0.72))",
+        boxShadow: "inset 0 1px 4px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.025)",
         cursor: "pointer",
         touchAction: "none",
         userSelect: "none",
+    });
+    const waveformCanvas = document.createElement("canvas");
+    Object.assign(waveformCanvas.style, {
+        position: "absolute",
+        inset: "0",
+        width: "100%",
+        height: "100%",
+        opacity: "0.9",
+        pointerEvents: "none",
     });
     const selection = document.createElement("div");
     Object.assign(selection.style, {
@@ -149,7 +162,8 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
         top: "0",
         height: "100%",
         borderRadius: "3px",
-        background: "rgba(56, 189, 248, 0.30)",
+        background: "rgba(14, 165, 233, 0.18)",
+        boxShadow: "inset 0 1px 0 rgba(125, 211, 252, 0.24), inset 0 -1px 0 rgba(14, 165, 233, 0.18)",
         pointerEvents: "none",
     });
 
@@ -158,11 +172,11 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
         Object.assign(handle.style, {
             position: "absolute",
             top: "0",
-            width: "8px",
+            width: "6px",
             height: "100%",
-            borderRadius: "2px",
-            background: "#38bdf8",
-            boxShadow: "0 0 4px rgba(0,0,0,0.85)",
+            borderRadius: "3px",
+            background: "linear-gradient(180deg, #7dd3fc, #0ea5e9)",
+            boxShadow: "0 0 0 1px rgba(2, 6, 23, 0.55), 0 0 8px rgba(14, 165, 233, 0.38)",
             transform: "translateX(-50%)",
             pointerEvents: "none",
         });
@@ -170,7 +184,21 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
     };
     const startHandle = makeHandle();
     const endHandle = makeHandle();
-    track.append(selection, startHandle, endHandle);
+    const playhead = document.createElement("div");
+    Object.assign(playhead.style, {
+        position: "absolute",
+        top: "3px",
+        bottom: "3px",
+        width: "2px",
+        borderRadius: "2px",
+        background: "#e0f2fe",
+        boxShadow: "0 0 0 1px rgba(14, 165, 233, 0.45), 0 0 7px rgba(125, 211, 252, 0.8)",
+        opacity: "0",
+        transform: "translateX(-50%)",
+        pointerEvents: "none",
+    });
+    track.append(waveformCanvas, selection, playhead, startHandle, endHandle);
+    const waveform = createWaveformRenderer(waveformCanvas);
 
     const controls = document.createElement("div");
     Object.assign(controls.style, {
@@ -187,14 +215,25 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
     controls.append(startControl.wrapper, endControl.wrapper, length);
     const trimWarning = document.createElement("div");
     Object.assign(trimWarning.style, {
-        display: "none",
+        position: "absolute",
+        right: "20px",
+        bottom: "3px",
+        left: "20px",
+        overflow: "hidden",
         color: "#fbbf24",
         fontSize: "10px",
         lineHeight: "1.25",
+        opacity: "0",
+        pointerEvents: "none",
+        textOverflow: "ellipsis",
+        transition: "opacity 120ms ease",
+        visibility: "hidden",
+        whiteSpace: "nowrap",
     });
-    trimWarning.textContent = "Trimmed reference: review the transcription so it matches only the selected speech.";
-    trimArea.append(ruler, track, controls, trimWarning);
-    root.append(header, audio, trimArea);
+    trimWarning.textContent = "Trimmed reference: make sure the transcription matches the selected speech.";
+    trimWarning.title = "Review the transcription so it matches only the selected speech.";
+    trimArea.append(ruler, track, controls);
+    root.append(header, audio, trimArea, trimWarning);
 
     let duration = 0;
     let start = 0;
@@ -203,6 +242,42 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
     let dragOffset = 0;
     let dragWidth = 0;
     let suppressInputs = false;
+    let playbackFrame = null;
+
+    const renderPlayback = () => {
+        const current = clamp(Number(audio.currentTime) || 0, 0, duration);
+        waveform.setPlayback(current, start, end, duration);
+        playhead.style.left = `${duration ? (current / duration) * 100 : 0}%`;
+        playhead.style.opacity = duration > 0 ? "1" : "0";
+    };
+
+    const playbackTick = () => {
+        playbackFrame = null;
+        renderPlayback();
+        if (!audio.paused && !audio.ended) {
+            playbackFrame = requestAnimationFrame(playbackTick);
+        }
+    };
+
+    const startPlaybackAnimation = () => {
+        if (playbackFrame === null) playbackFrame = requestAnimationFrame(playbackTick);
+    };
+
+    const stopPlaybackAnimation = () => {
+        if (playbackFrame !== null) cancelAnimationFrame(playbackFrame);
+        playbackFrame = null;
+        renderPlayback();
+    };
+
+    const syncPausedPlayback = () => {
+        if (audio.paused) renderPlayback();
+    };
+
+    audio.addEventListener("play", startPlaybackAnimation);
+    audio.addEventListener("pause", stopPlaybackAnimation);
+    audio.addEventListener("ended", stopPlaybackAnimation);
+    audio.addEventListener("seeked", renderPlayback);
+    audio.addEventListener("timeupdate", syncPausedPlayback);
 
     const render = () => {
         const safeDuration = Math.max(duration, 0);
@@ -222,6 +297,7 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
         startControl.input.max = String(safeDuration || 100000);
         endControl.input.max = String(safeDuration || 100000);
         suppressInputs = false;
+        renderPlayback();
     };
 
     const setRange = (nextStart, nextEnd, notify = false) => {
@@ -311,7 +387,24 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
                     : "rgba(156, 163, 175, 0.12)";
         },
         setTrimWarning(visible) {
-            trimWarning.style.display = visible ? "block" : "none";
+            trimWarning.style.opacity = visible ? "1" : "0";
+            trimWarning.style.visibility = visible ? "visible" : "hidden";
+        },
+        loadWaveform(url) {
+            waveform.load(url);
+        },
+        clearWaveform() {
+            waveform.clear();
+            playhead.style.opacity = "0";
+        },
+        destroy() {
+            if (playbackFrame !== null) cancelAnimationFrame(playbackFrame);
+            audio.removeEventListener("play", startPlaybackAnimation);
+            audio.removeEventListener("pause", stopPlaybackAnimation);
+            audio.removeEventListener("ended", stopPlaybackAnimation);
+            audio.removeEventListener("seeked", renderPlayback);
+            audio.removeEventListener("timeupdate", syncPausedPlayback);
+            waveform.destroy();
         },
     };
 }

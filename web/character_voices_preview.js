@@ -107,6 +107,7 @@ function clearPlayer(node) {
     state.editor?.setTitle("No library voice selected");
     state.editor?.setCustomState(false, "");
     state.editor?.setTrimWarning(false);
+    state.editor?.clearWaveform();
 }
 
 function loadPlayer(node, voiceName) {
@@ -117,8 +118,10 @@ function loadPlayer(node, voiceName) {
         return;
     }
     audio.pause();
-    audio.src = buildVoiceUrl("voice-preview", voiceName);
+    const previewUrl = buildVoiceUrl("voice-preview", voiceName);
+    audio.src = previewUrl;
     audio.load();
+    state.editor?.loadWaveform(previewUrl);
     state.editor?.setTitle(voiceName);
 }
 
@@ -257,7 +260,7 @@ function setupDomEditor(node) {
         serialize: false,
         hideOnZoom: false,
     });
-    domWidget.computeSize = (width) => [Math.max(320, (node.size?.[0] || width || 430) - 20), 215];
+    domWidget.computeSize = (width) => [Math.max(320, (node.size?.[0] || width || 430) - 20), 232];
     hideNativeWidget(findWidget(node, "trim_start"));
     hideNativeWidget(findWidget(node, "trim_end"));
     hideNativeWidget(findWidget(node, "customized"));
@@ -298,6 +301,7 @@ function setupCharacterVoices(node) {
     const originalOnRemoved = node.onRemoved;
     node.onRemoved = function () {
         clearPlayer(node);
+        state.editor?.destroy();
         state.metadataRequest += 1;
         if (originalOnRemoved) return originalOnRemoved.apply(this, arguments);
     };

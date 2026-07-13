@@ -14,6 +14,10 @@ from typing import Dict, List, Optional, Tuple, Set, Callable
 from datetime import datetime, timedelta
 
 
+_PROCESS_REFRESH_LOCK = threading.Lock()
+_PROCESS_REFRESH_STATE: Dict[str, str] = {}
+
+
 class VoiceDiscoveryCacheManager:
     """Manage persistent cache for voice discovery results with background refresh."""
 
@@ -114,13 +118,27 @@ class VoiceDiscoveryCacheManager:
         if self._refresh_thread is not None and self._refresh_thread.is_alive():
             return  # Already running
 
+        refresh_key = os.path.normcase(os.path.abspath(self.cache_file))
+        with _PROCESS_REFRESH_LOCK:
+            if _PROCESS_REFRESH_STATE.get(refresh_key) in {"running", "complete"}:
+                return
+            _PROCESS_REFRESH_STATE[refresh_key] = "running"
+
         self._refresh_callback = refresh_callback
         self._stop_refresh = False
         self._refresh_thread = threading.Thread(target=self._background_refresh_worker, daemon=True)
-        self._refresh_thread.start()
+        try:
+            self._refresh_thread.start()
+        except Exception:
+            with _PROCESS_REFRESH_LOCK:
+                if _PROCESS_REFRESH_STATE.get(refresh_key) == "running":
+                    _PROCESS_REFRESH_STATE.pop(refresh_key, None)
+            raise
 
     def _background_refresh_worker(self):
         """Background thread worker - performs one cache update after startup."""
+        refresh_key = os.path.normcase(os.path.abspath(self.cache_file))
+        refresh_completed = False
         try:
             # Give ComfyUI time to fully load before starting scan
             time.sleep(2)
@@ -139,6 +157,8 @@ class VoiceDiscoveryCacheManager:
                             updated_data = result
                             was_updated = False
 
+                        refresh_completed = True
+
                         if updated_data:
                             self.save_cache(updated_data)
                             # Return whether cache was actually updated
@@ -148,6 +168,12 @@ class VoiceDiscoveryCacheManager:
         except Exception:
             pass  # Handle any outer exceptions silently
         finally:
+            with _PROCESS_REFRESH_LOCK:
+                if refresh_completed:
+                    _PROCESS_REFRESH_STATE[refresh_key] = "complete"
+                elif _PROCESS_REFRESH_STATE.get(refresh_key) == "running":
+                    _PROCESS_REFRESH_STATE.pop(refresh_key, None)
+
             # Properly close any lingering sockets on Windows before thread exit
             try:
                 import gc
