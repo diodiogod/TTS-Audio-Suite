@@ -38,6 +38,7 @@ class CosyVoiceModel:
         self.flow = flow
         self.hift = hift
         self.fp16 = fp16
+        self._rocm_bf16_llm_autocast = False
         self.token_min_hop_len = 2 * self.flow.input_frame_rate
         self.token_max_hop_len = 4 * self.flow.input_frame_rate
         self.token_overlap_len = 20
@@ -57,6 +58,7 @@ class CosyVoiceModel:
         # dict used to store session related variable
         self.tts_speech_token_dict = {}
         self.llm_end_dict = {}
+        self.llm_error_dict = {}
         self.mel_overlap_dict = {}
         self.flow_cache_dict = {}
         self.hift_cache_dict = {}
@@ -111,29 +113,61 @@ class CosyVoiceModel:
         input_names = ["x", "mask", "mu", "t", "spks", "cond"]
         return {'min_shape': min_shape, 'opt_shape': opt_shape, 'max_shape': max_shape, 'input_names': input_names}
 
+    # TTS Audio Suite patch: ROCm needs BF16 for the bundled Qwen LLM while
+    # CosyVoice's flow model and vocoder remain in FP32 to prevent silent audio.
+    def _llm_autocast_context(self):
+        if hasattr(self.llm, 'vllm'):
+            return nullcontext()
+        if self._rocm_bf16_llm_autocast:
+            return torch.amp.autocast('cuda', dtype=torch.bfloat16)
+        if self.fp16:
+            return torch.amp.autocast('cuda', dtype=torch.float16)
+        return nullcontext()
+
+    # TTS Audio Suite patch: forward bundled LLM worker failures to the caller
+    # instead of trying to decode an empty token sequence.
+    def _raise_if_llm_failed(self, uuid):
+        error = self.llm_error_dict.pop(uuid, None)
+        if error is None:
+            return
+        with self.lock:
+            self.tts_speech_token_dict.pop(uuid, None)
+            self.llm_end_dict.pop(uuid, None)
+            self.hift_cache_dict.pop(uuid, None)
+            if hasattr(self, 'mel_overlap_dict'):
+                self.mel_overlap_dict.pop(uuid, None)
+            if hasattr(self, 'flow_cache_dict'):
+                self.flow_cache_dict.pop(uuid, None)
+        raise RuntimeError(f'CosyVoice LLM inference failed: {error}') from error
+
     def llm_job(self, text, prompt_text, llm_prompt_speech_token, llm_embedding, uuid, progress_callback=None):
-        with self.llm_context, torch.cuda.amp.autocast(self.fp16 is True and hasattr(self.llm, 'vllm') is False):
-            if isinstance(text, Generator):
-                assert (self.__class__.__name__ != 'CosyVoiceModel') and not hasattr(self.llm, 'vllm'), 'streaming input text is only implemented for CosyVoice2/3 and do not support vllm!'
-                for i in self.llm.inference_bistream(text=text,
-                                                     prompt_text=prompt_text.to(self.device),
-                                                     prompt_text_len=torch.tensor([prompt_text.shape[1]], dtype=torch.int32).to(self.device),
-                                                     prompt_speech_token=llm_prompt_speech_token.to(self.device),
-                                                     prompt_speech_token_len=torch.tensor([llm_prompt_speech_token.shape[1]], dtype=torch.int32).to(self.device),
-                                                     embedding=llm_embedding.to(self.device)):
-                    self.tts_speech_token_dict[uuid].append(i)
-            else:
-                for i in self.llm.inference(text=text.to(self.device),
-                                            text_len=torch.tensor([text.shape[1]], dtype=torch.int32).to(self.device),
-                                            prompt_text=prompt_text.to(self.device),
-                                            prompt_text_len=torch.tensor([prompt_text.shape[1]], dtype=torch.int32).to(self.device),
-                                            prompt_speech_token=llm_prompt_speech_token.to(self.device),
-                                            prompt_speech_token_len=torch.tensor([llm_prompt_speech_token.shape[1]], dtype=torch.int32).to(self.device),
-                                            embedding=llm_embedding.to(self.device),
-                                            uuid=uuid,
-                                            progress_callback=progress_callback):
-                    self.tts_speech_token_dict[uuid].append(i)
-        self.llm_end_dict[uuid] = True
+        # TTS Audio Suite patch: capture worker failures for _raise_if_llm_failed().
+        try:
+            with self.llm_context, self._llm_autocast_context():
+                if isinstance(text, Generator):
+                    assert (self.__class__.__name__ != 'CosyVoiceModel') and not hasattr(self.llm, 'vllm'), 'streaming input text is only implemented for CosyVoice2/3 and do not support vllm!'
+                    for i in self.llm.inference_bistream(text=text,
+                                                         prompt_text=prompt_text.to(self.device),
+                                                         prompt_text_len=torch.tensor([prompt_text.shape[1]], dtype=torch.int32).to(self.device),
+                                                         prompt_speech_token=llm_prompt_speech_token.to(self.device),
+                                                         prompt_speech_token_len=torch.tensor([llm_prompt_speech_token.shape[1]], dtype=torch.int32).to(self.device),
+                                                         embedding=llm_embedding.to(self.device)):
+                        self.tts_speech_token_dict[uuid].append(i)
+                else:
+                    for i in self.llm.inference(text=text.to(self.device),
+                                                text_len=torch.tensor([text.shape[1]], dtype=torch.int32).to(self.device),
+                                                prompt_text=prompt_text.to(self.device),
+                                                prompt_text_len=torch.tensor([prompt_text.shape[1]], dtype=torch.int32).to(self.device),
+                                                prompt_speech_token=llm_prompt_speech_token.to(self.device),
+                                                prompt_speech_token_len=torch.tensor([llm_prompt_speech_token.shape[1]], dtype=torch.int32).to(self.device),
+                                                embedding=llm_embedding.to(self.device),
+                                                uuid=uuid,
+                                                progress_callback=progress_callback):
+                        self.tts_speech_token_dict[uuid].append(i)
+        except Exception as error:
+            self.llm_error_dict[uuid] = error
+        finally:
+            self.llm_end_dict[uuid] = True
 
     def vc_job(self, source_speech_token, uuid):
         self.tts_speech_token_dict[uuid] = source_speech_token.flatten().tolist()
@@ -188,6 +222,7 @@ class CosyVoiceModel:
         this_uuid = str(uuid.uuid1())
         with self.lock:
             self.tts_speech_token_dict[this_uuid], self.llm_end_dict[this_uuid] = [], False
+            self.llm_error_dict[this_uuid] = None
             self.hift_cache_dict[this_uuid] = None
             self.mel_overlap_dict[this_uuid] = torch.zeros(1, 80, 0)
             self.flow_cache_dict[this_uuid] = torch.zeros(1, 80, 0, 2)
@@ -217,6 +252,7 @@ class CosyVoiceModel:
                 if self.llm_end_dict[this_uuid] is True and len(self.tts_speech_token_dict[this_uuid]) < token_hop_len + self.token_overlap_len:
                     break
             p.join()
+            self._raise_if_llm_failed(this_uuid)
             # deal with remain tokens, make sure inference remain token len equals token_hop_len when cache_speech is not None
             this_tts_speech_token = torch.tensor(self.tts_speech_token_dict[this_uuid]).unsqueeze(dim=0)
             this_tts_speech = self.token2wav(token=this_tts_speech_token,
@@ -229,6 +265,7 @@ class CosyVoiceModel:
         else:
             # deal with all tokens
             p.join()
+            self._raise_if_llm_failed(this_uuid)
             this_tts_speech_token = torch.tensor(self.tts_speech_token_dict[this_uuid]).unsqueeze(dim=0)
             this_tts_speech = self.token2wav(token=this_tts_speech_token,
                                              prompt_token=flow_prompt_speech_token,
@@ -241,6 +278,7 @@ class CosyVoiceModel:
         with self.lock:
             self.tts_speech_token_dict.pop(this_uuid)
             self.llm_end_dict.pop(this_uuid)
+            self.llm_error_dict.pop(this_uuid, None)
             self.mel_overlap_dict.pop(this_uuid)
             self.hift_cache_dict.pop(this_uuid)
             self.flow_cache_dict.pop(this_uuid)
@@ -274,6 +312,7 @@ class CosyVoice2Model(CosyVoiceModel):
         # dict used to store session related variable
         self.tts_speech_token_dict = {}
         self.llm_end_dict = {}
+        self.llm_error_dict = {}
         self.hift_cache_dict = {}
 
     def load_jit(self, flow_encoder_model):
@@ -336,6 +375,7 @@ class CosyVoice2Model(CosyVoiceModel):
         this_uuid = str(uuid.uuid1())
         with self.lock:
             self.tts_speech_token_dict[this_uuid], self.llm_end_dict[this_uuid] = [], False
+            self.llm_error_dict[this_uuid] = None
             self.hift_cache_dict[this_uuid] = None
         if source_speech_token.shape[1] == 0:
             p = threading.Thread(target=self.llm_job, args=(text, prompt_text, llm_prompt_speech_token, llm_embedding, this_uuid, progress_callback))
@@ -363,6 +403,7 @@ class CosyVoice2Model(CosyVoiceModel):
                 if self.llm_end_dict[this_uuid] is True and len(self.tts_speech_token_dict[this_uuid]) - token_offset < this_token_hop_len + self.flow.pre_lookahead_len:
                     break
             p.join()
+            self._raise_if_llm_failed(this_uuid)
             # deal with remain tokens, make sure inference remain token len equals token_hop_len when cache_speech is not None
             this_tts_speech_token = torch.tensor(self.tts_speech_token_dict[this_uuid]).unsqueeze(dim=0)
             this_tts_speech = self.token2wav(token=this_tts_speech_token,
@@ -376,6 +417,7 @@ class CosyVoice2Model(CosyVoiceModel):
         else:
             # deal with all tokens
             p.join()
+            self._raise_if_llm_failed(this_uuid)
             this_tts_speech_token = torch.tensor(self.tts_speech_token_dict[this_uuid]).unsqueeze(dim=0)
             this_tts_speech = self.token2wav(token=this_tts_speech_token,
                                              prompt_token=flow_prompt_speech_token,
@@ -389,6 +431,7 @@ class CosyVoice2Model(CosyVoiceModel):
         with self.lock:
             self.tts_speech_token_dict.pop(this_uuid)
             self.llm_end_dict.pop(this_uuid)
+            self.llm_error_dict.pop(this_uuid, None)
             self.hift_cache_dict.pop(this_uuid)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -406,7 +449,9 @@ class CosyVoice3Model(CosyVoice2Model):
         self.llm = llm
         self.flow = flow
         self.hift = hift
-        self.fp16 = fp16
+        # TTS Audio Suite patch: enable BF16 LLM autocast on ROCm only.
+        self._rocm_bf16_llm_autocast = torch.cuda.is_available() and bool(torch.version.hip)
+        self.fp16 = fp16 and not self._rocm_bf16_llm_autocast
         # NOTE must matching training static_chunk_size
         self.token_hop_len = 25
         # rtf and decoding related
@@ -415,6 +460,7 @@ class CosyVoice3Model(CosyVoice2Model):
         # dict used to store session related variable
         self.tts_speech_token_dict = {}
         self.llm_end_dict = {}
+        self.llm_error_dict = {}
         self.hift_cache_dict = {}
 
     def token2wav(self, token, prompt_token, prompt_feat, embedding, token_offset, uuid, stream=False, finalize=False, speed=1.0):

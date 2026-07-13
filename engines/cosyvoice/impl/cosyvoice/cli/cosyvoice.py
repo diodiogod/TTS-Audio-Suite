@@ -270,7 +270,6 @@ class CosyVoice3(CosyVoice2):
     # PATCH: Added llm_filename parameter to support model variants (llm.pt vs llm.rl.pt)
     def __init__(self, model_dir, load_trt=False, load_vllm=False, fp16=False, trt_concurrent=1, llm_filename='llm.pt'):
         self.model_dir = model_dir
-        self.fp16 = fp16
         if not os.path.exists(model_dir):
             model_dir = snapshot_download(model_dir)
         hyper_yaml_path = '{}/cosyvoice3.yaml'.format(model_dir)
@@ -289,6 +288,15 @@ class CosyVoice3(CosyVoice2):
         if torch.cuda.is_available() is False and (load_trt is True or fp16 is True):
             load_trt, fp16 = False, False
             logging.warning('no cuda device, set load_trt/fp16 to False')
+        # TTS Audio Suite patch: ROCm cannot use CosyVoice3's FP16 flow/vocoder
+        # path reliably; CosyVoice3Model applies BF16 only to the bundled Qwen LLM.
+        elif torch.version.hip:
+            if fp16:
+                logging.warning('ROCm detected: CosyVoice3 disables FP16 for its flow/vocoder and uses BF16 only for the Qwen LLM.')
+            if load_trt:
+                logging.warning('ROCm detected: TensorRT is unavailable, disabling CosyVoice3 TensorRT loading.')
+            load_trt, fp16 = False, False
+        self.fp16 = fp16
         self.model = CosyVoice3Model(configs['llm'], configs['flow'], configs['hift'], fp16)
         # PATCH: Use llm_filename parameter instead of hardcoded 'llm.pt'
         self.model.load('{}/{}'.format(model_dir, llm_filename),
