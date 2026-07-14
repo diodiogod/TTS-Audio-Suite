@@ -292,6 +292,19 @@ def _filelist_needs_refresh(filelist_path: str) -> bool:
     return False
 
 
+def _missing_prepared_dataset_artifacts(dataset_dir: str, use_f0: bool) -> List[str]:
+    """Return cache directories required to reuse an RVC training dataset."""
+    required_dirs = ["source_audio", "0_gt_wavs", "1_16k_wavs", "3_feature768"]
+    if use_f0:
+        required_dirs.extend(["2a_f0", "2b-f0nsf"])
+
+    return [
+        directory
+        for directory in required_dirs
+        if not os.path.isdir(os.path.join(dataset_dir, directory))
+    ]
+
+
 def _build_feature_config(device: str) -> SimpleNamespace:
     resolved_device = str(device or "cpu")
     is_half = resolved_device.startswith("cuda")
@@ -694,54 +707,61 @@ def prepare_rvc_training_dataset(
     raw_input_dir = os.path.join(output_root, "source_audio")
     filelist_path = os.path.join(output_root, "filelist.txt")
 
+    filelist_exists = os.path.isfile(filelist_path)
     needs_refresh = _filelist_needs_refresh(filelist_path)
+    missing_artifacts = _missing_prepared_dataset_artifacts(output_root, bool(f0_method))
+    needs_dataset_rebuild = not reuse_existing or not filelist_exists or bool(missing_artifacts)
 
-    if needs_refresh and reuse_existing and os.path.isdir(output_root):
-        print("RVC dataset cache: regenerating stale filelist with staged mute assets")
+    if reuse_existing and os.path.isdir(output_root):
+        if needs_dataset_rebuild:
+            reason = "missing filelist" if not filelist_exists else f"missing: {', '.join(missing_artifacts)}"
+            print(f"RVC dataset cache: rebuilding incomplete dataset ({reason})")
+        elif needs_refresh:
+            print("RVC dataset cache: regenerating stale filelist with staged mute assets")
 
-    if not os.path.isfile(filelist_path) or not reuse_existing or needs_refresh:
-        if not reuse_existing and os.path.isdir(output_root):
+    if needs_dataset_rebuild:
+        if os.path.isdir(output_root):
             shutil.rmtree(output_root)
         os.makedirs(output_root, exist_ok=True)
         file_count = 0
-        if not (reuse_existing and needs_refresh):
-            if source_path is not None:
-                file_count += _flatten_audio_source(source_path, raw_input_dir)
-            if audio_inputs:
-                file_count += _flatten_audio_inputs(audio_inputs, raw_input_dir, start_index=file_count)
-            preprocess_trainset(
-                raw_input_dir,
-                SR_MAP[sample_rate],
-                cpu_workers,
+        if source_path is not None:
+            file_count += _flatten_audio_source(source_path, raw_input_dir)
+        if audio_inputs:
+            file_count += _flatten_audio_inputs(audio_inputs, raw_input_dir, start_index=file_count)
+        preprocess_trainset(
+            raw_input_dir,
+            SR_MAP[sample_rate],
+            cpu_workers,
+            output_root,
+            period=chunk_seconds,
+            overlap=overlap_seconds,
+            max_volume=max_volume,
+        )
+
+        if f0_method:
+            _ensure_training_f0_dependencies(f0_method)
+
+        hubert_model = load_hubert(hubert_path, SimpleNamespace(device=device))
+        try:
+            extract_features_trainset(
+                hubert_model,
                 output_root,
-                period=chunk_seconds,
-                overlap=overlap_seconds,
-                max_volume=max_volume,
+                cpu_workers,
+                f0_method=f0_method,
+                device=device,
+                version="v2",
+                if_f0=bool(f0_method),
+                crepe_hop_length=crepe_hop_length,
             )
+        finally:
+            del hubert_model
+            gc_collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
-            if f0_method:
-                _ensure_training_f0_dependencies(f0_method)
-
-            hubert_model = load_hubert(hubert_path, SimpleNamespace(device=device))
-            try:
-                extract_features_trainset(
-                    hubert_model,
-                    output_root,
-                    cpu_workers,
-                    f0_method=f0_method,
-                    device=device,
-                    version="v2",
-                    if_f0=bool(f0_method),
-                    crepe_hop_length=crepe_hop_length,
-                )
-            finally:
-                del hubert_model
-                gc_collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-        else:
-            file_count = len(list(_iter_audio_files(raw_input_dir))) if os.path.isdir(raw_input_dir) else 0
-
+        filelist_path = build_training_filelist(output_root, sample_rate, f0_method, mute_ratio)
+    elif needs_refresh:
+        file_count = len(list(_iter_audio_files(raw_input_dir))) if os.path.isdir(raw_input_dir) else 0
         filelist_path = build_training_filelist(output_root, sample_rate, f0_method, mute_ratio)
     else:
         file_count = len(list(_iter_audio_files(raw_input_dir))) if os.path.isdir(raw_input_dir) else 0
