@@ -6,7 +6,6 @@ const DASHBOARD_MIN_HEIGHT = 292;
 const DASHBOARD_MIN_WIDTH = 430;
 const DASHBOARD_MIN_NODE_HEIGHT = 430;
 const DASHBOARD_BOTTOM_PADDING = 14;
-const DASHBOARD_TOP_OFFSET_HINT = 128;
 const STALE_RUNNING_MS = 180000;
 const POLL_INTERVAL_MS = 400;
 const TRAINING_NODES = new Map();
@@ -598,25 +597,10 @@ function drawMetricChip(ctx, x, y, width, title, value) {
     ctx.restore();
 }
 
-function getDashboardHeight(node, y = 0, nodeHeightOverride = null) {
-    const nodeHeight = nodeHeightOverride == null
-        ? safeNumber(node?.size?.[1], DASHBOARD_MIN_NODE_HEIGHT)
-        : safeNumber(nodeHeightOverride, safeNumber(node?.size?.[1], DASHBOARD_MIN_NODE_HEIGHT));
+function getDashboardHeight(node, y = 0) {
+    const nodeHeight = safeNumber(node?.size?.[1], DASHBOARD_MIN_NODE_HEIGHT);
     const availableHeight = Math.floor(nodeHeight - y - DASHBOARD_BOTTOM_PADDING);
     return Math.max(DASHBOARD_MIN_HEIGHT, availableHeight);
-}
-
-function resizeDashboardWidgetIfNeeded(widget, node, y = 0, nodeHeightOverride = null) {
-    const desiredHeight = getDashboardHeight(node, y, nodeHeightOverride);
-    if (Math.abs(safeNumber(widget.height, 0) - desiredHeight) < 1) {
-        return desiredHeight;
-    }
-
-    widget.height = desiredHeight;
-    widget.computedHeight = desiredHeight;
-    node.graph?.setDirtyCanvas?.(true, true);
-    node.setDirtyCanvas?.(true, true);
-    return desiredHeight;
 }
 
 function drawDashboard(ctx, node, widgetWidth, y, dashboardHeight, widget) {
@@ -803,11 +787,11 @@ function createDashboardWidget(node) {
         chartHovered: false,
         chartRect: null,
         computeSize(width) {
-            return [width || 360, Math.max(DASHBOARD_MIN_HEIGHT, safeNumber(this.height, DASHBOARD_MIN_HEIGHT))];
+            return [width || 360, DASHBOARD_MIN_HEIGHT];
         },
         draw(ctx, currentNode, widgetWidth, y, widgetHeight) {
             this.last_y = y;
-            const height = resizeDashboardWidgetIfNeeded(this, currentNode, y);
+            const height = getDashboardHeight(currentNode, y);
             drawDashboard(ctx, currentNode, widgetWidth, y, Math.max(safeNumber(widgetHeight, 0), height), this);
         },
         mouse(event, pos, currentNode) {
@@ -944,27 +928,7 @@ app.registerExtension({
                 Math.max(this.size?.[0] || 380, DASHBOARD_MIN_WIDTH),
                 Math.max(this.size?.[1] || 420, DASHBOARD_MIN_NODE_HEIGHT),
             ]);
-            const widget = this.widgets?.find((item) => item?.name === "tts_training_dashboard");
-            if (widget) {
-                resizeDashboardWidgetIfNeeded(widget, this, safeNumber(widget.last_y, DASHBOARD_TOP_OFFSET_HINT));
-            }
             return result;
-        };
-
-        const originalOnResize = nodeType.prototype.onResize;
-        nodeType.prototype.onResize = function(size) {
-            const widget = this.widgets?.find((item) => item?.name === "tts_training_dashboard");
-            if (widget) {
-                // Use the live drag height before ComfyUI lays out widgets. Reading this.size here
-                // trails one event behind on some frontend versions and makes expansion feel resisted.
-                resizeDashboardWidgetIfNeeded(
-                    widget,
-                    this,
-                    safeNumber(widget.last_y, DASHBOARD_TOP_OFFSET_HINT),
-                    size?.[1]
-                );
-            }
-            return originalOnResize ? originalOnResize.apply(this, arguments) : undefined;
         };
     },
 });
