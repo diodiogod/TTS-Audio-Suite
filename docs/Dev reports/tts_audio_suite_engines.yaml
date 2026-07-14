@@ -123,6 +123,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: required }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -255,6 +256,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: not_used }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -340,6 +342,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: not_used }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -438,6 +441,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: not_used }
       native_multi_speaker: { supported: true, notes: "(Base only, Kugel uses fallback)" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -520,6 +524,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: optional }
       native_multi_speaker: { supported: true, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -665,6 +670,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: optional }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -744,6 +750,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: not_used }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -810,6 +817,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: conditional }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -924,6 +932,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "(Base model)" }
+      reference_transcript: { requirement: conditional }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: true, notes: "" }
@@ -1013,6 +1022,7 @@ engines:
 
     features:
       voice_cloning: { supported: false, notes: "" }
+      reference_transcript: { requirement: not_applicable }
       native_multi_speaker: { supported: "partial", notes: "(Plus variant speaker attribution / diarization)" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: true, notes: "" }
@@ -1087,6 +1097,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: required }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -1160,6 +1171,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: not_used }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -1229,6 +1241,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "Reference audio plus exact transcript" }
+      reference_transcript: { requirement: required }
       native_multi_speaker: { supported: true, notes: "Native dialogue is default; optional custom mode generates each [Character] segment independently as local speaker 0" }
       voice_conversion: { supported: false, notes: "Not exposed by official S2 TTS inference" }
       asr_transcribe: { supported: false, notes: "" }
@@ -1308,6 +1321,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: optional }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -1379,6 +1393,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: required }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "(no standalone ASR node)" }
@@ -1468,6 +1483,7 @@ engines:
 
     features:
       voice_cloning: { supported: true, notes: "" }
+      reference_transcript: { requirement: conditional }
       native_multi_speaker: { supported: true, notes: "(TTSD v1.0; 1-5 speakers)" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -1562,6 +1578,7 @@ engines:
 
     features:
       voice_cloning: { supported: "partial", notes: "(needs training)" }
+      reference_transcript: { requirement: not_applicable }
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: true, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
@@ -1680,6 +1697,7 @@ language_metadata:
 # Feature metadata for reference
 feature_metadata:
   voice_cloning: { name: "Voice Cloning", display: "**Voice Cloning**" }
+  reference_transcript: { name: "Reference Transcript", display: "**Reference Transcript**", value_type: "requirement" }
   native_multi_speaker: { name: "Native Multi-Speaker", display: "**Native Multi-Speaker**" }
   voice_conversion: { name: "Voice Conversion", display: "**Voice Conversion**" }
   asr_transcribe: { name: "ASR (Transcribe)", display: "**ASR (Transcribe)**" }
@@ -1692,6 +1710,12 @@ feature_metadata:
 
 # Table notes for additional context
 table_notes:
+  reference_transcript:
+    - "**Required** means the suite requires an exact transcript when cloning from reference audio."
+    - "**Conditional** — CosyVoice3: required for zero-shot mode; cross-lingual and instruct modes do not use it."
+    - "**Conditional** — Qwen3-TTS: required for full Base-model voice cloning; x-vector-only and preset voices do not use it."
+    - "**Conditional** — MOSS-TTS: required for cloned speakers in MOSS-TTSD dialogue; regular MOSS-TTS reference audio does not use it."
+    - "**Optional** means the engine accepts audio-only cloning but can use matching reference text when provided."
   language_support:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
     - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"

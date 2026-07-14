@@ -37,6 +37,20 @@ def format_support(value, notes=""):
         return "❌"
 
 
+def format_requirement(value):
+    """Format a non-boolean engine input requirement."""
+    labels = {
+        "required": "**Required**",
+        "conditional": "Conditional",
+        "optional": "Optional",
+        "not_used": "Not used",
+        "not_applicable": "N/A",
+    }
+    if value not in labels:
+        raise ValueError(f"Unknown engine requirement value: {value!r}")
+    return labels[value]
+
+
 def format_markdown_link(name, url):
     """Format optional markdown link."""
     if not name and not url:
@@ -408,10 +422,21 @@ def generate_feature_comparison(data):
 
         for e in engines:
             feat_support = e["features"][feat_key]
-            cell = format_support(feat_support["supported"], feat_support["notes"])
+            if feat_info.get("value_type") == "requirement":
+                cell = format_requirement(feat_support["requirement"])
+            else:
+                cell = format_support(feat_support["supported"], feat_support["notes"])
             row.append(cell)
 
         output.append("| " + " | ".join(row) + " |")
+
+    transcript_notes = data.get("table_notes", {}).get("reference_transcript", [])
+    if transcript_notes:
+        output.append("")
+        output.append("**Reference transcript notes:**")
+        output.append("")
+        for note in transcript_notes:
+            output.append(f"- {note}")
 
     return "\n".join(output)
 

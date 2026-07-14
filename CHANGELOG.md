@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.10] - 2026-07-13
+
+### Added
+
+- Document reference transcript requirements across TTS engines
+- Add a Reference Transcript row to the engine Feature Comparison
+- Clarify which engines require, conditionally use, optionally use, or ignore transcripts
+- Add mode-specific notes for CosyVoice3, Qwen3-TTS, and MOSS-TTS
 ## [5.4.9] - 2026-07-13
 
 ### Added
