@@ -598,14 +598,16 @@ function drawMetricChip(ctx, x, y, width, title, value) {
     ctx.restore();
 }
 
-function getDashboardHeight(node, y = 0) {
-    const nodeHeight = safeNumber(node?.size?.[1], DASHBOARD_MIN_NODE_HEIGHT);
+function getDashboardHeight(node, y = 0, nodeHeightOverride = null) {
+    const nodeHeight = nodeHeightOverride == null
+        ? safeNumber(node?.size?.[1], DASHBOARD_MIN_NODE_HEIGHT)
+        : safeNumber(nodeHeightOverride, safeNumber(node?.size?.[1], DASHBOARD_MIN_NODE_HEIGHT));
     const availableHeight = Math.floor(nodeHeight - y - DASHBOARD_BOTTOM_PADDING);
     return Math.max(DASHBOARD_MIN_HEIGHT, availableHeight);
 }
 
-function resizeDashboardWidgetIfNeeded(widget, node, y = 0) {
-    const desiredHeight = getDashboardHeight(node, y);
+function resizeDashboardWidgetIfNeeded(widget, node, y = 0, nodeHeightOverride = null) {
+    const desiredHeight = getDashboardHeight(node, y, nodeHeightOverride);
     if (Math.abs(safeNumber(widget.height, 0) - desiredHeight) < 1) {
         return desiredHeight;
     }
@@ -951,12 +953,18 @@ app.registerExtension({
 
         const originalOnResize = nodeType.prototype.onResize;
         nodeType.prototype.onResize = function(size) {
-            const result = originalOnResize ? originalOnResize.apply(this, arguments) : undefined;
             const widget = this.widgets?.find((item) => item?.name === "tts_training_dashboard");
             if (widget) {
-                resizeDashboardWidgetIfNeeded(widget, this, safeNumber(widget.last_y, DASHBOARD_TOP_OFFSET_HINT));
+                // Use the live drag height before ComfyUI lays out widgets. Reading this.size here
+                // trails one event behind on some frontend versions and makes expansion feel resisted.
+                resizeDashboardWidgetIfNeeded(
+                    widget,
+                    this,
+                    safeNumber(widget.last_y, DASHBOARD_TOP_OFFSET_HINT),
+                    size?.[1]
+                );
             }
-            return result;
+            return originalOnResize ? originalOnResize.apply(this, arguments) : undefined;
         };
     },
 });
