@@ -89,7 +89,8 @@ HUBERT_MODELS = {
 • Best voice cloning accuracy
 • Size: ~1.2GB
 • Slower but highest quality results
-• For built-in RVC v2 training, use Content Vec 768 instead""",
+• Supported for new built-in RVC v2 training
+• Not compatible with existing 768-dimensional RVC checkpoints""",
         "url": "https://huggingface.co/facebook/hubert-large-ls960-ft/resolve/main/pytorch_model.bin",
         "repo_id": "facebook/hubert-large-ls960-ft",  # For downloading config
         "is_transformers": True,  # Needs config.json to load

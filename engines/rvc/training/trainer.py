@@ -444,6 +444,7 @@ def run_rvc_training_job(
     hparams.continue_from_model_path = continue_from_model_path
     hparams.max_checkpoints = _resolve_max_checkpoints(training_config)
     hparams.version = "v2"
+    hparams.model.phone_dim = int(dataset_info.get("feature_dim", 768) or 768)
     hparams.gpus = gpu_ids
     hparams.sample_rate = sample_rate
     hparams.if_f0 = bool(dataset_info.get("if_f0", True))
@@ -544,6 +545,7 @@ def run_rvc_training_job(
                     model_name=resolved_name,
                     index_dir=os.path.join(folder_paths.models_dir, "TTS", "RVC", ".index"),
                     overwrite=overwrite,
+                    feature_dim=hparams.model.phone_dim,
                 )
             except RuntimeError as exc:
                 message = str(exc).lower()

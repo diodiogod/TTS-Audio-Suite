@@ -83,6 +83,16 @@ class VC(FeatureExtractor):
         }
         feats = model.extract_features(version=version,**inputs)
 
+        expected_dim = getattr(getattr(net_g, "enc_p", None), "emb_phone", None)
+        expected_dim = getattr(expected_dim, "in_features", None)
+        actual_dim = int(feats.shape[-1])
+        if expected_dim is not None and actual_dim != int(expected_dim):
+            raise ValueError(
+                "HuBERT/RVC model mismatch: the selected HuBERT model produces "
+                f"{actual_dim} dimensions, but this RVC model expects {int(expected_dim)}. "
+                "Select the HuBERT model used to train this RVC checkpoint."
+            )
+
         if protect < 0.5 and pitch is not None and pitchf is not None:
             feats0 = feats.clone()
         if index is not None and big_npy is not None and index_rate > 0:
@@ -304,12 +314,26 @@ def get_vc(model_path,file_index=None,config=config,device=None):
             from .lib.infer_pack.models import SynthesizerTrnMs256NSFsid_nono
             net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
     elif version == "v2":
+        input_dim = None
+        input_weight = cpt.get("weight", {}).get("enc_p.emb_phone.weight")
+        if input_weight is not None and getattr(input_weight, "ndim", 0) == 2:
+            input_dim = int(input_weight.shape[1])
         if if_f0 == 1:
-            from .lib.infer_pack.models import SynthesizerTrnMs768NSFsid
-            net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
+            if input_dim == 1024:
+                from .lib.infer_pack.models import SynthesizerTrnMs1024NSFsid
+                model_class = SynthesizerTrnMs1024NSFsid
+            else:
+                from .lib.infer_pack.models import SynthesizerTrnMs768NSFsid
+                model_class = SynthesizerTrnMs768NSFsid
+            net_g = model_class(*cpt["config"], is_half=config.is_half)
         else:
-            from .lib.infer_pack.models import SynthesizerTrnMs768NSFsid_nono
-            net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
+            if input_dim == 1024:
+                from .lib.infer_pack.models import SynthesizerTrnMs1024NSFsid_nono
+                model_class = SynthesizerTrnMs1024NSFsid_nono
+            else:
+                from .lib.infer_pack.models import SynthesizerTrnMs768NSFsid_nono
+                model_class = SynthesizerTrnMs768NSFsid_nono
+            net_g = model_class(*cpt["config"])
     del net_g.enc_q
     
     net_g.load_state_dict(cpt["weight"], strict=False)

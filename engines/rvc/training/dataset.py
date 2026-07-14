@@ -250,7 +250,12 @@ def _flatten_audio_inputs(audio_inputs: List[Dict[str, object]], destination_dir
     return file_count
 
 
-def _stage_mute_assets(dataset_dir: str, sample_rate: str, use_f0: bool) -> Dict[str, str]:
+def _stage_mute_assets(
+    dataset_dir: str,
+    sample_rate: str,
+    use_f0: bool,
+    feature_dim: int = 768,
+) -> Dict[str, str]:
     """
     Stage mute assets into the prepared dataset directory so the Windows-side
     training subprocess never has to dereference WSL-local repo paths.
@@ -263,7 +268,11 @@ def _stage_mute_assets(dataset_dir: str, sample_rate: str, use_f0: bool) -> Dict
         "feature": os.path.join(staged_root, "mute.npy"),
     }
     shutil.copy2(MUTE_DATASET_DIR / "0_gt_wavs" / f"mute{sample_rate}.wav", staged_paths["wav"])
-    shutil.copy2(MUTE_DATASET_DIR / "3_feature768" / "mute.npy", staged_paths["feature"])
+    if feature_dim == 768:
+        shutil.copy2(MUTE_DATASET_DIR / "3_feature768" / "mute.npy", staged_paths["feature"])
+    else:
+        mute_768 = np.load(MUTE_DATASET_DIR / "3_feature768" / "mute.npy")
+        np.save(staged_paths["feature"], np.zeros((mute_768.shape[0], feature_dim), dtype=np.float32))
 
     if use_f0:
         staged_paths["f0"] = os.path.join(staged_root, "mute.wav.npy")
@@ -293,9 +302,13 @@ def _filelist_needs_refresh(filelist_path: str) -> bool:
     return False
 
 
-def _missing_prepared_dataset_artifacts(dataset_dir: str, use_f0: bool) -> List[str]:
+def _missing_prepared_dataset_artifacts(
+    dataset_dir: str,
+    use_f0: bool,
+    feature_dim: int = 768,
+) -> List[str]:
     """Return cache directories required to reuse an RVC training dataset."""
-    required_dirs = ["source_audio", "0_gt_wavs", "1_16k_wavs", "3_feature768"]
+    required_dirs = ["source_audio", "0_gt_wavs", "1_16k_wavs", f"3_feature{feature_dim}"]
     if use_f0:
         required_dirs.extend(["2a_f0", "2b-f0nsf"])
 
@@ -304,6 +317,11 @@ def _missing_prepared_dataset_artifacts(dataset_dir: str, use_f0: bool) -> List[
         for directory in required_dirs
         if not os.path.isdir(os.path.join(dataset_dir, directory))
     ]
+
+
+def _hubert_feature_dimension_hint(hubert_model_name: str) -> int:
+    """Return the known feature width for the built-in HuBERT selections."""
+    return 1024 if "large" in str(hubert_model_name or "").lower() else 768
 
 
 def _infer_hubert_feature_dimension(hubert_model) -> Optional[int]:
@@ -317,16 +335,16 @@ def _infer_hubert_feature_dimension(hubert_model) -> Optional[int]:
 
 
 def _validate_hubert_for_rvc_training(hubert_model, hubert_model_name: str) -> Optional[int]:
-    """Reject HuBERT encoders incompatible with the bundled RVC v2 trainer."""
+    """Validate HuBERT encoders supported by the bundled RVC v2 trainer."""
     if hubert_model is None:
         raise RuntimeError("RVC dataset prep could not load the selected HuBERT model")
 
     feature_dim = _infer_hubert_feature_dimension(hubert_model)
-    if feature_dim is not None and feature_dim != RVC_V2_FEATURE_DIM:
+    if feature_dim is not None and feature_dim not in (768, 1024):
         raise ValueError(
-            "RVC v2 training requires 768-dimensional HuBERT features, but "
+            "RVC v2 training supports 768- or 1024-dimensional HuBERT features, but "
             f"'{hubert_model_name}' produces {feature_dim}-dimensional features. "
-            "Select 'content-vec-best' in the RVC Engine, then run RVC Dataset Prep again."
+            "Select Content Vec 768 or HuBERT Large, then run RVC Dataset Prep again."
         )
     return feature_dim
 
@@ -538,6 +556,7 @@ def extract_features_trainset(
     version: str,
     if_f0: bool,
     crepe_hop_length: int,
+    feature_dim: int = RVC_V2_FEATURE_DIM,
 ) -> None:
     inp_root = os.path.join(exp_dir, "1_16k_wavs")
     total_clips = len(
@@ -560,7 +579,10 @@ def extract_features_trainset(
     )
     opt_root1 = os.path.join(exp_dir, "2a_f0")
     opt_root2 = os.path.join(exp_dir, "2b-f0nsf")
-    opt_root3 = os.path.join(exp_dir, "3_feature256" if version == "v1" else "3_feature768")
+    opt_root3 = os.path.join(
+        exp_dir,
+        f"3_feature{256 if version == 'v1' else feature_dim}",
+    )
     os.makedirs(opt_root1, exist_ok=True)
     os.makedirs(opt_root2, exist_ok=True)
     os.makedirs(opt_root3, exist_ok=True)
@@ -594,8 +616,14 @@ def extract_features_trainset(
             thread.join()
 
 
-def build_training_filelist(dataset_dir: str, sample_rate: str, f0_method: str, mute_ratio: float) -> str:
-    feature_dir = os.path.join(dataset_dir, "3_feature768")
+def build_training_filelist(
+    dataset_dir: str,
+    sample_rate: str,
+    f0_method: str,
+    mute_ratio: float,
+    feature_dim: int = RVC_V2_FEATURE_DIM,
+) -> str:
+    feature_dir = os.path.join(dataset_dir, f"3_feature{feature_dim}")
     gt_wavs_dir = os.path.join(dataset_dir, "0_gt_wavs")
     if not os.path.isdir(feature_dir):
         raise FileNotFoundError(f"Missing feature directory: {feature_dir}")
@@ -648,7 +676,7 @@ def build_training_filelist(dataset_dir: str, sample_rate: str, f0_method: str, 
     # Keep at least two mute samples to match both the Comfy-RVC reference node
     # and the upstream RVC WebUI training filelist behavior.
     mute_count = max(2, int(len(entries) * mute_ratio))
-    mute_assets = _stage_mute_assets(dataset_dir, sample_rate, use_f0)
+    mute_assets = _stage_mute_assets(dataset_dir, sample_rate, use_f0, feature_dim=feature_dim)
     for _ in range(mute_count):
         if use_f0:
             entry = "|".join(
@@ -703,6 +731,7 @@ def prepare_rvc_training_dataset(
     device = shared_settings.get("device", "cpu")
     hubert_path = shared_settings.get("hubert_path")
     hubert_model_name = shared_settings.get("hubert_model", "content-vec-best")
+    feature_dim = _hubert_feature_dimension_hint(hubert_model_name)
 
     if not hubert_path or not os.path.exists(hubert_path):
         hubert_path = ensure_hubert_model(hubert_model_name)
@@ -714,6 +743,7 @@ def prepare_rvc_training_dataset(
         f0_method,
         f"hubert_model:{hubert_model_name}",
         f"hubert_file:{os.path.basename(hubert_path)}",
+        f"hubert_dim:{feature_dim}",
         str(crepe_hop_length),
         str(chunk_seconds),
         str(overlap_seconds),
@@ -737,7 +767,11 @@ def prepare_rvc_training_dataset(
 
     filelist_exists = os.path.isfile(filelist_path)
     needs_refresh = _filelist_needs_refresh(filelist_path)
-    missing_artifacts = _missing_prepared_dataset_artifacts(output_root, bool(f0_method))
+    missing_artifacts = _missing_prepared_dataset_artifacts(
+        output_root,
+        bool(f0_method),
+        feature_dim=feature_dim,
+    )
     needs_dataset_rebuild = not reuse_existing or not filelist_exists or bool(missing_artifacts)
 
     if reuse_existing and os.path.isdir(output_root):
@@ -771,7 +805,9 @@ def prepare_rvc_training_dataset(
 
         hubert_model = load_hubert(hubert_path, SimpleNamespace(device=device))
         try:
-            _validate_hubert_for_rvc_training(hubert_model, hubert_model_name)
+            detected_feature_dim = _validate_hubert_for_rvc_training(hubert_model, hubert_model_name)
+            if detected_feature_dim is not None:
+                feature_dim = detected_feature_dim
             extract_features_trainset(
                 hubert_model,
                 output_root,
@@ -781,6 +817,7 @@ def prepare_rvc_training_dataset(
                 version="v2",
                 if_f0=bool(f0_method),
                 crepe_hop_length=crepe_hop_length,
+                feature_dim=feature_dim,
             )
         finally:
             del hubert_model
@@ -788,10 +825,22 @@ def prepare_rvc_training_dataset(
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-        filelist_path = build_training_filelist(output_root, sample_rate, f0_method, mute_ratio)
+        filelist_path = build_training_filelist(
+            output_root,
+            sample_rate,
+            f0_method,
+            mute_ratio,
+            feature_dim=feature_dim,
+        )
     elif needs_refresh:
         file_count = len(list(_iter_audio_files(raw_input_dir))) if os.path.isdir(raw_input_dir) else 0
-        filelist_path = build_training_filelist(output_root, sample_rate, f0_method, mute_ratio)
+        filelist_path = build_training_filelist(
+            output_root,
+            sample_rate,
+            f0_method,
+            mute_ratio,
+            feature_dim=feature_dim,
+        )
     else:
         file_count = len(list(_iter_audio_files(raw_input_dir))) if os.path.isdir(raw_input_dir) else 0
 
@@ -814,6 +863,7 @@ def prepare_rvc_training_dataset(
         "f0_method": f0_method,
         "hubert_path": hubert_path,
         "hubert_model": hubert_model_name,
+        "feature_dim": int(feature_dim),
         "crepe_hop_length": crepe_hop_length,
         "device": str(device),
         "file_count": file_count,

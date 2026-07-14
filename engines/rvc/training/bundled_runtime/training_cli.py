@@ -129,6 +129,7 @@ def save_checkpoint(ckpt, name, epoch, hps, model_path=None):
         opt["sr"] = hps.sample_rate
         opt["f0"] = hps.if_f0
         opt["version"] = hps.version
+        opt["feature_dim"] = int(getattr(hps.model, "phone_dim", 768))
         if model_path is None: model_path=os.path.join(hps.model_dir,name+".pth")
         torch.save(opt, model_path)
         return "Success."
@@ -209,13 +210,35 @@ def _load_initial_checkpoint(model, checkpoint_path, logger=None, label="model")
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     state_dict, strict = _extract_initial_state_dict(checkpoint)
     target_model = model.module if hasattr(model, "module") else model
-    result = target_model.load_state_dict(state_dict, strict=strict)
+    # TTS Audio Suite patch: allow both standard and warm-start RVC
+    # pretraining checkpoints to initialize a new 1024-dim HuBERT model.
+    # The 768-dim phone projection is the only expected mismatch; it must be
+    # skipped regardless of whether the checkpoint uses the strict `model`
+    # or the regular `weight` container format.
+    target_state = target_model.state_dict()
+    compatible_state = {}
+    skipped_shapes = []
+    for key, value in state_dict.items():
+        target_value = target_state.get(key)
+        if target_value is not None and tuple(target_value.shape) != tuple(value.shape):
+            skipped_shapes.append(key)
+            continue
+        compatible_state[key] = value
+    state_dict = compatible_state
+    load_strict = strict and not skipped_shapes
+    if skipped_shapes:
+        message = f"Skipped shape-mismatched {label} weights: {', '.join(skipped_shapes)}"
+        if logger is not None:
+            logger.warning(message)
+        else:
+            print(message)
+    result = target_model.load_state_dict(state_dict, strict=load_strict)
     if logger is not None:
-        mode = "strict" if strict else "warm-start"
+        mode = "strict" if load_strict else "warm-start"
         logger.info("Loaded %s init checkpoint (%s): %s", label, mode, checkpoint_path)
         logger.info(result)
     else:
-        print(f"Loaded {label} init checkpoint ({'strict' if strict else 'warm-start'}): {checkpoint_path}")
+        print(f"Loaded {label} init checkpoint ({'strict' if load_strict else 'warm-start'}): {checkpoint_path}")
         print(result)
     return result
 
@@ -667,11 +690,26 @@ def run(rank, n_gpus, hps, device):
             MultiPeriodDiscriminator,
         )
     else:
-        from .lib.infer_pack.models import (
-            SynthesizerTrnMs768NSFsid as RVC_Model_f0,
-            SynthesizerTrnMs768NSFsid_nono as RVC_Model_nof0,
-            MultiPeriodDiscriminatorV2 as MultiPeriodDiscriminator,
-        )
+        # TTS Audio Suite patch: select the RVC v2 input projection that matches
+        # the HuBERT feature width used by this dataset.
+        feature_dim = int(getattr(hps.model, "phone_dim", 768))
+        if feature_dim == 1024:
+            from .lib.infer_pack.models import (
+                SynthesizerTrnMs1024NSFsid as RVC_Model_f0,
+                SynthesizerTrnMs1024NSFsid_nono as RVC_Model_nof0,
+                MultiPeriodDiscriminatorV2 as MultiPeriodDiscriminator,
+            )
+        elif feature_dim == 768:
+            from .lib.infer_pack.models import (
+                SynthesizerTrnMs768NSFsid as RVC_Model_f0,
+                SynthesizerTrnMs768NSFsid_nono as RVC_Model_nof0,
+                MultiPeriodDiscriminatorV2 as MultiPeriodDiscriminator,
+            )
+        else:
+            raise ValueError(
+                f"Unsupported RVC v2 HuBERT feature dimension: {feature_dim}. "
+                "Use Content Vec 768 or HuBERT Large 1024."
+            )
 
     if rank == 0:
         logger = utils.get_logger(hps.model_dir)
