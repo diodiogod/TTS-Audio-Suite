@@ -85,7 +85,7 @@ class RVCEngineNode(BaseTTSNode):
             "hubert-base-japanese": "HuBERT Japanese",
             "hubert-base-korean": "HuBERT Korean",
             "chinese-hubert-base": "Chinese HuBERT Base",
-            "hubert-large": "HuBERT Large (Highest Quality)"
+            "hubert-large": "HuBERT Large 1024 (Experimental - Not Recommended)"
         }
         hubert_models = [f"{key}: {desc}" for key, desc in HUBERT_MODELS.items()]
 
@@ -142,9 +142,9 @@ class RVCEngineNode(BaseTTSNode):
 • HuBERT Japanese: Optimized for Japanese voices and phonetics  
 • HuBERT Korean: Specialized for Korean speech patterns
 • Chinese HuBERT: Fine-tuned for Mandarin Chinese tonal patterns
-• HuBERT Large: Highest quality but slower processing
+• HuBERT Large 1024: EXPERIMENTAL - no compatible public pretrained RVC generator; may produce unintelligible audio
 
-Models will auto-download if not present. Choose language-specific models for best results."""
+Models will auto-download if not present. Use Content Vec 768 unless a checkpoint explicitly requires another encoder."""
                 }),
                 
                 # Advanced Pitch Options
@@ -219,17 +219,24 @@ Models will auto-download if not present. Choose language-specific models for be
             # Parse HuBERT model selection (format: "key: description")
             hubert_key = hubert_model.split(": ")[0] if ": " in hubert_model else hubert_model
             
-            # Ensure HuBERT model is available (download if needed)
-            from engines.rvc.hubert_downloader import ensure_hubert_model
-            hubert_path = ensure_hubert_model(hubert_key)
-            
-            if hubert_path:
-                if hubert_key == "auto":
-                    print(f"✅ HuBERT model ready: auto -> {os.path.basename(hubert_path)}")
-                else:
-                    print(f"✅ HuBERT model ready: {hubert_key}")
+            # Explicit selections can be resolved now. Auto must wait until the
+            # separate voice checkpoint is loaded so 768/1024 dimensions match.
+            if hubert_key == "auto":
+                hubert_path = None
+                print("✅ HuBERT model: auto (will match the selected RVC checkpoint)")
             else:
-                print(f"⚠️ Could not load HuBERT model {hubert_key}, RVC may use fallback")
+                from engines.rvc.hubert_downloader import ensure_hubert_model
+                hubert_path = ensure_hubert_model(hubert_key)
+                if hubert_path:
+                    print(f"✅ HuBERT model ready: {hubert_key}")
+                    if hubert_key == "hubert-large":
+                        print(
+                            "⚠️ HuBERT Large 1024 RVC support is experimental and not recommended. "
+                            "No compatible public pretrained RVC generator is available; "
+                            "models warm-started from the standard 768 generator may be unintelligible."
+                        )
+                else:
+                    print(f"⚠️ Could not load HuBERT model {hubert_key}, RVC may use fallback")
             
             # Set up pitch parameters with sensible defaults
             final_pitch_params = {

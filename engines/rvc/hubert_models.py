@@ -82,15 +82,16 @@ HUBERT_MODELS = {
     
     
     "hubert-large": {
-        "description": "HuBERT Large (Highest Quality)",
-        "tooltip": """HuBERT Large - Maximum quality model
-• Highest quality feature extraction
+        "description": "HuBERT Large 1024 (Experimental - Not Recommended)",
+        "tooltip": """HuBERT Large 1024 - Experimental RVC support
+• NOT recommended for normal RVC training or inference
 • 1024-dimensional representations
-• Best voice cloning accuracy
 • Size: ~1.2GB
-• Slower but highest quality results
-• Supported for new built-in RVC v2 training
-• Not compatible with existing 768-dimensional RVC checkpoints""",
+• No compatible public 1024-dimensional pretrained RVC generator is available
+• Training from the standard 768-dimensional RVC generator may produce unintelligible audio
+• Only use for research or with a verified RVC checkpoint trained for this exact encoder
+• Not compatible with normal 768-dimensional RVC checkpoints
+• Use Content Vec 768 for reliable results""",
         "url": "https://huggingface.co/facebook/hubert-large-ls960-ft/resolve/main/pytorch_model.bin",
         "repo_id": "facebook/hubert-large-ls960-ft",  # For downloading config
         "is_transformers": True,  # Needs config.json to load
