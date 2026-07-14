@@ -15,6 +15,9 @@ import subprocess
 import sys
 import os
 import platform
+import shutil
+import tempfile
+from pathlib import Path
 from typing import List, Optional
 
 
@@ -1155,8 +1158,23 @@ class TTSAudioInstaller:
             self.log("dots_tts.runtime already satisfied - skipping", "SUCCESS")
             return
 
+        dots_install_args = [
+            "install",
+            "git+https://github.com/rednote-hilab/dots.tts.git",
+            "--no-deps",
+        ]
+        if self.is_python_313:
+            # Dots currently declares <3.13, although its source works in the
+            # suite's tested Python 3.13 environment. Keep the existing stack
+            # and bypass only pip's metadata gate.
+            dots_install_args.insert(1, "--ignore-requires-python")
+            self.log(
+                "Python 3.13 detected - allowing the tested Dots source install despite its package metadata",
+                "WARNING",
+            )
+
         self.run_pip_command(
-            ["install", "git+https://github.com/rednote-hilab/dots.tts.git", "--no-deps"],
+            dots_install_args,
             "Installing official dots.tts from GitHub (--no-deps)",
             ignore_errors=True
         )
@@ -1167,7 +1185,8 @@ class TTSAudioInstaller:
 
         # The adapter uses Fish's official inference_engine API. Pin the tested
         # S2 release because distribution metadata alone cannot verify that API.
-        fish_source = "git+https://github.com/fishaudio/fish-speech.git@v2.0.0-beta"
+        fish_repository = "https://github.com/fishaudio/fish-speech.git"
+        fish_revision = "v2.0.0-beta"
         fish_runtime_module = "fish_speech.inference_engine"
 
         packages = [
@@ -1201,11 +1220,49 @@ class TTSAudioInstaller:
                 "WARNING",
             )
 
-        self.run_pip_command(
-            ["install", "--upgrade", "--force-reinstall", fish_source, "--no-deps"],
-            "Installing tested Fish S2 runtime from GitHub (--no-deps)",
-            ignore_errors=True,
-        )
+        # The upstream beta pyproject packages only fish_speech itself, so its
+        # wheel omits fish_speech.inference_engine. Install the wheel for its
+        # metadata, then restore the complete official source package.
+        with tempfile.TemporaryDirectory(prefix="tts_fish_s2_") as temp_dir:
+            source_dir = Path(temp_dir) / "fish-speech"
+            env = os.environ.copy()
+            if self.is_windows:
+                env["PYTHONUTF8"] = "1"
+                env["PYTHONIOENCODING"] = "utf-8"
+
+            self.log("Downloading tested Fish S2 source revision...", "INSTALL")
+            try:
+                clone_result = subprocess.run(
+                    [
+                        "git",
+                        "clone",
+                        "--depth",
+                        "1",
+                        "--branch",
+                        fish_revision,
+                        fish_repository,
+                        str(source_dir),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8" if self.is_windows else None,
+                    errors="replace" if self.is_windows else None,
+                    check=True,
+                    env=env,
+                )
+                if clone_result.stdout.strip():
+                    print(clone_result.stdout)
+            except (OSError, subprocess.CalledProcessError) as error:
+                details = getattr(error, "stderr", None) or str(error)
+                self.log(f"Fish S2 source download failed: {details.strip()}", "ERROR")
+            else:
+                installed = self.run_pip_command(
+                    ["install", "--upgrade", "--force-reinstall", str(source_dir), "--no-deps"],
+                    "Installing tested Fish S2 runtime from GitHub (--no-deps)",
+                    ignore_errors=True,
+                )
+                if installed:
+                    self._restore_fish_source_package(source_dir)
 
         if self.verify_python_import(fish_runtime_module):
             self.log("Fish S2 inference runtime installed successfully", "SUCCESS")
@@ -1214,6 +1271,38 @@ class TTSAudioInstaller:
                 "Fish S2 inference runtime is still unavailable after installation; Fish Audio S2 will not work until the package is repaired",
                 "ERROR",
             )
+
+    def _restore_fish_source_package(self, source_dir: Path) -> bool:
+        """Restore Fish subpackages omitted by the upstream wheel metadata."""
+        source_package = source_dir / "fish_speech"
+        if not source_package.is_dir():
+            self.log("Fish S2 source checkout does not contain fish_speech", "ERROR")
+            return False
+
+        target_package = None
+        for entry in sys.path:
+            if not entry:
+                continue
+            candidate = Path(entry) / "fish_speech"
+            if candidate.is_dir() and (candidate / "__init__.py").exists():
+                target_package = candidate
+                break
+
+        if target_package is None:
+            self.log("Could not locate the active site-packages/fish_speech directory", "ERROR")
+            return False
+
+        try:
+            shutil.copytree(source_package, target_package, dirs_exist_ok=True)
+        except OSError as error:
+            self.log(f"Could not restore the Fish S2 source package: {error}", "ERROR")
+            return False
+
+        self.log(
+            f"Restored complete Fish S2 source package in {target_package}",
+            "SUCCESS",
+        )
+        return True
 
     def install_f5tts_multilingual_support(self):
         """Install phonemization support for F5-TTS multilingual models (Polish, German, French, Spanish, etc.)"""
