@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.13] - 2026-07-14
+
+### Added
+
+- Warn that HuBERT Large training is experimental and may produce unintelligible audio
+- Recommend ContentVec 768 for reliable RVC voice training
+
+### Fixed
+
+- Fix RVC voice conversion selecting an incompatible feature encoder
+- Automatically match RVC voice models with the correct feature encoder
 ## [5.4.12] - 2026-07-14
 
 ### Added
