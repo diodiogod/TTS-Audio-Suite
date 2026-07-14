@@ -1697,7 +1697,7 @@ language_metadata:
 # Feature metadata for reference
 feature_metadata:
   voice_cloning: { name: "Voice Cloning", display: "**Voice Cloning**" }
-  reference_transcript: { name: "Reference Transcript", display: "**Reference Transcript**", value_type: "requirement" }
+  reference_transcript: { name: "Reference Transcript", display: "**Reference Transcript†**", value_type: "requirement" }
   native_multi_speaker: { name: "Native Multi-Speaker", display: "**Native Multi-Speaker**" }
   voice_conversion: { name: "Voice Conversion", display: "**Voice Conversion**" }
   asr_transcribe: { name: "ASR (Transcribe)", display: "**ASR (Transcribe)**" }
@@ -1710,12 +1710,11 @@ feature_metadata:
 
 # Table notes for additional context
 table_notes:
-  reference_transcript:
-    - "**Required** means the suite requires an exact transcript when cloning from reference audio."
-    - "**Conditional** — CosyVoice3: required for zero-shot mode; cross-lingual and instruct modes do not use it."
-    - "**Conditional** — Qwen3-TTS: required for full Base-model voice cloning; x-vector-only and preset voices do not use it."
-    - "**Conditional** — MOSS-TTS: required for cloned speakers in MOSS-TTSD dialogue; regular MOSS-TTS reference audio does not use it."
-    - "**Optional** means the engine accepts audio-only cloning but can use matching reference text when provided."
+  reference_transcript: >-
+    Conditional means the transcript is required only for the specific mode:
+    CosyVoice3 zero-shot, Qwen3-TTS full Base cloning, or MOSS-TTSD cloned-speaker
+    dialogue. Higgs Audio 2, Higgs Audio v3, and Dots TTS accept matching text
+    when provided but do not require it.
   language_support:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
     - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"

@@ -430,13 +430,10 @@ def generate_feature_comparison(data):
 
         output.append("| " + " | ".join(row) + " |")
 
-    transcript_notes = data.get("table_notes", {}).get("reference_transcript", [])
-    if transcript_notes:
+    transcript_note = data.get("table_notes", {}).get("reference_transcript", "")
+    if transcript_note:
         output.append("")
-        output.append("**Reference transcript notes:**")
-        output.append("")
-        for note in transcript_notes:
-            output.append(f"- {note}")
+        output.append(f"† **Reference Transcript:** {transcript_note}")
 
     return "\n".join(output)
 
