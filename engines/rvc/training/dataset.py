@@ -12,7 +12,7 @@ import zipfile
 from pathlib import Path
 from threading import Lock, Thread
 from types import SimpleNamespace
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import folder_paths
 import numpy as np
@@ -33,6 +33,7 @@ from utils.downloads.model_downloader import download_rmvpe_for_reference
 MUTE_DATASET_DIR = (
     Path(__file__).resolve().parent / "assets" / "mute"
 )
+RVC_V2_FEATURE_DIM = 768
 
 
 class ProgressReporter:
@@ -303,6 +304,31 @@ def _missing_prepared_dataset_artifacts(dataset_dir: str, use_f0: bool) -> List[
         for directory in required_dirs
         if not os.path.isdir(os.path.join(dataset_dir, directory))
     ]
+
+
+def _infer_hubert_feature_dimension(hubert_model) -> Optional[int]:
+    """Return the HuBERT hidden size when the loaded model exposes one."""
+    model = getattr(hubert_model, "hubert", hubert_model)
+    hidden_size = getattr(getattr(model, "config", None), "hidden_size", None)
+    try:
+        return int(hidden_size) if hidden_size is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _validate_hubert_for_rvc_training(hubert_model, hubert_model_name: str) -> Optional[int]:
+    """Reject HuBERT encoders incompatible with the bundled RVC v2 trainer."""
+    if hubert_model is None:
+        raise RuntimeError("RVC dataset prep could not load the selected HuBERT model")
+
+    feature_dim = _infer_hubert_feature_dimension(hubert_model)
+    if feature_dim is not None and feature_dim != RVC_V2_FEATURE_DIM:
+        raise ValueError(
+            "RVC v2 training requires 768-dimensional HuBERT features, but "
+            f"'{hubert_model_name}' produces {feature_dim}-dimensional features. "
+            "Select 'content-vec-best' in the RVC Engine, then run RVC Dataset Prep again."
+        )
+    return feature_dim
 
 
 def _build_feature_config(device: str) -> SimpleNamespace:
@@ -686,6 +712,8 @@ def prepare_rvc_training_dataset(
     hash_parts = [
         sample_rate,
         f0_method,
+        f"hubert_model:{hubert_model_name}",
+        f"hubert_file:{os.path.basename(hubert_path)}",
         str(crepe_hop_length),
         str(chunk_seconds),
         str(overlap_seconds),
@@ -743,6 +771,7 @@ def prepare_rvc_training_dataset(
 
         hubert_model = load_hubert(hubert_path, SimpleNamespace(device=device))
         try:
+            _validate_hubert_for_rvc_training(hubert_model, hubert_model_name)
             extract_features_trainset(
                 hubert_model,
                 output_root,

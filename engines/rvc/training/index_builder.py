@@ -9,6 +9,9 @@ import os
 from typing import Optional
 
 
+RVC_V2_FEATURE_DIM = 768
+
+
 def build_faiss_index(
     dataset_dir: str,
     sample_rate: str,
@@ -58,6 +61,18 @@ def build_faiss_index(
         raise RuntimeError(f"No feature files found in {feature_dir}")
 
     big_npy = np.concatenate(features, axis=0)
+    if big_npy.ndim != 2:
+        raise RuntimeError(
+            f"RVC index features must be a 2D array, but found shape {tuple(big_npy.shape)}. "
+            "Recreate the RVC dataset with Content Vec 768."
+        )
+    feature_dim = int(big_npy.shape[1])
+    if feature_dim != RVC_V2_FEATURE_DIM:
+        raise RuntimeError(
+            "RVC v2 training requires 768-dimensional HuBERT features, but the prepared dataset contains "
+            f"{feature_dim}-dimensional features. Select 'content-vec-best' in the RVC Engine and run "
+            "RVC Dataset Prep again before starting training."
+        )
     shuffled_indices = np.arange(big_npy.shape[0])
     np.random.shuffle(shuffled_indices)
     big_npy = big_npy[shuffled_indices]
@@ -72,7 +87,7 @@ def build_faiss_index(
         ).fit(big_npy).cluster_centers_
 
     n_ivf = min(int(16 * (big_npy.shape[0] ** 0.5)), max(1, big_npy.shape[0] // 39))
-    index = faiss.index_factory(768, f"IVF{n_ivf},Flat")
+    index = faiss.index_factory(RVC_V2_FEATURE_DIM, f"IVF{n_ivf},Flat")
     index_ivf = faiss.extract_index_ivf(index)
     index_ivf.nprobe = 1
     index.train(big_npy)
