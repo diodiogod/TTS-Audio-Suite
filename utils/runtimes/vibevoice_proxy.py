@@ -106,6 +106,7 @@ class VibeVoiceIsolatedProxy:
                 payload={
                     "attention_mode": self.attention_mode,
                     "quantize_llm_4bit": self.quantize_llm_4bit,
+                    "model_path": self.config.model_path,
                 },
                 request_id=str(uuid.uuid4()),
             )
@@ -373,6 +374,13 @@ class VibeVoiceIsolatedProxy:
 
 
 def build_vibevoice_isolated_proxy(config: ModelLoadConfig) -> VibeVoiceIsolatedProxy:
+    if not config.model_path:
+        from engines.vibevoice_engine.vibevoice_downloader import VibeVoiceDownloader
+
+        config.model_path = VibeVoiceDownloader().get_model_path(config.model_name)
+        if not config.model_path:
+            raise RuntimeError(f"Failed to get VibeVoice model '{config.model_name}'")
+
     profile_name = config.runtime_profile or "vibevoice_transformers4_shared"
     profile = get_runtime_profile(profile_name)
     if profile is None:

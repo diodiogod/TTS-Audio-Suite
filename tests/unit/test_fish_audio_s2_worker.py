@@ -1,4 +1,6 @@
 import importlib.util
+import sys
+import types
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -45,3 +47,13 @@ def test_reference_cache_reuses_audio_but_not_previous_speaker_tag():
     assert first_texts == ["<|speaker:0|>Joe reference"]
     assert second_tokens == ["encoded-1", first_tokens[0]]
     assert second_texts == ["<|speaker:0|>Bob reference", "<|speaker:1|>Joe reference"]
+
+
+@pytest.mark.unit
+def test_removed_torchaudio_backend_probe_is_restored_temporarily(monkeypatch):
+    fake_torchaudio = types.ModuleType("torchaudio")
+    monkeypatch.setitem(sys.modules, "torchaudio", fake_torchaudio)
+
+    WORKER_MODULE._patch_removed_torchaudio_backend_probe()
+
+    assert fake_torchaudio.list_audio_backends() == []

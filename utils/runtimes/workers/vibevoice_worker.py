@@ -82,6 +82,7 @@ def main() -> int:
                     device=request.get("device") or "auto",
                     attention_mode=payload.get("attention_mode", "auto"),
                     quantize_llm_4bit=payload.get("quantize_llm_4bit", False),
+                    model_path=payload.get("model_path"),
                 )
                 _emit(
                     protocol_out,
