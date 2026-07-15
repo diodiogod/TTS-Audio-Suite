@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.14] - 2026-07-15
+
+### Fixed
+
+- Fix engine installation failures reported on Python 3.13
+- Fix Fish Audio S2 failing to load after installation
+- Fix Dots TTS failing when optional text normalization is unavailable
+- Fix VibeVoice Shared Runtime installation failing on Windows
 ## [5.4.13] - 2026-07-14
 
 ### Added
