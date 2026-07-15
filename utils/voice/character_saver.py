@@ -107,6 +107,10 @@ def _metadata_text(opt_narrator: Dict[str, Any], reference_text: str) -> str:
         if value is not None and str(value).strip():
             lines.append(f"{label}: {str(value).strip()}")
 
+    generation_fingerprint = str(opt_narrator.get("generation_fingerprint") or "").strip()
+    if generation_fingerprint:
+        lines.append(f"Generation Fingerprint: {generation_fingerprint}")
+
     instruction = (
         opt_narrator.get("design_instruction")
         or opt_narrator.get("description")
@@ -117,6 +121,110 @@ def _metadata_text(opt_narrator: Dict[str, Any], reference_text: str) -> str:
 
     lines.extend(["", "Reference Text:", reference_text])
     return "\n".join(lines).rstrip() + "\n"
+
+
+def read_character_metadata(audio_path: str | os.PathLike[str]) -> Dict[str, str]:
+    """Read suite provenance from the human-readable companion metadata file."""
+    metadata_path = Path(audio_path).with_suffix(".txt")
+    if not metadata_path.exists():
+        return {}
+
+    try:
+        content = metadata_path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+
+    result: Dict[str, str] = {}
+    labels = {
+        "source": "saved_source",
+        "engine": "engine",
+        "model": "model",
+        "language": "language",
+        "generation fingerprint": "generation_fingerprint",
+    }
+    lines = content.splitlines()
+    for line in lines:
+        label, separator, value = line.partition(":")
+        key = labels.get(label.strip().lower())
+        if separator and key and value.strip():
+            result[key] = value.strip()
+
+    for index, line in enumerate(lines):
+        if line.strip().lower() != "voice description:":
+            continue
+        description_lines = []
+        for following in lines[index + 1:]:
+            if not following.strip():
+                break
+            description_lines.append(following)
+        description = "\n".join(description_lines).strip()
+        if description:
+            result["description"] = description
+            result["design_instruction"] = description
+        break
+
+    return result
+
+
+def _matching_saved_generation(
+    target_dir: Path,
+    character_name: str,
+    generation_fingerprint: str,
+    reference_text: str,
+) -> bool:
+    audio_path = target_dir / f"{character_name}.wav"
+    reference_path = target_dir / f"{character_name}.reference.txt"
+    if not audio_path.exists() or not reference_path.exists():
+        return False
+    metadata = read_character_metadata(audio_path)
+    try:
+        saved_reference_text = reference_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return False
+    return (
+        metadata.get("generation_fingerprint") == generation_fingerprint
+        and saved_reference_text == reference_text
+    )
+
+
+def _reuse_saved_character(
+    opt_narrator: Dict[str, Any],
+    character_name: str,
+    target_dir: Path,
+) -> CharacterSaveResult:
+    audio_path = target_dir / f"{character_name}.wav"
+    reference_path = target_dir / f"{character_name}.reference.txt"
+    metadata_path = target_dir / f"{character_name}.txt"
+
+    from utils.audio.processing import AudioProcessingUtils
+
+    waveform, sample_rate = AudioProcessingUtils.safe_load_audio(str(audio_path))
+    waveform, sample_rate = _normalize_waveform({"waveform": waveform, "sample_rate": sample_rate})
+    reference_text = reference_path.read_text(encoding="utf-8").strip()
+
+    updated = dict(opt_narrator)
+    updated.update(read_character_metadata(audio_path))
+    updated.update(
+        {
+            "audio": {"waveform": waveform.unsqueeze(0), "sample_rate": sample_rate},
+            "audio_path": str(audio_path),
+            "source_audio_path": str(audio_path),
+            "reference_text": reference_text,
+            "canonical_reference_text": reference_text,
+            "character_name": character_name,
+            "source": "character_library",
+            "customized": False,
+        }
+    )
+    info = f"Character '{character_name}' already has this generation; reused existing files"
+    return CharacterSaveResult(
+        opt_narrator=updated,
+        character_name=character_name,
+        audio_path=str(audio_path),
+        reference_path=str(reference_path),
+        metadata_path=str(metadata_path),
+        info=info,
+    )
 
 
 def _choose_character_name(target_dir: Path, requested_name: str, overwrite_character: bool) -> str:
@@ -176,11 +284,21 @@ def save_character_voice(
     target_dir = voices_root
     target_dir.mkdir(parents=True, exist_ok=True)
 
+    generation_fingerprint = str(opt_narrator.get("generation_fingerprint") or "").strip()
+    if (
+        not overwrite_character
+        and generation_fingerprint
+        and _matching_saved_generation(target_dir, safe_name, generation_fingerprint, reference_text)
+    ):
+        return _reuse_saved_character(opt_narrator, safe_name, target_dir)
+
     final_name = _choose_character_name(target_dir, safe_name, overwrite_character)
     audio_path = target_dir / f"{final_name}.wav"
     reference_path = target_dir / f"{final_name}.reference.txt"
     metadata_path = target_dir / f"{final_name}.txt"
     resolved_metadata = metadata_text if metadata_text is not None else _metadata_text(opt_narrator, reference_text)
+    if generation_fingerprint and "Generation Fingerprint:" not in resolved_metadata:
+        resolved_metadata = resolved_metadata.rstrip() + f"\n\nGeneration Fingerprint: {generation_fingerprint}\n"
 
     temp_paths: list[Path] = []
     try:

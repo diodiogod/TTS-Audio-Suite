@@ -16,16 +16,26 @@ class UnifiedVoiceDesignerNode:
                     )
                 }),
                 "reference_text": ("STRING", {
-                    "default": "Welcome. This sample creates a reusable voice reference for your character.",
+                    "default": (
+                        "Welcome to the TTS Audio Suite. This advanced text-to-speech system brings "
+                        "your stories to life with natural, expressive voices. Whether you're creating "
+                        "audiobooks, videos, or interactive experiences, our technology delivers "
+                        "exceptional quality and versatility. What will you create today?"
+                    ),
                     "multiline": True,
                     "tooltip": (
                         "Plain text spoken to create the reusable voice reference. The exact transcript "
-                        "is stored inside opt_narrator for Character Voices and Save Character Voice."
+                        "is stored inside opt_narrator for Character Voices and Save Character Voice. "
+                        "Use roughly 10 seconds or more with varied intonation, questions, and representative "
+                        "sounds to evaluate and clone the designed voice reliably."
                     ),
                 }),
                 "seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xffffffffffffffff,
-                    "tooltip": "Generation seed. 0 keeps the provider's normal random behavior.",
+                    "tooltip": (
+                        "Generation seed. 0 keeps the provider's random behavior. A fixed nonzero seed also "
+                        "lets Save Character Voice recognize an identical generation safely."
+                    ),
                 }),
             },
         }

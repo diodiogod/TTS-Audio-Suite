@@ -170,6 +170,12 @@ class OmniVoiceEngineAdapter:
             return None
 
         resolved = resolve_language_alias(normalized)
+
+        # OmniVoice uses the base ISO code for Portuguese rather than regional
+        # variants accepted by other suite engines.
+        if resolved in {"pt", "pt-br", "pt-pt"}:
+            return "pt"
+
         if resolved and resolved.lower() != lowered:
             return resolved
         return normalized

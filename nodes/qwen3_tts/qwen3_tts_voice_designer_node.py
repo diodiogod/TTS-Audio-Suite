@@ -9,6 +9,8 @@ Inherits torch.compile optimization settings from the connected Qwen3-TTS Engine
 
 import os
 import sys
+import hashlib
+import json
 import torch
 import folder_paths
 from typing import Dict, Any, Optional, Tuple
@@ -21,6 +23,20 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.audio.processing import AudioProcessingUtils
+
+
+def _voice_design_cache_key(config, voice_description, reference_text, language, seed):
+    """Cache every engine configuration separately to prevent stale preview audio."""
+    payload = {
+        "schema": 2,
+        "config": config,
+        "voice_description": voice_description,
+        "reference_text": reference_text,
+        "language": language,
+        "seed": int(seed or 0),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 class Qwen3TTSVoiceDesignerNode:
@@ -163,9 +179,9 @@ class Qwen3TTSVoiceDesignerNode:
 
                         # Cache the loaded audio for same-session reuse
                         from utils.audio.cache import audio_cache
-                        import hashlib
-                        cache_key_data = f"{voice_description}|{reference_text}|{language}|{seed}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
-                        cache_key = hashlib.md5(cache_key_data.encode()).hexdigest()
+                        cache_key = _voice_design_cache_key(
+                            config, voice_description, reference_text, language, seed
+                        )
                         duration = waveform.shape[-1] / float(sr)
                         audio_cache.cache_audio(f"voice_designer_{cache_key}", waveform, duration)
 
@@ -199,9 +215,9 @@ class Qwen3TTSVoiceDesignerNode:
                     pass
 
         # Generate cache key for runtime caching (same session regeneration)
-        import hashlib
-        cache_key_data = f"{voice_description}|{reference_text}|{language}|{seed}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
-        cache_key = hashlib.md5(cache_key_data.encode()).hexdigest()
+        cache_key = _voice_design_cache_key(
+            config, voice_description, reference_text, language, seed
+        )
 
         # Check audio cache (for same-session regeneration optimization)
         from utils.audio.cache import audio_cache

@@ -26,6 +26,7 @@ base_spec.loader.exec_module(base_module)
 BaseTTSNode = base_module.BaseTTSNode
 
 from utils.voice.discovery import get_available_characters, get_available_voices, load_voice_reference
+from utils.voice.character_saver import read_character_metadata
 
 
 class CharacterVoicesNode(BaseTTSNode):
@@ -253,6 +254,10 @@ Selecting a library voice loads its transcription here automatically. Edits are 
                 "trim_start": float(trim_start or 0.0),
                 "trim_end": float(trim_end or 0.0),
             }
+            if source_audio_path:
+                # Restore optional designer provenance without changing the
+                # Character Voices node's own source/customization semantics.
+                narrator_voice_data.update(read_character_metadata(source_audio_path))
 
             # Add validation info
             has_audio = audio_tensor is not None or bool(narrator_voice_data.get("audio_path"))

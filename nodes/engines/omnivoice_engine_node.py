@@ -42,70 +42,70 @@ class OmniVoiceEngineNode(BaseTTSNode):
                 "language": ("STRING", {
                     "default": "Auto",
                     "multiline": False,
-                    "tooltip": "Target language. Use 'Auto' for language-agnostic generation, or enter a language name/code such as 'English', 'Chinese', 'Japanese', 'en', 'zh', 'ja'. OmniVoice supports 600+ languages."
+                    "tooltip": "Target language. OmniVoice supports 600+ languages. Auto uses language-agnostic generation; an explicit name/code can improve pronunciation and conditioning, especially for short or ambiguous text. Examples: English, Chinese, Japanese, en, zh, ja."
                 }),
                 "num_step": ("INT", {
                     "default": 32, "min": 4, "max": 128, "step": 1,
-                    "tooltip": "Iterative unmasking steps. Recommended: 32. Use 16 for faster generation."
+                    "tooltip": "Iterative decoding steps. More steps can improve convergence, clarity, and difficult generations, but increase render time with diminishing returns. 32 is the quality default; 16 is a faster preview setting."
                 }),
                 "guidance_scale": ("FLOAT", {
                     "default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1,
-                    "tooltip": "Classifier-free guidance scale. Recommended: 2.0."
+                    "tooltip": "Strength of text, language, and instruction conditioning. Higher values can follow conditioning more strongly; excessive guidance may sound forced, distorted, or less natural. Recommended starting point: 2.0."
                 }),
                 "t_shift": ("FLOAT", {
                     "default": 0.1, "min": 0.0, "max": 1.0, "step": 0.01,
-                    "tooltip": "Time-step shift for the OmniVoice noise schedule. Recommended: 0.1."
+                    "tooltip": "Shapes how decoding work is distributed across the noise schedule. It can affect convergence and detail, but has no simple quality direction. Keep the tuned 0.1 default unless diagnosing a specific generation problem."
                 }),
                 "speed": ("FLOAT", {
                     "default": 1.0, "min": 0.25, "max": 3.0, "step": 0.05,
-                    "tooltip": "Speech speed factor. Values above 1 are faster; values below 1 are slower. Recommended: 1.0. Technically, this rescales OmniVoice's estimated target audio-token length before generation. It is not waveform time-stretch post-processing."
+                    "tooltip": "Native speech-rate control. Above 1 generates fewer audio tokens for faster speech; below 1 generates more for slower speech. Extreme values may reduce naturalness. This changes generation length, not waveform playback speed. Ignored when duration is set. Recommended: 1.0."
                 }),
                 "duration": ("FLOAT", {
                     "default": 0.0, "min": 0.0, "max": 600.0, "step": 0.1,
-                    "tooltip": "Fixed output duration in seconds. Set 0 to let OmniVoice estimate duration from text. Technically, this overrides speed and sets the planned target audio-token length from seconds, so it behaves more like native target-length control than a simple max-tokens cap."
+                    "tooltip": "Fixed generated length in seconds. 0 lets OmniVoice estimate naturally. A positive value overrides speed and plans the audio-token length directly; unrealistic durations can cause rushed, stretched, or unstable speech. Output cleanup may trim trailing silence."
                 }),
             },
             "optional": {
                 "dtype": (["auto", "bfloat16", "float16", "float32"], {
                     "default": "auto",
-                    "tooltip": "Runtime precision. Auto prefers bf16 on newer CUDA/XPU hardware, else fp16, with fp32 on CPU."
+                    "tooltip": "Model precision. Auto chooses an appropriate format. BF16 is usually the safest reduced precision on supported GPUs; FP16 may be faster on some hardware; FP32 uses much more memory and is mainly useful for compatibility diagnosis."
                 }),
                 "instruct": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "Optional OmniVoice voice-design / style instruction. Strong effect when no narrator/reference is provided, because the model uses it to design the voice directly. With narrator/reference cloning, it still acts as guidance, but the effect is usually much weaker because OmniVoice prioritizes the provided voice identity."
+                    "tooltip": "Optional controlled speaker attributes such as gender, age, pitch, whisper, supported English accents, or Chinese dialects. Without a reference it defines the generated voice; with a reference it provides weaker guidance and the reference identity takes priority."
                 }),
                 "layer_penalty_factor": ("FLOAT", {
                     "default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1,
-                    "tooltip": "Penalty encouraging earlier codebook layers to unmask first. Recommended: 5.0."
+                    "tooltip": "Controls how strongly earlier audio-codebook layers are resolved before deeper detail layers. The tuned value 5.0 prioritizes coarse speech structure first; unusual values can disrupt decoding quality. Usually leave unchanged."
                 }),
                 "position_temperature": ("FLOAT", {
                     "default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1,
-                    "tooltip": "Mask-position temperature. 0 is greedy; higher values add randomness. Recommended: 5.0."
+                    "tooltip": "Randomness in which masked audio positions are filled next. Lower values are more repeatable and may reduce variation; 0 uses greedy position selection. Higher values increase diversity but can make results less consistent. Default: 5.0."
                 }),
                 "class_temperature": ("FLOAT", {
                     "default": 0.0, "min": 0.0, "max": 2.0, "step": 0.05,
-                    "tooltip": "Token sampling temperature. 0 is greedy; higher values are more random. Recommended: 0.0."
+                    "tooltip": "Randomness when selecting audio tokens. 0 uses greedy token selection for maximum consistency. Raising it can add variation, but also increases the chance of artifacts or unstable speech. Default: 0.0."
                 }),
                 "denoise": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Enable the denoise token. Recommended: on."
+                    "tooltip": "Requests cleaner speech through OmniVoice's denoise token when reference audio is used. It does not affect the current reference-free path. Recommended: on."
                 }),
                 "preprocess_prompt": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Preprocess the voice-cloning reference by trimming long reference audio, removing silence, and adding terminal punctuation to the reference text. Recommended: on."
+                    "tooltip": "Cleans voice-cloning input by trimming overly long reference audio and silence, and normalizing terminal punctuation in its transcript. Helps produce a compact, reliable prompt. Has no effect without reference audio. Recommended: on."
                 }),
                 "postprocess_output": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Post-process generated audio with silence cleanup plus fade and edge padding. Recommended: on."
+                    "tooltip": "Cleans generated audio by removing long silence and applying edge fades/padding. Disable only when raw model output or exact requested duration matters, since silence cleanup may shorten the result slightly. Recommended: on."
                 }),
                 "audio_chunk_duration": ("FLOAT", {
                     "default": 15.0, "min": 1.0, "max": 60.0, "step": 0.5,
-                    "tooltip": "Native long-form target chunk duration in seconds. This is OmniVoice's real long-text control and supersedes suite char-based chunking. Recommended: 15.0."
+                    "tooltip": "Target size of OmniVoice's native long-form chunks. Smaller chunks reduce VRAM and can stabilize difficult long text, but create more boundaries; larger chunks preserve more context but cost more memory. Default: 15 seconds."
                 }),
                 "audio_chunk_threshold": ("FLOAT", {
                     "default": 30.0, "min": 1.0, "max": 180.0, "step": 0.5,
-                    "tooltip": "Native long-form activation threshold in seconds. Estimated outputs longer than this use OmniVoice's built-in chunking path. Recommended: 30.0."
+                    "tooltip": "Estimated output duration above which native long-form chunking activates. Lower it to chunk shorter passages for stability/VRAM; raise it to keep more text in one generation. Default: 30 seconds."
                 }),
             },
         }

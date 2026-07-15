@@ -39,8 +39,9 @@ class SaveCharacterVoiceNode:
                     {
                         "default": False,
                         "tooltip": (
-                            "Overwrite existing character files. When disabled, an existing name is saved "
-                            "as name_1, name_2, etc."
+                            "Overwrite existing character files. When disabled, an identical deterministic "
+                            "voice-design generation reuses the existing character; otherwise an existing "
+                            "name is saved as name_1, name_2, etc."
                         ),
                     },
                 ),

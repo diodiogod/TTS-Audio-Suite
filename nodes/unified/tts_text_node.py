@@ -987,8 +987,9 @@ Back to the main narrator voice for the conclusion.""",
             elif language.lower() == "none":
                 lang_code = "none"
             else:
-                # Standard language codes - take first 2 chars
-                lang_code = language.lower()[:2]  # en, fr, de, etc.
+                # Keep free-form language names readable instead of producing
+                # misleading abbreviations such as "po" for Portuguese.
+                lang_code = language
             
             char_display = character_name if character_name else "default"
 

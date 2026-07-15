@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
+import json
 import os
 import sys
 from dataclasses import dataclass
@@ -40,6 +42,43 @@ def _engine_language(config: Dict[str, Any]) -> str:
 
 def _engine_instruction(config: Dict[str, Any], field: str) -> str:
     return str(config.get(field) or "").strip()
+
+
+def _generation_fingerprint(
+    engine_type: str,
+    config: Dict[str, Any],
+    reference_text: str,
+    seed: int,
+) -> str | None:
+    """Identify a reproducible voice-design generation.
+
+    Seed 0 deliberately keeps each provider's random behavior, so two runs with
+    otherwise identical inputs are not assumed to produce the same character.
+    """
+    if int(seed or 0) == 0:
+        return None
+
+    payload = {
+        "schema": 1,
+        "engine": engine_type,
+        "config": config,
+        "reference_text": reference_text,
+        "seed": int(seed),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def _attach_generation_fingerprint(
+    opt_narrator: Dict[str, Any],
+    engine_type: str,
+    config: Dict[str, Any],
+    reference_text: str,
+    seed: int,
+) -> None:
+    fingerprint = _generation_fingerprint(engine_type, config, reference_text, seed)
+    if fingerprint:
+        opt_narrator["generation_fingerprint"] = fingerprint
 
 
 def _audio_output(waveform: torch.Tensor, sample_rate: int) -> Dict[str, Any]:
@@ -117,6 +156,8 @@ class QwenVoiceDesignerProvider:
             "design_instruction": instruction,
             "model": config.get("model_name", "Qwen3-TTS-12Hz-1.7B-VoiceDesign"),
         })
+        _attach_generation_fingerprint(opt_narrator, "qwen3_tts", config, reference_text, seed)
+        info = info.replace("\n\n💡 Tip: Provide a character_name to save this voice for reuse", "")
         return VoiceDesignResult(opt_narrator, audio, info)
 
 
@@ -135,6 +176,7 @@ class OmniVoiceDesignerProvider:
         audio = _audio_output(waveform, adapter.SAMPLE_RATE)
         model = str(config.get("model_variant", "OmniVoice"))
         opt_narrator = _narrator(audio, reference_text, instruction, "omnivoice", model, language)
+        _attach_generation_fingerprint(opt_narrator, "omnivoice", config, reference_text, seed)
         info = (
             "Voice designed through reference-free OmniVoice TTS generation\n"
             f"Instruction: {instruction}\nModel: {model}"
@@ -194,6 +236,7 @@ class MossVoiceDesignerProvider:
             audio, reference_text, instruction, "moss_tts",
             selected_model, resolved_language,
         )
+        _attach_generation_fingerprint(opt_narrator, "moss_tts", config, reference_text, seed)
         info = f"Voice designed with MOSS VoiceGenerator\nInstruction: {instruction}\nModel: {selected_model}"
         return VoiceDesignResult(opt_narrator, audio, info)
 
