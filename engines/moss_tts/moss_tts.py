@@ -18,44 +18,15 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn.functional as F
 
+from engines.moss_tts.model_specs import MOSS_MODEL_SPECS
+
 
 class MossTTSEngine:
     """Official MOSS-TTS inference wrapper."""
 
     SAMPLE_RATE = 24000
 
-    MODEL_VARIANTS: Dict[str, Dict[str, Any]] = {
-        "MOSS-TTS-Local-Transformer": {
-            "repo_id": "OpenMOSS-Team/MOSS-TTS-Local-Transformer",
-            "architecture": "local",
-            "display": "MOSS-TTS Local 1.7B",
-            "audio_temperature": 1.0,
-            "audio_top_p": 0.95,
-            "audio_top_k": 50,
-            "audio_repetition_penalty": 1.1,
-            "max_new_tokens": 4096,
-        },
-        "MOSS-TTS": {
-            "repo_id": "OpenMOSS-Team/MOSS-TTS",
-            "architecture": "delay",
-            "display": "MOSS-TTS Delay 8B",
-            "audio_temperature": 1.7,
-            "audio_top_p": 0.8,
-            "audio_top_k": 25,
-            "audio_repetition_penalty": 1.0,
-            "max_new_tokens": 4096,
-        },
-        "MOSS-TTSD-v1.0": {
-            "repo_id": "OpenMOSS-Team/MOSS-TTSD-v1.0",
-            "architecture": "ttsd",
-            "display": "MOSS-TTSD v1.0 Dialogue 8B",
-            "audio_temperature": 1.1,
-            "audio_top_p": 0.9,
-            "audio_top_k": 50,
-            "audio_repetition_penalty": 1.1,
-            "max_new_tokens": 4096,
-        },
-    }
+    MODEL_VARIANTS: Dict[str, Dict[str, Any]] = MOSS_MODEL_SPECS
 
     SUPPORTED_LANGUAGES = {
         "auto": None,
@@ -78,6 +49,18 @@ class MossTTSEngine:
         "sv": "sv",
         "el": "el",
         "tr": "tr",
+        "yue": "yue",
+        "nl": "nl",
+        "fi": "fi",
+        "hi": "hi",
+        "mk": "mk",
+        "ms": "ms",
+        "ro": "ro",
+        "sw": "sw",
+        "tl": "tl",
+        "th": "th",
+        "vi": "vi",
+        "he": "he",
     }
 
     def __init__(

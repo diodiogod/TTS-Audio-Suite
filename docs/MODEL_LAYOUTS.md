@@ -263,7 +263,9 @@ Notes:
 ```text
 ComfyUI/models/TTS/moss_tts/
 ├── MOSS-TTS-Local-Transformer/
+├── MOSS-TTS-v1.5/
 ├── MOSS-TTS/
+├── MOSS-VoiceGenerator/
 ├── MOSS-TTSD-v1.0/
 ├── MOSS-Audio-Tokenizer/
 └── loras/
@@ -276,7 +278,9 @@ Notes:
 
 - `MOSS-Audio-Tokenizer` is required by the official TTS and TTSD variants.
 - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
-- `MOSS-TTS` is the official 8B delay model and is much larger.
+- `MOSS-TTS-v1.5` is the current 8B delay model with 31-language support.
+- `MOSS-TTS` is the legacy official 8B delay model.
+- `MOSS-VoiceGenerator` is the 1.7B voice-design provider used by Unified Voice Designer.
 - `MOSS-TTSD-v1.0` is the official 8B native multi-speaker dialogue model.
 - Integrated training currently exports LoRA adapters into `moss_tts/loras/<adapter_name>/`.
 - Training jobs, temporary manifests, and checkpoints are stored under `ComfyUI/output/tts_audio_suite_training/moss_tts/`.

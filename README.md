@@ -42,7 +42,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Fish Audio S2 Pro** | 🌐 80+ languages | ~10.3GB / ~8.0GB | Free-form sub-word emotion/prosody tags, Zero-shot voice cloning and 80+ languages |
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **OmniVoice** | 🌐 600+ languages | ~3.7GB | 600+ language support, Instruction-based voice design |
-| **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +10 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 20-language generation, Long-form generation (TTSD/Delay) |
+| **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +18 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 31-language generation with MOSS-TTS-v1.5, Reference-free voice design with MOSS-VoiceGenerator |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
@@ -848,7 +848,7 @@ Instruct: 用兴奋的语气说话。
 <details>
 <summary><h3>Qwen3-TTS - 4 Model Types with Text-to-Voice Design</h3></summary>
 
-**NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct TTS model types - CustomVoice presets, unique text-to-voice design, and zero-shot voice cloning! A **single engine** automatically selects and downloads the correct model based on your settings — no manual model management needed.
+**NEW in v4.19**: Alibaba's Qwen3-TTS with 3 distinct TTS model types - CustomVoice presets, dedicated text-to-voice design, and zero-shot voice cloning. The engine's **model** dropdown exposes every checkpoint and marks installed checkpoints with a `local:` prefix. Model-specific controls appear only when they apply.
 **NEW**: ✏️ Unified ASR Transcribe support now includes **Qwen3-ASR** and **Granite ASR**, giving the suite a second ASR engine option with optional custom timestamps/SRT for Granite via the reused Qwen forced aligner. Granite `4.1 plus` also adds native speaker diarization and native word timestamps.
 
 **Model Types:**
@@ -857,7 +857,7 @@ Instruct: 用兴奋的语气说话。
   - ✅ Supports style instructions ("Speak cheerfully", "Sound professional")
   - Character switching auto-maps to different preset speakers
 
-* **✍️ VoiceDesign Model** (1.7B only): **UNIQUE** - Create voices from text descriptions
+* **✍️ VoiceDesign Model** (1.7B only): Dedicated Qwen voice creation from text descriptions
   - Input: "A cheerful young woman with a bright, energetic tone"
   - Output: Instant voice generation matching the description
   - ✅ Supports style instructions alongside the voice description
@@ -884,9 +884,13 @@ Instruct: 用兴奋的语气说话。
 - Works with all project features: character switching, language switching, pause tags, SRT timing, Step Audio EditX post-processing
 - **ASR Transcription**: The ✏️ ASR Transcribe node now supports both Qwen3-ASR and Granite ASR
 
-**Voice Designer Node:**
+**Unified Voice Designer Node:**
 
-Unique text-to-voice generation node that creates voices from descriptions and outputs unified NARRATOR_VOICE format for use with any TTS node.
+The shared designer accepts Qwen3-TTS, MOSS-TTS, or OmniVoice engine configurations and outputs the same `NARRATOR_VOICE` format. Instruction and language stay on the engine node. Select Qwen VoiceDesign or MOSS VoiceGenerator in that engine's model dropdown before connecting it to **🎨 Unified Voice Designer**; incompatible combinations stop with a direct correction message. OmniVoice uses its reference-free generation mode, and its controlled tag vocabulary should come from **📐 Visual Tag Builder** rather than arbitrary prose. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
+
+The older Qwen-specific designer remains registered as **Legacy** so existing workflows continue to load, but new workflows should use the unified node.
+
+**💾 Save Character Voice** accepts only `opt_narrator`, keeping persistence separate from voice construction. For existing audio, use **🎭 Character Voices** with the audio and its exact transcription, then connect its `opt_narrator` output to Save Character Voice. The save node writes the established three-file format—`name.wav`, `name.reference.txt`, and metadata in `name.txt`—under `models/voices/`.
 
 ```
 Description: "A deep, authoritative male voice with clear articulation"
@@ -896,7 +900,7 @@ Description: "A deep, authoritative male voice with clear articulation"
 **Perfect for:**
 
 - Quick multilingual content with preset speakers (CustomVoice)
-- **Creative voice design from text descriptions** (VoiceDesign) - **unique to Qwen3-TTS**
+- Creative voice design from text descriptions with Qwen VoiceDesign
 - High-quality voice cloning with reference audio (Base)
 - Content requiring specific vocal characteristics defined by text
 
@@ -928,8 +932,10 @@ Use the built-in OmniVoice preset in **📐 Visual Tag Builder** for the canonic
 **Model Variants:**
 
 * **Small 1.7B (Local Transformer)**: `MOSS-TTS-Local-Transformer`
-* **8B (Delay)**: `MOSS-TTS`
+* **Recommended 8B v1.5 (Delay)**: `MOSS-TTS-v1.5` — 31 languages and more stable cloning
+* **Legacy 8B v1.0 (Delay)**: `MOSS-TTS`
 * **Native 8B Dialogue**: `MOSS-TTSD-v1.0`
+* **Voice Designer 1.7B**: `MOSS-VoiceGenerator` — select it in the MOSS engine for Unified Voice Designer
 * **Shared Codec**: `MOSS-Audio-Tokenizer`
 
 **Supported Native Input Forms (TTSD):**
@@ -954,7 +960,7 @@ Native TTSD mode now **hard-fails** (explicit error popup) instead of silently s
 * per-segment `[]` parameter changes
 * more than 5 speakers
 
-If you need those controls, switch to **Custom Character Switching** and use `MOSS-TTS-Local-Transformer` or `MOSS-TTS`.
+If you need those controls, switch to **Custom Character Switching** and use `MOSS-TTS-Local-Transformer`, `MOSS-TTS-v1.5`, or `MOSS-TTS`.
 
 **Official Prompt Fields Exposed:**
 

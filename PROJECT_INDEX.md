@@ -106,6 +106,8 @@
 
 ### Shared / Special Nodes
 - `nodes/shared/character_voices_node.py` - Character voice management (NARRATOR_VOICE output)
+- `nodes/shared/unified_voice_designer_node.py` - Unified Qwen VoiceDesign, MOSS VoiceGenerator, and reference-free OmniVoice design
+- `nodes/shared/save_character_voice_node.py` - Explicit output node for saving any NARRATOR_VOICE into the established voice library
 - `nodes/omnivoice/omnivoice_instruction_builder_node.py` - OmniVoice voice-design instruction helper with custom visual builder UI
 - `nodes/text/phoneme_text_normalizer_node.py` - Multilingual text preprocessing
 - `nodes/text/asr_punctuation_truecase_node.py` - Standalone punctuation / truecase cleanup for raw ASR text
@@ -114,7 +116,7 @@
 - `nodes/text/tts_tag_editor_node.py` - 🏷️ Multiline TTS Tag Editor: rich text editor with character/language/parameter dropdowns, preset system, syntax highlighting, undo/redo — pairs with `web/string_multiline_tag_editor.js`
 - `nodes/step_audio_editx_special/step_audio_editx_audio_editor_node.py` - 🎨 Audio Editor: post-process ANY engine's audio with Step Audio EditX (14 emotions, 32 styles, paralinguistic effects like `<Laughter>`, speed control) — universal, not just for Step Audio EditX engine
 - `nodes/engines/index_tts_emotion_options_node.py` - IndexTTS-2 emotion radar chart
-- `nodes/qwen3_tts/qwen3_tts_voice_designer_node.py` - Qwen3 voice-from-text-description
+- `nodes/qwen3_tts/qwen3_tts_voice_designer_node.py` - Legacy-compatible Qwen-specific voice designer
 
 ### Audio / Video Nodes
 - `nodes/audio/analyzer_node.py` - Audio Wave Analyzer
@@ -172,7 +174,9 @@
 - `reporting.py` - Timing report generation
 
 ### Other Utils
-- `utils/voice/discovery.py` - Voice file discovery with multi-path fallback
+- `utils/voice/discovery.py` - Voice discovery, user-voice priority, and multi-path fallback
+- `utils/voice/designers.py` - Whitelisted voice-designer provider registry
+- `utils/voice/character_saver.py` - Shared `.wav` / `.reference.txt` / `.txt` character persistence
 - `utils/voice/character_logging.py` - Shared resolved voice labels and boxed prompt previews
 - `utils/downloads/unified_downloader.py` - Centralized HF download system
 - `utils/compatibility/transformers_patches.py` - transformers version compatibility patches
@@ -191,7 +195,7 @@
 ### Other Web Files
 - `web/chatterbox_voice_capture.js` - Microphone recording UI
 - `web/index_tts_emotion_radar.js` + `emotion_radar_canvas_widget.js` - IndexTTS-2 radar chart
-- `web/qwen3_tts_widgets.js` - Qwen3 conditional instruction field
+- `web/qwen3_tts_widgets.js` - Qwen model-specific widget enablement and legacy workflow migration
 - `web/asr_srt_preset_widgets.js` - ASR SRT preset locking
 
 ## Scripts & Config

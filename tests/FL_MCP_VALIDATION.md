@@ -1,5 +1,11 @@
 # FL-MCP Live ComfyUI Validation
 
+## Agent Fast Path
+
+Point Codex's `comfyui-fl-mcp` server entry at `tests/codex_fl_mcp_server.cmd`. The wrapper starts the manual bridge in a visible terminal before initializing the stdio MCP server; this makes tool discovery independent of browser state. Browser connection is required only for frontend/canvas operations.
+
+Run `powershell -ExecutionPolicy Bypass -File tests/start_fl_mcp_validation.ps1 -RestartComfyUI` after code changes. It starts visible ComfyUI and FL-MCP terminals, opens the browser, checks the configured browser session, and prints the exact next action. If an already-open Codex task has no FL-MCP tools, open a new task because MCP servers are discovered at task startup and are not hot-added. Then call `mcp_capability_audit` once and use only targeted tools for the node, prompt ID, or output being validated.
+
 This runbook defines an optional live acceptance test for new engine implementations using [ComfyUI_FL-MCP](https://github.com/filliptm/ComfyUI_FL-MCP).
 
 FL-MCP gives an MCP-capable LLM access to ComfyUI workflow state, queue execution, history, errors, output files, and browser screenshots. It does not replace pytest, canonical Windows validation, or human evaluation of audio quality.

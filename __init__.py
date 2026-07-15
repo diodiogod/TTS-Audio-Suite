@@ -514,14 +514,30 @@ print(json.dumps({"devices": devices}))
                 print(f"⚠️ Error setting inline tag settings: {e}")
                 return web.json_response({"status": "error", "error": str(e)})
 
+        def get_voice_discovery_module():
+            """Return the shared discovery module used by nodes and save notifications."""
+            from utils.voice import discovery as voice_discovery_module
+            return voice_discovery_module
+
         def resolve_character_voice(voice_name):
-            """Resolve a dropdown key through the same isolated discovery path used by previews."""
-            voice_discovery_path = os.path.join(os.path.dirname(__file__), "utils", "voice", "discovery.py")
-            spec = importlib.util.spec_from_file_location("voice_discovery_preview_module", voice_discovery_path)
-            voice_discovery_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(voice_discovery_module)
+            """Resolve a dropdown key through the shared discovery cache."""
+            voice_discovery_module = get_voice_discovery_module()
             voice_discovery_module.get_available_voices(force_refresh=False)
             return voice_discovery_module.load_voice_reference(voice_name)
+
+        @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-library")
+        async def get_voice_library_endpoint(request):
+            """Return current dropdown keys for Character Voices."""
+            try:
+                voice_discovery_module = get_voice_discovery_module()
+                force_refresh = request.query.get("refresh", "0").strip().lower() in {"1", "true", "yes"}
+                voices = voice_discovery_module.get_available_voices(force_refresh=force_refresh)
+                response = web.json_response({"voices": voices})
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+                return response
+            except Exception as e:
+                print(f"⚠️ Error serving voice library: {e}")
+                return web.json_response({"error": str(e)}, status=500)
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/voice-preview")
         async def get_voice_preview_endpoint(request):

@@ -238,7 +238,19 @@ class VoiceDiscovery:
                 if msg_parts:
                     print(f"🎭 Character voices updated: {', '.join(msg_parts)}")
 
-        return ["none"] + sorted(self._cache.keys())
+        def voice_sort_key(voice_key: str):
+            source = self._cache.get(voice_key, {}).get("source_folder", "")
+            if source == "models/voices":
+                priority = 0
+            elif source.startswith("extra:"):
+                priority = 1
+            elif source == "models/TTS/voices":
+                priority = 2
+            else:
+                priority = 3
+            return priority, os.path.basename(voice_key).lower(), voice_key.lower()
+
+        return ["none"] + sorted(self._cache.keys(), key=voice_sort_key)
     
     def get_voice_info(self, voice_key: str) -> Optional[Dict[str, str]]:
         """
@@ -409,7 +421,7 @@ class VoiceDiscovery:
                             'text_path': text_path,
                             'text_content': text_content,
                             'source_folder': source_name,
-                            'relative_path': rel_path
+                            'relative_path': rel_path,
                         }
                         
         except Exception as e:
@@ -603,20 +615,19 @@ class VoiceDiscovery:
         if not self._cache_valid:
             self._refresh_cache()
         
-        # Scan voices_examples/ directory for character folders
-        voices_examples_dir = self._get_voices_examples_dir()
-        if voices_examples_dir and os.path.exists(voices_examples_dir):
-            self._scan_character_directories(voices_examples_dir, "voices_examples")
-        
-        # Scan models/TTS/voices/ directory for character folders
-        models_tts_voices_dir = self._get_models_tts_voices_dir()
-        if models_tts_voices_dir and os.path.exists(models_tts_voices_dir):
-            self._scan_character_directories(models_tts_voices_dir, "models/TTS/voices")
-        
-        # Scan models/voices/ directory for character folders
+        # Explicit priority: user voices, TTS fallback voices, then bundled examples.
+        # The first occurrence wins, so examples can never override user files.
         models_voices_dir = self._get_models_voices_dir()
         if models_voices_dir and os.path.exists(models_voices_dir):
             self._scan_character_directories(models_voices_dir, "models/voices")
+
+        models_tts_voices_dir = self._get_models_tts_voices_dir()
+        if models_tts_voices_dir and os.path.exists(models_tts_voices_dir):
+            self._scan_character_directories(models_tts_voices_dir, "models/TTS/voices")
+
+        voices_examples_dir = self._get_voices_examples_dir()
+        if voices_examples_dir and os.path.exists(voices_examples_dir):
+            self._scan_character_directories(voices_examples_dir, "voices_examples")
         
         # Scan any additional extra_model_paths.yaml configured voices directories for characters
         if get_all_voices_paths:
@@ -902,21 +913,19 @@ class VoiceDiscovery:
                     # Extract character name from filename (remove extension)
                     character_name = Path(audio_file).stem.lower()
                     
-                    # Skip if this character was already found (first occurrence wins)
-                    if character_name in self._character_cache:
-                        continue
-                    
                     # Look for companion text file
                     text_path, text_content = self._find_companion_text(audio_path)
-                    
-                    # Store character info
-                    self._character_cache[character_name] = {
+
+                    character_info = {
                         'audio_path': audio_path,
                         'text_path': text_path,
                         'text_content': text_content or "",
                         'source_folder': source_name,
-                        'character_directory': root  # Store the actual directory containing the file
+                        'character_directory': root,
                     }
+
+                    # Global mapping keeps explicit source priority from scan order.
+                    self._character_cache.setdefault(character_name, character_info)
                     
         except Exception as e:
             print(f"⚠️ Character Discovery: Error scanning audio files in {source_name}: {e}")

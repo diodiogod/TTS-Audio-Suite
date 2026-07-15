@@ -6,71 +6,20 @@ ComfyUI/models/TTS/moss_tts/ instead of the default HF cache.
 """
 
 import os
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import folder_paths
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
+from engines.moss_tts.model_specs import MOSS_CODEC_SPECS, MOSS_MODEL_SPECS
 
 
 class MossTTSDownloader:
     """Resolve and download official MOSS-TTS model folders."""
 
-    MODELS: Dict[str, Dict[str, str]] = {
-        "MOSS-TTS": {
-            "repo_id": "OpenMOSS-Team/MOSS-TTS",
-            "description": "MOSS-TTS Delay 8B - flagship long-form model",
-        },
-        "MOSS-TTSD-v1.0": {
-            "repo_id": "OpenMOSS-Team/MOSS-TTSD-v1.0",
-            "description": "MOSS-TTSD v1.0 Delay 8B - native multi-speaker dialogue model",
-        },
-        "MOSS-TTS-Local-Transformer": {
-            "repo_id": "OpenMOSS-Team/MOSS-TTS-Local-Transformer",
-            "description": "MOSS-TTS Local 1.7B - smaller/faster model",
-        },
-        "MOSS-Audio-Tokenizer": {
-            "repo_id": "OpenMOSS-Team/MOSS-Audio-Tokenizer",
-            "description": "MOSS audio tokenizer required by MOSS-TTS",
-        },
-    }
-
+    MODELS: Dict[str, Dict[str, Any]] = {**MOSS_MODEL_SPECS, **MOSS_CODEC_SPECS}
     REQUIRED_FILES = {
-        "MOSS-TTS": [
-            "config.json",
-            "processor_config.json",
-            "tokenizer.json",
-            "model.safetensors.index.json",
-            "model-00001-of-00004.safetensors",
-            "model-00002-of-00004.safetensors",
-            "model-00003-of-00004.safetensors",
-            "model-00004-of-00004.safetensors",
-        ],
-        "MOSS-TTSD-v1.0": [
-            "config.json",
-            "generation_config.json",
-            "processor_config.json",
-            "tokenizer.json",
-            "model.safetensors.index.json",
-            "model-00001-of-00004.safetensors",
-            "model-00002-of-00004.safetensors",
-            "model-00003-of-00004.safetensors",
-            "model-00004-of-00004.safetensors",
-        ],
-        "MOSS-TTS-Local-Transformer": [
-            "config.json",
-            "generation_config.json",
-            "processor_config.json",
-            "tokenizer.json",
-            "model.safetensors.index.json",
-            "model-00001-of-00002.safetensors",
-            "model-00002-of-00002.safetensors",
-        ],
-        "MOSS-Audio-Tokenizer": [
-            "config.json",
-            "model.safetensors.index.json",
-            "model-00001-of-00002.safetensors",
-            "model-00002-of-00002.safetensors",
-        ],
+        name: list(spec.get("required_files", ["config.json"]))
+        for name, spec in MODELS.items()
     }
 
     def __init__(self, base_path: Optional[str] = None):

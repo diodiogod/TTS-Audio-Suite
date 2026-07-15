@@ -192,14 +192,19 @@ Hello! This is unified SRT TTS with character switching.
             if engine_type == "chatterbox_official_23lang":
                 stable_params['model_version'] = config.get('model_version', 'v1')
 
-            # For Qwen3-TTS, include voice_preset, model_size, attn_implementation,
-            # and optimization settings since they determine model type and require model reload
-            # NOTE: instruct is a generation parameter, doesn't require model reload
+            # Qwen checkpoints can share a size while serving different roles, so cache
+            # by the explicit checkpoint identity rather than inferring it from the preset.
             if engine_type == "qwen3_tts":
+                stable_params['model_name'] = config.get('model_name')
+                stable_params['model_path'] = config.get('model_path')
+                stable_params['model_type'] = config.get('model_type')
                 stable_params['voice_preset'] = config.get('voice_preset', 'None (Zero-shot / Custom)')
                 stable_params['instruct'] = config.get('instruct', '')
                 stable_params['model_size'] = config.get('model_size', '1.7B')
+                stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
+                stable_params['runtime_mode'] = config.get('runtime_mode')
+                stable_params['runtime_profile'] = config.get('runtime_profile')
                 # CRITICAL: Include optimization settings - changing these requires model reload
                 # Without this, SRT and TTS text nodes would have different cache keys for the same model
                 stable_params['use_torch_compile'] = config.get('use_torch_compile', False)
@@ -1071,6 +1076,13 @@ Hello! This is unified SRT TTS with character switching.
             if not engine_type:
                 raise ValueError("TTS engine missing engine_type")
 
+            if config.get("model_role") == "voice_design":
+                selected_model = config.get("model_variant") or config.get("model_name") or "selected model"
+                raise ValueError(
+                    f"'{selected_model}' is a voice-design model and cannot be used with TTS SRT. "
+                    "Connect this engine to Unified Voice Designer, or select a standard TTS model in the engine node."
+                )
+
             print(f"📺 TTS SRT: Starting {engine_type} SRT generation")
 
             native_duration_targeting_active = bool(
@@ -1582,7 +1594,8 @@ Hello! This is unified SRT TTS with character switching.
             # Bubble up hard incompatibilities so ComfyUI shows a modal error.
             msg = str(e)
             if (
-                "Pause tags are not compatible with force_speaker_kv" in msg
+                "is a voice-design model and cannot be used with TTS SRT" in msg
+                or "Pause tags are not compatible with force_speaker_kv" in msg
                 or "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input" in msg
             ):
                 raise

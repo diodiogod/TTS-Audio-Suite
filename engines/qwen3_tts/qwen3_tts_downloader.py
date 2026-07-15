@@ -53,27 +53,47 @@ class Qwen3TTSDownloader:
         "Qwen3-TTS-12Hz-0.6B-CustomVoice": {
             "repo_id": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
             "files": "all",
-            "description": "Qwen3-TTS 0.6B CustomVoice - 9 preset speakers (low VRAM ~6GB)"
+            "description": "Qwen3-TTS 0.6B CustomVoice - 9 preset speakers (low VRAM ~6GB)",
+            "display": "TTS - CustomVoice 0.6B (Presets)",
+            "role": "tts",
+            "model_type": "CustomVoice",
+            "model_size": "0.6B",
         },
         "Qwen3-TTS-12Hz-0.6B-Base": {
             "repo_id": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
             "files": "all",
-            "description": "Qwen3-TTS 0.6B Base - Zero-shot voice cloning (low VRAM ~6GB)"
+            "description": "Qwen3-TTS 0.6B Base - Zero-shot voice cloning (low VRAM ~6GB)",
+            "display": "TTS - Base 0.6B (Voice Clone)",
+            "role": "tts",
+            "model_type": "Base",
+            "model_size": "0.6B",
         },
         "Qwen3-TTS-12Hz-1.7B-CustomVoice": {
             "repo_id": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
             "files": "all",
-            "description": "Qwen3-TTS 1.7B CustomVoice - 9 preset speakers with instruction support (~12GB)"
+            "description": "Qwen3-TTS 1.7B CustomVoice - 9 preset speakers with instruction support (~12GB)",
+            "display": "TTS - CustomVoice 1.7B (Presets + Instruction)",
+            "role": "tts",
+            "model_type": "CustomVoice",
+            "model_size": "1.7B",
         },
         "Qwen3-TTS-12Hz-1.7B-VoiceDesign": {
             "repo_id": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
             "files": "all",
-            "description": "Qwen3-TTS 1.7B VoiceDesign - Text-to-voice design UNIQUE FEATURE (~12GB)"
+            "description": "Qwen3-TTS 1.7B VoiceDesign - Text-to-voice design (~12GB)",
+            "display": "Voice Design - 1.7B VoiceDesign",
+            "role": "voice_design",
+            "model_type": "VoiceDesign",
+            "model_size": "1.7B",
         },
         "Qwen3-TTS-12Hz-1.7B-Base": {
             "repo_id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
             "files": "all",
-            "description": "Qwen3-TTS 1.7B Base - Zero-shot voice cloning high quality (~12GB)"
+            "description": "Qwen3-TTS 1.7B Base - Zero-shot voice cloning high quality (~12GB)",
+            "display": "TTS - Base 1.7B (Voice Clone)",
+            "role": "tts",
+            "model_type": "Base",
+            "model_size": "1.7B",
         }
     }
 

@@ -22,6 +22,27 @@ function ensureState(node) {
     return node.__ttsCharacterVoiceState;
 }
 
+async function refreshVoiceLibrary(node, forceRefresh = false) {
+    try {
+        const suffix = forceRefresh ? "?refresh=1" : "";
+        const response = await api.fetchApi(`/api/tts-audio-suite/voice-library${suffix}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const voiceWidget = findWidget(node, "voice_name");
+        const voices = Array.isArray(data.voices) ? data.voices : [];
+        if (!voiceWidget) return;
+        voiceWidget.options = voiceWidget.options || {};
+        voiceWidget.options.values = voices;
+        if (!voices.includes(voiceWidget.value)) {
+            setWidgetValue(node, voiceWidget, "none");
+            resetForVoiceSelection(node, "none");
+        }
+        app.graph?.setDirtyCanvas(true, true);
+    } catch (error) {
+        console.warn("Character Voices library refresh failed:", error);
+    }
+}
+
 function setWidgetValue(node, widget, value) {
     if (!widget || widget.value === value) return;
     const state = ensureState(node);
@@ -284,7 +305,6 @@ function setupCharacterVoices(node) {
     if (node.__ttsCharacterVoicesSetup) return;
     node.__ttsCharacterVoicesSetup = true;
     const state = ensureState(node);
-
     if (!setupDomEditor(node)) setupFallbackPlayer(node);
     wrapWidgetCallbacks(node);
 
@@ -308,10 +328,18 @@ function setupCharacterVoices(node) {
 
     const voiceName = findWidget(node, "voice_name")?.value;
     if (voiceName && voiceName !== "none") syncRestoredVoice(node);
+    refreshVoiceLibrary(node, false);
 }
 
 app.registerExtension({
     name: "tts-audio-suite.character-voices.editor",
+    async setup() {
+        api.addEventListener("tts-audio-suite.voice-library-changed", () => {
+            for (const node of app.graph?._nodes || []) {
+                if (node.comfyClass === "CharacterVoicesNode") refreshVoiceLibrary(node, true);
+            }
+        });
+    },
     nodeCreated(node) {
         if (node.comfyClass === "CharacterVoicesNode") setupCharacterVoices(node);
     },

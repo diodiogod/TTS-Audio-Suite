@@ -20,6 +20,8 @@ from utils.models.extra_paths import get_all_tts_model_paths
 FRIENDLY_VARIANT_MAP = {
     "Small 1.7B (Local)": "MOSS-TTS-Local-Transformer",
     "8B (Delay)": "MOSS-TTS",
+    "Recommended 8B v1.5 (Delay)": "MOSS-TTS-v1.5",
+    "Legacy 8B v1.0 (Delay)": "MOSS-TTS",
     "Native 8B Dialogue (MOSS-TTSD-v1.0)": "MOSS-TTSD-v1.0",
 }
 

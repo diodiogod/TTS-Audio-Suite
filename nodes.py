@@ -252,6 +252,22 @@ except Exception as e:
     print(f"❌ Refresh Voice Cache failed: {e}")
     REFRESH_VOICE_CACHE_AVAILABLE = False
 
+try:
+    save_character_voice_module = load_node_module("save_character_voice_node", "shared/save_character_voice_node.py")
+    SaveCharacterVoiceNode = save_character_voice_module.SaveCharacterVoiceNode
+    SAVE_CHARACTER_VOICE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Save Character Voice failed: {e}")
+    SAVE_CHARACTER_VOICE_AVAILABLE = False
+
+try:
+    unified_voice_designer_module = load_node_module("unified_voice_designer_node", "shared/unified_voice_designer_node.py")
+    UnifiedVoiceDesignerNode = unified_voice_designer_module.UnifiedVoiceDesignerNode
+    UNIFIED_VOICE_DESIGNER_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Unified Voice Designer failed: {e}")
+    UNIFIED_VOICE_DESIGNER_AVAILABLE = False
+
 # Load unified nodes
 try:
     unified_text_module = load_node_module("unified_tts_text_node", "unified/tts_text_node.py")
@@ -647,7 +663,7 @@ if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
 
 if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
     NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode
-    NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = "🎨 Qwen3-TTS Voice Designer"
+    NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = "🎨 Qwen3-TTS Voice Designer (Legacy)"
 
 if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxOfficial23LangEngineNode"] = ChatterBoxOfficial23LangEngineNode
@@ -673,6 +689,14 @@ if QWEN_EMOTION_AVAILABLE:
 if CHARACTER_VOICES_AVAILABLE:
     NODE_CLASS_MAPPINGS["CharacterVoicesNode"] = CharacterVoicesNode
     NODE_DISPLAY_NAME_MAPPINGS["CharacterVoicesNode"] = "🎭 Character Voices"
+
+if SAVE_CHARACTER_VOICE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["SaveCharacterVoiceNode"] = SaveCharacterVoiceNode
+    NODE_DISPLAY_NAME_MAPPINGS["SaveCharacterVoiceNode"] = "💾 Save Character Voice"
+
+if UNIFIED_VOICE_DESIGNER_AVAILABLE:
+    NODE_CLASS_MAPPINGS["UnifiedVoiceDesignerNode"] = UnifiedVoiceDesignerNode
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedVoiceDesignerNode"] = "🎨 Unified Voice Designer"
 
 
 

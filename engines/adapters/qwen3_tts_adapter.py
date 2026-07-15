@@ -106,7 +106,12 @@ class Qwen3TTSEngineAdapter:
         Returns:
             Model type string: "CustomVoice", "VoiceDesign", or "Base"
         """
-        # Priority 1: Voice Designer node
+        # Explicit engine selection is authoritative for refactored workflows.
+        explicit_model_type = context.get("model_type")
+        if explicit_model_type in {"Base", "CustomVoice", "VoiceDesign"}:
+            return explicit_model_type
+
+        # Legacy voice designer context.
         if context.get("node_type") == "voice_designer":
             return "VoiceDesign"
 
@@ -156,8 +161,8 @@ class Qwen3TTSEngineAdapter:
             model_size = "1.7B"
             print("⚠️ VoiceDesign requires 1.7B model, auto-switching from 0.6B")
 
-        # Build model name
-        model_name = f"Qwen3-TTS-12Hz-{model_size}-{model_type}"
+        # Keep the canonical model name separate from a local: model path.
+        model_name = context.get("model_name") or f"Qwen3-TTS-12Hz-{model_size}-{model_type}"
 
         # Track current model type (unified interface handles unloading automatically)
         self.current_model_type = model_type

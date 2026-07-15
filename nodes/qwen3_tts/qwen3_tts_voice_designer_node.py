@@ -1,8 +1,8 @@
 """
 Qwen3-TTS Voice Designer Node
 
-Creates custom voices from natural language descriptions using the VoiceDesign model.
-This is a unique feature of Qwen3-TTS - no other engine has text-to-voice design capability.
+Creates custom voices from natural language descriptions using Qwen's dedicated VoiceDesign model.
+The shared Unified Voice Designer also exposes this provider alongside MOSS and OmniVoice.
 
 Inherits torch.compile optimization settings from the connected Qwen3-TTS Engine node.
 """
@@ -62,6 +62,10 @@ class Qwen3TTSVoiceDesignerNode:
                     "default": False,
                     "tooltip": "Overwrite existing character files instead of creating versioned copies.\n• False (default): Creates name_1, name_2, etc. if character exists\n• True: Overwrites existing character files (useful for refining voices)"
                 }),
+                "seed": ("INT", {
+                    "default": 0, "min": 0, "max": 0xffffffffffffffff,
+                    "tooltip": "Generation seed. 0 keeps the model's normal random behavior."
+                }),
             }
         }
 
@@ -76,7 +80,8 @@ class Qwen3TTSVoiceDesignerNode:
                     reference_text: str,
                     language: str,
                     character_name: str = "",
-                    overwrite_character: bool = False) -> Tuple[Dict, Dict, str]:
+                    overwrite_character: bool = False,
+                    seed: int = 0) -> Tuple[Dict, Dict, str]:
         """
         Design a custom voice from text description.
 
@@ -159,7 +164,7 @@ class Qwen3TTSVoiceDesignerNode:
                         # Cache the loaded audio for same-session reuse
                         from utils.audio.cache import audio_cache
                         import hashlib
-                        cache_key_data = f"{voice_description}|{reference_text}|{language}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
+                        cache_key_data = f"{voice_description}|{reference_text}|{language}|{seed}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
                         cache_key = hashlib.md5(cache_key_data.encode()).hexdigest()
                         duration = waveform.shape[-1] / float(sr)
                         audio_cache.cache_audio(f"voice_designer_{cache_key}", waveform, duration)
@@ -195,7 +200,7 @@ class Qwen3TTSVoiceDesignerNode:
 
         # Generate cache key for runtime caching (same session regeneration)
         import hashlib
-        cache_key_data = f"{voice_description}|{reference_text}|{language}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
+        cache_key_data = f"{voice_description}|{reference_text}|{language}|{seed}|{config.get('temperature', 0.9)}|{config.get('top_k', 50)}|{config.get('top_p', 1.0)}"
         cache_key = hashlib.md5(cache_key_data.encode()).hexdigest()
 
         # Check audio cache (for same-session regeneration optimization)
@@ -210,7 +215,15 @@ class Qwen3TTSVoiceDesignerNode:
             from utils.models.unified_model_interface import unified_model_interface, ModelLoadConfig
             from utils.device import resolve_torch_device
 
-            model_path = config.get('model_path', f'Qwen3-TTS-12Hz-{model_size}-VoiceDesign')
+            canonical_voice_design_model = f'Qwen3-TTS-12Hz-{model_size}-VoiceDesign'
+            # New engine configs carry an explicit checkpoint path. Preserve that path
+            # only when VoiceDesign is actually selected; legacy workflows used a normal
+            # Qwen engine and relied on this node to choose VoiceDesign itself.
+            model_path = (
+                config.get('model_path') or canonical_voice_design_model
+                if config.get('model_type') == 'VoiceDesign'
+                else canonical_voice_design_model
+            )
             device = config.get('device', 'auto')
             dtype = config.get('dtype', 'auto')
             attn_implementation = config.get('attn_implementation', 'auto')
@@ -224,7 +237,7 @@ class Qwen3TTSVoiceDesignerNode:
             model_config = ModelLoadConfig(
                 engine_name="qwen3_tts",
                 model_type="tts",
-                model_name=f"Qwen3-TTS-12Hz-{model_size}-VoiceDesign",
+                model_name=canonical_voice_design_model,
                 model_path=model_path,
                 device=resolve_torch_device(device),
                 runtime_mode=config.get('runtime_mode', 'main_environment'),
@@ -269,6 +282,10 @@ class Qwen3TTSVoiceDesignerNode:
                     print(f"⚠️ Failed to apply torch.compile optimizations: {e}")
 
             # Generate preview audio with voice description
+            if int(seed or 0) > 0:
+                torch.manual_seed(int(seed))
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed_all(int(seed))
             print(f"🎨 Generating preview audio with voice description...")
             print(f"   Language: {language}")
             print(f"   Description: {voice_description[:80]}...")
@@ -378,96 +395,9 @@ class Qwen3TTSVoiceDesignerNode:
                     pass  # If can't read metadata, proceed with save
 
             if should_save:
-                save_path, final_char_name = self._save_voice_to_character(
-                    char_name,
-                    voice_description,
-                    preview_audio,
-                    reference_text,
-                    language,
-                    overwrite_character
-                )
-                # Update narrator_voice with saved audio path
-                saved_audio_path = os.path.join(save_path, f"{final_char_name}.wav")
-                narrator_voice["audio_path"] = saved_audio_path
-                narrator_voice["character_name"] = final_char_name
+                from utils.voice.character_saver import save_character_voice
 
-                voice_info += f"\n\n✅ Saved to: {save_path}"
-                if final_char_name != char_name:
-                    voice_info += f"\n   (saved as '{final_char_name}' - original name already existed)"
-                voice_info += f"\n💡 Press 'R' to refresh Character Voices list"
-                print(f"✅ Voice saved to character: {final_char_name}")
-                print(f"💡 Press 'R' to refresh Character Voices dropdown")
-
-            # Invalidate cache so new character is available on next refresh
-            from utils.voice.discovery import invalidate_voice_cache
-            invalidate_voice_cache()
-        else:
-            voice_info += "\n\n💡 Tip: Provide a character_name to save this voice for reuse"
-
-        return (narrator_voice, preview_audio, voice_info)
-
-    def _save_voice_to_character(self,
-                                character_name: str,
-                                voice_description: str,
-                                audio: Dict,
-                                reference_text: str,
-                                language: str,
-                                overwrite: bool = False) -> Tuple[str, str]:
-        """
-        Save designed voice to models/voices/ for character system.
-
-        Saves in standard character voice format:
-        - {character_name}.wav: Voice audio (generated by VoiceDesign)
-        - {character_name}.reference.txt: Transcription of the audio (reference_text)
-        - {character_name}.txt: Metadata about voice creation
-
-        Args:
-            character_name: Character name
-            voice_description: Voice description used for generation
-            audio: Audio dict with waveform and sample_rate
-            reference_text: Test text used (transcription of audio)
-            language: Language used
-            overwrite: If True, overwrite existing files; if False, create versioned names
-
-        Returns:
-            Tuple of (voices_dir path, final_character_name)
-        """
-        # Create voices directory if it doesn't exist
-        voices_dir = os.path.join(folder_paths.models_dir, "voices")
-        os.makedirs(voices_dir, exist_ok=True)
-
-        # Handle existing character names based on overwrite setting
-        if not overwrite:
-            # Versioning mode: append number if needed
-            original_name = character_name
-            counter = 1
-            while os.path.exists(os.path.join(voices_dir, f"{character_name}.wav")):
-                character_name = f"{original_name}_{counter}"
-                counter += 1
-
-            if character_name != original_name:
-                print(f"⚠️ Character '{original_name}' already exists - saving as '{character_name}'")
-        else:
-            # Overwrite mode: use name directly
-            if os.path.exists(os.path.join(voices_dir, f"{character_name}.wav")):
-                print(f"♻️ Overwriting existing character '{character_name}'")
-
-        # Save voice audio as {character_name}.wav
-        audio_path = os.path.join(voices_dir, f"{character_name}.wav")
-        import torchaudio
-        waveform = audio["waveform"]
-        # Ensure 2D for torchaudio [channels, samples]
-        if waveform.dim() == 3:
-            waveform = waveform.squeeze(0)
-        torchaudio.save(audio_path, waveform, audio["sample_rate"])
-
-        # Save reference text as {character_name}.reference.txt (transcription)
-        reference_path = os.path.join(voices_dir, f"{character_name}.reference.txt")
-        with open(reference_path, 'w', encoding='utf-8') as f:
-            f.write(reference_text)
-
-        # Save metadata as {character_name}.txt (description of where voice came from)
-        metadata_text = f"""Voice created with Qwen3-TTS Voice Designer
+                metadata_text = f"""Voice created with Qwen3-TTS Voice Designer
 
 Voice Description:
 {voice_description}
@@ -479,8 +409,24 @@ Generated by: Qwen3-TTS Voice Designer (VoiceDesign model)
               via TTS Audio Suite for ComfyUI
               https://github.com/diodiogod/TTS-Audio-Suite
 """
-        metadata_path = os.path.join(voices_dir, f"{character_name}.txt")
-        with open(metadata_path, 'w', encoding='utf-8') as f:
-            f.write(metadata_text)
+                save_result = save_character_voice(
+                    opt_narrator=narrator_voice,
+                    character_name=char_name,
+                    overwrite_character=overwrite_character,
+                    metadata_text=metadata_text,
+                )
+                narrator_voice = save_result.opt_narrator
+                final_char_name = save_result.character_name
 
-        return voices_dir, character_name
+                voice_info += f"\n\n✅ Saved to: {os.path.dirname(save_result.audio_path)}"
+                if final_char_name != char_name:
+                    voice_info += f"\n   (saved as '{final_char_name}' - original name already existed)"
+                print(f"✅ Voice saved to character: {final_char_name}")
+            else:
+                existing_audio = os.path.join(voices_dir, f"{char_name}.wav")
+                if os.path.exists(existing_audio):
+                    narrator_voice["audio_path"] = existing_audio
+        else:
+            voice_info += "\n\n💡 Tip: Provide a character_name to save this voice for reuse"
+
+        return (narrator_voice, preview_audio, voice_info)

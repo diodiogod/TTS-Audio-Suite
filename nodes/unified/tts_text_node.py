@@ -191,13 +191,19 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['quantization'] = config.get('quantization', 'none')
                 stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
 
-            # For Qwen3-TTS, include voice_preset, instruct, model_size, attn_implementation,
-            # and optimization settings since they determine model type and require model reload
+            # Qwen checkpoints can share a size while serving different roles, so cache
+            # by the explicit checkpoint identity rather than inferring it from the preset.
             if engine_type == "qwen3_tts":
+                stable_params['model_name'] = config.get('model_name')
+                stable_params['model_path'] = config.get('model_path')
+                stable_params['model_type'] = config.get('model_type')
                 stable_params['voice_preset'] = config.get('voice_preset', 'None (Zero-shot / Custom)')
                 stable_params['instruct'] = config.get('instruct', '')
                 stable_params['model_size'] = config.get('model_size', '1.7B')
+                stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attn_implementation'] = config.get('attn_implementation', 'auto')
+                stable_params['runtime_mode'] = config.get('runtime_mode')
+                stable_params['runtime_profile'] = config.get('runtime_profile')
                 # CRITICAL: Include optimization settings - changing these requires model reload
                 # Without this, enabling torch.compile/cuda_graphs would reuse the non-compiled model
                 stable_params['use_torch_compile'] = config.get('use_torch_compile', False)
@@ -958,6 +964,13 @@ Back to the main narrator voice for the conclusion.""",
             
             if not engine_type:
                 raise ValueError("TTS engine missing engine_type")
+
+            if config.get("model_role") == "voice_design":
+                selected_model = config.get("model_variant") or config.get("model_name") or "selected model"
+                raise ValueError(
+                    f"'{selected_model}' is a voice-design model and cannot be used with TTS Text. "
+                    "Connect this engine to Unified Voice Designer, or select a standard TTS model in the engine node."
+                )
             
             # Get voice reference (opt_narrator takes priority)
             audio_path, audio_tensor, reference_text, character_name = self._get_voice_reference(opt_narrator, narrator_voice)
@@ -1954,6 +1967,8 @@ Back to the main narrator voice for the conclusion.""",
                 
         except Exception as e:
             # Bubble up pause tag + speaker KV incompatibility to trigger ComfyUI modal
+            if "is a voice-design model and cannot be used with TTS Text" in str(e):
+                raise
             if "Pause tags are not compatible with force_speaker_kv" in str(e):
                 raise
             if "MOSS LoRA/base model mismatch" in str(e):

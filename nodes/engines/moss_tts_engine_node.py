@@ -42,23 +42,32 @@ class MossTTSEngineNode(BaseTTSNode):
 
     STANDARD_MODEL_OPTIONS = [
         "Small 1.7B (Local)",
-        "8B (Delay)",
+        "Recommended 8B v1.5 (Delay)",
+        "Legacy 8B v1.0 (Delay)",
     ]
     NATIVE_MODEL_OPTION = "Native 8B Dialogue (MOSS-TTSD-v1.0)"
+    VOICE_DESIGN_MODEL_OPTION = "Voice Design 1.7B (MOSS-VoiceGenerator)"
     LEGACY_LOCAL_MODEL_OPTIONS = [
         "local:MOSS-TTS-Local-Transformer",
+        "local:MOSS-TTS-v1.5",
         "local:MOSS-TTS",
         "local:MOSS-TTSD-v1.0",
+        "local:MOSS-VoiceGenerator",
     ]
     FRIENDLY_MODEL_ALIASES = [
         "Small 1.7B (Local)",
-        "8B (Delay)",
+        "Recommended 8B v1.5 (Delay)",
+        "Legacy 8B v1.0 (Delay)",
         "Native 8B Dialogue (MOSS-TTSD-v1.0)",
+        "Voice Design 1.7B (MOSS-VoiceGenerator)",
     ]
     UI_MODEL_VARIANT_MAP = {
         "Small 1.7B (Local)": "MOSS-TTS-Local-Transformer",
+        "Recommended 8B v1.5 (Delay)": "MOSS-TTS-v1.5",
+        "Legacy 8B v1.0 (Delay)": "MOSS-TTS",
         "8B (Delay)": "MOSS-TTS",
         "Native 8B Dialogue (MOSS-TTSD-v1.0)": "MOSS-TTSD-v1.0",
+        "Voice Design 1.7B (MOSS-VoiceGenerator)": "MOSS-VoiceGenerator",
     }
     NO_LORA_OPTION = "None"
 
@@ -90,7 +99,9 @@ class MossTTSEngineNode(BaseTTSNode):
                         "Otherwise it shows friendly built-in choices.\n"
                         "\n"
                         "Small 1.7B (Local): smaller official local-transformer model.\n"
-                        "8B (Delay): larger official delay model.\n"
+                        "Recommended 8B v1.5 (Delay): current multilingual delay model.\n"
+                        "Legacy 8B v1.0 (Delay): original delay checkpoint, retained for workflows.\n"
+                        "Voice Design 1.7B: MOSS-VoiceGenerator for Unified Voice Designer only.\n"
                         "\n"
                         "Native Multi-Speaker Dialogue mode ignores this selector and uses MOSS-TTSD-v1.0 automatically."
                     )
@@ -118,14 +129,19 @@ class MossTTSEngineNode(BaseTTSNode):
                     "Auto", "Chinese", "English", "German", "Spanish", "French",
                     "Japanese", "Italian", "Hungarian", "Korean", "Russian",
                     "Persian", "Arabic", "Polish", "Portuguese", "Czech",
-                    "Danish", "Swedish", "Greek", "Turkish"
+                    "Danish", "Swedish", "Greek", "Turkish", "Cantonese",
+                    "Dutch", "Finnish", "Hindi", "Macedonian", "Malay",
+                    "Romanian", "Swahili", "Filipino", "Thai", "Vietnamese",
+                    "Hebrew"
                 ], {
                     "default": "Auto",
                     "tooltip": (
                         "Optional language hint for MOSS-TTS.\n"
                         "Auto does not run a separate language detector.\n"
                         "It simply sends no language hint, so MOSS must infer the language from the text itself.\n"
-                        "Use an explicit language when the text is short, ambiguous, mixed-language, or when Auto guesses wrong."
+                        "Use an explicit language when the text is short, ambiguous, mixed-language, or when Auto guesses wrong.\n"
+                        "The 11 v1.5 additions are Cantonese, Dutch, Finnish, Hindi, Macedonian, Malay, "
+                        "Romanian, Swahili, Filipino/Tagalog, Thai, and Vietnamese."
                     )
                 }),
                 "duration_tokens": ("INT", {
@@ -189,6 +205,7 @@ class MossTTSEngineNode(BaseTTSNode):
                     "multiline": True,
                     "tooltip": (
                         "How the whole segment should be spoken.\n"
+                        "Unified Voice Designer uses this as the voice description when MOSS-VoiceGenerator is selected.\n"
                         "Best used as an engine default, or per segment with [instruction:...].\n"
                         "Use short natural instructions.\n"
                         "Examples:\n"
@@ -342,10 +359,12 @@ class MossTTSEngineNode(BaseTTSNode):
     @classmethod
     def _get_ui_standard_model_options(cls) -> List[str]:
         small = cls._find_local_variant("MOSS-TTS-Local-Transformer")
-        delay = cls._find_local_variant("MOSS-TTS")
+        v15 = cls._find_local_variant("MOSS-TTS-v1.5")
+        legacy = cls._find_local_variant("MOSS-TTS")
         return [
             small if small.startswith("local:") else "Small 1.7B (Local)",
-            delay if delay.startswith("local:") else "8B (Delay)",
+            v15 if v15.startswith("local:") else "Recommended 8B v1.5 (Delay)",
+            legacy if legacy.startswith("local:") else "Legacy 8B v1.0 (Delay)",
         ]
 
     @classmethod
@@ -355,7 +374,11 @@ class MossTTSEngineNode(BaseTTSNode):
 
     @classmethod
     def _get_ui_model_options(cls) -> List[str]:
-        values = cls._get_ui_standard_model_options() + [cls._get_ui_native_model_option()]
+        voice_design = cls._find_local_variant("MOSS-VoiceGenerator")
+        voice_design_option = (
+            voice_design if voice_design.startswith("local:") else cls.VOICE_DESIGN_MODEL_OPTION
+        )
+        values = cls._get_ui_standard_model_options() + [voice_design_option, cls._get_ui_native_model_option()]
         for option in cls.FRIENDLY_MODEL_ALIASES + cls.LEGACY_LOCAL_MODEL_OPTIONS:
             if option not in values:
                 values.append(option)
@@ -490,6 +513,13 @@ class MossTTSEngineNode(BaseTTSNode):
 
         return model_variant
 
+    @classmethod
+    def _get_model_role(cls, model_variant: str) -> str:
+        canonical = str(model_variant or "").removeprefix("local:")
+        canonical = cls.UI_MODEL_VARIANT_MAP.get(canonical, canonical)
+        role = MossTTSEngine.MODEL_VARIANTS.get(canonical, {}).get("role", "tts")
+        return "voice_design" if role == "voice_design" else "tts"
+
     def create_engine_adapter(
         self,
         model_variant: str,
@@ -530,6 +560,7 @@ class MossTTSEngineNode(BaseTTSNode):
             else resolved_model_variant
         )
         defaults = self.MODEL_DEFAULTS.get(resolved_variant, self.MODEL_DEFAULTS["MOSS-TTS-Local-Transformer"])
+        model_role = self._get_model_role(resolved_model_variant)
 
         if sampler_preset == "Model default":
             temperature = defaults["temperature"]
@@ -543,6 +574,7 @@ class MossTTSEngineNode(BaseTTSNode):
         config = {
             "engine_type": "moss_tts",
             "model_variant": resolved_model_variant,
+            "model_role": model_role,
             "multi_speaker_mode": multi_speaker_mode,
             "device": device,
             "language": language,
@@ -570,7 +602,7 @@ class MossTTSEngineNode(BaseTTSNode):
             "lora_adapter": resolved_lora_adapter or None,
         }
 
-        print(f"⚙️ MOSS-TTS: Configured {resolved_model_variant} on {device}")
+        print(f"⚙️ MOSS-TTS: Configured {resolved_model_variant} ({model_role}) on {device}")
         print(f"   Mode: {multi_speaker_mode}")
         print(
             "   Language={language}, temp={temperature}, top_p={top_p}, top_k={top_k}, rep_penalty={rep}, max_new_tokens={max_new_tokens}".format(
@@ -602,4 +634,5 @@ class MossTTSEngineNode(BaseTTSNode):
             "engine_type": "moss_tts",
             "config": config,
             "adapter_class": "MossTTSEngineAdapter",
+            "capabilities": [model_role],
         },)

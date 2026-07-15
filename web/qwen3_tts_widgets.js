@@ -1,124 +1,121 @@
 import { app } from "../../scripts/app.js";
 
-// Qwen3-TTS Engine Node UI Control
-// Lock/unlock instruct field based on voice_preset and model_size
+const LEGACY_MODEL_VALUES = new Set(["1.7B", "0.6B"]);
 
-function qwen3TTSHandler(node) {
-    if (node.comfyClass !== "Qwen3TTSEngineNode") {
-        return;
-    }
+function findWidget(node, name) {
+    return node.widgets?.find((widget) => widget.name === name);
+}
 
-    // Find widgets
-    const voicePresetWidget = findWidgetByName(node, "voice_preset");
-    const modelSizeWidget = findWidgetByName(node, "model_size");
-    const instructWidget = findWidgetByName(node, "instruct");
-
-    if (!voicePresetWidget || !modelSizeWidget || !instructWidget) return;
-
-    const voicePreset = voicePresetWidget.value;
-    const modelSize = modelSizeWidget.value;
-
-    // Lock/unlock logic:
-    // LOCKED if:
-    //   - voice_preset = "None (Zero-shot / Custom)" (Base model has no instruction)
-    //   - model_size = "0.6B" + preset selected (0.6B CustomVoice has no instruction)
-    // UNLOCKED if:
-    //   - model_size = "1.7B" + preset selected (1.7B CustomVoice supports instruction)
-
-    let shouldLock = false;
-    let lockReason = "";
-
-    if (voicePreset === "None (Zero-shot / Custom)") {
-        shouldLock = true;
-        lockReason = "Base model (zero-shot) does not support instruction parameter";
-    } else if (modelSize === "0.6B") {
-        shouldLock = true;
-        lockReason = "0.6B CustomVoice does not support instruction parameter (requires 1.7B)";
-    }
-
-    // Lock/unlock the instruct field (preserve value when locked)
-    instructWidget.disabled = shouldLock;
-
-    // Log to console for debugging
-    if (shouldLock) {
-        console.log(`⚠️ Qwen3-TTS: Instruction field locked - ${lockReason}`);
+function setWidgetEnabled(widget, enabled) {
+    if (!widget) return;
+    widget.disabled = !enabled;
+    if (widget.element) {
+        widget.element.style.opacity = enabled ? "1" : "0.55";
+        widget.element.style.pointerEvents = enabled ? "auto" : "none";
     }
 }
 
-const findWidgetByName = (node, name) => {
-    return node.widgets ? node.widgets.find((w) => w.name === name) : null;
-};
+function modelKind(value) {
+    const text = String(value || "");
+    if (text.includes("VoiceDesign") || text.includes("Voice Design")) return "VoiceDesign";
+    if (text.includes("CustomVoice")) return "CustomVoice";
+    if (text.includes("Base")) return "Base";
+    return "";
+}
+
+function modelSize(value) {
+    return String(value || "").includes("0.6B") ? "0.6B" : "1.7B";
+}
+
+function migrateLegacyModel(node, modelWidget, presetWidget) {
+    if (!LEGACY_MODEL_VALUES.has(modelWidget.value)) return;
+    const size = modelWidget.value;
+    const kind = presetWidget?.value && presetWidget.value !== "None (Zero-shot / Custom)"
+        ? "CustomVoice"
+        : "Base";
+    const options = Array.isArray(modelWidget.options?.values) ? modelWidget.options.values : [];
+    const target = options.find((value) => {
+        const text = String(value);
+        return !LEGACY_MODEL_VALUES.has(text) && modelKind(text) === kind && modelSize(text) === size;
+    });
+    if (target) modelWidget.value = target;
+}
+
+function refreshQwenWidgets(node) {
+    if (node.comfyClass !== "Qwen3TTSEngineNode" || node.__ttsQwenRefreshing) return;
+    node.__ttsQwenRefreshing = true;
+    try {
+        const modelWidget = findWidget(node, "model_variant");
+        const presetWidget = findWidget(node, "voice_preset");
+        const instructWidget = findWidget(node, "instruct");
+        const xVectorWidget = findWidget(node, "x_vector_only_mode");
+        if (!modelWidget) return;
+
+        migrateLegacyModel(node, modelWidget, presetWidget);
+        if (Array.isArray(modelWidget.options?.values)) {
+            modelWidget.options.values = modelWidget.options.values.filter(
+                (value) => !LEGACY_MODEL_VALUES.has(String(value)),
+            );
+        }
+
+        modelWidget.label = "model";
+        const kind = modelKind(modelWidget.value);
+        const size = modelSize(modelWidget.value);
+
+        if (kind === "CustomVoice") {
+            setWidgetEnabled(presetWidget, true);
+            setWidgetEnabled(xVectorWidget, false);
+            if (presetWidget?.value === "None (Zero-shot / Custom)") presetWidget.value = "Vivian";
+            setWidgetEnabled(instructWidget, size === "1.7B");
+        } else if (kind === "VoiceDesign") {
+            setWidgetEnabled(presetWidget, false);
+            setWidgetEnabled(xVectorWidget, false);
+            setWidgetEnabled(instructWidget, true);
+        } else {
+            setWidgetEnabled(presetWidget, false);
+            setWidgetEnabled(xVectorWidget, true);
+            setWidgetEnabled(instructWidget, false);
+        }
+
+        node.setDirtyCanvas?.(true, true);
+        node.graph?.setDirtyCanvas?.(true, true);
+    } finally {
+        node.__ttsQwenRefreshing = false;
+    }
+}
+
+function hookWidget(node, widget) {
+    if (!widget || widget.__ttsQwenHooked) return;
+    widget.__ttsQwenHooked = true;
+    let storedValue = widget.value;
+    let descriptor = Object.getOwnPropertyDescriptor(widget, "value")
+        || Object.getOwnPropertyDescriptor(Object.getPrototypeOf(widget), "value")
+        || Object.getOwnPropertyDescriptor(widget.constructor?.prototype || {}, "value");
+    Object.defineProperty(widget, "value", {
+        get() {
+            return descriptor?.get ? descriptor.get.call(widget) : storedValue;
+        },
+        set(value) {
+            if (descriptor?.set) descriptor.set.call(widget, value);
+            else storedValue = value;
+            if (!node.__ttsQwenRefreshing) refreshQwenWidgets(node);
+        },
+    });
+}
+
+function setupNode(node) {
+    if (node.comfyClass !== "Qwen3TTSEngineNode") return;
+    hookWidget(node, findWidget(node, "model_variant"));
+    hookWidget(node, findWidget(node, "voice_preset"));
+    refreshQwenWidgets(node);
+}
 
 app.registerExtension({
     name: "tts-audio-suite.qwen3-tts.widgets",
     nodeCreated(node) {
-        if (node.comfyClass !== "Qwen3TTSEngineNode") {
-            return;
-        }
-
-        // Initial setup
-        qwen3TTSHandler(node);
-
-        // Intercept both voice_preset and model_size widgets
-        const voicePresetWidget = findWidgetByName(node, "voice_preset");
-        const modelSizeWidget = findWidgetByName(node, "model_size");
-
-        // Setup voice_preset interceptor
-        if (voicePresetWidget) {
-            let widgetValue = voicePresetWidget.value;
-
-            // Store the original descriptor
-            let originalDescriptor = Object.getOwnPropertyDescriptor(voicePresetWidget, 'value') ||
-                Object.getOwnPropertyDescriptor(Object.getPrototypeOf(voicePresetWidget), 'value');
-            if (!originalDescriptor) {
-                originalDescriptor = Object.getOwnPropertyDescriptor(voicePresetWidget.constructor.prototype, 'value');
-            }
-
-            Object.defineProperty(voicePresetWidget, 'value', {
-                get() {
-                    let valueToReturn = originalDescriptor && originalDescriptor.get
-                        ? originalDescriptor.get.call(voicePresetWidget)
-                        : widgetValue;
-                    return valueToReturn;
-                },
-                set(newVal) {
-                    if (originalDescriptor && originalDescriptor.set) {
-                        originalDescriptor.set.call(voicePresetWidget, newVal);
-                    } else {
-                        widgetValue = newVal;
-                    }
-                    qwen3TTSHandler(node); // Re-evaluate lock state
-                }
-            });
-        }
-
-        // Setup model_size interceptor
-        if (modelSizeWidget) {
-            let widgetValue = modelSizeWidget.value;
-
-            // Store the original descriptor
-            let originalDescriptor = Object.getOwnPropertyDescriptor(modelSizeWidget, 'value') ||
-                Object.getOwnPropertyDescriptor(Object.getPrototypeOf(modelSizeWidget), 'value');
-            if (!originalDescriptor) {
-                originalDescriptor = Object.getOwnPropertyDescriptor(modelSizeWidget.constructor.prototype, 'value');
-            }
-
-            Object.defineProperty(modelSizeWidget, 'value', {
-                get() {
-                    let valueToReturn = originalDescriptor && originalDescriptor.get
-                        ? originalDescriptor.get.call(modelSizeWidget)
-                        : widgetValue;
-                    return valueToReturn;
-                },
-                set(newVal) {
-                    if (originalDescriptor && originalDescriptor.set) {
-                        originalDescriptor.set.call(modelSizeWidget, newVal);
-                    } else {
-                        widgetValue = newVal;
-                    }
-                    qwen3TTSHandler(node); // Re-evaluate lock state
-                }
-            });
-        }
-    }
+        if (node.comfyClass === "Qwen3TTSEngineNode") setTimeout(() => setupNode(node), 0);
+    },
+    loadedGraphNode(node) {
+        if (node.comfyClass === "Qwen3TTSEngineNode") setTimeout(() => setupNode(node), 0);
+    },
 });

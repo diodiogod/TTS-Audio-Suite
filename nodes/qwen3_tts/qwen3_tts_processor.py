@@ -70,95 +70,55 @@ class Qwen3TTSProcessor:
         # Session-based character-to-speaker mapping for CustomVoice
         self._character_speaker_mapping = {}
 
-        # Extract config parameters
-        model_size = engine_config.get('model_size', '1.7B')
-        device = engine_config.get('device', 'auto')
-        dtype = engine_config.get('dtype', 'auto')
-        attn_implementation = engine_config.get('attn_implementation', 'auto')
-        voice_preset = engine_config.get('voice_preset', 'None (Zero-shot / Custom)')
+        self._load_configured_model()
 
-        # Create context for model type determination
-        context = {
-            "voice_preset": voice_preset,
-            "model_size": model_size
-        }
+    @staticmethod
+    def _model_load_signature(config: Dict[str, Any]) -> tuple:
+        return tuple(config.get(key) for key in (
+            'model_variant', 'model_path', 'model_name', 'model_type', 'model_size',
+            'device', 'dtype', 'attn_implementation', 'runtime_mode', 'runtime_profile',
+            'use_torch_compile', 'use_cuda_graphs', 'compile_mode',
+        ))
 
-        # Determine model type based on voice_preset
-        if voice_preset == "None (Zero-shot / Custom)":
-            model_type = "Base"
-        else:
-            model_type = "CustomVoice"
+    def _load_configured_model(self):
+        model_size = self.config.get('model_size', '1.7B')
+        voice_preset = self.config.get('voice_preset', 'None (Zero-shot / Custom)')
+        model_type = self.config.get('model_type') or (
+            'Base' if voice_preset == 'None (Zero-shot / Custom)' else 'CustomVoice'
+        )
+        model_name = self.config.get('model_name') or f'Qwen3-TTS-12Hz-{model_size}-{model_type}'
+        model_path = self.config.get('model_path') or self.config.get('model_variant') or model_name
 
-        # Build model path based on determined type
-        model_path = f'Qwen3-TTS-12Hz-{model_size}-{model_type}'
-
-        # Load model via adapter (with intelligent model selection)
         self.adapter.load_base_model(
             model_path=model_path,
-            device=device,
-            dtype=dtype,
+            device=self.config.get('device', 'auto'),
+            dtype=self.config.get('dtype', 'auto'),
             model_size=model_size,
-            attn_implementation=attn_implementation,
-            runtime_mode=engine_config.get('runtime_mode', 'main_environment'),
-            runtime_profile=engine_config.get('runtime_profile'),
-            context=context,
-            use_torch_compile=engine_config.get('use_torch_compile', False),
-            use_cuda_graphs=engine_config.get('use_cuda_graphs', False),
-            compile_mode=engine_config.get('compile_mode', 'reduce-overhead')
+            attn_implementation=self.config.get('attn_implementation', 'auto'),
+            runtime_mode=self.config.get('runtime_mode', 'main_environment'),
+            runtime_profile=self.config.get('runtime_profile'),
+            context={
+                'voice_preset': voice_preset,
+                'model_type': model_type,
+                'model_name': model_name,
+            },
+            use_torch_compile=self.config.get('use_torch_compile', False),
+            use_cuda_graphs=self.config.get('use_cuda_graphs', False),
+            compile_mode=self.config.get('compile_mode', 'reduce-overhead'),
         )
 
     def update_config(self, new_config: Dict[str, Any]):
         """
         Update processor configuration with new parameters.
 
-        CRITICAL: When voice_preset changes, we need to reload the model because
-        VoiceDesign, CustomVoice, and Base are different model files.
+        Reload only when the selected checkpoint or another load-time setting changes.
         """
-        # Check if voice_preset changed (determines model type: Base vs CustomVoice vs VoiceDesign)
-        old_voice_preset = self.config.get('voice_preset', 'None (Zero-shot / Custom)')
-        new_voice_preset = new_config.get('voice_preset', old_voice_preset)
-
-        # Update config first
+        old_signature = self._model_load_signature(self.config)
         self.config.update(new_config)
-
-        # Determine if model type changed
-        old_model_type = "Base" if old_voice_preset == "None (Zero-shot / Custom)" else "CustomVoice"
-        new_model_type = "Base" if new_voice_preset == "None (Zero-shot / Custom)" else "CustomVoice"
-
-        # If model type changed, trigger reload via adapter
-        # The unified_model_interface will automatically unload the old variant
-        if old_model_type != new_model_type:
-            print(f"🔄 Voice preset changed: {old_voice_preset} → {new_voice_preset}")
-            print(f"   Reloading model type: {old_model_type} → {new_model_type}")
-
-            model_size = self.config.get('model_size', '1.7B')
-            device = self.config.get('device', 'auto')
-            dtype = self.config.get('dtype', 'auto')
-            attn_implementation = self.config.get('attn_implementation', 'auto')
-
-            # Build model path for new type
-            model_path = f'Qwen3-TTS-12Hz-{model_size}-{new_model_type}'
-
-            # Create context for model type determination
-            context = {
-                "voice_preset": new_voice_preset,
-                "model_size": model_size
-            }
-
-            # Reload via adapter - unified interface will handle cleanup automatically
-            self.adapter.load_base_model(
-                model_path=model_path,
-                device=device,
-                dtype=dtype,
-                model_size=model_size,
-                attn_implementation=attn_implementation,
-                runtime_mode=self.config.get('runtime_mode', 'main_environment'),
-                runtime_profile=self.config.get('runtime_profile'),
-                context=context,
-                use_torch_compile=self.config.get('use_torch_compile', False),
-                use_cuda_graphs=self.config.get('use_cuda_graphs', False),
-                compile_mode=self.config.get('compile_mode', 'reduce-overhead')
-            )
+        new_signature = self._model_load_signature(self.config)
+        if old_signature != new_signature:
+            print(f"🔄 Qwen3-TTS model configuration changed: reloading {self.config.get('model_variant')}")
+            self._load_configured_model()
 
     def _language_name_to_code(self, language_input: str) -> str:
         """Convert language name or code to Qwen3-TTS language parameter."""

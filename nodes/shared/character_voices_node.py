@@ -25,7 +25,7 @@ base_spec.loader.exec_module(base_module)
 # Import the base class
 BaseTTSNode = base_module.BaseTTSNode
 
-from utils.voice.discovery import get_available_voices, load_voice_reference, get_available_characters
+from utils.voice.discovery import get_available_characters, get_available_voices, load_voice_reference
 
 
 class CharacterVoicesNode(BaseTTSNode):
@@ -44,7 +44,6 @@ class CharacterVoicesNode(BaseTTSNode):
         # INPUT_TYPES can be queried repeatedly by ComfyUI. Use the discovery
         # cache here; explicit rescans belong to the Refresh Voice Cache node.
         reference_files = get_available_voices()
-
         return {
             "required": {
                 "voice_name": (reference_files, {
@@ -254,7 +253,7 @@ Selecting a library voice loads its transcription here automatically. Edits are 
                 "trim_start": float(trim_start or 0.0),
                 "trim_end": float(trim_end or 0.0),
             }
-            
+
             # Add validation info
             has_audio = audio_tensor is not None or bool(narrator_voice_data.get("audio_path"))
             has_text = bool(reference_text and reference_text.strip())
