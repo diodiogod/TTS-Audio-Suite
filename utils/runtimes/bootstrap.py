@@ -192,14 +192,18 @@ def ensure_runtime(
         if metadata_path.exists():
             try:
                 metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-                if metadata.get("bootstrap_strategy") == BOOTSTRAP_STRATEGY and metadata.get("install_complete") is True:
+                if (
+                    metadata.get("bootstrap_strategy") == BOOTSTRAP_STRATEGY
+                    and metadata.get("install_complete") is True
+                    and metadata.get("profile") == asdict(profile)
+                ):
                     return python_path
             except Exception:
                 pass
 
         print(
             f"🔧 Rebuilding isolated runtime '{profile.name}' because it was created "
-            f"with an older bootstrap strategy"
+            f"with an older bootstrap strategy or profile"
         )
         shutil.rmtree(runtime_dir, ignore_errors=True)
 

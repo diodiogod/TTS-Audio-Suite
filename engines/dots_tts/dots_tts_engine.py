@@ -80,7 +80,6 @@ class DotsTTSEngine:
         return "float16"
 
     def _import_runtime(self):
-        self._ensure_text_normalizer_fallback()
         importlib.invalidate_caches()
 
         nodes_dir = os.path.join(project_root, "nodes")
@@ -107,7 +106,8 @@ class DotsTTSEngine:
                 stale_modules.append((module_name, module))
                 del sys.modules[module_name]
         try:
-            from dots_tts.runtime import DotsTtsRuntime
+            with self._text_normalizer_compat():
+                from dots_tts.runtime import DotsTtsRuntime
         except Exception as e:
             for module_name, module in stale_modules:
                 sys.modules.setdefault(module_name, module)
@@ -189,13 +189,20 @@ class DotsTTSEngine:
             AutoTokenizer.from_pretrained = original_from_pretrained
 
     @staticmethod
-    def _ensure_text_normalizer_fallback():
-        """Provide a no-op WeTextProcessing fallback when tn is unavailable."""
+    @contextmanager
+    def _text_normalizer_compat():
+        """Temporarily provide Dots' expected tn package when unavailable."""
+        normalizers_available = False
         try:
-            import tn  # noqa: F401
-            return
+            from tn.chinese.normalizer import Normalizer as _ZhNormalizer  # noqa: F401
+            from tn.english.normalizer import Normalizer as _EnNormalizer  # noqa: F401
+            normalizers_available = True
         except Exception:
             pass
+
+        if normalizers_available:
+            yield
+            return
 
         class _NoOpNormalizer:
             def normalize(self, text: str) -> str:
@@ -207,6 +214,12 @@ class DotsTTSEngine:
         english_module = types.ModuleType("tn.english")
         english_normalizer_module = types.ModuleType("tn.english.normalizer")
 
+        # Mark package modules as packages so nested imports work even when an
+        # unrelated top-level module named `tn` is already installed.
+        tn_module.__path__ = []
+        chinese_module.__path__ = []
+        english_module.__path__ = []
+
         chinese_normalizer_module.Normalizer = _NoOpNormalizer
         english_normalizer_module.Normalizer = _NoOpNormalizer
 
@@ -215,14 +228,30 @@ class DotsTTSEngine:
         tn_module.chinese = chinese_module
         tn_module.english = english_module
 
-        sys.modules.setdefault("tn", tn_module)
-        sys.modules.setdefault("tn.chinese", chinese_module)
-        sys.modules.setdefault("tn.chinese.normalizer", chinese_normalizer_module)
-        sys.modules.setdefault("tn.english", english_module)
-        sys.modules.setdefault("tn.english.normalizer", english_normalizer_module)
-        if not DotsTTSEngine._normalizer_warning_shown:
-            print("[Dots TTS] WeTextProcessing not available; normalize_text will use a no-op fallback")
-            DotsTTSEngine._normalizer_warning_shown = True
+        fallback_modules = {
+            "tn": tn_module,
+            "tn.chinese": chinese_module,
+            "tn.chinese.normalizer": chinese_normalizer_module,
+            "tn.english": english_module,
+            "tn.english.normalizer": english_normalizer_module,
+        }
+        missing = object()
+        previous_modules = {
+            name: sys.modules.get(name, missing)
+            for name in fallback_modules
+        }
+        sys.modules.update(fallback_modules)
+        try:
+            if not DotsTTSEngine._normalizer_warning_shown:
+                print("[Dots TTS] WeTextProcessing not available; normalize_text will use a no-op fallback")
+                DotsTTSEngine._normalizer_warning_shown = True
+            yield
+        finally:
+            for name, previous in previous_modules.items():
+                if previous is missing:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = previous
 
     def _ensure_runtime_loaded(self):
         if self._runtime is not None:
