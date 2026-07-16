@@ -37,6 +37,8 @@ def get_fish_language_instruction(language: str | None, explicit: bool = False) 
     if not language:
         return None
     canonical = resolve_language_alias(str(language))
+    if canonical in {"auto", "none"}:
+        return None
     if canonical == "en" and not explicit:
         return None
     return _LANGUAGE_RESOLVER.get_language_display_name(canonical)
