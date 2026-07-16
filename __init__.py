@@ -156,8 +156,9 @@ def check_dependencies():
         print(f"{'='*80}")
         print(f"The following required packages are missing: {', '.join(missing)}")
         print(f"")
-        print(f"Please run the installation script or install them manually:")
-        print(f"pip install -r requirements.txt")
+        install_script = os.path.join(os.path.dirname(__file__), "install.py")
+        print(f"Please run the TTS Audio Suite installation script:")
+        print(f'"{sys.executable}" "{install_script}"')
         print(f"{'='*80}\n")
 
 # Version disclosure for troubleshooting

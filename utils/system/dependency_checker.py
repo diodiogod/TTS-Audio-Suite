@@ -9,11 +9,18 @@ import importlib.util
 import sys
 import threading
 import time
+from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Callable
 
 
 class DependencyChecker:
     """Check for missing dependencies and provide helpful warnings."""
+
+    @staticmethod
+    def get_install_command() -> str:
+        """Return the suite installer command for the active ComfyUI Python."""
+        install_script = Path(__file__).resolve().parents[2] / "install.py"
+        return f'"{sys.executable}" "{install_script}"'
     
     # Core dependencies that should always be available
     CORE_DEPENDENCIES = [
@@ -137,8 +144,7 @@ class DependencyChecker:
             report_lines.append("")
         
         if core_missing or engine_issues:
-            report_lines.append("🔧 To fix: pip install -r requirements.txt")
-            report_lines.append("   Or install specific packages: pip install <package_name>")
+            report_lines.append(f"🔧 To fix: {DependencyChecker.get_install_command()}")
             
             if engine_issues:
                 report_lines.append("")
@@ -180,7 +186,7 @@ class DependencyChecker:
                     warnings.append(f"     • {package_name} (import: {module_name})")
         
         if core_missing or engine_issues:
-            warnings.append("🔧 Fix: pip install -r requirements.txt")
+            warnings.append(f"🔧 Fix: {DependencyChecker.get_install_command()}")
             warnings.append("ℹ️ Engine nodes will fail without dependencies")
         
         return warnings
