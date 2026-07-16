@@ -24,8 +24,8 @@ from engines.moss_tts.training.common import (
     get_moss_training_root,
     load_jsonl,
     resolve_codec_path,
+    resolve_delay_training_variant,
     resolve_model_path,
-    resolve_variant_name,
     split_train_val,
     slugify,
 )
@@ -219,12 +219,7 @@ def prepare_moss_training_dataset(
     # Node UI uses prep_batch_size; keep batch_size for compatibility with older callers.
     effective_batch_size = int(prep_batch_size) if int(prep_batch_size or 0) > 0 else int(batch_size)
 
-    variant = resolve_variant_name(shared_settings.get("model_variant", "MOSS-TTS"))
-    if variant != "MOSS-TTS":
-        raise RuntimeError(
-            "MOSS dataset prep currently supports Delay 8B training only. "
-            f"Selected variant '{variant}' is not supported yet."
-        )
+    variant = resolve_delay_training_variant(shared_settings)
 
     train_manifest_path = os.path.abspath(dataset_source)
     if not os.path.isfile(train_manifest_path):
@@ -240,7 +235,7 @@ def prepare_moss_training_dataset(
     dataset_root = os.path.join(
         get_moss_training_root(),
         "datasets",
-        f"{slugify(model_name)}_{dataset_hash[:10]}",
+        f"{slugify(model_name)}_{slugify(variant)}_{dataset_hash[:10]}",
     )
     os.makedirs(dataset_root, exist_ok=True)
 
@@ -271,7 +266,7 @@ def prepare_moss_training_dataset(
         dump_jsonl(raw_train_records, raw_train_jsonl)
         dump_jsonl(raw_val_records, raw_val_jsonl)
 
-        model_path = resolve_model_path("MOSS-TTS")
+        model_path = resolve_model_path(variant)
         codec_path = resolve_codec_path(shared_settings.get("codec_model", "MOSS-Audio-Tokenizer"))
         device = str(shared_settings.get("device", "cpu") or "cpu")
         if device == "auto":
@@ -304,7 +299,7 @@ def prepare_moss_training_dataset(
         "type": "training_dataset",
         "engine_type": "moss_tts",
         "training_mode": "lora_adapter",
-        "model_variant": "MOSS-TTS",
+        "model_variant": variant,
         "model_name": model_name,
         "dataset_dir": dataset_root,
         "raw_train_jsonl": raw_train_jsonl,

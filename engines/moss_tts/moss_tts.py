@@ -193,6 +193,15 @@ class MossTTSEngine:
         if configured_name and configured_name == expected_name:
             return
 
+        compatible_delay_bases = {"moss-tts", "moss-tts-v1.5"}
+        if configured_name in compatible_delay_bases and expected_name in compatible_delay_bases:
+            print(
+                "⚠️ MOSS LoRA base version differs: "
+                f"adapter was trained for '{configured_base}', loading on '{expected_repo_id}'. "
+                "The architecture is compatible, but results may differ from the training base."
+            )
+            return
+
         raise RuntimeError(
             "MOSS LoRA/base model mismatch. "
             f"Selected model '{self.model_variant}' expects base '{expected_repo_id}', "

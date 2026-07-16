@@ -31,7 +31,7 @@ class MossTrainingConfigNode(BaseTTSNode):
             "required": {
                 "training_mode": (["LoRA Adapter (Delay 8B)"], {
                     "default": "LoRA Adapter (Delay 8B)",
-                    "tooltip": "First MOSS training slice. This currently trains LoRA adapters for the Delay 8B base model only."
+                    "tooltip": "Trains LoRA adapters for the selected MOSS Delay 8B v1.0 or v1.5 base model."
                 }),
                 "epochs": ("INT", {
                     "default": 3,

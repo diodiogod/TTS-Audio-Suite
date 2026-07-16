@@ -8,8 +8,10 @@ Use this if `🧾 MOSS Dataset Rows` feels unclear.
 
 Current first training slice supports:
 
-- **MOSS-TTS 8B (Delay)**
+- **MOSS-TTS 8B v1.0 and v1.5 (Delay)**
 - **LoRA adapter training**
+
+The model selected on the connected MOSS engine is used for dataset preparation and training. Prepare the dataset again after switching between v1.0 and v1.5.
 
 It does **not** currently support:
 

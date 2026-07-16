@@ -14,6 +14,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import folder_paths
 
 from engines.moss_tts.moss_tts_downloader import MossTTSDownloader
+from engines.moss_tts.model_specs import MOSS_MODEL_SPECS
 from utils.models.extra_paths import get_all_tts_model_paths
 
 
@@ -24,6 +25,8 @@ FRIENDLY_VARIANT_MAP = {
     "Legacy 8B v1.0 (Delay)": "MOSS-TTS",
     "Native 8B Dialogue (MOSS-TTSD-v1.0)": "MOSS-TTSD-v1.0",
 }
+
+SUPPORTED_DELAY_TRAINING_VARIANTS = {"MOSS-TTS", "MOSS-TTS-v1.5"}
 
 
 def slugify(value: str) -> str:
@@ -104,9 +107,9 @@ def resolve_variant_name(model_variant: str) -> str:
 
 def resolve_delay_training_variant(config: Dict[str, Any]) -> str:
     variant = resolve_variant_name(config.get("model_variant", "MOSS-TTS"))
-    if variant != "MOSS-TTS":
+    if variant not in SUPPORTED_DELAY_TRAINING_VARIANTS:
         raise RuntimeError(
-            "MOSS training currently supports Delay 8B LoRA only. "
+            "MOSS training supports the Delay 8B v1.0 and v1.5 models only. "
             f"Selected variant '{variant}' is not supported yet."
         )
     return variant
@@ -115,6 +118,14 @@ def resolve_delay_training_variant(config: Dict[str, Any]) -> str:
 def resolve_model_path(model_variant: str) -> str:
     downloader = MossTTSDownloader()
     return downloader.resolve_model_path(model_variant)
+
+
+def resolve_model_repo_id(model_variant: str) -> str:
+    variant = resolve_variant_name(model_variant)
+    spec = MOSS_MODEL_SPECS.get(variant)
+    if not spec:
+        raise ValueError(f"Unknown MOSS model variant: {variant}")
+    return str(spec["repo_id"])
 
 
 def resolve_codec_path(codec_model: str = "MOSS-Audio-Tokenizer") -> str:

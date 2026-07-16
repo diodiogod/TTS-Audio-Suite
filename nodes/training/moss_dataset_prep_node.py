@@ -32,7 +32,7 @@ class MossDatasetPrepNode(BaseTTSNode):
         return {
             "required": {
                 "TTS_engine": ("TTS_ENGINE", {
-                    "tooltip": "Connect a MOSS engine here. The first training slice only supports Delay 8B LoRA training."
+                    "tooltip": "Connect a MOSS engine using a Delay 8B v1.0 or v1.5 model. Dataset preparation follows that selected base model."
                 }),
                 "model_name": ("STRING", {
                     "default": "MyMossLoRA",
@@ -125,6 +125,7 @@ class MossDatasetPrepNode(BaseTTSNode):
         )
         info = (
             f"MOSS dataset ready: {dataset['model_name']} | "
+            f"base={dataset['model_variant']} | "
             f"train={dataset['train_records']} | val={dataset['val_records']} | "
             f"sources={dataset.get('source_summary', 'unknown')}"
         )

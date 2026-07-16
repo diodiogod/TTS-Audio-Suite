@@ -31,6 +31,8 @@ from engines.moss_tts.training.common import (
     resolve_continue_from_adapter_path,
     resolve_delay_training_variant,
     resolve_model_path,
+    resolve_model_repo_id,
+    resolve_variant_name,
     slugify,
     summarize_lora_mode,
 )
@@ -131,7 +133,14 @@ def run_moss_training_job(
     if resume:
         raise RuntimeError("MOSS training does not support exact resume yet. Use continue_from with an existing adapter if you want warm-start LoRA training.")
 
-    resolve_delay_training_variant(shared_settings)
+    variant = resolve_delay_training_variant(shared_settings)
+    dataset_variant = resolve_variant_name(dataset_info.get("model_variant", "MOSS-TTS"))
+    if dataset_variant != variant:
+        raise RuntimeError(
+            "MOSS training dataset/base model mismatch. "
+            f"The dataset was prepared for '{dataset_variant}', but the engine uses '{variant}'. "
+            "Run MOSS Dataset Prep again with the selected engine model."
+        )
     if str(training_config.get("training_mode", "") or "").strip().lower() != "lora_adapter":
         raise RuntimeError("MOSS training currently supports Delay 8B LoRA mode only.")
 
@@ -153,7 +162,8 @@ def run_moss_training_job(
     from engines.moss_tts.impl.delay.configuration_moss_tts import MossTTSDelayConfig
     from engines.moss_tts.impl.delay.modeling_moss_tts import MossTTSDelayModel
 
-    model_path = resolve_model_path("MOSS-TTS")
+    model_path = resolve_model_path(variant)
+    base_model_repo_id = resolve_model_repo_id(variant)
     codec_path = resolve_codec_path(shared_settings.get("codec_model", "MOSS-Audio-Tokenizer"))
     job_dir, final_adapter_dir, resolved_name = _build_output_dirs(dataset_info, output_name, overwrite)
     progress_file = os.path.join(job_dir, "progress.json")
@@ -628,7 +638,7 @@ def run_moss_training_job(
         accelerator.wait_for_everyone()
 
         summary = (
-            f"MOSS Delay LoRA training complete: {resolved_name} | "
+            f"MOSS Delay LoRA training complete: {resolved_name} | base={variant} | "
             f"{summarize_lora_mode(training_config)} | steps={global_step}"
         )
         finalize_training_job(
@@ -659,14 +669,14 @@ def run_moss_training_job(
             "type": "training_artifacts",
             "engine_type": "moss_tts",
             "training_mode": "lora_adapter",
-            "model_variant": "MOSS-TTS",
+            "model_variant": variant,
             "model_path": final_adapter_dir,
             "job_dir": job_dir,
             "summary": summary,
             "lora_adapter": {
                 "type": "moss_lora",
                 "adapter_path": final_adapter_dir,
-                "base_model_name_or_path": "OpenMOSS-Team/MOSS-TTS",
+                "base_model_name_or_path": base_model_repo_id,
             },
         }
     except InterruptedError as error:
