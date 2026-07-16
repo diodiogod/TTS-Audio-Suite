@@ -1350,7 +1350,7 @@ engines:
 
     special_features:
       - "600+ language support"
-      - "Instruction-based voice design"
+      - "Explicit TTS/Voice Design modes with unified-node voice instruction"
       - "Upstream long-form chunk orchestration"
       - "Inline non-verbal tags and pronunciation overrides"
 
@@ -1406,7 +1406,7 @@ engines:
 
   - id: moss-tts
     name: MOSS-TTS
-    models: "Local 1.7B, Delay 8B v1.5/1.0, VoiceGenerator 1.7B, TTSD 8B"
+    models: "Local 1.7B, Delay 8B v1.5/1.0, VoiceGenerator 1.7B, SoundEffect 8B v1, TTSD 8B"
     size: "~8.5GB tokenizer + ~6.1GB/17GB/18GB model"
     license: "Apache-2.0"
     commercial: true
@@ -1416,11 +1416,13 @@ engines:
       srt: true
       vc: false
       asr: false
+      sound_effects: true
       training: true
 
     special_features:
       - "31-language generation with MOSS-TTS-v1.5"
       - "Reference-free voice design with MOSS-VoiceGenerator"
+      - "Prompt-only sound-effect generation with MOSS-SoundEffect v1"
       - "Long-form generation (TTSD/Delay)"
       - "Native 1-5 speaker TTSD dialogue"
       - "Duration token hint"
@@ -1458,6 +1460,12 @@ engines:
         size: "~18GB"
         auto_download: true
         notes: "Official 8B native multi-speaker dialogue model"
+      - component: "MOSS-SoundEffect"
+        source_name: "OpenMOSS-Team/MOSS-SoundEffect"
+        source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-SoundEffect"
+        size: "~17GB"
+        auto_download: true
+        notes: "Official MOSS v1 prompt-only sound-effect checkpoint; uses the shared MOSS audio tokenizer"
       - component: "MOSS-Audio-Tokenizer"
         source_name: "OpenMOSS-Team/MOSS-Audio-Tokenizer"
         source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer"
@@ -1506,6 +1514,85 @@ engines:
       vram_efficient: { supported: "partial", notes: "(Local 1.7B smaller; tokenizer is large)" }
       speed_performance: { supported: true, notes: "Fast with CUDA/FlashAttention" }
       reference_free_tts: { supported: true, notes: "(direct TTS and prompt-only generation)" }
+
+  - id: moss-soundeffect-v2
+    name: MOSS-SoundEffect v2
+    models: "MOSS-SoundEffect-v2.0"
+    size: "~11.2GB"
+    license: "Apache-2.0"
+    commercial: true
+
+    capabilities:
+      tts: false
+      srt: false
+      vc: false
+      asr: false
+      sound_effects: true
+      training: false
+
+    runtime_isolation:
+      default_mode: "main_environment"
+      supported_modes:
+        - "main_environment"
+      status: "implemented"
+      notes: "Runs in the configured ComfyUI environment; the bundled official inference pipeline works with the installed Transformers 5 and Diffusers stack, with a small dtype compatibility patch."
+
+    special_features:
+      - "Prompt-only text-to-sound generation"
+      - "48 kHz mono output"
+      - "Durations up to 30 seconds"
+      - "Seeded generation"
+      - "Native negative prompting, CFG, flow shift, and diffusion-step controls"
+
+    model_sources:
+      - component: "MOSS-SoundEffect-v2.0"
+        source_name: "OpenMOSS-Team/MOSS-SoundEffect-v2.0"
+        source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-SoundEffect-v2.0"
+        size: "~11.2GB"
+        auto_download: true
+        notes: "Official DiT + DAC VAE + Qwen3 text-encoder sound-effect pipeline"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "Officially demonstrated prompt language" }
+      zh: { supported: true, flag: "🇨🇳", notes: "Officially demonstrated prompt language" }
+      de: { supported: false, flag: "🇩🇪", notes: "Not officially documented" }
+      es: { supported: false, flag: "🇪🇸", notes: "Not officially documented" }
+      fr: { supported: false, flag: "🇫🇷", notes: "Not officially documented" }
+      it: { supported: false, flag: "🇮🇹", notes: "Not officially documented" }
+      ja: { supported: false, flag: "🇯🇵", notes: "Not officially documented" }
+      ko: { supported: false, flag: "🇰🇷", notes: "Not officially documented" }
+      ru: { supported: false, flag: "🇷🇺", notes: "Not officially documented" }
+      pt: { supported: false, flag: "🇧🇷", notes: "Not officially documented" }
+      pl: { supported: false, flag: "🇵🇱", notes: "Not officially documented" }
+      hi: { supported: false, flag: "🇮🇳", notes: "Not officially documented" }
+      ar: { supported: false, flag: "🇪🇬", notes: "Not officially documented" }
+      tr: { supported: false, flag: "🇹🇷", notes: "Not officially documented" }
+      th: { supported: false, flag: "🇹🇭", notes: "Not officially documented" }
+      no: { supported: false, flag: "🇳🇴", notes: "Not officially documented" }
+      vi: { supported: false, flag: "🇻🇳", notes: "Not officially documented" }
+      hy: { supported: false, flag: "🇦🇲", notes: "Not officially documented" }
+      ka: { supported: false, flag: "🇬🇪", notes: "Not officially documented" }
+      da: { supported: false, flag: "🇩🇰", notes: "Not officially documented" }
+      fi: { supported: false, flag: "🇫🇮", notes: "Not officially documented" }
+      el: { supported: false, flag: "🇬🇷", notes: "Not officially documented" }
+      he: { supported: false, flag: "🇮🇱", notes: "Not officially documented" }
+      ms: { supported: false, flag: "🇲🇾", notes: "Not officially documented" }
+      nl: { supported: false, flag: "🇳🇱", notes: "Not officially documented" }
+      sv: { supported: false, flag: "🇸🇪", notes: "Not officially documented" }
+      sw: { supported: false, flag: "🇰🇪", notes: "Not officially documented" }
+
+    features:
+      voice_cloning: { supported: false, notes: "" }
+      reference_transcript: { requirement: not_used }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "(not a speech engine)" }
+      native_long_form: { supported: false, notes: "(maximum 30 seconds)" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(runs in the main ComfyUI environment but remains GPU-heavy)" }
+      speed_performance: { supported: "partial", notes: "(100 diffusion steps by default)" }
+      reference_free_tts: { supported: false, notes: "(generates non-speech audio)" }
 
   - id: rvc
     name: RVC
@@ -1786,7 +1873,11 @@ readme_model_download_table:
   - engine: "MOSS-TTS"
     primary_model_path: "ComfyUI/models/TTS/moss_tts/"
     auto_download: "✅"
-    notes: "Local/Delay/TTSD models plus shared MOSS-Audio-Tokenizer codec"
+    notes: "Local/Delay/VoiceGenerator/SoundEffect v1/TTSD models plus shared MOSS-Audio-Tokenizer codec"
+  - engine: "MOSS-SoundEffect v2"
+    primary_model_path: "ComfyUI/models/TTS/moss_soundeffect_v2/"
+    auto_download: "✅"
+    notes: "Official v2 diffusion pipeline; configured ComfyUI environment"
   - engine: "Granite ASR"
     primary_model_path: "ComfyUI/models/TTS/granite_asr/"
     auto_download: "✅"
@@ -2077,6 +2168,7 @@ model_layouts_markdown: |
   ├── MOSS-TTS-v1.5/
   ├── MOSS-TTS/
   ├── MOSS-VoiceGenerator/
+  ├── MOSS-SoundEffect/
   ├── MOSS-TTSD-v1.0/
   ├── MOSS-Audio-Tokenizer/
   └── loras/
@@ -2092,9 +2184,29 @@ model_layouts_markdown: |
   - `MOSS-TTS-v1.5` is the current 8B delay model with 31-language support.
   - `MOSS-TTS` is the legacy official 8B delay model.
   - `MOSS-VoiceGenerator` is the 1.7B voice-design provider used by Unified Voice Designer.
+  - `MOSS-SoundEffect` is the v1 sound-effect checkpoint used through the MOSS-TTS engine and 🌩️ Sound Effects.
   - `MOSS-TTSD-v1.0` is the official 8B native multi-speaker dialogue model.
   - Integrated training currently exports LoRA adapters into `moss_tts/loras/<adapter_name>/`.
   - Training jobs, temporary manifests, and checkpoints are stored under `ComfyUI/output/tts_audio_suite_training/moss_tts/`.
+
+  ## MOSS-SoundEffect v2
+
+  ```text
+  ComfyUI/models/TTS/moss_soundeffect_v2/
+  └── MOSS-SoundEffect-v2.0/
+      ├── model_index.json
+      ├── scheduler/
+      ├── text_encoder/
+      ├── tokenizer/
+      ├── transformer/
+      └── vae/
+  ```
+
+  Notes:
+
+  - This is a separate v2 diffusion family, not a MOSS-TTS checkpoint variant.
+  - It runs in the configured ComfyUI environment; the official Apache-2.0 inference package is bundled without modifying its dependencies.
+  - The 🌩️ Sound Effects node limits generation to the official 30-second maximum.
 
   ## Granite ASR
 

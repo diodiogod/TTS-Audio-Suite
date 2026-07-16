@@ -197,7 +197,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                 "instruct": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "Voice description for VoiceDesign, or delivery instruction for the 1.7B CustomVoice checkpoint. Base and 0.6B CustomVoice models ignore it."
+                    "tooltip": "Delivery instruction for the 1.7B CustomVoice checkpoint. Unified Voice Designer owns the voice description when a VoiceDesign checkpoint is selected, so this field is disabled there. Base and 0.6B CustomVoice models ignore it."
                 }),
 
                 # Generation Parameters

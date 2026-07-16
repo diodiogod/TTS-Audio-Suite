@@ -460,6 +460,26 @@ class MossTTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class MossSoundEffectV2CacheKeyGenerator(CacheKeyGenerator):
+    """Cache all controls that materially affect MOSS-SoundEffect v2 output."""
+
+    def generate_cache_key(self, **params) -> str:
+        cache_data = {
+            "description": params.get("description", ""),
+            "model": params.get("model", "MOSS-SoundEffect-v2.0"),
+            "duration_seconds": round(float(params.get("duration_seconds", 10.0)), 1),
+            "inference_steps": int(params.get("inference_steps", 100)),
+            "cfg_scale": round(float(params.get("cfg_scale", 4.0)), 3),
+            "sigma_shift": round(float(params.get("sigma_shift", 5.0)), 3),
+            "negative_prompt": params.get("negative_prompt", ""),
+            "seed": int(params.get("seed", 0)),
+            "dtype": params.get("dtype", "auto"),
+            "device": params.get("device", "auto"),
+            "engine": "moss_soundeffect_v2",
+        }
+        return hashlib.md5(str(sorted(cache_data.items())).encode()).hexdigest()
+
+
 class EchoTTSCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for Echo-TTS engine."""
 
@@ -665,6 +685,7 @@ class AudioCache:
             'fish_audio_s2': FishAudioS2CacheKeyGenerator(),
             'omnivoice': OmniVoiceCacheKeyGenerator(),
             'moss_tts': MossTTSCacheKeyGenerator(),
+            'moss_soundeffect_v2': MossSoundEffectV2CacheKeyGenerator(),
             'echo_tts': EchoTTSCacheKeyGenerator()
         }
     
@@ -736,7 +757,7 @@ class AudioCache:
             num_samples = audio_tensor.numel()
 
         # Use engine-specific sample rates
-        if engine_type == 'dots_tts':
+        if engine_type in ('dots_tts', 'moss_soundeffect_v2'):
             sample_rate = 48000
         elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3', 'omnivoice'):
             sample_rate = 24000

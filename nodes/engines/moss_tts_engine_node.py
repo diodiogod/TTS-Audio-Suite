@@ -41,33 +41,28 @@ class MossTTSEngineNode(BaseTTSNode):
     """MOSS-TTS engine configuration node."""
 
     STANDARD_MODEL_OPTIONS = [
-        "Small 1.7B (Local)",
-        "Recommended 8B v1.5 (Delay)",
-        "Legacy 8B v1.0 (Delay)",
+        "1.7B",
+        "v1.5 8B",
+        "v1 8B",
     ]
-    NATIVE_MODEL_OPTION = "Native 8B Dialogue (MOSS-TTSD-v1.0)"
-    VOICE_DESIGN_MODEL_OPTION = "Voice Design 1.7B (MOSS-VoiceGenerator)"
-    LEGACY_LOCAL_MODEL_OPTIONS = [
-        "local:MOSS-TTS-Local-Transformer",
-        "local:MOSS-TTS-v1.5",
-        "local:MOSS-TTS",
-        "local:MOSS-TTSD-v1.0",
-        "local:MOSS-VoiceGenerator",
-    ]
-    FRIENDLY_MODEL_ALIASES = [
-        "Small 1.7B (Local)",
-        "Recommended 8B v1.5 (Delay)",
-        "Legacy 8B v1.0 (Delay)",
-        "Native 8B Dialogue (MOSS-TTSD-v1.0)",
-        "Voice Design 1.7B (MOSS-VoiceGenerator)",
-    ]
+    NATIVE_MODEL_OPTION = "TTSD v1 8B"
+    VOICE_DESIGN_MODEL_OPTION = "Voice Design 1.7B"
+    SOUND_EFFECT_MODEL_OPTION = "Sound Effects v1 8B"
     UI_MODEL_VARIANT_MAP = {
+        "1.7B": "MOSS-TTS-Local-Transformer",
+        "v1.5 8B": "MOSS-TTS-v1.5",
+        "v1 8B": "MOSS-TTS",
+        "TTSD v1 8B": "MOSS-TTSD-v1.0",
+        "Voice Design 1.7B": "MOSS-VoiceGenerator",
+        "Sound Effects v1 8B": "MOSS-SoundEffect",
+        # Resolve early development labels without exposing them in the dropdown.
         "Small 1.7B (Local)": "MOSS-TTS-Local-Transformer",
         "Recommended 8B v1.5 (Delay)": "MOSS-TTS-v1.5",
         "Legacy 8B v1.0 (Delay)": "MOSS-TTS",
         "8B (Delay)": "MOSS-TTS",
         "Native 8B Dialogue (MOSS-TTSD-v1.0)": "MOSS-TTSD-v1.0",
         "Voice Design 1.7B (MOSS-VoiceGenerator)": "MOSS-VoiceGenerator",
+        "Sound Effects 8B v1 (MOSS-SoundEffect)": "MOSS-SoundEffect",
     }
     NO_LORA_OPTION = "None"
 
@@ -98,10 +93,11 @@ class MossTTSEngineNode(BaseTTSNode):
                         "If a local model folder is detected, the dropdown shows local:ModelName.\n"
                         "Otherwise it shows friendly built-in choices.\n"
                         "\n"
-                        "Small 1.7B (Local): smaller official local-transformer model.\n"
-                        "Recommended 8B v1.5 (Delay): current multilingual delay model.\n"
-                        "Legacy 8B v1.0 (Delay): original delay checkpoint, retained for workflows.\n"
+                        "1.7B: smaller local-transformer architecture.\n"
+                        "v1.5 8B: current multilingual model.\n"
+                        "v1 8B: original checkpoint.\n"
                         "Voice Design 1.7B: MOSS-VoiceGenerator for Unified Voice Designer only.\n"
+                        "Sound Effects 8B v1: MOSS-SoundEffect for the 🌩️ Sound Effects node only.\n"
                         "\n"
                         "Native Multi-Speaker Dialogue mode ignores this selector and uses MOSS-TTSD-v1.0 automatically."
                     )
@@ -206,7 +202,8 @@ class MossTTSEngineNode(BaseTTSNode):
                     "tooltip": (
                         "How the whole segment should be spoken.\n"
                         "Unified Voice Designer uses this as the voice description when MOSS-VoiceGenerator is selected.\n"
-                        "Best used as an engine default, or per segment with [instruction:...].\n"
+                        "For speech models, use this as an engine default or override it per segment with [instruction:...].\n"
+                        "For MOSS-VoiceGenerator this field is disabled because Unified Voice Designer supplies the voice instruction.\n"
                         "Use short natural instructions.\n"
                         "Examples:\n"
                         "• Speak softly and calmly\n"
@@ -362,9 +359,9 @@ class MossTTSEngineNode(BaseTTSNode):
         v15 = cls._find_local_variant("MOSS-TTS-v1.5")
         legacy = cls._find_local_variant("MOSS-TTS")
         return [
-            small if small.startswith("local:") else "Small 1.7B (Local)",
-            v15 if v15.startswith("local:") else "Recommended 8B v1.5 (Delay)",
-            legacy if legacy.startswith("local:") else "Legacy 8B v1.0 (Delay)",
+            small if small.startswith("local:") else "1.7B",
+            v15 if v15.startswith("local:") else "v1.5 8B",
+            legacy if legacy.startswith("local:") else "v1 8B",
         ]
 
     @classmethod
@@ -378,10 +375,15 @@ class MossTTSEngineNode(BaseTTSNode):
         voice_design_option = (
             voice_design if voice_design.startswith("local:") else cls.VOICE_DESIGN_MODEL_OPTION
         )
-        values = cls._get_ui_standard_model_options() + [voice_design_option, cls._get_ui_native_model_option()]
-        for option in cls.FRIENDLY_MODEL_ALIASES + cls.LEGACY_LOCAL_MODEL_OPTIONS:
-            if option not in values:
-                values.append(option)
+        sound_effect = cls._find_local_variant("MOSS-SoundEffect")
+        sound_effect_option = (
+            sound_effect if sound_effect.startswith("local:") else cls.SOUND_EFFECT_MODEL_OPTION
+        )
+        values = cls._get_ui_standard_model_options() + [
+            voice_design_option,
+            sound_effect_option,
+            cls._get_ui_native_model_option(),
+        ]
         return values
 
     @classmethod
@@ -518,7 +520,9 @@ class MossTTSEngineNode(BaseTTSNode):
         canonical = str(model_variant or "").removeprefix("local:")
         canonical = cls.UI_MODEL_VARIANT_MAP.get(canonical, canonical)
         role = MossTTSEngine.MODEL_VARIANTS.get(canonical, {}).get("role", "tts")
-        return "voice_design" if role == "voice_design" else "tts"
+        if role in {"voice_design", "sound_effects"}:
+            return role
+        return "tts"
 
     def create_engine_adapter(
         self,

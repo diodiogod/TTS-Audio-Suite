@@ -95,6 +95,25 @@ MOSS_MODEL_SPECS = {
             "config.json", "processor_config.json", "tokenizer.json", "model.safetensors",
         ],
     },
+    "MOSS-SoundEffect": {
+        "repo_id": "OpenMOSS-Team/MOSS-SoundEffect",
+        "architecture": "delay",
+        "role": "sound_effects",
+        "display": "MOSS SoundEffect 8B v1",
+        "description": "MOSS SoundEffect v1 - autoregressive environmental and action sound generation",
+        "codec_model": "MOSS-Audio-Tokenizer",
+        "sample_rate": 24000,
+        "audio_temperature": 1.5,
+        "audio_top_p": 0.6,
+        "audio_top_k": 50,
+        "audio_repetition_penalty": 1.2,
+        "max_new_tokens": 4096,
+        "required_files": [
+            "config.json", "processor_config.json", "tokenizer.json", "model.safetensors.index.json",
+            "model-00001-of-00004.safetensors", "model-00002-of-00004.safetensors",
+            "model-00003-of-00004.safetensors", "model-00004-of-00004.safetensors",
+        ],
+    },
 }
 
 MOSS_CODEC_SPECS = {

@@ -1507,6 +1507,31 @@ def register_moss_tts_factory():
     unified_model_interface.register_model_factory("moss_tts", "tts", moss_tts_factory)
 
 
+def register_moss_soundeffect_v2_factory():
+    """Register the native MOSS-SoundEffect v2 diffusion pipeline."""
+
+    def moss_soundeffect_v2_factory(config: ModelLoadConfig):
+        from engines.moss_soundeffect_v2.downloader import MossSoundEffectV2Downloader
+        from engines.moss_soundeffect_v2.engine import MossSoundEffectV2Engine
+
+        model_name = config.model_name or MossSoundEffectV2Downloader.MODEL_NAME
+        model_path = config.model_path or model_name
+        dtype = (config.additional_params or {}).get("dtype", "auto")
+        resolved_model_path = MossSoundEffectV2Downloader().resolve_model_path(model_path)
+
+        engine = MossSoundEffectV2Engine(
+            model_path=resolved_model_path,
+            device=config.device or "auto",
+            dtype=dtype,
+        )
+        engine._ensure_model_loaded()
+        return engine
+
+    unified_model_interface.register_model_factory(
+        "moss_soundeffect_v2", "tts", moss_soundeffect_v2_factory
+    )
+
+
 def register_qwen3_tts_factory():
     """Register Qwen3-TTS model factory"""
     def qwen3_tts_factory(config: ModelLoadConfig):
@@ -1950,6 +1975,7 @@ def initialize_all_factories():
     register_index_tts_factory()
     register_cosyvoice_factory()
     register_moss_tts_factory()
+    register_moss_soundeffect_v2_factory()
     register_qwen3_tts_factory()
     register_fish_audio_s2_factory()
     register_dots_tts_factory()

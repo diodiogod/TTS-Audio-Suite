@@ -10,6 +10,7 @@ from .step_audio_editx_handler import StepAudioEditXHandler
 from .cosyvoice_handler import CosyVoiceHandler
 from .qwen3_tts_handler import Qwen3TTSHandler
 from .moss_tts_handler import MossTTSHandler
+from .moss_soundeffect_v2_handler import MossSoundEffectV2Handler
 
 
 def get_engine_handler(engine: str) -> BaseEngineHandler:
@@ -39,6 +40,9 @@ def get_engine_handler(engine: str) -> BaseEngineHandler:
     elif engine == "moss_tts":
         # Large MOSS checkpoints must be released, not copied into system RAM.
         return MossTTSHandler()
+    elif engine == "moss_soundeffect_v2":
+        # The v2 diffusion stack is also too large to copy to RAM on removal.
+        return MossSoundEffectV2Handler()
     else:
         # Generic handler for chatterbox, f5tts, rvc, etc.
         return GenericHandler()
@@ -53,5 +57,6 @@ __all__ = [
     'CosyVoiceHandler',
     'Qwen3TTSHandler',
     'MossTTSHandler',
+    'MossSoundEffectV2Handler',
     'get_engine_handler'
 ]

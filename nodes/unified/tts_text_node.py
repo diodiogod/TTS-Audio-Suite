@@ -971,6 +971,12 @@ Back to the main narrator voice for the conclusion.""",
                     f"'{selected_model}' is a voice-design model and cannot be used with TTS Text. "
                     "Connect this engine to Unified Voice Designer, or select a standard TTS model in the engine node."
                 )
+            if config.get("model_role") == "sound_effects":
+                selected_model = config.get("model_variant") or config.get("model_name") or "selected model"
+                raise ValueError(
+                    f"'{selected_model}' generates sound effects and cannot be used with TTS Text. "
+                    "Connect this engine to 🌩️ Sound Effects, or select a speech model in the engine node."
+                )
             
             # Get voice reference (opt_narrator takes priority)
             audio_path, audio_tensor, reference_text, character_name = self._get_voice_reference(opt_narrator, narrator_voice)

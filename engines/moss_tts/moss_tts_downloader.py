@@ -93,8 +93,6 @@ class MossTTSDownloader:
                 snapshot_download(
                     repo_id=repo_id,
                     local_dir=model_dir,
-                    local_dir_use_symlinks=False,
-                    resume_download=True,
                     force_download=force,
                 )
         except Exception as e:

@@ -133,6 +133,14 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         default_runtime_profile="moss_tts_transformers5",
     ),
 
+    "moss_soundeffect_v2": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=[],
+        supports_runtime_isolation=False,
+    ),
+
     "qwen3_tts": EngineCapabilities(
         supports_voice_conversion=False,
         multilingual_model_switching=False,

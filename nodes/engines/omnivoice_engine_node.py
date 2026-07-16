@@ -73,7 +73,7 @@ class OmniVoiceEngineNode(BaseTTSNode):
                 "instruct": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "Optional controlled speaker attributes such as gender, age, pitch, whisper, supported English accents, or Chinese dialects. Without a reference it defines the generated voice; with a reference it provides weaker guidance and the reference identity takes priority."
+                    "tooltip": "In Text to Speech mode, optionally guides speaker attributes such as gender, age, pitch, whisper, supported English accents, or Chinese dialects. A reference voice takes priority. In Voice Design mode this field is disabled because Unified Voice Designer supplies the design instruction."
                 }),
                 "layer_penalty_factor": ("FLOAT", {
                     "default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1,
@@ -107,6 +107,14 @@ class OmniVoiceEngineNode(BaseTTSNode):
                     "default": 30.0, "min": 1.0, "max": 180.0, "step": 0.5,
                     "tooltip": "Estimated output duration above which native long-form chunking activates. Lower it to chunk shorter passages for stability/VRAM; raise it to keep more text in one generation. Default: 30 seconds."
                 }),
+                "mode": (["Text to Speech", "Voice Design"], {
+                    "default": "Text to Speech",
+                    "tooltip": (
+                        "Restricts this engine instance to one operation. Text to Speech works with TTS Text/SRT "
+                        "and enables this engine's instruction. Voice Design works only with Unified Voice Designer, "
+                        "which supplies the instruction. Duplicate the engine node if a workflow needs both modes."
+                    ),
+                }),
             },
         }
 
@@ -135,10 +143,14 @@ class OmniVoiceEngineNode(BaseTTSNode):
         postprocess_output: bool = True,
         audio_chunk_duration: float = 15.0,
         audio_chunk_threshold: float = 30.0,
+        mode: str = "Text to Speech",
     ) -> tuple:
+        model_role = "voice_design" if mode == "Voice Design" else "tts"
         config = {
             "engine_type": "omnivoice",
             "model_variant": model_variant,
+            "mode": mode,
+            "model_role": model_role,
             "device": device,
             "dtype": dtype,
             "language": str(language or "Auto").strip() or "Auto",
@@ -158,7 +170,7 @@ class OmniVoiceEngineNode(BaseTTSNode):
             "audio_chunk_threshold": float(audio_chunk_threshold),
         }
 
-        print(f"⚙️ OmniVoice: Configured on {device}")
+        print(f"⚙️ OmniVoice: Configured for {mode} on {device}")
         print(
             f"   Model: {model_variant} | Language: {config['language']} | Dtype: {dtype}"
         )
@@ -185,5 +197,6 @@ class OmniVoiceEngineNode(BaseTTSNode):
             "engine_type": "omnivoice",
             "config": config,
             "adapter_class": "OmniVoiceEngineAdapter",
+            "capabilities": [model_role],
         }
         return (engine_data,)

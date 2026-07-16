@@ -70,7 +70,7 @@ function refreshQwenWidgets(node) {
         } else if (kind === "VoiceDesign") {
             setWidgetEnabled(presetWidget, false);
             setWidgetEnabled(xVectorWidget, false);
-            setWidgetEnabled(instructWidget, true);
+            setWidgetEnabled(instructWidget, false);
         } else {
             setWidgetEnabled(presetWidget, false);
             setWidgetEnabled(xVectorWidget, true);

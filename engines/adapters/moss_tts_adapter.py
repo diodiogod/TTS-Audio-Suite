@@ -41,6 +41,7 @@ class MossTTSEngineAdapter:
         attn_implementation: str = "auto",
         codec_model: str = "MOSS-Audio-Tokenizer",
         lora_adapter: Optional[str] = None,
+        defer_load: bool = False,
     ):
         from utils.models.unified_model_interface import unified_model_interface
 
@@ -58,7 +59,8 @@ class MossTTSEngineAdapter:
             },
         )
         self._last_config = config
-        unified_model_interface.load_model(config)
+        if not defer_load:
+            unified_model_interface.load_model(config)
 
     def update_model_config(
         self,
@@ -105,9 +107,6 @@ class MossTTSEngineAdapter:
         character_name: Optional[str] = None,
         engine=None,
     ) -> torch.Tensor:
-        if engine is None:
-            engine = self._get_engine()
-
         reference_audio, reference_sample_rate, audio_component = self._extract_voice_reference(voice_ref)
         model_variant = params.get("model_variant", "MOSS-TTS-Local-Transformer")
         language = params.get("language", "auto")
@@ -146,10 +145,14 @@ class MossTTSEngineAdapter:
             character=character_name or "narrator",
         )
 
-        cached_audio = self.audio_cache.get_cached_audio(cache_key)
+        enable_audio_cache = bool(params.get("enable_audio_cache", True))
+        cached_audio = self.audio_cache.get_cached_audio(cache_key) if enable_audio_cache else None
         if cached_audio:
             print(f"💾 Using cached MOSS-TTS audio for '{character_name or 'narrator'}': '{text[:30]}...'")
             return cached_audio[0]
+
+        if engine is None:
+            engine = self._get_engine()
 
         audio_tensor, sample_rate = engine.generate(
             text=text,
@@ -175,9 +178,23 @@ class MossTTSEngineAdapter:
         if sample_rate != self.SAMPLE_RATE:
             raise RuntimeError(f"MOSS-TTS returned unexpected sample rate {sample_rate}; expected {self.SAMPLE_RATE}")
 
-        duration = self.audio_cache._calculate_duration(audio_tensor, "moss_tts")
-        self.audio_cache.cache_audio(cache_key, audio_tensor, duration)
+        if enable_audio_cache:
+            duration = self.audio_cache._calculate_duration(audio_tensor, "moss_tts")
+            self.audio_cache.cache_audio(cache_key, audio_tensor, duration)
         return audio_tensor
+
+    def generate_sound_effect(self, description: str, params: Dict[str, Any]) -> torch.Tensor:
+        """Generate MOSS-SoundEffect v1 audio without a speech or narrator reference."""
+        sound_params = dict(params)
+        sound_params["ambient_sound"] = str(description or "").strip()
+        if not sound_params["ambient_sound"]:
+            raise ValueError("MOSS-SoundEffect requires a non-empty description")
+        return self._generate_direct(
+            text="",
+            voice_ref=None,
+            params=sound_params,
+            character_name="sound_effects",
+        )
 
     def _generate_with_pauses(
         self,

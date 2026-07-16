@@ -10,9 +10,9 @@ class UnifiedVoiceDesignerNode:
             "required": {
                 "TTS_engine": ("TTS_ENGINE", {
                     "tooltip": (
-                        "Configured Qwen3-TTS, MOSS-TTS, or OmniVoice engine. The engine owns the "
-                        "voice instruction, language, and model. Qwen and MOSS require their voice-design "
-                        "model to be selected in the engine node."
+                        "Configured Qwen3-TTS, MOSS-TTS, or OmniVoice engine. This node owns the voice-design "
+                        "instruction; the engine owns its model, language, and generation settings. Qwen and "
+                        "MOSS require their voice-design model, while OmniVoice requires Voice Design mode."
                     )
                 }),
                 "reference_text": ("STRING", {
@@ -37,6 +37,15 @@ class UnifiedVoiceDesignerNode:
                         "lets Save Character Voice recognize an identical generation safely."
                     ),
                 }),
+                "voice_instruction": ("STRING", {
+                    "default": "A warm, confident adult voice with natural pacing, clear articulation, and a subtle expressive smile.",
+                    "multiline": True,
+                    "tooltip": (
+                        "Describe the voice identity and delivery to create: age, gender, pitch, texture, accent, "
+                        "pace, emotion, and speaking style. This overrides any stored engine instruction for this "
+                        "voice-design generation."
+                    ),
+                }),
             },
         }
 
@@ -45,8 +54,8 @@ class UnifiedVoiceDesignerNode:
     FUNCTION = "design"
     CATEGORY = "TTS Audio Suite/🎭 Voice & Character"
 
-    def design(self, TTS_engine, reference_text, seed):
-        result = design_voice(TTS_engine, reference_text, seed)
+    def design(self, TTS_engine, reference_text, seed, voice_instruction):
+        result = design_voice(TTS_engine, voice_instruction, reference_text, seed)
         return (
             result.opt_narrator,
             result.preview_audio,

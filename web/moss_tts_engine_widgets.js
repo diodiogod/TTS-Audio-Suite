@@ -105,6 +105,29 @@ function isLocalSmallModel(value) {
     return typeof value === "string" && value.includes("Local-Transformer");
 }
 
+function isSoundEffectModel(value) {
+    return typeof value === "string"
+        && (value.includes("MOSS-SoundEffect") || value.includes("Sound Effects"));
+}
+
+function isVoiceDesignModel(value) {
+    return typeof value === "string"
+        && (value.includes("MOSS-VoiceGenerator") || value.includes("Voice Design"));
+}
+
+const SPEECH_ONLY_WIDGETS = [
+    "multi_speaker_mode", "language", "duration_tokens", "chunk_minutes",
+    "instruction", "quality", "sound_event", "ambient_sound",
+    "speaker2_voice", "speaker3_voice", "speaker4_voice", "speaker5_voice",
+    "local_lora_adapter", "lora_adapter_override",
+];
+
+function updateSoundEffectState(node, soundEffectSelected) {
+    for (const name of SPEECH_ONLY_WIDGETS) {
+        setWidgetEnabled(findWidgetByName(node, name), !soundEffectSelected);
+    }
+}
+
 function refreshMossWidgets(node) {
     if (node.comfyClass !== "MossTTSEngineNode") {
         return;
@@ -167,8 +190,16 @@ function refreshMossWidgets(node) {
 
         const selectedStandard = toStandardModelValue(node, modelWidget, modelWidget.value);
         node.__ttsMossLastStandardModel = selectedStandard;
+        const soundEffectSelected = isSoundEffectModel(selectedStandard);
+        updateSoundEffectState(node, soundEffectSelected);
+        if (!soundEffectSelected) {
+            setWidgetEnabled(
+                findWidgetByName(node, "instruction"),
+                !isVoiceDesignModel(selectedStandard),
+            );
+        }
 
-        if (isLocalSmallModel(selectedStandard) || selectedStandard === "Small 1.7B (Local)") {
+        if (isLocalSmallModel(selectedStandard) || selectedStandard === "1.7B") {
             showWidget(nVqWidget);
         } else {
             hideWidget(nVqWidget);

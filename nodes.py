@@ -138,6 +138,16 @@ except Exception as e:
     QWEN3_TTS_ENGINE_AVAILABLE = False
 
 try:
+    moss_soundeffect_v2_engine_module = load_node_module(
+        "moss_soundeffect_v2_engine_node", "engines/moss_soundeffect_v2_engine_node.py"
+    )
+    MossSoundEffectV2EngineNode = moss_soundeffect_v2_engine_module.MossSoundEffectV2EngineNode
+    MOSS_SOUNDEFFECT_V2_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ MOSS-SoundEffect v2 Engine failed: {e}")
+    MOSS_SOUNDEFFECT_V2_ENGINE_AVAILABLE = False
+
+try:
     moss_tts_engine_module = load_node_module("moss_tts_engine_node", "engines/moss_tts_engine_node.py")
     MossTTSEngineNode = moss_tts_engine_module.MossTTSEngineNode
     MOSS_TTS_ENGINE_AVAILABLE = True
@@ -284,6 +294,14 @@ try:
 except Exception as e:
     print(f"❌ Unified TTS SRT failed: {e}")
     UNIFIED_SRT_AVAILABLE = False
+
+try:
+    unified_sound_effects_module = load_node_module("unified_sound_effects_node", "unified/sound_effects_node.py")
+    UnifiedSoundEffectsNode = unified_sound_effects_module.UnifiedSoundEffectsNode
+    UNIFIED_SOUND_EFFECTS_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Unified Sound Effects failed: {e}")
+    UNIFIED_SOUND_EFFECTS_AVAILABLE = False
 
 try:
     unified_vc_module = load_node_module("unified_voice_changer_node", "unified/voice_changer_node.py")
@@ -637,6 +655,10 @@ if MOSS_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossTTSEngineNode"] = MossTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["MossTTSEngineNode"] = "⚙️ MOSS-TTS Engine"
 
+if MOSS_SOUNDEFFECT_V2_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["MossSoundEffectV2EngineNode"] = MossSoundEffectV2EngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["MossSoundEffectV2EngineNode"] = "⚙️ MOSS SoundEffect v2 Engine"
+
 if GRANITE_ASR_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["GraniteASREngineNode"] = GraniteASREngineNode
     NODE_DISPLAY_NAME_MAPPINGS["GraniteASREngineNode"] = "⚙️ Granite ASR Engine"
@@ -708,6 +730,10 @@ if UNIFIED_TEXT_AVAILABLE:
 if UNIFIED_SRT_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedTTSSRTNode"] = UnifiedTTSSRTNode
     NODE_DISPLAY_NAME_MAPPINGS["UnifiedTTSSRTNode"] = "📺 TTS SRT"
+
+if UNIFIED_SOUND_EFFECTS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["UnifiedSoundEffectsNode"] = UnifiedSoundEffectsNode
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedSoundEffectsNode"] = "🌩️ Sound Effects"
 
 if UNIFIED_VC_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedVoiceChangerNode"] = UnifiedVoiceChangerNode

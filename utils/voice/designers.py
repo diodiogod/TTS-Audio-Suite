@@ -24,6 +24,7 @@ class VoiceDesignerProvider(Protocol):
     def design(
         self,
         engine_data: Dict[str, Any],
+        voice_instruction: str,
         reference_text: str,
         seed: int,
     ) -> VoiceDesignResult: ...
@@ -38,10 +39,6 @@ def _engine_config(engine_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def _engine_language(config: Dict[str, Any]) -> str:
     return str(config.get("language") or "Auto").strip() or "Auto"
-
-
-def _engine_instruction(config: Dict[str, Any], field: str) -> str:
-    return str(config.get(field) or "").strip()
 
 
 def _generation_fingerprint(
@@ -133,20 +130,17 @@ class QwenVoiceDesignerProvider:
         cls._node_class = module.Qwen3TTSVoiceDesignerNode
         return cls._node_class
 
-    def design(self, engine_data, reference_text, seed):
-        config = _engine_config(engine_data)
+    def design(self, engine_data, voice_instruction, reference_text, seed):
+        config = dict(_engine_config(engine_data))
         if config.get("model_role") != "voice_design" or config.get("model_type") != "VoiceDesign":
             selected = config.get("model_variant") or config.get("model_size") or "unknown"
             raise ValueError(
                 f"Qwen model '{selected}' cannot design voices. In the Qwen3-TTS Engine, "
                 "select 'Voice Design - 1.7B VoiceDesign', then run the workflow again."
             )
-        instruction = _engine_instruction(config, "instruct")
+        instruction = str(voice_instruction or "").strip()
         language = _engine_language(config)
-        if not instruction:
-            raise ValueError(
-                "Qwen voice design requires an instruction. Set 'instruct' on the Qwen3-TTS Engine node."
-            )
+        config["instruct"] = instruction
         node = self._load_node_class()()
         opt_narrator, audio, info = node.design_voice(
             engine_data, instruction, reference_text, language,
@@ -162,11 +156,17 @@ class QwenVoiceDesignerProvider:
 
 
 class OmniVoiceDesignerProvider:
-    def design(self, engine_data, reference_text, seed):
+    def design(self, engine_data, voice_instruction, reference_text, seed):
         from engines.adapters.omnivoice_adapter import OmniVoiceEngineAdapter
 
         config = dict(_engine_config(engine_data))
-        instruction = _engine_instruction(config, "instruct")
+        if config.get("model_role") != "voice_design":
+            raise ValueError(
+                "OmniVoice is configured for Text to Speech. Set mode to 'Voice Design' in the "
+                "OmniVoice Engine, then run the workflow again."
+            )
+        instruction = str(voice_instruction or "").strip()
+        config["instruct"] = instruction
         language = _engine_language(config)
         adapter = OmniVoiceEngineAdapter(config)
         waveform = adapter.generate_single(
@@ -187,7 +187,7 @@ class OmniVoiceDesignerProvider:
 class MossVoiceDesignerProvider:
     MODEL_NAME = "MOSS-VoiceGenerator"
 
-    def design(self, engine_data, reference_text, seed):
+    def design(self, engine_data, voice_instruction, reference_text, seed):
         from engines.adapters.moss_tts_adapter import MossTTSEngineAdapter
         from engines.moss_tts.model_specs import MOSS_MODEL_SPECS
 
@@ -198,11 +198,8 @@ class MossVoiceDesignerProvider:
                 f"MOSS model '{selected_model or 'unknown'}' cannot design voices. In the MOSS-TTS Engine, "
                 "select 'Voice Design 1.7B (MOSS-VoiceGenerator)', then run the workflow again."
             )
-        instruction = _engine_instruction(config, "instruction")
-        if not instruction:
-            raise ValueError(
-                "MOSS voice design requires an instruction. Set 'instruction' on the MOSS-TTS Engine node."
-            )
+        instruction = str(voice_instruction or "").strip()
+        config["instruction"] = instruction
         spec = MOSS_MODEL_SPECS[self.MODEL_NAME]
         resolved_language = _engine_language(config)
         adapter = MossTTSEngineAdapter()
@@ -250,11 +247,18 @@ _PROVIDERS: Dict[str, VoiceDesignerProvider] = {
 
 def design_voice(
     engine_data: Dict[str, Any],
+    voice_instruction: str,
     reference_text: str,
     seed: int = 0,
 ) -> VoiceDesignResult:
     if not isinstance(engine_data, dict):
         raise TypeError("Unified Voice Designer requires a TTS_ENGINE connection")
+    capabilities = engine_data.get("capabilities") or []
+    if "voice_design" not in capabilities:
+        raise ValueError(
+            "The connected engine is not configured for voice design. Select a VoiceDesign model or "
+            "Voice Design mode in the engine node, then run the workflow again."
+        )
     engine_type = str(engine_data.get("engine_type") or engine_data.get("config", {}).get("engine_type") or "")
     provider = _PROVIDERS.get(engine_type)
     if provider is None:
@@ -262,8 +266,12 @@ def design_voice(
         raise ValueError(f"Engine '{engine_type or 'unknown'}' cannot design voices. Supported engines: {supported}")
     if len(str(reference_text or "").strip()) < 10:
         raise ValueError("Reference text must contain at least 10 characters")
+    clean_instruction = str(voice_instruction or "").strip()
+    if not clean_instruction:
+        raise ValueError("Voice design instruction cannot be empty")
     return provider.design(
         engine_data,
+        clean_instruction,
         str(reference_text).strip(),
         int(seed or 0),
     )

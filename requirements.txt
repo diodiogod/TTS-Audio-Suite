@@ -29,6 +29,7 @@ webdataset
 jieba
 pypinyin
 unidecode
+ftfy                    # MOSS-SoundEffect v2 prompt normalization
 phonemizer              # IPA phonemization for multilingual TTS (requires espeak system dependency)
 omegaconf>=2.3.0
 transformers>=5.3.0,<6.0.0  # Main environment for Higgs Audio v3 / Step Audio EditX / MOSS-TTS. Legacy Transformers 4 engines use isolated runtimes.

@@ -118,8 +118,8 @@ def generate_engine_comparison(data):
     output.append("")
     output.append("## Engine Comparison")
     output.append("")
-    output.append("| Engine             | Isolation | Models                                    | Size         | TTS | SRT | VC  | ASR | Training | License                  | Special Features                                                                         | Languages                                                                                |")
-    output.append("| ------------------ | --------- | ----------------------------------------- | ------------ | :-: | :-: | :-: | :-: | :------: | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
+    output.append("| Engine             | Isolation | Models                                    | Size         | TTS | SRT | VC  | ASR | Sound Effects | Training | License                  | Special Features                                                                         | Languages                                                                                |")
+    output.append("| ------------------ | --------- | ----------------------------------------- | ------------ | :-: | :-: | :-: | :-: | :-----------: | :------: | ------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |")
 
     for e in engines:
         language_summary = e.get("language_summary_full")
@@ -146,6 +146,7 @@ def generate_engine_comparison(data):
             format_support(e["capabilities"]["srt"]),
             format_support(e["capabilities"]["vc"]),
             format_support(e["capabilities"]["asr"]),
+            format_support(e["capabilities"].get("sound_effects", False)),
             format_support(e["capabilities"].get("training", False)),
             e.get("license", "Unknown").ljust(24),
             features.ljust(88),
@@ -403,6 +404,7 @@ def generate_feature_comparison(data):
         ("**SRT**", "srt"),
         ("**Voice Conversion**", "vc"),
         ("**ASR (Transcribe)**", "asr"),
+        ("**Sound Effects**", "sound_effects"),
         ("**Training**", "training"),
     ]
     duplicated_feature_keys = {"voice_conversion", "asr_transcribe"}

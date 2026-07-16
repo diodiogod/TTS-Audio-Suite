@@ -16,6 +16,41 @@ import importlib.util
 import os
 import sys
 
+# ComfyUI 0.12+ owns a top-level ``utils`` package, while this long-standing
+# node pack also imports its helpers through ``utils.*``. Preserve ComfyUI's
+# loaded package and extend only its module search path with this pack's utils.
+_project_root = os.path.dirname(__file__)
+_suite_utils_root = os.path.abspath(os.path.join(_project_root, "utils"))
+if _project_root in sys.path:
+    sys.path.remove(_project_root)
+sys.path.insert(0, _project_root)
+
+_loaded_utils = sys.modules.get("utils")
+if _loaded_utils is None:
+    import utils as _loaded_utils
+
+_utils_search_path = getattr(_loaded_utils, "__path__", None)
+if _utils_search_path is None:
+    raise ImportError(
+        "TTS Audio Suite cannot extend the loaded top-level 'utils' module because it is not a package"
+    )
+
+_normalized_utils_paths = {os.path.normcase(os.path.abspath(path)) for path in _utils_search_path}
+if os.path.normcase(_suite_utils_root) not in _normalized_utils_paths:
+    _utils_search_path.insert(0, _suite_utils_root)
+
+# When this pack is imported before ComfyUI imports its own helpers, locate the
+# active ComfyUI utils directory by its stable core modules and add it as the
+# fallback side of the same package search path.
+for _search_root in sys.path:
+    _candidate_utils = os.path.abspath(os.path.join(_search_root or os.curdir, "utils"))
+    _normalized_candidate = os.path.normcase(_candidate_utils)
+    if _normalized_candidate in _normalized_utils_paths or _normalized_candidate == os.path.normcase(_suite_utils_root):
+        continue
+    if all(os.path.isfile(os.path.join(_candidate_utils, filename)) for filename in ("extra_config.py", "install_util.py")):
+        _utils_search_path.append(_candidate_utils)
+        _normalized_utils_paths.add(_normalized_candidate)
+
 from utils.hf_download_logging import configure_hf_download_logging
 
 

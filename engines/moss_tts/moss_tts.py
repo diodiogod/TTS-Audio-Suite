@@ -142,8 +142,8 @@ class MossTTSEngine:
         if current < minimum:
             raise RuntimeError(
                 f"MOSS-TTS requires transformers>=4.57.0 for the official remote code; "
-                f"found {transformers.__version__}. Do not upgrade to Transformers 5 unless "
-                "you have validated Qwen3-TTS compatibility in this suite."
+                f"found {transformers.__version__}. Run the TTS Audio Suite installer in the "
+                "configured ComfyUI environment to update the shared dependency."
             )
 
     @staticmethod
@@ -525,8 +525,10 @@ class MossTTSEngine:
         n_vq_for_inference: Optional[int] = None,
     ) -> Tuple[torch.Tensor, int]:
         """Generate a single MOSS-TTS utterance."""
-        if not str(text or "").strip():
-            raise ValueError("MOSS-TTS requires non-empty text")
+        clean_text = str(text or "").strip()
+        clean_ambient_sound = str(ambient_sound or "").strip()
+        if not clean_text and not clean_ambient_sound:
+            raise ValueError("MOSS-TTS requires text or an ambient-sound description")
 
         self._ensure_runtime_device()
 
@@ -539,13 +541,13 @@ class MossTTSEngine:
         references = [reference_item] if reference_item is not None else None
         language_value = self._normalize_language(language)
         user_message = self._processor.build_user_message(
-            text=str(text),
+            text=clean_text or None,
             reference=references,
             tokens=int(duration_tokens) if duration_tokens else None,
             instruction=str(instruction) if instruction else None,
             quality=str(quality) if quality else None,
             sound_event=str(sound_event) if sound_event else None,
-            ambient_sound=str(ambient_sound) if ambient_sound else None,
+            ambient_sound=clean_ambient_sound or None,
             language=language_value,
         )
         batch = self._processor([[user_message]], mode="generation")

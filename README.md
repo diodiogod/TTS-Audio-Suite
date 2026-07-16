@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 17 Engines
+## Quick Engine Comparison — 18 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -43,6 +43,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **OmniVoice** | 🌐 600+ languages | ~3.7GB | 600+ language support, Instruction-based voice design |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +18 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | 31-language generation with MOSS-TTS-v1.5, Reference-free voice design with MOSS-VoiceGenerator |
+| **MOSS-SoundEffect v2** | 🇺🇸​🇨🇳 | ~11.2GB | Prompt-only text-to-sound generation, 48 kHz mono output |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
 
 📊 **[Full comparison tables →](docs/ENGINE_COMPARISON.md)** | **[Language matrix →](docs/LANGUAGE_SUPPORT.md)** | **[Feature matrix →](docs/FEATURE_COMPARISON.md)** | **[Model download sources →](docs/MODEL_DOWNLOAD_SOURCES.md)** | **[Model folder layouts →](docs/MODEL_LAYOUTS.md)**
@@ -886,7 +887,7 @@ Instruct: 用兴奋的语气说话。
 
 **Unified Voice Designer Node:**
 
-The shared designer accepts Qwen3-TTS, MOSS-TTS, or OmniVoice engine configurations and outputs the same `NARRATOR_VOICE` format. Instruction and language stay on the engine node. Select Qwen VoiceDesign or MOSS VoiceGenerator in that engine's model dropdown before connecting it to **🎨 Unified Voice Designer**; incompatible combinations stop with a direct correction message. OmniVoice uses its reference-free generation mode, and its controlled tag vocabulary should come from **📐 Visual Tag Builder** rather than arbitrary prose. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
+The shared designer accepts Qwen3-TTS, MOSS-TTS, or OmniVoice engine configurations and outputs the same `NARRATOR_VOICE` format. The voice-design instruction lives on **🎨 Unified Voice Designer**; the engine keeps model, language, and generation settings. Select Qwen VoiceDesign or MOSS VoiceGenerator in the engine's model dropdown, or set OmniVoice to **Voice Design** mode. The corresponding engine instruction stays visible but is disabled because it would be ignored. Incompatible modes stop with a direct correction message. OmniVoice's controlled tag vocabulary can still be assembled with **📐 Visual Tag Builder**. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
 
 The older Qwen-specific designer remains registered as **Legacy** so existing workflows continue to load, but new workflows should use the unified node.
 
@@ -931,9 +932,9 @@ Use the built-in OmniVoice preset in **📐 Visual Tag Builder** for the canonic
 
 **Model Variants:**
 
-* **Small 1.7B (Local Transformer)**: `MOSS-TTS-Local-Transformer`
-* **Recommended 8B v1.5 (Delay)**: `MOSS-TTS-v1.5` — 31 languages and more stable cloning
-* **Legacy 8B v1.0 (Delay)**: `MOSS-TTS`
+* **1.7B**: `MOSS-TTS-Local-Transformer`
+* **v1.5 8B**: `MOSS-TTS-v1.5` — 31 languages and more stable cloning
+* **v1 8B**: `MOSS-TTS`
 * **Native 8B Dialogue**: `MOSS-TTSD-v1.0`
 * **Voice Designer 1.7B**: `MOSS-VoiceGenerator` — select it in the MOSS engine for Unified Voice Designer
 * **Shared Codec**: `MOSS-Audio-Tokenizer`
@@ -1475,7 +1476,8 @@ For offline/manual setup:
 | Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Main model + tokenizer stack |
 | CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
 | Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
-| MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay/TTSD models plus shared MOSS-Audio-Tokenizer codec |
+| MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay/VoiceGenerator/SoundEffect v1/TTSD models plus shared MOSS-Audio-Tokenizer codec |
+| MOSS-SoundEffect v2 | `ComfyUI/models/TTS/moss_soundeffect_v2/` | ✅ | Official v2 diffusion pipeline; configured ComfyUI environment |
 | Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Granite ASR models; plus adds native diarization/timestamps, optional Qwen forced aligner reused lazily for timestamps/SRT fallback |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 | Dots TTS | `ComfyUI/models/TTS/dots_tts/` | ✅ | Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder |
