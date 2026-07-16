@@ -81,12 +81,16 @@ export function createWaveformRenderer(canvas) {
     let playback = { current: 0, start: 0, end: 0, duration: 0 };
 
     const draw = () => {
-        const rect = canvas.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
+        // clientWidth/clientHeight stay in layout pixels while ComfyUI zooms the
+        // DOM overlay with a CSS transform. Screen-space bounds do not, which
+        // made every playback/click redraw change the bitmap and bar count.
+        const logicalWidth = canvas.clientWidth;
+        const logicalHeight = canvas.clientHeight;
+        if (!logicalWidth || !logicalHeight) return;
 
         const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-        const width = Math.round(rect.width * pixelRatio);
-        const height = Math.round(rect.height * pixelRatio);
+        const width = Math.round(logicalWidth * pixelRatio);
+        const height = Math.round(logicalHeight * pixelRatio);
         if (canvas.width !== width || canvas.height !== height) {
             canvas.width = width;
             canvas.height = height;
@@ -98,16 +102,16 @@ export function createWaveformRenderer(canvas) {
 
         context.save();
         context.scale(pixelRatio, pixelRatio);
-        const center = rect.height / 2;
-        const barCount = Math.min(envelope.length, Math.max(48, Math.floor(rect.width / 4)));
-        const spacing = rect.width / barCount;
+        const center = logicalHeight / 2;
+        const barCount = Math.min(envelope.length, Math.max(48, Math.floor(logicalWidth / 4)));
+        const spacing = logicalWidth / barCount;
         context.lineWidth = Math.min(2.25, Math.max(1.25, spacing * 0.48));
         context.lineCap = "round";
 
-        const drawBars = (strokeStyle, clipFrom = 0, clipTo = rect.width) => {
+        const drawBars = (strokeStyle, clipFrom = 0, clipTo = logicalWidth) => {
             context.save();
             context.beginPath();
-            context.rect(clipFrom, 0, Math.max(0, clipTo - clipFrom), rect.height);
+            context.rect(clipFrom, 0, Math.max(0, clipTo - clipFrom), logicalHeight);
             context.clip();
             context.strokeStyle = strokeStyle;
             for (let bar = 0; bar < barCount; bar += 1) {
@@ -117,7 +121,7 @@ export function createWaveformRenderer(canvas) {
                 for (let index = from; index < to; index += 1) {
                     level = Math.max(level, envelope[index]);
                 }
-                const halfHeight = Math.max(1, level * (rect.height / 2 - 5));
+                const halfHeight = Math.max(1, level * (logicalHeight / 2 - 5));
                 const x = (bar + 0.5) * spacing;
                 context.beginPath();
                 context.moveTo(x, center - halfHeight);
@@ -127,7 +131,7 @@ export function createWaveformRenderer(canvas) {
             context.restore();
         };
 
-        const baseGradient = context.createLinearGradient(0, 3, 0, rect.height - 3);
+        const baseGradient = context.createLinearGradient(0, 3, 0, logicalHeight - 3);
         baseGradient.addColorStop(0, "rgba(125, 211, 252, 0.76)");
         baseGradient.addColorStop(0.5, "rgba(100, 116, 139, 0.52)");
         baseGradient.addColorStop(1, "rgba(125, 211, 252, 0.76)");
@@ -138,14 +142,14 @@ export function createWaveformRenderer(canvas) {
             const progressLimit = Math.max(progressStart, Math.min(playback.end, playback.duration));
             const progressEnd = Math.max(progressStart, Math.min(playback.current, progressLimit));
             if (progressEnd > progressStart) {
-                const playedGradient = context.createLinearGradient(0, 2, 0, rect.height - 2);
+                const playedGradient = context.createLinearGradient(0, 2, 0, logicalHeight - 2);
                 playedGradient.addColorStop(0, "rgba(186, 230, 253, 1)");
                 playedGradient.addColorStop(0.5, "rgba(56, 189, 248, 0.96)");
                 playedGradient.addColorStop(1, "rgba(186, 230, 253, 1)");
                 drawBars(
                     playedGradient,
-                    (progressStart / playback.duration) * rect.width,
-                    (progressEnd / playback.duration) * rect.width,
+                    (progressStart / playback.duration) * logicalWidth,
+                    (progressEnd / playback.duration) * logicalWidth,
                 );
             }
         }

@@ -279,7 +279,7 @@ function setupDomEditor(node) {
 
     const domWidget = node.addDOMWidget("voice_reference_editor", "audioUI", editor.element, {
         serialize: false,
-        hideOnZoom: false,
+        hideOnZoom: true,
     });
     domWidget.computeSize = (width) => [Math.max(320, (node.size?.[0] || width || 430) - 20), 232];
     hideNativeWidget(findWidget(node, "trim_start"));

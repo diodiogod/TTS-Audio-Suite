@@ -635,16 +635,20 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
             return [width || 320, WIDGET_HEIGHT];
         },
 
-        draw: function(ctx, node, widget_width, y, widget_height) {
+        draw: function(ctx, node, widget_width, y, widget_height, lowQuality) {
             this.y = y;
             this.lastWidth = widget_width;
+            if (lowQuality) {
+                this.isVisible = false;
+                return;
+            }
             this.isVisible = true;
             syncFromWidgets();
             drawRadarChart(ctx, widget_width, y);
         },
 
         mouse: function(event, pos, node) {
-            if (!pos) return false;
+            if (!this.isVisible || !pos) return false;
 
             const localX = pos[0];
             const localY = pos[1] - this.y - 10; // Adjust for chart offset
