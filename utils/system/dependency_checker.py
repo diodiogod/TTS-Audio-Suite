@@ -116,9 +116,9 @@ class DependencyChecker:
         # Check core dependencies
         core_missing = DependencyChecker.check_core_dependencies()
         if core_missing:
-            report_lines.append("⚠️  CRITICAL: Missing core dependencies:")
+            report_lines.append("⚠️  Critical TTS Audio Suite components are not installed correctly:")
             for module_name, package_name in core_missing:
-                report_lines.append(f"   • {package_name} (import: {module_name})")
+                report_lines.append(f"   • {package_name}")
             report_lines.append("")
         
         # Check engine-specific dependencies
@@ -129,7 +129,7 @@ class DependencyChecker:
                 engine_issues[engine] = missing
         
         if engine_issues:
-            report_lines.append("⚠️  Engine-specific missing dependencies:")
+            report_lines.append("⚠️  Some TTS Audio Suite engines are not installed correctly:")
             for engine, missing_deps in engine_issues.items():
                 engine_display = {
                     'chatterbox': 'ChatterBox TTS',
@@ -140,15 +140,18 @@ class DependencyChecker:
                 
                 report_lines.append(f"   {engine_display}:")
                 for module_name, package_name in missing_deps:
-                    report_lines.append(f"     • {package_name} (import: {module_name})")
+                    report_lines.append(f"     • {package_name}")
             report_lines.append("")
         
         if core_missing or engine_issues:
-            report_lines.append(f"🔧 To fix: {DependencyChecker.get_install_command()}")
-            
-            if engine_issues:
-                report_lines.append("")
-                report_lines.append("ℹ️  Note: Engine nodes will fail to load without their dependencies")
+            report_lines.extend([
+                "🔧 To repair the installation:",
+                "   1. Close ComfyUI.",
+                "   2. Open a terminal.",
+                "   3. Run this command:",
+                f"      {DependencyChecker.get_install_command()}",
+                "   4. Start ComfyUI again.",
+            ])
         
         return "\n".join(report_lines) if report_lines else ""
     
@@ -160,9 +163,9 @@ class DependencyChecker:
         # Check core dependencies
         core_missing = DependencyChecker.check_core_dependencies()
         if core_missing:
-            warnings.append("⚠️ Critical dependencies missing:")
+            warnings.append("⚠️ Critical TTS Audio Suite components are not installed correctly:")
             for module_name, package_name in core_missing:
-                warnings.append(f"   • {package_name} (import: {module_name})")
+                warnings.append(f"   • {package_name}")
         
         # Check engine-specific dependencies  
         engine_issues = {}
@@ -172,7 +175,7 @@ class DependencyChecker:
                 engine_issues[engine] = missing
         
         if engine_issues:
-            warnings.append("⚠️ Engine dependencies missing:")
+            warnings.append("⚠️ Some TTS Audio Suite engines are not installed correctly:")
             for engine, missing_deps in engine_issues.items():
                 engine_display = {
                     'chatterbox': 'ChatterBox TTS',
@@ -183,11 +186,17 @@ class DependencyChecker:
                 
                 warnings.append(f"   {engine_display}:")
                 for module_name, package_name in missing_deps:
-                    warnings.append(f"     • {package_name} (import: {module_name})")
+                    warnings.append(f"     • {package_name}")
         
         if core_missing or engine_issues:
-            warnings.append(f"🔧 Fix: {DependencyChecker.get_install_command()}")
-            warnings.append("ℹ️ Engine nodes will fail without dependencies")
+            warnings.extend([
+                "🔧 To repair the installation:",
+                "   1. Close ComfyUI.",
+                "   2. Open a terminal.",
+                "   3. Run this command:",
+                f"      {DependencyChecker.get_install_command()}",
+                "   4. Start ComfyUI again.",
+            ])
         
         return warnings
 
