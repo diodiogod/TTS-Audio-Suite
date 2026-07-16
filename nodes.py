@@ -275,7 +275,7 @@ try:
     UnifiedVoiceDesignerNode = unified_voice_designer_module.UnifiedVoiceDesignerNode
     UNIFIED_VOICE_DESIGNER_AVAILABLE = True
 except Exception as e:
-    print(f"❌ Unified Voice Designer failed: {e}")
+    print(f"❌ Voice Designer failed: {e}")
     UNIFIED_VOICE_DESIGNER_AVAILABLE = False
 
 # Load unified nodes
@@ -300,7 +300,7 @@ try:
     UnifiedSoundEffectsNode = unified_sound_effects_module.UnifiedSoundEffectsNode
     UNIFIED_SOUND_EFFECTS_AVAILABLE = True
 except Exception as e:
-    print(f"❌ Unified Sound Effects failed: {e}")
+    print(f"❌ Sound Effects failed: {e}")
     UNIFIED_SOUND_EFFECTS_AVAILABLE = False
 
 try:
@@ -718,7 +718,7 @@ if SAVE_CHARACTER_VOICE_AVAILABLE:
 
 if UNIFIED_VOICE_DESIGNER_AVAILABLE:
     NODE_CLASS_MAPPINGS["UnifiedVoiceDesignerNode"] = UnifiedVoiceDesignerNode
-    NODE_DISPLAY_NAME_MAPPINGS["UnifiedVoiceDesignerNode"] = "🎨 Unified Voice Designer"
+    NODE_DISPLAY_NAME_MAPPINGS["UnifiedVoiceDesignerNode"] = "🎨 Voice Designer"
 
 
 

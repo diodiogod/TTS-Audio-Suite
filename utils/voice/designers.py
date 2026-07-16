@@ -252,7 +252,7 @@ def design_voice(
     seed: int = 0,
 ) -> VoiceDesignResult:
     if not isinstance(engine_data, dict):
-        raise TypeError("Unified Voice Designer requires a TTS_ENGINE connection")
+        raise TypeError("Voice Designer requires a TTS_ENGINE connection")
     capabilities = engine_data.get("capabilities") or []
     if "voice_design" not in capabilities:
         raise ValueError(

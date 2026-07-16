@@ -1080,7 +1080,7 @@ Hello! This is unified SRT TTS with character switching.
                 selected_model = config.get("model_variant") or config.get("model_name") or "selected model"
                 raise ValueError(
                     f"'{selected_model}' is a voice-design model and cannot be used with TTS SRT. "
-                    "Connect this engine to Unified Voice Designer, or select a standard TTS model in the engine node."
+                    "Connect this engine to Voice Designer, or select a standard TTS model in the engine node."
                 )
             if config.get("model_role") == "sound_effects":
                 selected_model = config.get("model_variant") or config.get("model_name") or "selected model"

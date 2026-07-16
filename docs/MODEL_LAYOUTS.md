@@ -281,7 +281,7 @@ Notes:
 - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
 - `MOSS-TTS-v1.5` is the current 8B delay model with 31-language support.
 - `MOSS-TTS` is the legacy official 8B delay model.
-- `MOSS-VoiceGenerator` is the 1.7B voice-design provider used by Unified Voice Designer.
+- `MOSS-VoiceGenerator` is the 1.7B voice-design provider used by Voice Designer.
 - `MOSS-SoundEffect` is the v1 sound-effect checkpoint used through the MOSS-TTS engine and 🌩️ Sound Effects.
 - `MOSS-TTSD-v1.0` is the official 8B native multi-speaker dialogue model.
 - Integrated training currently exports LoRA adapters into `moss_tts/loras/<adapter_name>/`.

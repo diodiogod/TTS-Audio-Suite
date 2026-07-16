@@ -90,13 +90,13 @@ class MossTTSEngineNode(BaseTTSNode):
                     "tooltip": (
                         "MOSS-TTS model selection.\n"
                         "\n"
-                        "If a local model folder is detected, the dropdown shows local:ModelName.\n"
-                        "Otherwise it shows friendly built-in choices.\n"
+                        "Built-in choices remain available for automatic download or local fallback.\n"
+                        "Detected model folders are also listed explicitly as local:ModelName.\n"
                         "\n"
                         "1.7B: smaller local-transformer architecture.\n"
                         "v1.5 8B: current multilingual model.\n"
                         "v1 8B: original checkpoint.\n"
-                        "Voice Design 1.7B: MOSS-VoiceGenerator for Unified Voice Designer only.\n"
+                        "Voice Design 1.7B: MOSS-VoiceGenerator for Voice Designer only.\n"
                         "Sound Effects 8B v1: MOSS-SoundEffect for the 🌩️ Sound Effects node only.\n"
                         "\n"
                         "Native Multi-Speaker Dialogue mode ignores this selector and uses MOSS-TTSD-v1.0 automatically."
@@ -201,9 +201,9 @@ class MossTTSEngineNode(BaseTTSNode):
                     "multiline": True,
                     "tooltip": (
                         "How the whole segment should be spoken.\n"
-                        "Unified Voice Designer uses this as the voice description when MOSS-VoiceGenerator is selected.\n"
+                        "Voice Designer uses this as the voice description when MOSS-VoiceGenerator is selected.\n"
                         "For speech models, use this as an engine default or override it per segment with [instruction:...].\n"
-                        "For MOSS-VoiceGenerator this field is disabled because Unified Voice Designer supplies the voice instruction.\n"
+                        "For MOSS-VoiceGenerator this field is disabled because Voice Designer supplies the voice instruction.\n"
                         "Use short natural instructions.\n"
                         "Examples:\n"
                         "• Speak softly and calmly\n"
@@ -355,35 +355,30 @@ class MossTTSEngineNode(BaseTTSNode):
 
     @classmethod
     def _get_ui_standard_model_options(cls) -> List[str]:
-        small = cls._find_local_variant("MOSS-TTS-Local-Transformer")
-        v15 = cls._find_local_variant("MOSS-TTS-v1.5")
-        legacy = cls._find_local_variant("MOSS-TTS")
-        return [
-            small if small.startswith("local:") else "1.7B",
-            v15 if v15.startswith("local:") else "v1.5 8B",
-            legacy if legacy.startswith("local:") else "v1 8B",
-        ]
+        return list(cls.STANDARD_MODEL_OPTIONS)
 
     @classmethod
     def _get_ui_native_model_option(cls) -> str:
-        native = cls._find_local_variant("MOSS-TTSD-v1.0")
-        return native if native.startswith("local:") else cls.NATIVE_MODEL_OPTION
+        return cls.NATIVE_MODEL_OPTION
 
     @classmethod
     def _get_ui_model_options(cls) -> List[str]:
-        voice_design = cls._find_local_variant("MOSS-VoiceGenerator")
-        voice_design_option = (
-            voice_design if voice_design.startswith("local:") else cls.VOICE_DESIGN_MODEL_OPTION
-        )
-        sound_effect = cls._find_local_variant("MOSS-SoundEffect")
-        sound_effect_option = (
-            sound_effect if sound_effect.startswith("local:") else cls.SOUND_EFFECT_MODEL_OPTION
-        )
         values = cls._get_ui_standard_model_options() + [
-            voice_design_option,
-            sound_effect_option,
+            cls.VOICE_DESIGN_MODEL_OPTION,
+            cls.SOUND_EFFECT_MODEL_OPTION,
             cls._get_ui_native_model_option(),
         ]
+        for model_name in (
+            "MOSS-TTS-Local-Transformer",
+            "MOSS-TTS-v1.5",
+            "MOSS-TTS",
+            "MOSS-VoiceGenerator",
+            "MOSS-SoundEffect",
+            "MOSS-TTSD-v1.0",
+        ):
+            local_model = cls._find_local_variant(model_name)
+            if local_model.startswith("local:") and local_model not in values:
+                values.append(local_model)
         return values
 
     @classmethod

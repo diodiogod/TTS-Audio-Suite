@@ -885,9 +885,9 @@ Instruct: 用兴奋的语气说话。
 - Works with all project features: character switching, language switching, pause tags, SRT timing, Step Audio EditX post-processing
 - **ASR Transcription**: The ✏️ ASR Transcribe node now supports both Qwen3-ASR and Granite ASR
 
-**Unified Voice Designer Node:**
+**Voice Designer Node:**
 
-The shared designer accepts Qwen3-TTS, MOSS-TTS, or OmniVoice engine configurations and outputs the same `NARRATOR_VOICE` format. The voice-design instruction lives on **🎨 Unified Voice Designer**; the engine keeps model, language, and generation settings. Select Qwen VoiceDesign or MOSS VoiceGenerator in the engine's model dropdown, or set OmniVoice to **Voice Design** mode. The corresponding engine instruction stays visible but is disabled because it would be ignored. Incompatible modes stop with a direct correction message. OmniVoice's controlled tag vocabulary can still be assembled with **📐 Visual Tag Builder**. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
+The shared designer accepts Qwen3-TTS, MOSS-TTS, or OmniVoice engine configurations and outputs the same `NARRATOR_VOICE` format. The voice-design instruction lives on **🎨 Voice Designer**; the engine keeps model, language, and generation settings. Select Qwen VoiceDesign or MOSS VoiceGenerator in the engine's model dropdown, or set OmniVoice to **Voice Design** mode. The corresponding engine instruction stays visible but is disabled because it would be ignored. Incompatible modes stop with a direct correction message. OmniVoice's controlled tag vocabulary can still be assembled with **📐 Visual Tag Builder**. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
 
 The older Qwen-specific designer remains registered as **Legacy** so existing workflows continue to load, but new workflows should use the unified node.
 
@@ -936,7 +936,7 @@ Use the built-in OmniVoice preset in **📐 Visual Tag Builder** for the canonic
 * **v1.5 8B**: `MOSS-TTS-v1.5` — 31 languages and more stable cloning
 * **v1 8B**: `MOSS-TTS`
 * **Native 8B Dialogue**: `MOSS-TTSD-v1.0`
-* **Voice Designer 1.7B**: `MOSS-VoiceGenerator` — select it in the MOSS engine for Unified Voice Designer
+* **Voice Designer 1.7B**: `MOSS-VoiceGenerator` — select it in the MOSS engine for Voice Designer
 * **Shared Codec**: `MOSS-Audio-Tokenizer`
 
 **Supported Native Input Forms (TTSD):**

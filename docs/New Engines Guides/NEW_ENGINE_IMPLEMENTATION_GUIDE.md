@@ -312,6 +312,8 @@ from utils.downloads.unified_downloader import UnifiedDownloader
 
 **File:** `nodes/engines/[engine_name]_engine_node.py`
 
+**Model dropdown rule:** Always keep canonical/downloadable model choices visible and add detected installations as separate `local:ModelName` choices; selecting a canonical choice should reuse its organized local installation when available, not replace or hide either choice.
+
 ### Phase 2: Unified Systems Integration
 
 #### Step 5: Integrate with Unified Model Loading

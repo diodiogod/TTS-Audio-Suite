@@ -73,7 +73,7 @@ class OmniVoiceEngineNode(BaseTTSNode):
                 "instruct": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "In Text to Speech mode, optionally guides speaker attributes such as gender, age, pitch, whisper, supported English accents, or Chinese dialects. A reference voice takes priority. In Voice Design mode this field is disabled because Unified Voice Designer supplies the design instruction."
+                    "tooltip": "In Text to Speech mode, optionally guides speaker attributes such as gender, age, pitch, whisper, supported English accents, or Chinese dialects. A reference voice takes priority. In Voice Design mode this field is disabled because Voice Designer supplies the design instruction."
                 }),
                 "layer_penalty_factor": ("FLOAT", {
                     "default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1,
@@ -111,7 +111,7 @@ class OmniVoiceEngineNode(BaseTTSNode):
                     "default": "Text to Speech",
                     "tooltip": (
                         "Restricts this engine instance to one operation. Text to Speech works with TTS Text/SRT "
-                        "and enables this engine's instruction. Voice Design works only with Unified Voice Designer, "
+                        "and enables this engine's instruction. Voice Design works only with Voice Designer, "
                         "which supplies the instruction. Duplicate the engine node if a workflow needs both modes."
                     ),
                 }),

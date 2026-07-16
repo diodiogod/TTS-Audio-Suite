@@ -87,9 +87,14 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         )
         specs = cls._model_specs()
         options = []
+        local_options = []
         for model_name in preferred_order:
             spec = specs[model_name]
-            options.append(cls._find_local_model(model_name) or spec["display"])
+            options.append(spec["display"])
+            local_model = cls._find_local_model(model_name)
+            if local_model:
+                local_options.append(local_model)
+        options.extend(local_options)
         # Kept at the end so old API/UI workflows validate long enough to be normalized.
         options.extend(cls.LEGACY_MODEL_VALUES)
         return options
@@ -178,7 +183,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                 # Model Configuration
                 "model_variant": (cls._model_options(), {
                     "default": cls._model_options()[0],
-                    "tooltip": "Explicit Qwen3-TTS checkpoint. Local installations use the local: prefix. Base models clone a reference voice, CustomVoice models use preset speakers, and VoiceDesign works only with Unified Voice Designer."
+                    "tooltip": "Explicit Qwen3-TTS checkpoint. Local installations use the local: prefix. Base models clone a reference voice, CustomVoice models use preset speakers, and VoiceDesign works only with Voice Designer."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
@@ -197,7 +202,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                 "instruct": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "Delivery instruction for the 1.7B CustomVoice checkpoint. Unified Voice Designer owns the voice description when a VoiceDesign checkpoint is selected, so this field is disabled there. Base and 0.6B CustomVoice models ignore it."
+                    "tooltip": "Delivery instruction for the 1.7B CustomVoice checkpoint. Voice Designer owns the voice description when a VoiceDesign checkpoint is selected, so this field is disabled there. Base and 0.6B CustomVoice models ignore it."
                 }),
 
                 # Generation Parameters

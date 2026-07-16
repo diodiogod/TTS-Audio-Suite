@@ -2,7 +2,7 @@
 Qwen3-TTS Voice Designer Node
 
 Creates custom voices from natural language descriptions using Qwen's dedicated VoiceDesign model.
-The shared Unified Voice Designer also exposes this provider alongside MOSS and OmniVoice.
+The shared Voice Designer also exposes this provider alongside MOSS and OmniVoice.
 
 Inherits torch.compile optimization settings from the connected Qwen3-TTS Engine node.
 """
