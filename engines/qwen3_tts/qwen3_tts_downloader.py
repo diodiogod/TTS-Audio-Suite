@@ -5,10 +5,8 @@ Handles automatic download and setup of Qwen3-TTS models using the unified downl
 Downloads models to organized TTS/qwen3_tts/ structure.
 """
 
-import logging
 import os
 import sys
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -20,25 +18,9 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.downloads.unified_downloader import unified_downloader
+from utils.hf_download_logging import quiet_hf_download_logs
 from utils.models.extra_paths import get_preferred_download_path, get_all_tts_model_paths
 import folder_paths
-
-
-@contextmanager
-def _suppress_hf_http_logs():
-    # TTS Audio Suite patch: keep download output readable by muting non-error
-    # HTTP request logs emitted by httpx/httpcore during Hugging Face downloads.
-    logger_names = ("httpx", "httpcore", "huggingface_hub")
-    original_levels = {}
-    try:
-        for name in logger_names:
-            logger = logging.getLogger(name)
-            original_levels[name] = logger.level
-            logger.setLevel(logging.WARNING)
-        yield
-    finally:
-        for name, level in original_levels.items():
-            logging.getLogger(name).setLevel(level)
 
 
 class Qwen3TTSDownloader:
@@ -238,7 +220,7 @@ class Qwen3TTSDownloader:
             from huggingface_hub import snapshot_download
 
             # Download entire model repository to target directory
-            with _suppress_hf_http_logs():
+            with quiet_hf_download_logs():
                 snapshot_download(
                     repo_id=repo_id,
                     local_dir=model_dir,

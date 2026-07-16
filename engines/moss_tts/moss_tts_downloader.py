@@ -5,37 +5,13 @@ Downloads official OpenMOSS Hugging Face repositories into
 ComfyUI/models/TTS/moss_tts/ instead of the default HF cache.
 """
 
-import logging
 import os
-from contextlib import contextmanager
 from typing import Any, Dict, Optional
 
 import folder_paths
+from utils.hf_download_logging import quiet_hf_download_logs
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
 from engines.moss_tts.model_specs import MOSS_CODEC_SPECS, MOSS_MODEL_SPECS
-
-
-@contextmanager
-def _clean_hf_download_output():
-    """Keep Hugging Face progress readable without leaking global logger changes."""
-    logger_names = ("httpx", "httpcore", "huggingface_hub")
-    original_levels = {name: logging.getLogger(name).level for name in logger_names}
-    try:
-        for name in logger_names:
-            logging.getLogger(name).setLevel(logging.ERROR)
-        yield
-    finally:
-        for name, level in original_levels.items():
-            logging.getLogger(name).setLevel(level)
-
-
-def _hf_auth_status() -> str:
-    try:
-        from huggingface_hub import get_token
-
-        return "authenticated" if get_token() else "anonymous (set HF_TOKEN for higher rate limits)"
-    except Exception:
-        return "unknown"
 
 
 class MossTTSDownloader:
@@ -101,17 +77,19 @@ class MossTTSDownloader:
         repo_id = model_info["repo_id"]
         model_dir = os.path.join(self.base_path, model_name)
 
-        print(f"\n📦 Downloading MOSS-TTS model: {model_name}")
-        print(f"   {model_info['description']}")
-        print(f"   Source: {repo_id}")
-        print(f"   Target: {model_dir}")
-        print(f"   Hugging Face: {_hf_auth_status()}")
-        print("   Progress: resolving repository files...\n")
+        print(f"\n{'=' * 60}")
+        print("📦 MOSS-TTS Model Download")
+        print(f"{'=' * 60}")
+        print(f"Model: {model_name}")
+        print(f"Description: {model_info['description']}")
+        print(f"Repository: {repo_id}")
+        print(f"Target: {model_dir}")
+        print(f"{'=' * 60}\n")
 
         try:
             from huggingface_hub import snapshot_download
 
-            with _clean_hf_download_output():
+            with quiet_hf_download_logs():
                 snapshot_download(
                     repo_id=repo_id,
                     local_dir=model_dir,

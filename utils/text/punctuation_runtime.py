@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from utils.aux_models.registry import get_punctuation_model_by_label
+from utils.hf_download_logging import quiet_hf_download_logs
 
 
 _MODEL_CACHE: Dict[str, object] = {}
@@ -53,11 +54,12 @@ class PunctuationModelDownloader:
                 "Please reinstall the suite dependencies."
             ) from exc
 
-        snapshot_download(
-            repo_id=model_info["repo_id"],
-            local_dir=model_dir,
-            local_dir_use_symlinks=False,
-        )
+        with quiet_hf_download_logs():
+            snapshot_download(
+                repo_id=model_info["repo_id"],
+                local_dir=model_dir,
+                local_dir_use_symlinks=False,
+            )
 
         if not self._is_model_ready(model_dir):
             raise RuntimeError(f"Punctuation model download incomplete: {model_info['name']}")

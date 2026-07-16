@@ -16,6 +16,13 @@ import importlib.util
 import os
 import sys
 
+from utils.hf_download_logging import configure_hf_download_logging
+
+
+# Keep every engine's Hugging Face download output readable. Download failures
+# are still reported by the suite's downloader error handling.
+configure_hf_download_logging()
+
 # Note: PyTorch inductor patches removed - not needed for PyTorch 2.10+ with triton-windows 3.6+
 # Qwen3-TTS torch.compile optimizations require:
 # - PyTorch 2.10.0+ with CUDA 13.0

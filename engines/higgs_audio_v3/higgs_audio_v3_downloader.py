@@ -8,6 +8,7 @@ import os
 from typing import Dict, Optional
 
 import folder_paths
+from utils.hf_download_logging import quiet_hf_download_logs
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
 
 
@@ -97,13 +98,14 @@ class HiggsAudioV3Downloader:
         try:
             from huggingface_hub import snapshot_download
 
-            snapshot_download(
-                repo_id=repo_id,
-                local_dir=model_dir,
-                local_dir_use_symlinks=False,
-                resume_download=True,
-                force_download=force,
-            )
+            with quiet_hf_download_logs():
+                snapshot_download(
+                    repo_id=repo_id,
+                    local_dir=model_dir,
+                    local_dir_use_symlinks=False,
+                    resume_download=True,
+                    force_download=force,
+                )
         except Exception as e:
             raise RuntimeError(f"Failed to download Higgs Audio v3 from {repo_id}: {e}") from e
 

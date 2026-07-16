@@ -4,30 +4,14 @@ OmniVoice model downloader.
 Downloads the official OmniVoice assets into ComfyUI/models/TTS/omnivoice/.
 """
 
-import logging
 import os
-from contextlib import contextmanager
 from typing import Dict, Optional
 
 import folder_paths
 from huggingface_hub import snapshot_download
 
+from utils.hf_download_logging import quiet_hf_download_logs
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
-
-
-@contextmanager
-def _suppress_hf_http_logs():
-    logger_names = ("httpx", "httpcore", "huggingface_hub")
-    original_levels = {}
-    try:
-        for name in logger_names:
-            logger = logging.getLogger(name)
-            original_levels[name] = logger.level
-            logger.setLevel(logging.WARNING)
-        yield
-    finally:
-        for name, level in original_levels.items():
-            logging.getLogger(name).setLevel(level)
 
 
 class OmniVoiceDownloader:
@@ -113,7 +97,7 @@ class OmniVoiceDownloader:
         print(f"{'=' * 60}\n")
 
         try:
-            with _suppress_hf_http_logs():
+            with quiet_hf_download_logs():
                 snapshot_download(
                     repo_id=repo_id,
                     local_dir=model_dir,
