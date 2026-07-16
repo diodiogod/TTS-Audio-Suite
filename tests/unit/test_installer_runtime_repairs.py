@@ -75,3 +75,15 @@ def test_vibevoice_runtime_avoids_webrtc_dependency_conflict():
         "pylibsrtp",
         "pyopenssl",
     }.intersection(profile.pip_packages)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "profile_name",
+    ("vibevoice_transformers4_shared", "qwen3_tts_transformers4_dedicated"),
+)
+def test_legacy_transformers_runtime_pins_compatible_kernels(profile_name):
+    profile = get_runtime_profile(profile_name)
+
+    assert profile is not None
+    assert "kernels>=0.6.1,<=0.9" in profile.pip_packages
