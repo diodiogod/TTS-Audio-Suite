@@ -809,9 +809,9 @@ class MossTTSProcessor:
         if not clean_text:
             return
 
+        display_name = resolved_character_label(character, voice_ref)
         if enable_chunking and len(clean_text) > max_chars:
             chunks = self.chunker.split_into_chunks(clean_text, max_chars)
-            display_name = resolved_character_label(character, voice_ref)
             print(f"📝 MOSS-TTS: Chunking '{display_name}' into {len(chunks)} chunk(s) (language={language})")
         else:
             chunks = [clean_text]

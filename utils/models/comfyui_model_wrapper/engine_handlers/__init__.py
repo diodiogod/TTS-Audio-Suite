@@ -9,6 +9,7 @@ from .generic_handler import GenericHandler
 from .step_audio_editx_handler import StepAudioEditXHandler
 from .cosyvoice_handler import CosyVoiceHandler
 from .qwen3_tts_handler import Qwen3TTSHandler
+from .moss_tts_handler import MossTTSHandler
 
 
 def get_engine_handler(engine: str) -> BaseEngineHandler:
@@ -35,6 +36,9 @@ def get_engine_handler(engine: str) -> BaseEngineHandler:
     elif engine == "qwen3_tts":
         # Qwen3-TTS handler for CUDA graph cleanup
         return Qwen3TTSHandler()
+    elif engine == "moss_tts":
+        # Large MOSS checkpoints must be released, not copied into system RAM.
+        return MossTTSHandler()
     else:
         # Generic handler for chatterbox, f5tts, rvc, etc.
         return GenericHandler()
@@ -48,5 +52,6 @@ __all__ = [
     'StepAudioEditXHandler',
     'CosyVoiceHandler',
     'Qwen3TTSHandler',
+    'MossTTSHandler',
     'get_engine_handler'
 ]

@@ -366,14 +366,29 @@ class ComfyUITTSModelManager:
             if COMFYUI_AVAILABLE and model_management is not None:
                 try:
                     if hasattr(model_management, 'current_loaded_models'):
-                        if wrapper in model_management.current_loaded_models:
-                            model_management.current_loaded_models.remove(wrapper)
+                        tracked_models = model_management.current_loaded_models
+                        matches = [
+                            loaded_model for loaded_model in list(tracked_models)
+                            if loaded_model is wrapper
+                            or getattr(loaded_model, '_tts_wrapper_ref', None) is wrapper
+                        ]
+                        for loaded_model in matches:
+                            tracked_models.remove(loaded_model)
+                        if matches:
                             print(f"🗑️ Removed model from ComfyUI tracking")
                 except Exception as e:
                     print(f"⚠️ Failed to remove from ComfyUI tracking: {e}")
 
-            # Unload from GPU
-            wrapper.model_unload()
+            # Permanent removal should release engines that provide a direct
+            # destruction path. Normal ComfyUI offloading still goes through
+            # wrapper.model_unload()/partially_unload() and remains reusable.
+            from .engine_handlers import get_engine_handler
+            handler = get_engine_handler(wrapper.model_info.engine)
+            release = getattr(handler, 'release', None)
+            if callable(release):
+                release(wrapper)
+            else:
+                wrapper.model_unload()
 
             # Explicitly delete wrapper to release all references
             del wrapper
