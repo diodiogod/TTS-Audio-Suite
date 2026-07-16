@@ -351,17 +351,11 @@ class Qwen3TTSProcessor:
 
         print(f"🔄 Qwen3-TTS: Processing {len(segment_objects)} character segments")
 
-        # Calculate total chunks across all segments for time estimation
-        chunk_texts = []
-        for seg in segment_objects:
-            seg_text = seg.text.strip()
-            if enable_chunking and len(seg_text) > max_chars:
-                # Estimate chunk count and sizes
-                chunks = self.chunker.split_into_chunks(seg_text, max_chars)
-                for chunk in chunks:
-                    chunk_texts.append(len(chunk))
-            else:
-                chunk_texts.append(len(seg_text))
+        # Match the exact pause splitting and chunking performed below so the
+        # progress tracker has one entry for every generated audio block.
+        chunk_texts = self._plan_generation_block_lengths(
+            segment_objects, enable_chunking, max_chars
+        )
 
         # Only start job if not already tracking (SRT processor manages job at higher level)
         self._srt_mode = self.adapter.job_tracker is not None
@@ -410,6 +404,34 @@ class Qwen3TTSProcessor:
             )
 
         return audio_segments
+
+    def _plan_generation_block_lengths(
+        self, segment_objects, enable_chunking: bool, max_chars: int
+    ) -> List[int]:
+        block_lengths = []
+
+        for segment in segment_objects:
+            segment_text = segment.text.strip()
+            if PauseTagProcessor.has_pause_tags(segment_text):
+                pause_segments, _ = PauseTagProcessor.parse_pause_tags(segment_text)
+                text_parts = [
+                    content for segment_type, content in pause_segments
+                    if segment_type == "text"
+                ]
+            else:
+                text_parts = [segment_text]
+
+            for text_part in text_parts:
+                clean_text, _ = get_edit_tags_for_segment(text_part)
+                if enable_chunking and len(text_part) > max_chars:
+                    block_lengths.extend(
+                        len(chunk)
+                        for chunk in self.chunker.split_into_chunks(clean_text, max_chars)
+                    )
+                else:
+                    block_lengths.append(len(clean_text))
+
+        return block_lengths
 
     def _process_character_block(self, character: str, combined_text: str,
                                voice_mapping: Dict[str, Any], params: Dict,

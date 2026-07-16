@@ -74,6 +74,14 @@ def _patch_upstream_project_root_probe() -> None:
     pyrootutils.setup_root = lambda *args, **kwargs: PROJECT_ROOT
 
 
+def _patch_removed_torchaudio_backend_probe() -> None:
+    """Restore the harmless backend probe removed by torchaudio 2.9."""
+    import torchaudio
+
+    if not hasattr(torchaudio, "list_audio_backends"):
+        torchaudio.list_audio_backends = lambda: []
+
+
 def _load_references_preserving_current_speaker_tags(self, references, use_cache):
     """Reuse encoded audio, but never reuse a prior request's speaker-tagged text."""
     from hashlib import sha256
@@ -320,6 +328,7 @@ def main() -> int:
     protocol_out = sys.stdout
     sys.stdout = sys.stderr
     _patch_upstream_project_root_probe()
+    _patch_removed_torchaudio_backend_probe()
     engine = None
     compile_enabled = False
     first_generation = True

@@ -1204,26 +1204,6 @@ class TTSAudioInstaller:
                 self.log("Windows Fix: Install Visual C++ Build Tools or use a compatible Python version", "INFO")
                 self.log("This is often due to missing pre-built wheels for your Python version", "INFO")
 
-        vibevoice_deps = [
-            "aiortc",      # Audio/video real-time communication - safe to install
-            "pyee",        # Event emitter - lightweight
-            "dnspython",   # DNS toolkit - safe
-            "ifaddr",      # Network interface addresses - safe
-            "pylibsrtp",   # SRTP library - safe
-            "pyopenssl",   # OpenSSL wrapper - safe
-        ]
-        
-        self.log("Installing VibeVoice safe dependencies first", "INFO")
-        for dep in vibevoice_deps:
-            if self.check_package_installed(dep):
-                self.log(f"{dep} already satisfied - skipping", "SUCCESS")
-                continue
-            self.run_pip_command(
-                ["install", dep],
-                f"Installing {dep}",
-                ignore_errors=True
-            )
-        
         # Now install VibeVoice with --no-deps to prevent downgrades
         # NOTE: Using FushionHub fork temporarily - Microsoft removed the official repo
         # Original: https://github.com/microsoft/VibeVoice.git (no longer exists)
@@ -1268,14 +1248,14 @@ class TTSAudioInstaller:
             ("lingua", ["install", "lingua-language-detector"], "Installing lingua-language-detector"),
             ("langcodes", ["install", "langcodes"], "Installing langcodes"),
             ("loguru", ["install", "loguru"], "Installing loguru"),
-            ("tn", ["install", "WeTextProcessing"], "Installing WeTextProcessing"),
+            ("tn.chinese.normalizer", ["install", "WeTextProcessing"], "Installing WeTextProcessing"),
         ]
 
         for module_name, pip_args, description in dependency_probes:
             if self.module_available(module_name):
                 self.log(f"{module_name} import already satisfied - skipping", "SUCCESS")
                 continue
-            if module_name == "tn" and self.is_windows:
+            if module_name == "tn.chinese.normalizer" and self.is_windows:
                 self.log(
                     "WeTextProcessing/tn is unavailable on Windows; skipping the known pynini source build",
                     "WARNING",
@@ -1283,7 +1263,7 @@ class TTSAudioInstaller:
                 continue
             self.run_pip_command(pip_args, description, ignore_errors=True)
 
-        if self.module_available("dots_tts.runtime") and self.module_available("tn"):
+        if self.module_available("dots_tts.runtime") and self.module_available("tn.chinese.normalizer"):
             self.log("dots_tts.runtime already satisfied - skipping", "SUCCESS")
             return
 
@@ -1437,7 +1417,9 @@ class TTSAudioInstaller:
                 continue
             seen_roots.add(entry)
             candidate = Path(entry) / "fish_speech"
-            if candidate.is_dir() and (candidate / "__init__.py").exists():
+            # Fish S2 is an implicit namespace package and intentionally has
+            # no fish_speech/__init__.py in the official source tree.
+            if candidate.is_dir():
                 target_package = candidate
                 break
 
@@ -1450,6 +1432,8 @@ class TTSAudioInstaller:
         except OSError as error:
             self.log(f"Could not restore the Fish S2 source package: {error}", "ERROR")
             return False
+
+        importlib.invalidate_caches()
 
         self.log(
             f"Restored complete Fish S2 source package in {target_package}",
@@ -1787,7 +1771,7 @@ class TTSAudioInstaller:
 
         # Dots supplies a no-op normalizer when tn/WeTextProcessing is absent;
         # this affects text normalization quality, not engine availability.
-        if not self.module_available("tn"):
+        if not self.module_available("tn.chinese.normalizer"):
             warning = "Dots TTS text normalization unavailable; Dots will use its built-in no-op fallback"
             self.add_install_warning(
                 "Dots TTS text normalization (optional)",

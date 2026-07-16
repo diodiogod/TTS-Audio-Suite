@@ -198,6 +198,25 @@ function restoreSerializedWidgets(node, info) {
     });
 }
 
+function migrateLegacySerializedWidgets(node, info) {
+    if (!Array.isArray(info?.widgets_values) || !node.widgets) return false;
+
+    const customizedIndex = node.widgets.findIndex((widget) => widget.name === "customized");
+    if (customizedIndex < 0 || customizedIndex < info.widgets_values.length) return false;
+
+    // Workflows saved before editable references had no trim/customized fields.
+    // Treat their selected library voice as canonical, regardless of stale
+    // positional widget values restored by ComfyUI.
+    const voiceName = findWidget(node, "voice_name")?.value;
+    if (!voiceName || voiceName === "none") return false;
+
+    setWidgetValue(node, findWidget(node, "reference_text"), "");
+    setWidgetValue(node, findWidget(node, "trim_start"), 0);
+    setWidgetValue(node, findWidget(node, "trim_end"), 0);
+    setWidgetValue(node, findWidget(node, "customized"), false);
+    return true;
+}
+
 function syncRestoredVoice(node) {
     const voiceName = findWidget(node, "voice_name")?.value;
     if (!voiceName || voiceName === "none") {
@@ -313,6 +332,7 @@ function setupCharacterVoices(node) {
         state.configuring = true;
         const result = originalOnConfigure ? originalOnConfigure(info) : undefined;
         restoreSerializedWidgets(node, info);
+        migrateLegacySerializedWidgets(node, info);
         state.configuring = false;
         setTimeout(() => syncRestoredVoice(node), 0);
         return result;
