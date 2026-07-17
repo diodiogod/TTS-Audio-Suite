@@ -1,5 +1,6 @@
 import json
 import os
+import warnings
 from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
@@ -214,18 +215,27 @@ class MossSoundEffectPipeline(torch.nn.Module):
             if self.dtype == torch.float32
             else torch.autocast(device_type, dtype=self.dtype)
         )
-        with autocast_context:
-            audio = self.engine(
-                prompt=prompts if len(prompts) > 1 else prompts[0],
-                negative_prompt=negative_prompt,
-                seed=int(seed),
-                cfg_scale=float(cfg_scale),
-                sigma_shift=float(sigma_shift),
-                num_inference_steps=int(num_inference_steps),
-                num_samples=num_samples_full,
-                num_channels=int(num_channels),
-                progress_bar_cmd=progress_bar_cmd,
+        with warnings.catch_warnings():
+            # TTS Audio Suite patch: upstream intentionally compiles a RoPE path
+            # containing complex-valued frequency buffers. TorchInductor warns
+            # about its own fallback even though generation remains correct.
+            warnings.filterwarnings(
+                "ignore",
+                message="Torchinductor does not support code generation for complex operators.*",
+                category=UserWarning,
             )
+            with autocast_context:
+                audio = self.engine(
+                    prompt=prompts if len(prompts) > 1 else prompts[0],
+                    negative_prompt=negative_prompt,
+                    seed=int(seed),
+                    cfg_scale=float(cfg_scale),
+                    sigma_shift=float(sigma_shift),
+                    num_inference_steps=int(num_inference_steps),
+                    num_samples=num_samples_full,
+                    num_channels=int(num_channels),
+                    progress_bar_cmd=progress_bar_cmd,
+                )
 
         output_samples = int(self.sample_rate * seconds)
         audio = audio[:, :, :output_samples]

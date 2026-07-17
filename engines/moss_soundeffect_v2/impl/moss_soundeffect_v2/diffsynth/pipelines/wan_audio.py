@@ -262,6 +262,10 @@ class WanAudioPipeline(BasePipeline):
             f"  DiT loaded: missing={len(load_result.missing_keys)}, "
             f"unexpected={len(load_result.unexpected_keys)}"
         )
+        # TTS Audio Suite patch: load_state_dict casts checkpoint tensors to the
+        # freshly-created module's FP32 dtype. Move the DiT to the requested
+        # inference dtype explicitly so autocast inputs and LayerNorm weights match.
+        dit = dit.to(device=device, dtype=torch_dtype)
 
         pipe = cls(
             device=device,

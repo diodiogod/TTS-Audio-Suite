@@ -14,8 +14,10 @@ class Qwen3TextEncoder(nn.Module):
         super().__init__()
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            torch_dtype=torch_dtype,
-            output_hidden_states=True,
+            # TTS Audio Suite patch: Transformers 5 renamed torch_dtype to dtype.
+            # Hidden states are requested during forward instead of being stored
+            # as an invalid generation-config flag while loading the model.
+            dtype=torch_dtype,
         )
         self.model.eval()
         for param in self.model.parameters():
