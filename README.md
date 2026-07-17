@@ -1514,6 +1514,7 @@ Your support helps maintain and improve this project for the entire community!
 | **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion                                            | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
 | **Unified ✏️ ASR Transcribe + SRT Builder** | Modular ASR + subtitle workflow | • Granite ASR + Qwen3 ASR examples<br>• Separate transcription and SRT building<br>• Works with the new Text to SRT Builder flow | ✅ **New in v4.23** | [📁 JSON](example_workflows/Unified%20✏️%20ASR%20Transcribe%20+%20SRT%20Builder.json) |
 | **Unified 🌩️ Sound Effects** | Text-to-sound generation with compatible engines | • MOSS-SoundEffect v1 and v2<br>• Per-segment parameters and pauses<br>• Long-duration chunking and audio cache | ✅ **New** | [📁 JSON](example_workflows/Unified%20🌩️%20Sound%20Effects.json) |
+| **Unified 🎨 Voice Designer** | Reference-free character voice creation | • Qwen3-TTS, MOSS-TTS, and OmniVoice<br>• Free-form descriptions or Visual Tag Builder<br>• Preview and save reusable character voices | ✅ **New** | [📁 JSON](example_workflows/Unified%20🎨%20Voice%20Designer.json) · [🖼️ Cover](example_workflows/Unified%20🎨%20Voice%20Designer.jpg) |
 
 ### Specific Workflows
 
