@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import importlib.util
 import hashlib
 import json
-import os
-import sys
 from dataclasses import dataclass
 from typing import Any, Dict, Protocol
 
@@ -112,25 +109,9 @@ def _narrator(
 
 
 class QwenVoiceDesignerProvider:
-    _node_class = None
-
-    @classmethod
-    def _load_node_class(cls):
-        if cls._node_class is not None:
-            return cls._node_class
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        module_path = os.path.join(project_root, "nodes", "qwen3_tts", "qwen3_tts_voice_designer_node.py")
-        module_name = "tts_audio_suite_qwen_voice_designer_provider"
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Cannot load Qwen voice designer from {module_path}")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = module
-        spec.loader.exec_module(module)
-        cls._node_class = module.Qwen3TTSVoiceDesignerNode
-        return cls._node_class
-
     def design(self, engine_data, voice_instruction, reference_text, seed):
+        from engines.adapters.qwen3_tts_adapter import Qwen3TTSEngineAdapter
+
         config = dict(_engine_config(engine_data))
         if config.get("model_role") != "voice_design" or config.get("model_type") != "VoiceDesign":
             selected = config.get("model_variant") or config.get("model_size") or "unknown"
@@ -141,17 +122,54 @@ class QwenVoiceDesignerProvider:
         instruction = str(voice_instruction or "").strip()
         language = _engine_language(config)
         config["instruct"] = instruction
-        node = self._load_node_class()()
-        opt_narrator, audio, info = node.design_voice(
-            engine_data, instruction, reference_text, language,
-            character_name="", overwrite_character=False, seed=seed,
+
+        model_size = str(config.get("model_size") or "1.7B")
+        model_name = str(config.get("model_name") or f"Qwen3-TTS-12Hz-{model_size}-VoiceDesign")
+        model_path = config.get("model_path") or config.get("model_variant") or model_name
+        adapter = Qwen3TTSEngineAdapter(None)
+        adapter.load_base_model(
+            model_path=model_path,
+            device=config.get("device", "auto"),
+            dtype=config.get("dtype", "auto"),
+            model_size=model_size,
+            attn_implementation=config.get("attn_implementation", "auto"),
+            runtime_mode=config.get("runtime_mode", "main_environment"),
+            runtime_profile=config.get("runtime_profile"),
+            context={
+                "model_type": "VoiceDesign",
+                "model_name": model_name,
+            },
+            use_torch_compile=config.get("use_torch_compile", False),
+            use_cuda_graphs=config.get("use_cuda_graphs", False),
+            compile_mode=config.get("compile_mode", "reduce-overhead"),
         )
-        opt_narrator.update({
-            "design_instruction": instruction,
-            "model": config.get("model_name", "Qwen3-TTS-12Hz-1.7B-VoiceDesign"),
-        })
+
+        waveform = adapter.generate_with_pause_tags(
+            reference_text,
+            voice_ref=None,
+            params={
+                **config,
+                "instruct": instruction,
+                "language": language,
+                "seed": int(seed or 0),
+            },
+            process_pauses=False,
+            character_name="voice_design",
+        )
+        audio = _audio_output(waveform, 24000)
+        opt_narrator = _narrator(
+            audio,
+            reference_text,
+            instruction,
+            "qwen3_tts",
+            model_name,
+            language,
+        )
         _attach_generation_fingerprint(opt_narrator, "qwen3_tts", config, reference_text, seed)
-        info = info.replace("\n\n💡 Tip: Provide a character_name to save this voice for reuse", "")
+        info = (
+            "Voice designed with Qwen3-TTS VoiceDesign\n"
+            f"Instruction: {instruction}\nModel: {model_name}"
+        )
         return VoiceDesignResult(opt_narrator, audio, info)
 
 

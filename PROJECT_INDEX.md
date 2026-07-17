@@ -116,7 +116,6 @@
 - `nodes/text/tts_tag_editor_node.py` - 🏷️ Multiline TTS Tag Editor: rich text editor with character/language/parameter dropdowns, preset system, syntax highlighting, undo/redo — pairs with `web/string_multiline_tag_editor.js`
 - `nodes/step_audio_editx_special/step_audio_editx_audio_editor_node.py` - 🎨 Audio Editor: post-process ANY engine's audio with Step Audio EditX (14 emotions, 32 styles, paralinguistic effects like `<Laughter>`, speed control) — universal, not just for Step Audio EditX engine
 - `nodes/engines/index_tts_emotion_options_node.py` - IndexTTS-2 emotion radar chart
-- `nodes/qwen3_tts/qwen3_tts_voice_designer_node.py` - Legacy-compatible Qwen-specific voice designer
 
 ### Audio / Video Nodes
 - `nodes/audio/analyzer_node.py` - Audio Wave Analyzer

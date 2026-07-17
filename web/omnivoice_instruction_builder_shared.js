@@ -305,11 +305,11 @@ function hideWidget(widget) {
     }
 }
 
-function setWidgetValue(widget, value) {
+function setWidgetValue(widget, value, emptyValue = "None") {
     if (!widget) {
         return;
     }
-    const nextValue = value || "None";
+    const nextValue = value || emptyValue;
     if (widget.value === nextValue) {
         return;
     }
@@ -945,7 +945,11 @@ function writeBuilderStateToWidgets(node, state, ui = null) {
     const bucket = getPresetStateBucket(state, preset.id);
     const columnOrder = ui?.columnOrder || getPresetColumnIds(preset);
     setWidgetValue(findWidgetByName(node, "output_language"), state.output_language || "English");
-    setWidgetValue(findWidgetByName(node, "instruct_text"), buildPreviewFromState(state, preset, columnOrder));
+    setWidgetValue(
+        findWidgetByName(node, "instruct_text"),
+        buildPreviewFromState(state, preset, columnOrder),
+        "",
+    );
 
     const syncOmniVoice = isOmniVoicePreset(preset) && preset.id === OMNIVOICE_PRESET_ID;
     const languageMode = bucket.switchModes.language || "accent";
@@ -2913,6 +2917,7 @@ function createBuilder(node) {
     const refresh = () => {
         const state = syncStateFromWidgets(node);
         node.__omnivoiceInstructionState = state;
+        writeBuilderStateToWidgets(node, state, ui);
         renderState(node, ui, state);
         applyColumnLayout(ui);
         drawPath(ui, state);

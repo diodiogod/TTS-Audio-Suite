@@ -395,15 +395,6 @@ except Exception as e:
     print(f"❌ Step Audio EditX Audio Editor failed: {e}")
     STEP_AUDIO_EDITX_EDITOR_AVAILABLE = False
 
-# Load Qwen3-TTS Voice Designer node
-try:
-    qwen3_tts_voice_designer_module = load_node_module("qwen3_tts_voice_designer_node", "qwen3_tts/qwen3_tts_voice_designer_node.py")
-    Qwen3TTSVoiceDesignerNode = qwen3_tts_voice_designer_module.Qwen3TTSVoiceDesignerNode
-    QWEN3_TTS_VOICE_DESIGNER_AVAILABLE = True
-except Exception as e:
-    print(f"❌ Qwen3-TTS Voice Designer failed: {e}")
-    QWEN3_TTS_VOICE_DESIGNER_AVAILABLE = False
-
 # Load RVC nodes
 try:
     rvc_engine_module = load_node_module("rvc_engine_node", "engines/rvc_engine_node.py")
@@ -682,10 +673,6 @@ if OMNIVOICE_ENGINE_AVAILABLE:
 if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceInstructionBuilderNode"] = OmniVoiceInstructionBuilderNode
     NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceInstructionBuilderNode"] = "📐 Visual Tag Builder"
-
-if QWEN3_TTS_VOICE_DESIGNER_AVAILABLE:
-    NODE_CLASS_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = Qwen3TTSVoiceDesignerNode
-    NODE_DISPLAY_NAME_MAPPINGS["Qwen3TTSVoiceDesignerNode"] = "🎨 Qwen3-TTS Voice Designer (Legacy)"
 
 if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["ChatterBoxOfficial23LangEngineNode"] = ChatterBoxOfficial23LangEngineNode

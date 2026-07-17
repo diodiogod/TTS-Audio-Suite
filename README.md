@@ -891,8 +891,6 @@ Instruct: 用兴奋的语气说话。
 
 The shared designer accepts Qwen3-TTS, MOSS-TTS, or OmniVoice engine configurations and outputs the same `NARRATOR_VOICE` format. The voice-design instruction lives on **🎨 Voice Designer**; the engine keeps model, language, and generation settings. Select Qwen VoiceDesign or MOSS VoiceGenerator in the engine's model dropdown, or set OmniVoice to **Voice Design** mode. The corresponding engine instruction stays visible but is disabled because it would be ignored. Incompatible modes stop with a direct correction message. OmniVoice's controlled tag vocabulary can still be assembled with **📐 Visual Tag Builder**. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
 
-The older Qwen-specific designer remains registered as **Legacy** so existing workflows continue to load, but new workflows should use the unified node.
-
 **💾 Save Character Voice** accepts only `opt_narrator`, keeping persistence separate from voice construction. For existing audio, use **🎭 Character Voices** with the audio and its exact transcription, then connect its `opt_narrator` output to Save Character Voice. The save node writes the established three-file format—`name.wav`, `name.reference.txt`, and metadata in `name.txt`—under `models/voices/`.
 
 ```
