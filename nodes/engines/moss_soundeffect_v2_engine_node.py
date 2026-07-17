@@ -30,7 +30,11 @@ class MossSoundEffectV2EngineNode:
             "required": {
                 "model": (cls._model_options(), {
                     "default": cls._model_options()[0],
-                    "tooltip": "Official MOSS-SoundEffect v2 model. A local: entry means it is already downloaded.",
+                    "tooltip": (
+                        "Official MOSS-SoundEffect v2 model. A local: entry means it is already downloaded.\n"
+                        "The DiT uses torch.compile automatically. Its first generation can spend several minutes "
+                        "compiling. Compatible compiled artifacts are cached and reused across ComfyUI sessions."
+                    ),
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",

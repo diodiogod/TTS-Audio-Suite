@@ -1170,7 +1170,7 @@ Back to the main narrator voice for the conclusion.""",
                 # Filter out pause tags and get unique characters
                 characters_from_tags = []
                 for tag in character_tags:
-                    if not tag.startswith('pause:'):
+                    if not tag.lower().startswith(('pause:', 'wait:', 'stop:')):
                         # Extract character name (before | for parameters)
                         character_name = tag.split('|')[0].strip()
                         characters_from_tags.append(character_name)
@@ -1625,7 +1625,7 @@ Back to the main narrator voice for the conclusion.""",
                 character_tags = re.findall(r'\[([^\]]+)\]', text)
                 tagged_characters = []
                 for tag in character_tags:
-                    if not tag.startswith('pause:'):
+                    if not tag.lower().startswith(('pause:', 'wait:', 'stop:')):
                         tagged_characters.append(tag.split('|')[0].strip().lower())
 
                 available_chars = get_available_characters()
@@ -1702,7 +1702,7 @@ Back to the main narrator voice for the conclusion.""",
                 character_tags = re.findall(r'\[([^\]]+)\]', text)
                 characters_from_tags = []
                 for tag in character_tags:
-                    if not tag.startswith('pause:'):
+                    if not tag.lower().startswith(('pause:', 'wait:', 'stop:')):
                         character_name = tag.split('|')[0].strip().lower()
                         characters_from_tags.append(character_name)
 

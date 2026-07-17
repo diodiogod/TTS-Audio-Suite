@@ -527,6 +527,21 @@ export class TagUtilities {
         }
     }
 
+    static normalizeStandalonePauseTags(text) {
+        return text.replace(/\[([^\]]+)\]/g, (fullTag, tagContent) => {
+            const parts = tagContent.split("|").map(part => part.trim()).filter(Boolean);
+            const pauseParts = parts.filter(part => /^(?:pause|wait|stop):\d+(?:\.\d+)?(?:s|ms)?$/i.test(part));
+            if (pauseParts.length === 0 || (pauseParts.length === 1 && parts.length === 1)) {
+                return fullTag;
+            }
+
+            const regularParts = parts.filter(part => !pauseParts.includes(part));
+            const standalonePauses = pauseParts.map(part => `[${part}]`).join(" ");
+            const regularTag = regularParts.length > 0 ? ` [${regularParts.join("|")}]` : "";
+            return standalonePauses + regularTag;
+        });
+    }
+
     static modifyTagContent(text, caretPos, modifyFn) {
         // Universal tag modification logic - used by both parameter and character insertion
         // modifyFn(tagContent) should return new tagContent for inside-tag cases

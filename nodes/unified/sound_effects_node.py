@@ -20,7 +20,14 @@ class UnifiedSoundEffectsNode:
                     "default": "Heavy rain on a metal rooftop with distant thunder and occasional wind gusts.",
                     "tooltip": (
                         "Describe the sound, environment, actions, texture, distance, and timing you want. "
-                        "This text is a sound description, not words to be spoken."
+                        "This text is a sound description, not words to be spoken.\n"
+                        "Inline parameter tags can generate and concatenate multiple segments, for example:\n"
+                        "[seconds:4|seed:42] Rain. [seconds:2|negative:speech, music|cfg:5] Thunder.\n"
+                        "Use [pause:2], [wait:500ms], or [stop:1] to insert silence. Keep pause and parameter tags "
+                        "separate, for example [wait:1.2] [cfg:7.5] next sound.\n"
+                        "v2 supports seed, seconds, steps, cfg, sigma_shift, and negative_prompt. "
+                        "v1 supports seed, seconds, temperature, top_p, top_k, repetition_penalty, "
+                        "duration_tokens, and max_new_tokens."
                     ),
                 }),
                 "duration_seconds": ("FLOAT", {
@@ -29,8 +36,8 @@ class UnifiedSoundEffectsNode:
                     "max": 300.0,
                     "step": 0.5,
                     "tooltip": (
-                        "Requested output duration in seconds. Engine limits still apply. "
-                        "MOSS SoundEffect v2 supports up to 30 seconds; v1 converts this to its native audio-token hint."
+                        "Duration of each described segment. A single MOSS v2 segment longer than 30 seconds "
+                        "is generated in overlapping chunks and trimmed to this exact duration. Inline [seconds:X] overrides it."
                     ),
                 }),
                 "seed": ("INT", {
@@ -41,6 +48,16 @@ class UnifiedSoundEffectsNode:
                 }),
             },
             "optional": {
+                "crossfade_seconds": ("FLOAT", {
+                    "default": 1.0,
+                    "min": 0.0,
+                    "max": 10.0,
+                    "step": 0.1,
+                    "tooltip": (
+                        "Overlap between adjacent generated segments and automatic long-duration chunks. "
+                        "Use 0 for a hard join. [pause:X], [wait:X], and [stop:X] insert exact silence and disable the crossfade across that boundary."
+                    ),
+                }),
                 "enable_audio_cache": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "Reuse audio when the engine, description, duration, seed, and generation settings are identical.",
@@ -54,13 +71,14 @@ class UnifiedSoundEffectsNode:
     CATEGORY = "TTS Audio Suite/🌩️ Sound Effects"
     DESCRIPTION = "Generate non-speech sound effects from a text description using any compatible engine."
 
-    def generate(self, TTS_engine, description, duration_seconds, seed, enable_audio_cache=True):
+    def generate(self, TTS_engine, description, duration_seconds, seed, crossfade_seconds=1.0, enable_audio_cache=True):
         result = generate_sound_effect(
             engine_data=TTS_engine,
             description=description,
             duration_seconds=duration_seconds,
             seed=seed,
             enable_audio_cache=enable_audio_cache,
+            crossfade_seconds=crossfade_seconds,
         )
         return result.audio, result.generation_info
 

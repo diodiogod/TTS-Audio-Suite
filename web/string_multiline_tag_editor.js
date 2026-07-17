@@ -2237,7 +2237,7 @@ function addStringMultilineTagEditorWidget(node) {
                 rows: [
                     { syntax: "[Alice]", purpose: "Switch active speaker", notes: "Uses the named character for following text until another speaker tag appears." },
                     { syntax: "[en:Alice]", purpose: "Set language and speaker together", notes: "Useful when one segment needs a different language voice or pronunciation context." },
-                    { syntax: "[pause:1s]", purpose: "Insert silence", notes: "Duration can use values like 500ms, 1s, 2.5s." }
+                    { syntax: "[pause:1s] [Alice|temperature:0.7]", purpose: "Insert silence", notes: "Keep pause as a separate tag before the character or parameter tag. Format fixes nested pause parts." }
                 ],
                 bullets: [
                     "Character names are case-insensitive and unknown characters fall back safely.",

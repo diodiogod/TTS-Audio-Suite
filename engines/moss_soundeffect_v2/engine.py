@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gc
+import os
 import sys
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
@@ -20,6 +21,26 @@ class MossSoundEffectV2Engine:
         self.device_name = resolve_torch_device(device)
         self.dtype_name = dtype
         self.pipeline = None
+        self._compile_notice_shown = False
+        self.compile_cache_dir = self._configure_compile_cache()
+
+    def _configure_compile_cache(self) -> Optional[Path]:
+        """Enable persistent Inductor graph reuse before importing the compiled pipeline."""
+        try:
+            model_dir = Path(self.model_path).resolve()
+            tts_models_dir = model_dir.parent.parent
+            cache_root = tts_models_dir / "compile_cache"
+            inductor_dir = cache_root / "torchinductor"
+            triton_dir = cache_root / "triton"
+            inductor_dir.mkdir(parents=True, exist_ok=True)
+            triton_dir.mkdir(parents=True, exist_ok=True)
+            os.environ["TORCHINDUCTOR_FX_GRAPH_CACHE"] = "1"
+            os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR", str(inductor_dir))
+            os.environ.setdefault("TRITON_CACHE_DIR", str(triton_dir))
+            return cache_root
+        except Exception as exc:
+            print(f"⚠️ MOSS-SoundEffect v2: failed to configure persistent compile cache: {exc}")
+            return None
 
     @property
     def dtype(self) -> torch.dtype:
@@ -58,6 +79,8 @@ class MossSoundEffectV2Engine:
         print("🔄 Loading MOSS-SoundEffect v2 via unified interface")
         print(f"   Path: {self.model_path}")
         print(f"   Device: {self.device_name} | Dtype: {torch_dtype}")
+        if self.compile_cache_dir:
+            print(f"   Compile cache: {self.compile_cache_dir}")
         self.pipeline = pipeline_class.from_pretrained(
             self.model_path,
             device=self.device_name,
@@ -96,6 +119,10 @@ class MossSoundEffectV2Engine:
         **_unused,
     ) -> tuple[torch.Tensor, int]:
         self._ensure_model_loaded()
+        if not self._compile_notice_shown:
+            print("⚙️ MOSS-SoundEffect v2: Preparing the compiled DiT.")
+            print("   Compatible artifacts are reused from the persistent cache; missing graphs may take several minutes to compile.")
+            self._compile_notice_shown = True
         waveform = self.pipeline(
             prompt=str(description),
             seconds=float(duration_seconds),

@@ -263,9 +263,15 @@ class WanAudioPipeline(BasePipeline):
             f"unexpected={len(load_result.unexpected_keys)}"
         )
         # TTS Audio Suite patch: load_state_dict casts checkpoint tensors to the
-        # freshly-created module's FP32 dtype. Move the DiT to the requested
-        # inference dtype explicitly so autocast inputs and LayerNorm weights match.
+        # freshly-created module's FP32 dtype. Move trainable DiT tensors to the
+        # inference dtype, but preserve complex RoPE buffers: Module.to(dtype=...)
+        # would otherwise discard their imaginary component and break rope_apply.
+        rope_freqs = tuple(freq.to(device=device) for freq in dit.freqs)
+        dit.freqs_cis_0 = None
+        dit.freqs_cis_1 = None
+        dit.freqs_cis_2 = None
         dit = dit.to(device=device, dtype=torch_dtype)
+        dit.freqs_cis_0, dit.freqs_cis_1, dit.freqs_cis_2 = rope_freqs
 
         pipe = cls(
             device=device,

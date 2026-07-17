@@ -23,7 +23,7 @@ class PauseTagProcessor:
     """Handles pause tag parsing and audio generation with pauses"""
     
     # Regex pattern for flexible pause tag matching (supports pause, wait, stop aliases)
-    PAUSE_PATTERN = r'\[(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):(\d+(?:\.\d+)?)(s|ms)?\]'
+    PAUSE_PATTERN = r'\[(?:pause|wait|stop):(\d+(?:\.\d+)?)(s|ms)?\]'
     
     @staticmethod
     def parse_pause_tags(text: str) -> Tuple[List[Tuple[str, Union[str, float]]], str]:
@@ -40,33 +40,30 @@ class PauseTagProcessor:
         def normalize_duration(duration_str: str, unit: Optional[str] = None) -> float:
             """Convert pause duration to seconds"""
             duration = float(duration_str)
-            if unit == 'ms':
+            if unit and unit.lower() == 'ms':
                 return duration / 1000.0
             return duration
-        
+
         segments = []
         last_end = 0
-        
-        for match in re.finditer(PauseTagProcessor.PAUSE_PATTERN, text):
-            # Add text before pause tag
+
+        for match in re.finditer(PauseTagProcessor.PAUSE_PATTERN, text, re.IGNORECASE):
             if match.start() > last_end:
                 text_content = text[last_end:match.start()].strip()
                 if text_content:
                     segments.append(('text', text_content))
-            
-            # Add pause segment (group 1 is duration, group 2 is unit - pause type uses non-capturing group)
+
             duration = normalize_duration(match.group(1), match.group(2))
             segments.append(('pause', duration))
             last_end = match.end()
-        
-        # Add remaining text
+
         if last_end < len(text):
             remaining_text = text[last_end:].strip()
             if remaining_text:
                 segments.append(('text', remaining_text))
         
         # Create clean text without pause tags
-        clean_text = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text)
+        clean_text = re.sub(PauseTagProcessor.PAUSE_PATTERN, ' ', text, flags=re.IGNORECASE)
         clean_text = re.sub(r'\s+', ' ', clean_text).strip()
         
         return segments, clean_text
@@ -74,7 +71,7 @@ class PauseTagProcessor:
     @staticmethod
     def has_pause_tags(text: str) -> bool:
         """Check if text contains pause tags"""
-        return bool(re.search(PauseTagProcessor.PAUSE_PATTERN, text))
+        return bool(re.search(PauseTagProcessor.PAUSE_PATTERN, text, re.IGNORECASE))
     
     @staticmethod
     def create_silence_segment(duration_seconds: float, sample_rate: int, 

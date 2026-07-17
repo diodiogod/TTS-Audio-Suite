@@ -655,6 +655,8 @@ export function attachAllEventHandlers(
     // Format button
     formatBtn.addEventListener("click", () => {
         let text = getPlainText();
+        // Pause/wait/stop are timeline tags, not character parameters.
+        text = TagUtilities.normalizeStandalonePauseTags(text);
         // Normalize spacing around brackets: multiple spaces/tabs become single space
         text = text.replace(/[ \t]+\[/g, " [").replace(/\[[ \t]+/g, "[");
         // Remove spaces/tabs before ], but keep newlines

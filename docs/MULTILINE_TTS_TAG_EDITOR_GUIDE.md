@@ -51,6 +51,8 @@ Useful behavior:
 - Character names are inserted at the caret or wrapped around the current selection
 - Language and speaker can be combined in one tag
 - Parameters can be stacked with `|`
+- Keep pauses separate and before the tag they precede: `[pause:1s] [Alice|temperature:0.7]`
+- `Format` moves a pause nested with character or parameter parts into that standalone form
 - Presets can store either quick snippets or reusable speaker setups
 
 ## Inline Tags

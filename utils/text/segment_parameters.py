@@ -83,6 +83,11 @@ PARAMETER_ALIASES = {
     'ambient_sound': 'ambient_sound',
     'inference_steps': 'inference_steps',
     'steps': 'inference_steps',
+    'sigma_shift': 'sigma_shift',
+    'negative_prompt': 'negative_prompt',
+    'negative': 'negative_prompt',
+    'duration_seconds': 'duration_seconds',
+    'seconds': 'duration_seconds',
     'emotion_alpha': 'emotion_alpha',
     'vector': 'emotion_vector_inline',
     'emotion': 'emotion_text_inline',
@@ -97,14 +102,15 @@ PARAMETER_ENGINES = {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
         'dots_tts', 'fish_audio_s2', 'omnivoice',
-        'echo_tts', 'moss_tts'
+        'echo_tts', 'moss_tts', 'moss_soundeffect_v2'
     },
     'temperature': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
     },
     'cfg': {
-        'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang'
+        'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang',
+        'moss_soundeffect_v2'
     },
     'num_steps': {
         'echo_tts', 'dots_tts', 'omnivoice'
@@ -221,7 +227,16 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'inference_steps': {
-        'vibevoice'
+        'vibevoice', 'moss_soundeffect_v2'
+    },
+    'sigma_shift': {
+        'moss_soundeffect_v2'
+    },
+    'negative_prompt': {
+        'moss_soundeffect_v2'
+    },
+    'duration_seconds': {
+        'moss_tts', 'moss_soundeffect_v2'
     },
     'emotion_alpha': {
         'index_tts'
@@ -274,7 +289,10 @@ PARAMETER_VALIDATION = {
     'quality': (str, None, None, "MOSS-TTS whole-segment quality hint"),
     'sound_event': (str, None, None, "MOSS-TTS whole-segment sound event hint"),
     'ambient_sound': (str, None, None, "MOSS-TTS whole-segment ambient sound hint"),
-    'inference_steps': (int, 1, 100, "Number of inference steps"),
+    'inference_steps': (int, 1, 150, "Number of inference steps"),
+    'sigma_shift': (float, 0.0, 10.0, "Flow-matching schedule shift"),
+    'negative_prompt': (str, None, None, "Sounds or qualities to discourage"),
+    'duration_seconds': (float, 0.5, 300.0, "Sound-effect segment duration in seconds"),
     'emotion_alpha': (float, 0.0, 1.0, "Emotion strength (IndexTTS-2 only)"),
     # Keep inline emotion values as strings so an explicit leading sign remains
     # available to distinguish deltas from absolute replacements.
@@ -289,7 +307,11 @@ PARAMETER_VALIDATION = {
 PARAMETER_NODE_KEYS = {
     'seed': 'seed',
     'temperature': 'temperature',
-    'cfg': {'default': 'cfg_weight', 'f5tts': 'cfg_strength'},  # Engine-specific mapping
+    'cfg': {
+        'default': 'cfg_weight',
+        'f5tts': 'cfg_strength',
+        'moss_soundeffect_v2': 'cfg_scale',
+    },  # Engine-specific mapping
     'num_steps': 'num_steps',
     'guidance_scale': 'guidance_scale',
     'duration': 'duration',
@@ -329,6 +351,9 @@ PARAMETER_NODE_KEYS = {
     'sound_event': 'sound_event',
     'ambient_sound': 'ambient_sound',
     'inference_steps': 'inference_steps',
+    'sigma_shift': 'sigma_shift',
+    'negative_prompt': 'negative_prompt',
+    'duration_seconds': 'duration_seconds',
     'emotion_alpha': 'emotion_alpha',
     'emotion_vector_inline': 'emotion_vector_inline',
     'emotion_text_inline': 'emotion_text_inline',
@@ -581,6 +606,31 @@ class SegmentParameterCollector:
         cleaned_text = tag_pattern.sub(replace_tag, text).strip()
 
         return cleaned_text, parameters, character_name
+
+
+def parse_parameter_segments(text: str) -> List[Tuple[str, Dict[str, Any]]]:
+    """Split text on parameter-only tags without applying character semantics."""
+    tag_pattern = re.compile(r'\[([^\]]+)\]')
+    segments: List[Tuple[str, Dict[str, Any]]] = []
+
+    for line in str(text or "").splitlines():
+        cursor = 0
+        current_parameters: Dict[str, Any] = {}
+        for match in tag_pattern.finditer(line):
+            tag_segments, tag_parameters = SegmentParameterParser.parse_tag_segments(match.group(1))
+            if not tag_parameters or tag_segments:
+                continue
+            before_tag = line[cursor:match.start()].strip()
+            if before_tag:
+                segments.append((before_tag, current_parameters.copy()))
+            current_parameters = tag_parameters.copy()
+            cursor = match.end()
+
+        remaining = line[cursor:].strip()
+        if remaining:
+            segments.append((remaining, current_parameters.copy()))
+
+    return segments
 
 
 def parse_segment_text(text: str) -> Tuple[str, Dict[str, Any], Optional[str]]:

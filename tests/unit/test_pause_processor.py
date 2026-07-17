@@ -100,7 +100,7 @@ class TestPauseTagParsing:
         
         pause_segment = [s for s in segments if s[0] == "pause"][0]
         assert pause_segment[1] == 1.5
-    
+
     def test_no_pause_tags(self):
         """Test text without pause tags"""
         segments, clean = PauseTagProcessor.parse_pause_tags("No pauses here")
