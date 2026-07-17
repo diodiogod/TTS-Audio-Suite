@@ -840,6 +840,7 @@ engines:
       srt: true
       vc: false
       asr: true
+      voice_design: true
       training: false
 
     special_features:
@@ -1346,6 +1347,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      voice_design: true
       training: false
 
     special_features:
@@ -1416,6 +1418,7 @@ engines:
       srt: true
       vc: false
       asr: false
+      voice_design: true
       sound_effects: true
       training: true
 
