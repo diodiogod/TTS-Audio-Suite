@@ -1,0 +1,731 @@
+{
+  "id": "9ed04af8-52c1-4797-b1bf-a4d3bc270691",
+  "revision": 0,
+  "last_node_id": 27,
+  "last_link_id": 27,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MossTTSEngineNode",
+      "pos": [
+        -2550,
+        1440
+      ],
+      "size": [
+        400,
+        652
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "speaker2_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker3_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker4_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker5_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            22
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MossTTSEngineNode"
+      },
+      "widgets_values": [
+        "Voice Design 1.7B",
+        "Custom Character Switching",
+        "auto",
+        "Auto",
+        0,
+        "Model default",
+        1,
+        0.95,
+        50,
+        1.1,
+        4096,
+        0,
+        "",
+        "",
+        "",
+        "",
+        0,
+        "auto",
+        "auto",
+        "MOSS-Audio-Tokenizer",
+        "None",
+        ""
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 5,
+      "type": "PreviewAudio",
+      "pos": [
+        -1330,
+        1300
+      ],
+      "size": [
+        260,
+        90
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 15
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 14,
+      "type": "MarkdownNote",
+      "pos": [
+        -3440,
+        950
+      ],
+      "size": [
+        430,
+        250
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## Choose one voice-design engine\n\nConnect **Qwen3-TTS**, **MOSS-TTS**, or **OmniVoice** to **🎨 Voice Designer**. Configure the engine for voice design: Qwen VoiceDesign, MOSS VoiceGenerator, or OmniVoice Voice Design mode.\n\nThe engine controls the model, language, and generation settings. Voice Designer supplies the voice instruction and reference text."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 16,
+      "type": "MarkdownNote",
+      "pos": [
+        -2080,
+        2200
+      ],
+      "size": [
+        430,
+        180
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## OmniVoice uses a specific tag vocabulary\n\nUse **📐 Visual Tag Builder** and connect its string output to `voice_instruction`. Qwen and MOSS can instead use free-form natural-language voice descriptions."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 17,
+      "type": "UnifiedVoiceDesignerNode",
+      "pos": [
+        -1830,
+        1250
+      ],
+      "size": [
+        400,
+        230
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 24
+        },
+        {
+          "name": "voice_instruction",
+          "type": "STRING",
+          "widget": {
+            "name": "voice_instruction"
+          },
+          "link": 25
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": [
+            17
+          ]
+        },
+        {
+          "name": "preview_audio",
+          "type": "AUDIO",
+          "links": [
+            15
+          ]
+        },
+        {
+          "name": "voice_info",
+          "type": "STRING",
+          "links": [
+            16
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedVoiceDesignerNode"
+      },
+      "widgets_values": [
+        "Welcome to the TTS Audio Suite. This text-to-speech toolkit brings your stories to life with natural, expressive voices. Whether you're creating audiobooks, videos, or interactive experiences, the available models offer a wide range of voices and capabilities. What will you create today?",
+        451957563988784,
+        "fixed",
+        "A warm, confident adult voice with natural pacing, clear articulation, and a subtle expressive smile."
+      ]
+    },
+    {
+      "id": 18,
+      "type": "PreviewAny",
+      "pos": [
+        -1330,
+        1430
+      ],
+      "size": [
+        260,
+        160
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 16
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [
+        null,
+        null,
+        false
+      ]
+    },
+    {
+      "id": 19,
+      "type": "SaveCharacterVoiceNode",
+      "pos": [
+        -990,
+        1250
+      ],
+      "size": [
+        276.845703125,
+        122
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "name": "opt_narrator",
+          "type": "NARRATOR_VOICE",
+          "links": null
+        },
+        {
+          "name": "character_name",
+          "type": "STRING",
+          "links": [
+            27
+          ]
+        },
+        {
+          "name": "save_info",
+          "type": "STRING",
+          "links": [
+            26
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveCharacterVoiceNode"
+      },
+      "widgets_values": [
+        "Bobby",
+        true
+      ]
+    },
+    {
+      "id": 20,
+      "type": "OmniVoiceEngineNode",
+      "pos": [
+        -3000,
+        1350
+      ],
+      "size": [
+        400,
+        520
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            21
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "OmniVoiceEngineNode"
+      },
+      "widgets_values": [
+        "OmniVoice",
+        "auto",
+        "Auto",
+        32,
+        2,
+        0.1,
+        1,
+        0,
+        "auto",
+        "",
+        5,
+        5,
+        0,
+        true,
+        true,
+        true,
+        15,
+        30,
+        "Voice Design"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 21,
+      "type": "Qwen3TTSEngineNode",
+      "pos": [
+        -3430,
+        1250
+      ],
+      "size": [
+        400,
+        574
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            20
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Qwen3TTSEngineNode"
+      },
+      "widgets_values": [
+        "Voice Design - 1.7B VoiceDesign",
+        "auto",
+        "None (Zero-shot / Custom)",
+        "Auto",
+        "",
+        50,
+        1,
+        0.9,
+        1.05,
+        2048,
+        "auto",
+        "auto",
+        false,
+        true,
+        false,
+        "default",
+        true,
+        "English",
+        "Translate the speech from {source_language} into {target_language} text. Return only the translated text.",
+        "⚠️ Shared Runtime"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 22,
+      "type": "Reroute",
+      "pos": [
+        -2090,
+        1250
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 23,
+      "type": "Reroute",
+      "pos": [
+        -2090,
+        1350
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 21
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": [
+            24
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 24,
+      "type": "Reroute",
+      "pos": [
+        -2090,
+        1440
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 22
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "TTS_ENGINE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 25,
+      "type": "OmniVoiceInstructionBuilderNode",
+      "pos": [
+        -2840,
+        2160
+      ],
+      "size": [
+        700,
+        500
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "links": [
+            25
+          ]
+        }
+      ],
+      "properties": {
+        "omnivoiceInstructionLayout": {
+          "layouts": {
+            "omnivoice": {
+              "columnOrder": [
+                "gender",
+                "age",
+                "pitch",
+                "style",
+                "language"
+              ]
+            }
+          }
+        },
+        "Node name for S&R": "OmniVoiceInstructionBuilderNode"
+      },
+      "widgets_values": [
+        "None",
+        "None",
+        "None",
+        "None",
+        "None",
+        "None",
+        "English",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": 26,
+      "type": "PreviewAny",
+      "pos": [
+        -650,
+        1550
+      ],
+      "size": [
+        260,
+        160
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 26
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "id": 27,
+      "type": "PreviewAny",
+      "pos": [
+        -650,
+        1320
+      ],
+      "size": [
+        260,
+        160
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 27
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [
+        null,
+        null,
+        null
+      ]
+    }
+  ],
+  "links": [
+    [
+      15,
+      17,
+      1,
+      5,
+      0,
+      "AUDIO"
+    ],
+    [
+      16,
+      17,
+      2,
+      18,
+      0,
+      "STRING"
+    ],
+    [
+      17,
+      17,
+      0,
+      19,
+      0,
+      "NARRATOR_VOICE"
+    ],
+    [
+      20,
+      21,
+      0,
+      22,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      21,
+      20,
+      0,
+      23,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      22,
+      1,
+      0,
+      24,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      24,
+      23,
+      0,
+      17,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      25,
+      25,
+      0,
+      17,
+      1,
+      "STRING"
+    ],
+    [
+      26,
+      19,
+      2,
+      26,
+      0,
+      "STRING"
+    ],
+    [
+      27,
+      19,
+      1,
+      27,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Voice Designing Capable models",
+      "bounding": [
+        -3440,
+        1180,
+        1300,
+        925.6
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "workflowRendererVersion": "LG",
+    "ds": {
+      "scale": 0.8140274938684089,
+      "offset": [
+        3135.718534160652,
+        -1619.8111399385955
+      ]
+    },
+    "frontendVersion": "1.38.13"
+  },
+  "version": 0.4
+}
