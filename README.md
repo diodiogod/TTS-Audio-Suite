@@ -192,6 +192,8 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 ## Features
 
 - 🎤 **Multi-Engine TTS**
+- 🎨 **Voice Designer** → Create reusable voices with compatible Qwen3-TTS, MOSS, and OmniVoice engines
+- 🌩️ **Sound Effects** → **[📖 Sound Effects Guide](docs/SOUND_EFFECTS_GUIDE.md)**
 - 🔄 **Voice Conversion**
 - ✏️ **ASR Transcription**
 - 📺 **Text to SRT Builder**
@@ -1513,6 +1515,7 @@ Your support helps maintain and improve this project for the entire community!
 | **Unified 📺 TTS SRT**       | Universal SRT processing with all TTS engines | • ChatterBox/F5-TTS/Higgs Audio 2<br>• Multiple timing modes<br>• Multi-character switching<br>• Overlap SRT support | ✅ **New in v4.5**      | [📁 JSON](example_workflows/Unified%20📺%20TTS%20SRT.json)                                  |
 | **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion                                            | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
 | **Unified ✏️ ASR Transcribe + SRT Builder** | Modular ASR + subtitle workflow | • Granite ASR + Qwen3 ASR examples<br>• Separate transcription and SRT building<br>• Works with the new Text to SRT Builder flow | ✅ **New in v4.23** | [📁 JSON](example_workflows/Unified%20✏️%20ASR%20Transcribe%20+%20SRT%20Builder.json) |
+| **Unified 🌩️ Sound Effects** | Text-to-sound generation with compatible engines | • MOSS-SoundEffect v1 and v2<br>• Per-segment parameters and pauses<br>• Long-duration chunking and audio cache | ✅ **New** | [📁 JSON](example_workflows/Unified%20🌩️%20Sound%20Effects.json) |
 
 ### Specific Workflows
 

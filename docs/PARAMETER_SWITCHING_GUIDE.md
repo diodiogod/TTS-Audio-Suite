@@ -95,6 +95,20 @@ Parameters are applied **only to the current segment** and automatically revert 
 | `sound_event` | — | string | text | Whole-segment sound event hint |
 | `ambient_sound` | — | string | text | Whole-segment ambient sound hint |
 
+#### MOSS Sound Effects
+
+MOSS-SoundEffect v1 uses the applicable MOSS-TTS parameters above. Both sound-effect engines also support a duration override:
+
+| Parameter | Alias | Engines | Type | Range | Description |
+|-----------|-------|---------|------|-------|-------------|
+| `duration_seconds` | `seconds` | v1, v2 | float | 0.5-300 | Duration of the sound segment |
+| `inference_steps` | `steps` | v2 | int | 1-150 | Diffusion steps |
+| `cfg` | — | v2 | float | 0.0-20.0 | Prompt guidance strength |
+| `sigma_shift` | — | v2 | float | 0.0-10.0 | Flow-matching schedule shift |
+| `negative_prompt` | `negative`, `neg` | v2 | string | text | Sounds or qualities to discourage |
+
+See the [Sound Effects Guide](SOUND_EFFECTS_GUIDE.md) for pauses, crossfades, long-duration chunking, and complete examples.
+
 #### ChatterBox & ChatterBox Official 23-Lang
 | Parameter | Alias | Type | Range | Description |
 |-----------|-------|------|-------|-------------|

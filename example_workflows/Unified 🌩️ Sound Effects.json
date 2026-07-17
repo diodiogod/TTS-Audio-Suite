@@ -1,0 +1,447 @@
+{
+  "id": "9ed04af8-52c1-4797-b1bf-a4d3bc270691",
+  "revision": 0,
+  "last_node_id": 16,
+  "last_link_id": 12,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MossTTSEngineNode",
+      "pos": [
+        -2430,
+        1350
+      ],
+      "size": [
+        400,
+        652
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "speaker2_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker3_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker4_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        },
+        {
+          "name": "speaker5_voice",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MossTTSEngineNode"
+      },
+      "widgets_values": [
+        "Sound Effects v1 8B",
+        "Custom Character Switching",
+        "auto",
+        "Auto",
+        0,
+        "Custom",
+        1,
+        0.95,
+        50,
+        1.1,
+        4096,
+        0,
+        "",
+        "",
+        "",
+        "",
+        0,
+        "auto",
+        "auto",
+        "MOSS-Audio-Tokenizer",
+        "None",
+        ""
+      ]
+    },
+    {
+      "id": 3,
+      "type": "UnifiedSoundEffectsNode",
+      "pos": [
+        -1860,
+        1070
+      ],
+      "size": [
+        400,
+        228
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 9
+        },
+        {
+          "name": "description",
+          "type": "STRING",
+          "widget": {
+            "name": "description"
+          },
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            4,
+            6
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedSoundEffectsNode"
+      },
+      "widgets_values": [
+        "[cfg:7.5] app starting, shine, bright, tone [wait:1.2][cfg:7.5] app closing, dark tone, down, sad",
+        2,
+        320058980947123,
+        "fixed",
+        true,
+        true
+      ]
+    },
+    {
+      "id": 5,
+      "type": "PreviewAudio",
+      "pos": [
+        -1380,
+        1070
+      ],
+      "size": [
+        270,
+        88
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 4
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 7,
+      "type": "SaveAudio",
+      "pos": [
+        -1380,
+        1230
+      ],
+      "size": [
+        270,
+        112
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 6
+        }
+      ],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "app_start_close"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "MossSoundEffectV2EngineNode",
+      "pos": [
+        -2430,
+        1070
+      ],
+      "size": [
+        400,
+        232
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "links": [
+            9,
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MossSoundEffectV2EngineNode"
+      },
+      "widgets_values": [
+        "MOSS-SoundEffect-v2.0",
+        "auto",
+        "auto",
+        100,
+        4,
+        5,
+        "loud, distorted, ugly, static"
+      ]
+    },
+    {
+      "id": 11,
+      "type": "UnifiedSoundEffectsNode",
+      "pos": [
+        -1860,
+        1340
+      ],
+      "size": [
+        400,
+        228
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "TTS_engine",
+          "type": "TTS_ENGINE",
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "generation_info",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UnifiedSoundEffectsNode"
+      },
+      "widgets_values": [
+        "[negative:robotic, synthetic, music, dry, monotone] wet fart followed by water splashing sounds",
+        15,
+        320058980947124,
+        "fixed",
+        true,
+        true
+      ]
+    },
+    {
+      "id": 12,
+      "type": "PreviewAudio",
+      "pos": [
+        -1370,
+        1450
+      ],
+      "size": [
+        270,
+        90
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 11
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 14,
+      "type": "MarkdownNote",
+      "pos": [
+        -2790,
+        1110
+      ],
+      "size": [
+        300,
+        160
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## For \"🌩️ Sound Effects\" generations we support MOSS V1 and MOSS v2. \n\nV2 is a completely new architecture, so it has its own Engine node. It’s the recommended choice as it supports negatives (CFG) and uses less VRAM."
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 15,
+      "type": "StringMultilineTagEditor",
+      "pos": [
+        -2930,
+        420
+      ],
+      "size": [
+        900,
+        600
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringMultilineTagEditor",
+        "ttsTagEditorInlineEngine": "step_audio_editx"
+      },
+      "widgets_values": [
+        "[cfg:7.5] app starting, shine, bright, tone [wait:1.2][cfg:7.5] app closing, dark tone, down, sad"
+      ]
+    },
+    {
+      "id": 16,
+      "type": "MarkdownNote",
+      "pos": [
+        -1820,
+        1660
+      ],
+      "size": [
+        300,
+        160
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## We support parameter switching tags and [pause:n] system as well\n\nV2 has a limit of 30s but you can extend it by using our suite automatic chunking with crossfade"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [
+      4,
+      3,
+      0,
+      5,
+      0,
+      "AUDIO"
+    ],
+    [
+      6,
+      3,
+      0,
+      7,
+      0,
+      "AUDIO"
+    ],
+    [
+      9,
+      10,
+      0,
+      3,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      10,
+      10,
+      0,
+      11,
+      0,
+      "TTS_ENGINE"
+    ],
+    [
+      11,
+      11,
+      0,
+      12,
+      0,
+      "AUDIO"
+    ],
+    [
+      12,
+      15,
+      0,
+      3,
+      1,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "workflowRendererVersion": "LG",
+    "ds": {
+      "scale": 0.6727499949325629,
+      "offset": [
+        3571.712515982461,
+        -412.3665742793571
+      ]
+    },
+    "frontendVersion": "1.38.13"
+  },
+  "version": 0.4
+}

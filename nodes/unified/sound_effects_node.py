@@ -20,14 +20,8 @@ class UnifiedSoundEffectsNode:
                     "default": "Heavy rain on a metal rooftop with distant thunder and occasional wind gusts.",
                     "tooltip": (
                         "Describe the sound, environment, actions, texture, distance, and timing you want. "
-                        "This text is a sound description, not words to be spoken.\n"
-                        "Inline parameter tags can generate and concatenate multiple segments, for example:\n"
-                        "[seconds:4|seed:42] Rain. [seconds:2|negative:speech, music|cfg:5] Thunder.\n"
-                        "Use [pause:2], [wait:500ms], or [stop:1] to insert silence. Keep pause and parameter tags "
-                        "separate, for example [wait:1.2] [cfg:7.5] next sound.\n"
-                        "v2 supports seed, seconds, steps, cfg, sigma_shift, and negative_prompt. "
-                        "v1 supports seed, seconds, temperature, top_p, top_k, repetition_penalty, "
-                        "duration_tokens, and max_new_tokens."
+                        "This is a sound description, not text to be spoken. "
+                        "Inline parameter and pause tags are supported."
                     ),
                 }),
                 "duration_seconds": ("FLOAT", {
