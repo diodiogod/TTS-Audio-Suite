@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.0] - 2026-07-17
+
+### Added
+
+- Add MOSS-TTS v1.5 with expanded multilingual speech generation
+- Add MOSS-SoundEffect v1 and MOSS-SoundEffect v2 text-to-sound generation
+- Add unified Voice Designer support for Qwen3-TTS, MOSS-TTS, and OmniVoice
+- Add Save Character Voice for reusable generated or imported voices
+- Add Sound Effects parameter switching, pauses, chunking, crossfades, negative prompts, and audio caching
+- Add MOSS-TTS v1.5 LoRA training support
+- Add Voice Designer and Sound Effects example workflows and user guides
+
+### Changed
+
+- Improve Character Voices discovery, trimming, compact layouts, and immediate saved-voice availability
+- Improve model selection and Hugging Face download progress across supported engines
+
+### Removed
+
+- Remove the legacy Qwen3-TTS Voice Designer node; use Voice Designer instead
 ## [5.4.16] - 2026-07-16
 
 ### Fixed
