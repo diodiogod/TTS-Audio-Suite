@@ -300,7 +300,10 @@ function setupDomEditor(node) {
         serialize: false,
         hideOnZoom: true,
     });
-    domWidget.computeSize = (width) => [Math.max(320, (node.size?.[0] || width || 430) - 20), 232];
+    domWidget.computeSize = (width) => {
+        const availableWidth = Math.max(160, (node.size?.[0] || width || 430) - 20);
+        return [availableWidth, availableWidth < 320 ? 48 : 232];
+    };
     hideNativeWidget(findWidget(node, "trim_start"));
     hideNativeWidget(findWidget(node, "trim_end"));
     hideNativeWidget(findWidget(node, "customized"));

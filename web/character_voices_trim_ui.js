@@ -4,6 +4,8 @@
 
 import { createWaveformRenderer } from "./character_voices_waveform.js";
 
+const COMPACT_WIDTH = 320;
+
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
@@ -65,6 +67,7 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
         flexDirection: "column",
         gap: "8px",
         width: "100%",
+        minWidth: "0",
         padding: "10px",
         boxSizing: "border-box",
         borderRadius: "6px",
@@ -83,6 +86,8 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
     });
     const title = document.createElement("span");
     Object.assign(title.style, {
+        flex: "1 1 auto",
+        minWidth: "0",
         overflow: "hidden",
         color: "#aaa",
         fontSize: "11px",
@@ -107,12 +112,18 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
     audio.controls = true;
     audio.preload = "metadata";
     audio.classList.add("comfy-audio");
-    Object.assign(audio.style, { width: "100%", height: "40px", outline: "none" });
+    Object.assign(audio.style, {
+        width: "100%",
+        minWidth: "0",
+        height: "40px",
+        outline: "none",
+    });
 
     const trimArea = document.createElement("div");
     Object.assign(trimArea.style, {
         display: "flex",
         flexDirection: "column",
+        minWidth: "0",
         gap: "6px",
         padding: "9px",
         border: "1px solid rgba(255,255,255,0.07)",
@@ -232,8 +243,43 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
     });
     trimWarning.textContent = "Trimmed reference: make sure the transcription matches the selected speech.";
     trimWarning.title = "Review the transcription so it matches only the selected speech.";
+    const expandHint = document.createElement("div");
+    expandHint.setAttribute("aria-hidden", "true");
+    Object.assign(expandHint.style, {
+        position: "absolute",
+        right: "3px",
+        bottom: "3px",
+        width: "12px",
+        height: "12px",
+        display: "none",
+        opacity: "0.72",
+        background: "repeating-linear-gradient(135deg, transparent 0 2px, #38bdf8 2px 3px)",
+        clipPath: "polygon(100% 0, 100% 100%, 0 100%)",
+        pointerEvents: "none",
+    });
     trimArea.append(ruler, track, controls);
-    root.append(header, audio, trimArea, trimWarning);
+    root.append(header, audio, trimArea, trimWarning, expandHint);
+
+    let compact = false;
+    const setCompact = (value) => {
+        if (compact === value) return;
+        compact = value;
+        root.style.gap = compact ? "0" : "8px";
+        root.style.padding = compact ? "4px" : "10px";
+        header.style.display = compact ? "none" : "flex";
+        audio.style.height = compact ? "32px" : "40px";
+        trimArea.style.display = compact ? "none" : "flex";
+        trimWarning.style.display = compact ? "none" : "block";
+        expandHint.style.display = compact ? "block" : "none";
+        root.title = compact ? "Widen this node to show waveform and trimming controls." : "";
+    };
+    const resizeObserver = typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver((entries) => {
+            const width = entries[0]?.contentRect?.width || root.clientWidth;
+            if (width > 0) setCompact(width < COMPACT_WIDTH);
+        });
+    resizeObserver?.observe(root);
 
     let duration = 0;
     let start = 0;
@@ -399,6 +445,7 @@ export function createCharacterVoiceTrimUI(onRangeChange) {
         },
         destroy() {
             if (playbackFrame !== null) cancelAnimationFrame(playbackFrame);
+            resizeObserver?.disconnect();
             audio.removeEventListener("play", startPlaybackAnimation);
             audio.removeEventListener("pause", stopPlaybackAnimation);
             audio.removeEventListener("ended", stopPlaybackAnimation);
