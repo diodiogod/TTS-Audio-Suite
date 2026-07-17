@@ -86,6 +86,7 @@ PARAMETER_ALIASES = {
     'sigma_shift': 'sigma_shift',
     'negative_prompt': 'negative_prompt',
     'negative': 'negative_prompt',
+    'neg': 'negative_prompt',
     'duration_seconds': 'duration_seconds',
     'seconds': 'duration_seconds',
     'emotion_alpha': 'emotion_alpha',
