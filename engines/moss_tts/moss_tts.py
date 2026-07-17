@@ -13,12 +13,39 @@ import importlib
 import json
 import os
 import re
+import subprocess
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 
 from engines.moss_tts.model_specs import MOSS_MODEL_SPECS
+
+
+@contextmanager
+def _suppress_bitsandbytes_windows_gaudi_probe():
+    """Skip BitsAndBytes' Unix-only Gaudi package probe on Windows."""
+    if os.name != "nt":
+        yield
+        return
+
+    original_run = subprocess.run
+
+    def guarded_run(*args, **kwargs):
+        command = args[0] if args else kwargs.get("args")
+        if command == "pip list | grep habana-torch-plugin":
+            # TTS Audio Suite patch: BitsAndBytes runs this Unix command while
+            # importing PEFT on Windows. Localized cmd.exe output can then fail
+            # Python's text decoding even though Gaudi is irrelevant here.
+            return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
+        return original_run(*args, **kwargs)
+
+    subprocess.run = guarded_run
+    try:
+        yield
+    finally:
+        subprocess.run = original_run
 
 
 class MossTTSEngine:
@@ -202,6 +229,14 @@ class MossTTSEngine:
             )
             return
 
+        if configured_name in compatible_delay_bases and expected_name == "moss-soundeffect":
+            print(
+                "⚠️ Experimental MOSS-SoundEffect v1 LoRA: "
+                f"adapter was trained for '{configured_base}', not sound effects. The shared 8B backbone "
+                "is structurally compatible, but generation quality and prompt behavior may change unpredictably."
+            )
+            return
+
         raise RuntimeError(
             "MOSS LoRA/base model mismatch. "
             f"Selected model '{self.model_variant}' expects base '{expected_repo_id}', "
@@ -289,7 +324,8 @@ class MossTTSEngine:
         )
         if self.lora_adapter:
             try:
-                from peft import PeftModel
+                with _suppress_bitsandbytes_windows_gaudi_probe():
+                    from peft import PeftModel
             except ImportError as e:
                 raise ImportError(
                     "MOSS LoRA adapter loading requires the 'peft' package. Install it and restart ComfyUI."

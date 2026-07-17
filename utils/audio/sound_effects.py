@@ -84,6 +84,7 @@ class MossSoundEffectV1Provider:
             dtype=config.get("dtype", "auto"),
             attn_implementation=config.get("attn_implementation", "auto"),
             codec_model=spec["codec_model"],
+            lora_adapter=config.get("lora_adapter"),
             defer_load=True,
         )
         params = {
@@ -99,6 +100,7 @@ class MossSoundEffectV1Provider:
             "audio_top_k": config.get("top_k", spec["audio_top_k"]),
             "audio_repetition_penalty": config.get("repetition_penalty", spec["audio_repetition_penalty"]),
             "max_new_tokens": config.get("max_new_tokens", spec["max_new_tokens"]),
+            "lora_adapter": config.get("lora_adapter"),
             "enable_audio_cache": bool(enable_audio_cache),
         }
         started = time.perf_counter()
@@ -112,7 +114,9 @@ class MossSoundEffectV1Provider:
             "Sound effect generated with MOSS-SoundEffect v1\n"
             f"Requested duration: {float(duration_seconds):.1f}s ({duration_tokens} audio tokens)\n"
             f"Actual duration: {actual_seconds:.2f}s\n"
-            f"Seed: {int(seed or 0)}\nElapsed: {elapsed:.2f}s"
+            f"Seed: {int(seed or 0)}\n"
+            f"LoRA: {config.get('lora_adapter') or 'None'}\n"
+            f"Elapsed: {elapsed:.2f}s"
         )
         return SoundEffectResult(audio=audio, generation_info=info)
 

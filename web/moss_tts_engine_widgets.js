@@ -4,6 +4,7 @@ const MODEL_LABEL = "standard model";
 const MODE_LABEL = "speaker mode";
 const NATIVE_MODEL_LABEL = "native model (locked)";
 const LOCAL_N_VQ_WIDGET = "n_vq_for_inference";
+const SAMPLER_WIDGETS = ["temperature", "top_p", "top_k", "repetition_penalty"];
 
 function findWidgetByName(node, name) {
     return node.widgets ? node.widgets.find((widget) => widget.name === name) : null;
@@ -115,6 +116,58 @@ function isVoiceDesignModel(value) {
         && (value.includes("MOSS-VoiceGenerator") || value.includes("Voice Design"));
 }
 
+function supportsLora(value) {
+    const text = String(value || "");
+    return text === "v1 8B"
+        || text === "v1.5 8B"
+        || text === "local:MOSS-TTS"
+        || text === "local:MOSS-TTS-v1.5"
+        || isSoundEffectModel(text);
+}
+
+function canonicalModelName(value) {
+    const text = String(value || "").replace(/^local:/, "");
+    if (text.includes("SoundEffect") || text.includes("Sound Effects")) return "MOSS-SoundEffect";
+    if (text.includes("VoiceGenerator") || text.includes("Voice Design")) return "MOSS-VoiceGenerator";
+    if (text.includes("TTSD") || text.includes("Native") && text.includes("Dialogue")) return "MOSS-TTSD-v1.0";
+    if (text.includes("Local-Transformer") || text === "1.7B" || text.includes("Small 1.7B")) {
+        return "MOSS-TTS-Local-Transformer";
+    }
+    if (text.includes("v1.5")) return "MOSS-TTS-v1.5";
+    return "MOSS-TTS";
+}
+
+function updateSamplerState(node, modelValue) {
+    const presetWidget = findWidgetByName(node, "sampler_preset");
+    if (!presetWidget) return;
+
+    const samplerWidgets = SAMPLER_WIDGETS.map((name) => findWidgetByName(node, name));
+    const useModelDefaults = presetWidget.value === "Model default";
+    const previousPreset = node.__ttsMossLastSamplerPreset;
+
+    if (useModelDefaults) {
+        if (previousPreset === "Custom") {
+            node.__ttsMossCustomSamplerValues = samplerWidgets.map((widget) => widget?.value);
+        }
+        const modelDefaults = presetWidget.options?.model_defaults || {};
+        const defaults = modelDefaults[canonicalModelName(modelValue)];
+        samplerWidgets.forEach((widget, index) => {
+            if (widget && defaults) widget.value = defaults[SAMPLER_WIDGETS[index]];
+            setWidgetEnabled(widget, false);
+        });
+    } else {
+        if (previousPreset === "Model default" && node.__ttsMossCustomSamplerValues) {
+            samplerWidgets.forEach((widget, index) => {
+                if (widget && node.__ttsMossCustomSamplerValues[index] !== undefined) {
+                    widget.value = node.__ttsMossCustomSamplerValues[index];
+                }
+            });
+        }
+        samplerWidgets.forEach((widget) => setWidgetEnabled(widget, true));
+    }
+    node.__ttsMossLastSamplerPreset = presetWidget.value;
+}
+
 const SPEECH_ONLY_WIDGETS = [
     "multi_speaker_mode", "language", "duration_tokens", "chunk_minutes",
     "instruction", "quality", "sound_event", "ambient_sound",
@@ -169,6 +222,9 @@ function refreshMossWidgets(node) {
             modelWidget.label = NATIVE_MODEL_LABEL;
             showWidget(modelWidget);
             setWidgetEnabled(modelWidget, false);
+            setWidgetEnabled(findWidgetByName(node, "local_lora_adapter"), false);
+            setWidgetEnabled(findWidgetByName(node, "lora_adapter_override"), false);
+            updateSamplerState(node, nativeOption);
             hideWidget(nVqWidget);
             resizeNode(node);
             return;
@@ -190,6 +246,7 @@ function refreshMossWidgets(node) {
 
         const selectedStandard = toStandardModelValue(node, modelWidget, modelWidget.value);
         node.__ttsMossLastStandardModel = selectedStandard;
+        updateSamplerState(node, selectedStandard);
         const soundEffectSelected = isSoundEffectModel(selectedStandard);
         updateSoundEffectState(node, soundEffectSelected);
         if (!soundEffectSelected) {
@@ -198,6 +255,9 @@ function refreshMossWidgets(node) {
                 !isVoiceDesignModel(selectedStandard),
             );
         }
+        const loraSupported = supportsLora(selectedStandard);
+        setWidgetEnabled(findWidgetByName(node, "local_lora_adapter"), loraSupported);
+        setWidgetEnabled(findWidgetByName(node, "lora_adapter_override"), loraSupported);
 
         if (isLocalSmallModel(selectedStandard) || selectedStandard === "1.7B") {
             showWidget(nVqWidget);
@@ -255,5 +315,6 @@ app.registerExtension({
 
         hookWidgetValue(node, findWidgetByName(node, "multi_speaker_mode"), refreshMossWidgets);
         hookWidgetValue(node, findWidgetByName(node, "model_variant"), refreshMossWidgets);
+        hookWidgetValue(node, findWidgetByName(node, "sampler_preset"), refreshMossWidgets);
     },
 });

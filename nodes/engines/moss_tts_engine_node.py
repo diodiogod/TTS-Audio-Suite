@@ -163,7 +163,8 @@ class MossTTSEngineNode(BaseTTSNode):
                 }),
                 "sampler_preset": (["Model default", "Custom"], {
                     "default": "Model default",
-                    "tooltip": "Model default uses OpenMOSS recommended sampling parameters for the selected variant."
+                    "tooltip": "Model default uses OpenMOSS recommended sampling parameters for the selected variant.",
+                    "model_defaults": cls.MODEL_DEFAULTS,
                 }),
                 "temperature": ("FLOAT", {
                     "default": 1.0, "min": 0.1, "max": 2.5, "step": 0.05,
@@ -299,6 +300,9 @@ class MossTTSEngineNode(BaseTTSNode):
                     "default": cls.NO_LORA_OPTION,
                     "tooltip": (
                         "Optional local MOSS LoRA adapter discovered under models/TTS/moss_tts/loras.\n"
+                        "\n"
+                        "Supported by MOSS-TTS v1/v1.5 and experimentally by MOSS-SoundEffect v1. "
+                        "VoiceGenerator rejects TTS LoRAs; SoundEffect v2 is a separate engine.\n"
                         "\n"
                         "This expects a PEFT adapter folder, not just a raw weight file.\n"
                         "Training should save a full adapter directory with adapter_config.json."
@@ -560,6 +564,11 @@ class MossTTSEngineNode(BaseTTSNode):
         )
         defaults = self.MODEL_DEFAULTS.get(resolved_variant, self.MODEL_DEFAULTS["MOSS-TTS-Local-Transformer"])
         model_role = self._get_model_role(resolved_model_variant)
+        if resolved_lora_adapter and model_role == "voice_design":
+            raise ValueError(
+                "MOSS VoiceGenerator cannot use LoRAs trained for the 8B MOSS-TTS models because its "
+                "1.7B backbone has incompatible dimensions. Set the LoRA adapter to None for Voice Designer."
+            )
 
         if sampler_preset == "Model default":
             temperature = defaults["temperature"]
@@ -627,7 +636,8 @@ class MossTTSEngineNode(BaseTTSNode):
         if prompt_fields:
             print(f"   Official prompt fields: {', '.join(prompt_fields)}")
         if config.get("lora_adapter"):
-            print(f"   LoRA adapter: {config['lora_adapter']}")
+            suffix = " (experimental on MOSS-SoundEffect v1)" if model_role == "sound_effects" else ""
+            print(f"   LoRA adapter: {config['lora_adapter']}{suffix}")
 
         return ({
             "engine_type": "moss_tts",

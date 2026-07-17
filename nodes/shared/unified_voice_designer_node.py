@@ -17,10 +17,10 @@ class UnifiedVoiceDesignerNode:
                 }),
                 "reference_text": ("STRING", {
                     "default": (
-                        "Welcome to the TTS Audio Suite. This advanced text-to-speech system brings "
+                        "Welcome to the TTS Audio Suite. This text-to-speech toolkit brings "
                         "your stories to life with natural, expressive voices. Whether you're creating "
-                        "audiobooks, videos, or interactive experiences, our technology delivers "
-                        "exceptional quality and versatility. What will you create today?"
+                        "audiobooks, videos, or interactive experiences, the available models offer "
+                        "a wide range of voices and capabilities. What will you create today?"
                     ),
                     "multiline": True,
                     "tooltip": (

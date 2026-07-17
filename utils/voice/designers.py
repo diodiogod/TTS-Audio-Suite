@@ -198,6 +198,11 @@ class MossVoiceDesignerProvider:
                 f"MOSS model '{selected_model or 'unknown'}' cannot design voices. In the MOSS-TTS Engine, "
                 "select 'Voice Design 1.7B (MOSS-VoiceGenerator)', then run the workflow again."
             )
+        if config.get("lora_adapter"):
+            raise ValueError(
+                "MOSS VoiceGenerator cannot use LoRAs trained for the 8B MOSS-TTS models. "
+                "Set the LoRA adapter to None in the MOSS-TTS Engine."
+            )
         instruction = str(voice_instruction or "").strip()
         config["instruction"] = instruction
         spec = MOSS_MODEL_SPECS[self.MODEL_NAME]
