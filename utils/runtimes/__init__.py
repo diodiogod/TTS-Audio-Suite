@@ -14,6 +14,7 @@ from .protocol import RuntimeJobRequest, RuntimeJobResponse
 from .qwen3_asr_proxy import Qwen3ASRIsolatedProxy, build_qwen3_asr_isolated_proxy
 from .qwen3_tts_proxy import Qwen3TTSIsolatedProxy, build_qwen3_tts_isolated_proxy
 from .vibevoice_proxy import VibeVoiceIsolatedProxy, build_vibevoice_isolated_proxy
+from .step_audio_editx_proxy import StepAudioEditXIsolatedProxy, build_step_audio_editx_isolated_proxy
 
 __all__ = [
     "ensure_runtime",
@@ -33,6 +34,8 @@ __all__ = [
     "build_qwen3_tts_isolated_proxy",
     "VibeVoiceIsolatedProxy",
     "build_vibevoice_isolated_proxy",
+    "StepAudioEditXIsolatedProxy",
+    "build_step_audio_editx_isolated_proxy",
     "get_runtime_profile",
     "list_runtime_profiles",
 ]

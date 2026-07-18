@@ -10,6 +10,17 @@ import sys
 import importlib.util
 from typing import Dict, Any, List
 
+from utils.models.factory_config import (
+    RUNTIME_MODE_DEDICATED,
+    RUNTIME_MODE_MAIN,
+    RUNTIME_MODE_SHARED,
+    normalize_runtime_mode,
+)
+
+RUNTIME_MODE_MAIN_LABEL = "Main Environment"
+RUNTIME_MODE_SHARED_LABEL = "⚠️ Shared Runtime"
+RUNTIME_MODE_DEDICATED_LABEL = "⚠️ Dedicated Runtime"
+
 # Add project root directory to path for imports
 current_dir = os.path.dirname(__file__)
 nodes_dir = os.path.dirname(current_dir)  # nodes/
@@ -55,29 +66,41 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
-                    "tooltip": "Device to run Step Audio EditX model on:\n• auto: Automatically select best available (CUDA on NVIDIA, CPU fallback)\n• cuda: NVIDIA GPU (requires CUDA-capable GPU, ~8GB VRAM)\n• cpu: CPU-only processing (very slow, not recommended)"
+                    "tooltip": "Device to run Step Audio EditX on:\n• auto: Select the best available device\n• cuda: NVIDIA GPU; this is a heavy model and 12GB+ VRAM is recommended\n• cpu: Extremely slow and intended only as a fallback"
                 }),
                 "torch_dtype": (["bfloat16", "float16", "float32", "auto"], {
                     "default": "bfloat16",
-                    "tooltip": "Model precision:\n• bfloat16: Best quality, stable, 8GB VRAM (recommended)\n• float16: Good quality, 6GB VRAM\n• float32: Maximum quality, 16GB VRAM\n• auto: Selects best for your GPU (bfloat16 if supported, else float16)"
+                    "tooltip": "Model precision:\n• bfloat16: Recommended on supported NVIDIA GPUs\n• float16: Compatibility alternative with similar memory use\n• float32: Much higher memory use; generally not recommended\n• auto: Selects bfloat16 when supported, otherwise float16"
                 }),
                 "quantization": (["none", "int4", "int8"], {
                     "default": "none",
-                    "tooltip": "VRAM reduction via quantization:\n• none: Best quality, 8GB VRAM (recommended)\n• int8: Good quality, 4GB VRAM\n• int4: Acceptable quality, 3GB VRAM\nUse if low on VRAM. Quality degrades with stronger quantization."
+                    "tooltip": "LLM weight quantization:\n• none: Best quality and compatibility\n• int8: Reduces LLM weight memory\n• int4: Stronger reduction with a larger quality/compatibility tradeoff\nThe audio tokenizer and vocoder are not quantized, so total VRAM does not shrink proportionally."
                 }),
-
-                # Generation Parameters (used by clone mode, edit mode has hardcoded values)
+                # Generation parameters shared by clone and edit modes.
                 "temperature": ("FLOAT", {
                     "default": 0.7, "min": 0.1, "max": 2.0, "step": 0.1,
-                    "tooltip": "Sampling temperature for generation.\n• Lower (0.3-0.5): More consistent, predictable output\n• Default (0.7): Balanced creativity and stability\n• Higher (1.0+): More varied, potentially unstable\nNote: Audio Editor uses hardcoded 0.7."
+                    "tooltip": "Sampling temperature for generation.\n• Lower (0.3-0.5): More consistent, predictable output\n• Default (0.7): Balanced creativity and stability\n• Higher (1.0+): More varied, potentially unstable"
                 }),
                 "do_sample": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Enable sampling for generation.\n• True: Uses temperature for varied output (recommended)\n• False: Greedy decoding, deterministic but may be repetitive\nNote: Audio Editor uses hardcoded True."
+                    "tooltip": "Enable sampling for generation.\n• True: Uses temperature for varied output (recommended)\n• False: Greedy decoding can fail to emit an end token and is not recommended"
                 }),
                 "max_new_tokens": ("INT", {
-                    "default": 8192, "min": 256, "max": 16384, "step": 256,
-                    "tooltip": "Maximum audio tokens to generate:\n• 2048: ~10s audio\n• 4096: ~20s audio\n• 8192: ~40s audio (default)\nHigher = more VRAM + longer generation time."
+                    "default": 1024, "min": 128, "max": 8192, "step": 128,
+                    "tooltip": "Maximum generated audio tokens (safety ceiling):\n• 512: roughly 12s\n• 1024: roughly 25s (recommended)\n• Higher values allow longer output but increase runtime and KV-cache memory."
+                }),
+                # Keep new widgets last so existing serialized workflows retain
+                # the positional values of every older Step EditX setting.
+                "runtime_mode": ([
+                    RUNTIME_MODE_SHARED_LABEL,
+                    RUNTIME_MODE_DEDICATED_LABEL,
+                    RUNTIME_MODE_MAIN_LABEL,
+                ], {
+                    "default": RUNTIME_MODE_SHARED_LABEL,
+                    "tooltip": "Python runtime used by Step Audio EditX:\n"
+                    "• Shared Runtime: Recommended. Uses the shared Transformers 4 runtime and was verified with Step EditX.\n"
+                    "• Dedicated Runtime: Uses a separate Step EditX Transformers 4 environment. Choose this only to isolate dependency conflicts.\n"
+                    "• Main Environment: Uses ComfyUI's packages. Transformers 5 currently produces invalid Step audio tokens and is not recommended."
                 }),
             }
         }
@@ -149,6 +172,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
         temperature: float,
         do_sample: bool,
         max_new_tokens: int,
+        runtime_mode: str,
     ):
         """
         Create Step Audio EditX engine adapter with configuration.
@@ -157,6 +181,13 @@ class StepAudioEditXEngineNode(BaseTTSNode):
             Tuple containing Step Audio EditX engine configuration data
         """
         try:
+            normalized_runtime_mode = normalize_runtime_mode(runtime_mode)
+            runtime_profiles = {
+                RUNTIME_MODE_SHARED: "vibevoice_transformers4_shared",
+                RUNTIME_MODE_DEDICATED: "step_audio_editx_transformers4",
+                RUNTIME_MODE_MAIN: None,
+            }
+
             # Create configuration dictionary
             config = {
                 "model_path": model_path,
@@ -167,11 +198,14 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                 "do_sample": do_sample,
                 "max_new_tokens": max_new_tokens,
                 "engine_type": "step_audio_editx",
+                "runtime_mode": normalized_runtime_mode,
+                "runtime_profile": runtime_profiles[normalized_runtime_mode],
             }
 
             print(f"⚙️ Step Audio EditX: Configured on {device}")
             print(f"   Model: {model_path}")
             print(f"   Precision: {torch_dtype}")
+            print(f"   Runtime: {runtime_mode}")
             if quantization != "none":
                 print(f"   Quantization: {quantization}")
             print(f"   Generation: temp={temperature}, do_sample={do_sample}, max_tokens={max_new_tokens}")
@@ -200,7 +234,9 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                     "quantization": None,
                     "temperature": 0.7,
                     "do_sample": True,
-                    "max_new_tokens": 8192,
+                    "max_new_tokens": 1024,
+                    "runtime_mode": RUNTIME_MODE_SHARED,
+                    "runtime_profile": "vibevoice_transformers4_shared",
                     "error": str(e)
                 },
                 "adapter_class": "StepAudioEditXAdapter"

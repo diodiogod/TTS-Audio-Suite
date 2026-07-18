@@ -199,9 +199,7 @@ class StepAudioEditXDownloader:
                 check_files = files
 
             if self._is_model_complete(model_dir, check_files):
-                # CRITICAL: Patch config.json if it's missing the AutoModelForCausalLM auto_map entry
-                # HuggingFace's stepfun-ai/Step-Audio-EditX has incomplete auto_map causing loading failures
-                # See: https://github.com/diodiogod/TTS-Audio-Suite/issues/226
+                # Normalize known omissions in older Step model snapshots.
                 if model_name == "Step-Audio-EditX":
                     self._patch_config_json(model_dir)
 
@@ -234,16 +232,12 @@ class StepAudioEditXDownloader:
 
     def _patch_config_json(self, model_dir: str):
         """
-        Patch config.json to add missing AutoModelForCausalLM auto_map entry.
+        Normalize compatibility fields omitted by older Step model snapshots.
 
-        HuggingFace's stepfun-ai/Step-Audio-EditX model has incomplete auto_map in config.json:
-        - Present: "AutoConfig": "configuration_step1.Step1Config"
-        - Missing: "AutoModelForCausalLM": "modeling_step1.Step1ForCausalLM"
-
-        Without this entry, transformers can't auto-load the custom model class, causing:
-        TypeError: 'NoneType' object is not callable
-
-        This patch ensures compatibility regardless of what's on HuggingFace.
+        TTS Audio Suite patches:
+        - AutoModelForCausalLM is required to load Step's remote model class.
+        - tie_word_embeddings must be false because the checkpoint contains a
+          distinct lm_head; tying it to input embeddings corrupts generation.
 
         Args:
             model_dir: Model directory containing config.json
@@ -260,27 +254,26 @@ class StepAudioEditXDownloader:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
 
-            # Check if patch is needed
-            auto_map = config.get("auto_map", {})
-            if "AutoModelForCausalLM" in auto_map:
-                # Already patched
+            changed = False
+            auto_map = config.setdefault("auto_map", {})
+            if "AutoModelForCausalLM" not in auto_map:
+                auto_map["AutoModelForCausalLM"] = "modeling_step1.Step1ForCausalLM"
+                changed = True
+            if config.get("tie_word_embeddings") is not False:
+                config["tie_word_embeddings"] = False
+                changed = True
+            if not changed:
                 return
-
-            # Apply patch
-            if "auto_map" not in config:
-                config["auto_map"] = {}
-
-            config["auto_map"]["AutoModelForCausalLM"] = "modeling_step1.Step1ForCausalLM"
 
             # Write patched config
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
-            print(f"✅ Patched config.json: Added AutoModelForCausalLM to auto_map")
+            print("✅ Normalized Step Audio EditX model configuration")
 
         except Exception as e:
             print(f"⚠️ Failed to patch config.json: {e}")
-            print(f"   Model may fail to load. Manual fix: add '\"AutoModelForCausalLM\": \"modeling_step1.Step1ForCausalLM\"' to auto_map in {config_path}")
+            print(f"   Model may fail to load correctly: {config_path}")
 
     def _is_model_complete(self, model_dir: str, required_files: list) -> bool:
         """

@@ -1,12 +1,10 @@
 import hashlib
-import io
 import os
 import sys
 import re
 import logging
 import numpy as np
 import torch
-import soundfile as sf
 import time
 from typing import Tuple, Optional
 from http import HTTPStatus
@@ -21,6 +19,12 @@ if _impl_dir not in sys.path:
     sys.path.insert(0, _impl_dir)
 
 from model_loader import model_loader, ModelSource
+from transformers_compat import (
+    STEP_AUDIO_TOKEN_END,
+    STEP_AUDIO_TOKEN_START,
+    STEP_VQ02_TOKEN_END,
+    STEP_VQ06_TOKEN_START,
+)
 from .config.prompts import AUDIO_EDIT_CLONE_SYSTEM_PROMPT_TPL, AUDIO_EDIT_SYSTEM_PROMPT
 from stepvocoder.cosyvoice2.cli.cosyvoice import CosyVoice
 from transformers.generation.logits_process import LogitsProcessor, LogitsProcessorList
@@ -106,13 +110,13 @@ class InterruptionStoppingCriteria(StoppingCriteria):
 
 
 class RepetitionAwareLogitsProcessor(LogitsProcessor):
-    """Logits processor to handle repetition in generation"""
+    """Apply the repetition guard used by the released PyTorch backend."""
+
     def __call__(
         self, input_ids: torch.LongTensor, scores: torch.FloatTensor
     ) -> torch.FloatTensor:
         window_size = 10
         threshold = 0.1
-
         window = input_ids[:, -window_size:]
         if window.shape[1] < window_size:
             return scores
@@ -120,7 +124,6 @@ class RepetitionAwareLogitsProcessor(LogitsProcessor):
         last_tokens = window[:, -1].unsqueeze(-1)
         repeat_counts = (window == last_tokens).sum(dim=1)
         repeat_ratios = repeat_counts.float() / window_size
-
         mask = repeat_ratios > threshold
         scores[mask, last_tokens[mask].squeeze(-1)] = float("-inf")
         return scores
@@ -187,6 +190,7 @@ class StepAudioTTS:
         self.edit_clone_sys_prompt_tpl = AUDIO_EDIT_CLONE_SYSTEM_PROMPT_TPL
         self.edit_sys_prompt = AUDIO_EDIT_SYSTEM_PROMPT
 
+    @torch.inference_mode()
     def clone(
         self,
         prompt_wav_path: str,
@@ -234,45 +238,15 @@ class StepAudioTTS:
                     prompt_wav_tokens,
                 )
 
-                # Get device from model
-                device = next(self.llm.parameters()).device
-                input_tensor = torch.tensor([token_ids]).to(torch.long).to(device)
-
-                # CRITICAL: Synchronize CUDA before generation
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-
                 print(f"🔄 Generating audio tokens for text: '{target_text[:50]}...' (input tokens: {len(token_ids)})")
-
-                # Add stopping criteria with progress bar
-                stopping_criteria = None
-                if progress_bar is not None:
-                    from transformers.generation.stopping_criteria import StoppingCriteriaList
-                    stopping_criteria = StoppingCriteriaList([
-                        InterruptionStoppingCriteria(progress_bar, max_new_tokens)
-                    ])
-
-
-                # CRITICAL FIX for transformers 4.54+: Use max_new_tokens instead of max_length
-                # transformers 4.54+ changed to prefer max_new_tokens over max_length
-                # The original code used max_length, but transformers 4.54+ has a bug where it ignores
-                # max_length if generation_config.max_length is set (even if we override it)
-                import transformers
-                transformers_version = tuple(map(int, transformers.__version__.split('.')[:2]))
-
-                logits_processors = [RepetitionAwareLogitsProcessor()]
-
-                output_ids = self.llm.generate(
-                    input_tensor,
-                    max_new_tokens=max_new_tokens,  # Use max_new_tokens instead of max_length (4.54+ compatibility)
+                output_ids = self._generate_audio_tokens(
+                    token_ids,
+                    max_new_tokens=max_new_tokens,
                     temperature=temperature,
                     do_sample=do_sample,
-                    logits_processor=LogitsProcessorList(logits_processors),
-                    stopping_criteria=stopping_criteria
+                    progress_bar=progress_bar,
                 )
 
-                # Extract only new tokens (skip input prompt and eos)
-                output_ids = output_ids[:, len(token_ids) : -1]
                 logger.debug("Voice cloning generation completed")
                 vq0206_codes_vocoder = torch.tensor([vq0206_codes], dtype=torch.long) - 65536
                 return (
@@ -288,6 +262,7 @@ class StepAudioTTS:
                 logger.error(f"Clone failed: {e}")
                 raise
 
+    @torch.inference_mode()
     def edit(
         self,
         input_audio_path: str,
@@ -296,7 +271,7 @@ class StepAudioTTS:
         edit_info: Optional[str] = None,
         text: Optional[str] = None,
         progress_bar=None,
-        max_new_tokens: int = 8192,
+        max_new_tokens: int = 1024,
         temperature: float = 0.7,
         do_sample: bool = True
     ) -> Tuple[torch.Tensor, int]:
@@ -336,27 +311,13 @@ class StepAudioTTS:
             logger.debug(f"Edit instruction: {instruct_prefix}")
             logger.debug(f"Encoded prompt length: {len(prompt_tokens)}")
 
-            # Get device from model
-            device = next(self.llm.parameters()).device
-            input_tensor = torch.tensor([prompt_tokens]).to(torch.long).to(device)
-
-            # Add stopping criteria with progress bar
-            stopping_criteria = None
-            if progress_bar is not None:
-                from transformers.generation.stopping_criteria import StoppingCriteriaList
-                stopping_criteria = StoppingCriteriaList([
-                    InterruptionStoppingCriteria(progress_bar, max_new_tokens)
-                ])
-
-            output_ids = self.llm.generate(
-                input_tensor,
+            output_ids = self._generate_audio_tokens(
+                prompt_tokens,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
                 do_sample=do_sample,
-                logits_processor=LogitsProcessorList([RepetitionAwareLogitsProcessor()]),
-                stopping_criteria=stopping_criteria
+                progress_bar=progress_bar,
             )
-            output_ids = output_ids[:, len(prompt_tokens) : -1]  # skip eos token
             vq0206_codes_vocoder = torch.tensor([vq0206_codes], dtype=torch.long) - 65536
             logger.debug("Audio editing generation completed")
             return (
@@ -452,25 +413,15 @@ class StepAudioTTS:
             prompt_wav_tokens=prompt_wav_tokens
         )
         sys_tokens = self.tokenizer.encode(f"system\n{prompt}")
-
         history = [1]
         history.extend([4] + sys_tokens + [3])
-
-        _prefix_tokens = self.tokenizer.encode("\n")
-
+        prefix_tokens = self.tokenizer.encode("\n")
         target_token_encode = self.tokenizer.encode("\n" + text)
-        target_tokens = target_token_encode[len(_prefix_tokens) :]
-
+        target_tokens = target_token_encode[len(prefix_tokens):]
         qrole_toks = self.tokenizer.encode("human\n")
         arole_toks = self.tokenizer.encode("assistant\n")
-
         history.extend(
-            [4]
-            + qrole_toks
-            + target_tokens
-            + [3]
-            + [4]
-            + arole_toks
+            [4] + qrole_toks + target_tokens + [3] + [4] + arole_toks
         )
         return history
 
@@ -529,15 +480,143 @@ class StepAudioTTS:
             speech_embedding,
         )
         
+    def _generate_audio_tokens(
+        self,
+        prompt_token_ids,
+        *,
+        max_new_tokens,
+        temperature,
+        do_sample,
+        progress_bar,
+    ):
+        """Generate Step audio tokens with settings matching upstream vLLM."""
+        device = next(self.llm.parameters()).device
+        input_tensor = torch.tensor(
+            [prompt_token_ids],
+            dtype=torch.long,
+            device=device,
+        )
+        stopping_criteria = None
+        if progress_bar is not None:
+            from transformers.generation.stopping_criteria import StoppingCriteriaList
+
+            stopping_criteria = StoppingCriteriaList([
+                InterruptionStoppingCriteria(progress_bar, max_new_tokens)
+            ])
+
+        generation_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "do_sample": do_sample,
+            "stopping_criteria": stopping_criteria,
+            "logits_processor": LogitsProcessorList([
+                RepetitionAwareLogitsProcessor()
+            ]),
+        }
+        if do_sample:
+            generation_kwargs["temperature"] = temperature
+
+        with torch.inference_mode():
+            output_ids = self.llm.generate(input_tensor, **generation_kwargs)
+        return self._extract_generated_audio_tokens(
+            output_ids,
+            len(prompt_token_ids),
+        )
+
     def generate_clone_voice_id(self, prompt_text, prompt_wav):
         hasher = hashlib.sha256()
-        hasher.update(prompt_text.encode('utf-8'))
+        hasher.update(prompt_text.encode("utf-8"))
         wav_data = prompt_wav.cpu().numpy()
         if wav_data.size > 2000:
-            audio_sample = np.concatenate([wav_data.flatten()[:1000], wav_data.flatten()[-1000:]])
+            audio_sample = np.concatenate(
+                [wav_data.flatten()[:1000], wav_data.flatten()[-1000:]]
+            )
         else:
             audio_sample = wav_data.flatten()
         hasher.update(audio_sample.tobytes())
-        voice_hash = hasher.hexdigest()[:16]
-        return f"clone_{voice_hash}"
-    
+        return f"clone_{hasher.hexdigest()[:16]}"
+
+    def _get_eos_token_id(self):
+        eos_token_id = getattr(self.llm.generation_config, "eos_token_id", None)
+        if eos_token_id is None:
+            eos_token_id = getattr(self.llm.config, "eos_token_id", None)
+        if isinstance(eos_token_id, (list, tuple)):
+            return eos_token_id[0] if eos_token_id else None
+        return eos_token_id
+
+    def _extract_generated_audio_tokens(self, output_ids, prompt_length):
+        """Return generated Step audio tokens, excluding the prompt and EOS."""
+        # TTS Audio Suite patch: never pass EOS/text tokens to the vocoder. Newer
+        # Transformers versions can otherwise turn a failed generation into 0s audio.
+        generated = output_ids[:, prompt_length:]
+        eos_token_id = self._get_eos_token_id()
+        if eos_token_id is not None and generated.shape[1] > 0:
+            eos_positions = generated[0].eq(eos_token_id)
+            if eos_positions.any():
+                first_eos = int(torch.nonzero(eos_positions, as_tuple=False)[0].item())
+                generated = generated[:, :first_eos]
+
+        # Step emits groups of two 1,024-entry VQ02 codes followed by three
+        # 4,096-entry VQ06 codes. VQ06 is offset by 1,024 in the mixed stream.
+        positions = torch.arange(generated.shape[1], device=generated.device)
+        vq02_slots = (positions % 5) < 2
+        valid_vq02 = (
+            (generated >= STEP_AUDIO_TOKEN_START)
+            & (generated < STEP_VQ02_TOKEN_END)
+        )
+        valid_vq06 = (
+            (generated >= STEP_VQ06_TOKEN_START)
+            & (generated < STEP_AUDIO_TOKEN_END)
+        )
+        valid_audio = torch.where(
+            vq02_slots.unsqueeze(0),
+            valid_vq02,
+            valid_vq06,
+        )
+        if generated.shape[1] < 5 or not bool(valid_audio.all().item()):
+            invalid_count = int((~valid_audio).sum().item()) if generated.numel() else 0
+            flat_tokens = generated[0].detach().cpu().tolist()
+            runs = []
+            if flat_tokens:
+                run_start = 0
+                run_is_audio = bool(valid_audio[0, 0].item())
+                for position, token_id in enumerate(flat_tokens[1:], start=1):
+                    is_audio = bool(valid_audio[0, position].item())
+                    if is_audio != run_is_audio:
+                        runs.append(
+                            f"{'audio' if run_is_audio else 'other'}:"
+                            f"{run_start}-{position - 1}"
+                        )
+                        run_start = position
+                        run_is_audio = is_audio
+                runs.append(
+                    f"{'audio' if run_is_audio else 'other'}:"
+                    f"{run_start}-{len(flat_tokens) - 1}"
+                )
+
+            invalid_examples = []
+            for position, token_id in enumerate(flat_tokens):
+                if bool(valid_audio[0, position].item()):
+                    continue
+                token_text = self.tokenizer.convert_ids_to_tokens(token_id)
+                invalid_examples.append(f"{position}:{token_id}={token_text!r}")
+                if len(invalid_examples) == 12:
+                    break
+
+            print(
+                "🔬 Step output token runs: "
+                + (
+                    ", ".join(runs[:24])
+                    + (f", … ({len(runs)} runs total)" if len(runs) > 24 else "")
+                    if runs
+                    else "(empty)"
+                )
+            )
+            print(
+                "🔬 First non-audio tokens: "
+                + (", ".join(invalid_examples) if invalid_examples else "(none)")
+            )
+            raise RuntimeError(
+                "Step Audio EditX generated no usable speech tokens "
+                f"({generated.shape[1]} tokens, {invalid_count} outside the audio vocabulary)."
+            )
+        return generated

@@ -188,6 +188,12 @@ Hello! This is unified SRT TTS with character switching.
                 if 'chunk_minutes' in config:
                     stable_params['chunk_minutes'] = config.get('chunk_minutes', 0)
 
+            if engine_type == "step_audio_editx":
+                stable_params['quantization'] = config.get('quantization', 'none')
+                stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
+                stable_params['runtime_mode'] = config.get('runtime_mode', 'shared_runtime')
+                stable_params['runtime_profile'] = config.get('runtime_profile')
+
             # For ChatterBox Official 23-Lang, include model_version in cache key since v1/v2 are different models
             if engine_type == "chatterbox_official_23lang":
                 stable_params['model_version'] = config.get('model_version', 'v1')

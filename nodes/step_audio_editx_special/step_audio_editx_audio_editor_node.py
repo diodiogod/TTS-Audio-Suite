@@ -175,6 +175,8 @@ class StepAudioEditXAudioEditorNode:
                 model_type="tts",  # Use "tts" to match adapter's cache key
                 model_name=config.get("model_path", "Step-Audio-EditX"),
                 device=resolve_torch_device(config.get("device", "auto")),
+                runtime_mode=config.get("runtime_mode", "shared_runtime"),
+                runtime_profile=config.get("runtime_profile", "vibevoice_transformers4_shared"),
                 additional_params={
                     "torch_dtype": config.get("torch_dtype", "bfloat16"),
                     "quantization": config.get("quantization")
@@ -187,7 +189,7 @@ class StepAudioEditXAudioEditorNode:
             # Store generation params for potential use
             engine._temperature = config.get("temperature", 0.7)
             engine._do_sample = config.get("do_sample", True)
-            engine._max_new_tokens = config.get("max_new_tokens", 8192)
+            engine._max_new_tokens = config.get("max_new_tokens", 1024)
 
             return engine
 
@@ -293,6 +295,8 @@ class StepAudioEditXAudioEditorNode:
                 model_name="Step-Audio-EditX",
                 model_path=model_path,
                 device=resolve_torch_device(device_setting),
+                runtime_mode="shared_runtime",
+                runtime_profile="vibevoice_transformers4_shared",
                 additional_params={"torch_dtype": torch_dtype_val, "quantization": quantization_val}
             )
 
@@ -516,7 +520,7 @@ class StepAudioEditXAudioEditorNode:
         comfyui_temp_dir = folder_paths.get_temp_directory()
 
         # Get generation params from engine config or use defaults
-        max_new_tokens = getattr(step_audio_engine, '_max_new_tokens', 8192)
+        max_new_tokens = getattr(step_audio_engine, '_max_new_tokens', 1024)
         temperature = getattr(step_audio_engine, '_temperature', 0.7)
         do_sample = getattr(step_audio_engine, '_do_sample', True)
 

@@ -190,6 +190,8 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "step_audio_editx":
                 stable_params['quantization'] = config.get('quantization', 'none')
                 stable_params['torch_dtype'] = config.get('torch_dtype', 'bfloat16')
+                stable_params['runtime_mode'] = config.get('runtime_mode', 'shared_runtime')
+                stable_params['runtime_profile'] = config.get('runtime_profile')
 
             # Qwen checkpoints can share a size while serving different roles, so cache
             # by the explicit checkpoint identity rather than inferring it from the preset.
@@ -853,7 +855,7 @@ Back to the main narrator voice for the conclusion.""",
                     audio_path = opt_narrator.get("audio_path") 
                     reference_text = opt_narrator.get("reference_text", "")
                     character_name = opt_narrator.get("character_name", "narrator")
-                    
+
                     print(f"🎤 TTS Text: Using voice reference from Character Voices node ({character_name})")
                     # print(f"🐛 TTS_TEXT: Character Voices - character_name='{character_name}', has_audio={audio is not None}")
                     return audio_path, audio, reference_text, character_name
@@ -1238,7 +1240,9 @@ Back to the main narrator voice for the conclusion.""",
                         temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
                         voice_mapping[character] = {
                             'prompt_audio_path': temp_file_path,
-                            'prompt_text': reference_text
+                            'prompt_text': reference_text,
+                            # Preserve the user-facing voice name for progress output.
+                            'character_name': character_name,
                         }
                     else:
                         # Use character-specific voice from voices/ folder with fallback to narrator
@@ -1246,7 +1250,8 @@ Back to the main narrator voice for the conclusion.""",
                         if audio_path and ref_text:
                             voice_mapping[character] = {
                                 'prompt_audio_path': audio_path,
-                                'prompt_text': ref_text
+                                'prompt_text': ref_text,
+                                'character_name': character,
                             }
                             print(f"🎭 Step Audio EditX: Using character-specific voice for '{character}'")
                         else:
@@ -1270,7 +1275,8 @@ Back to the main narrator voice for the conclusion.""",
                                 temp_file_path = AudioProcessingUtils.save_audio_to_temp_file(waveform, sr)
                                 voice_mapping[character] = {
                                     'prompt_audio_path': temp_file_path,
-                                    'prompt_text': reference_text
+                                    'prompt_text': reference_text,
+                                    'character_name': character_name,
                                 }
                                 print(f"🔄 Step Audio EditX: Using narrator voice fallback for '{character}'")
                             else:
@@ -1620,7 +1626,6 @@ Back to the main narrator voice for the conclusion.""",
             elif engine_type == "higgs_audio_v3":
                 import re
                 from utils.audio.chunk_timing import ChunkTimingHelper
-                from utils.text.character_parser import character_parser
 
                 character_tags = re.findall(r'\[([^\]]+)\]', text)
                 tagged_characters = []
@@ -1707,8 +1712,6 @@ Back to the main narrator voice for the conclusion.""",
                         characters_from_tags.append(character_name)
 
                 # Parse segments to get actual characters used
-                from utils.text.character_parser import character_parser
-
                 # Get available characters
                 available_chars = get_available_characters()
                 character_aliases = voice_discovery.get_character_aliases()

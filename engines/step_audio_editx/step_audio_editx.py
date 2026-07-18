@@ -193,7 +193,7 @@ class StepAudioEditXEngine:
         target_text: str,
         temperature: float = 0.7,
         do_sample: bool = True,
-        max_new_tokens: int = 8192,
+        max_new_tokens: int = 1024,
         progress_bar=None
     ) -> torch.Tensor:
         """
@@ -205,7 +205,7 @@ class StepAudioEditXEngine:
             target_text: Text to synthesize with cloned voice
             temperature: Sampling temperature (default: 0.7, hardcoded in original)
             do_sample: Use sampling (default: True, hardcoded in original)
-            max_new_tokens: Maximum tokens to generate (default: 8192, hardcoded in original)
+            max_new_tokens: Maximum tokens to generate (default: 1024)
             progress_bar: ComfyUI progress bar for generation tracking
 
         Returns:
@@ -276,7 +276,7 @@ class StepAudioEditXEngine:
         edit_info: Optional[str] = None,
         text: Optional[str] = None,
         progress_bar=None,
-        max_new_tokens: int = 8192,
+        max_new_tokens: int = 1024,
         temperature: float = 0.7,
         do_sample: bool = True
     ) -> torch.Tensor:

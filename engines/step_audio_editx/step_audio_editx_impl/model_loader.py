@@ -5,11 +5,9 @@ import os
 import sys
 import logging
 import threading
-import inspect
-import functools
 from typing import Optional, Dict, Any, Tuple
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 # CRITICAL: Add our bundled directory FIRST to sys.path to prevent conflicts with other custom nodes
 _impl_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,6 +19,7 @@ if _impl_dir in sys.path:
 sys.path.insert(0, _impl_dir)
 
 from funasr_detach.auto.auto_model import AutoModel
+from transformers_compat import ensure_chat_template, install_memory_safe_attention
 
 # Global cache for downloaded models to avoid repeated downloads
 # Key: (model_path, source)
@@ -55,45 +54,78 @@ class UnifiedModelLoader:
         import transformers as trans
 
         try:
-            major_version = int(trans.__version__.split(".", 1)[0])
+            version_parts = trans.__version__.split(".")
+            transformers_version = tuple(int(part) for part in version_parts[:2])
         except Exception:
-            major_version = 4
+            transformers_version = (4, 0)
 
-        # TTS Audio Suite patch: Transformers 5 renamed `torch_dtype` to `dtype`.
-        load_kwargs["dtype" if major_version >= 5 else "torch_dtype"] = requested_dtype
+        # TTS Audio Suite patch: recent Transformers 4 releases already accept
+        # `dtype` and deprecate `torch_dtype`; older releases need the old name.
+        load_kwargs["dtype" if transformers_version >= (4, 56) else "torch_dtype"] = requested_dtype
 
-    def _patch_remote_code_cache_position_signature(self, model) -> None:
-        """
-        TTS Audio Suite patch: hide optional `cache_position` from Step Audio remote-code models.
+    def _load_step_model_config(self, model_path: str):
+        """Load Step config with the checkpoint's untied output head requirement."""
+        # TTS Audio Suite patch: Step-Audio-EditX stores separate lm_head and input
+        # embedding weights, so Transformers must never tie them during construction.
+        config = AutoConfig.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            local_files_only=True,
+        )
+        config.tie_word_embeddings = False
+        return config
 
-        Transformers 5 warns when remote-code models expose `cache_position` in `forward`.
-        The Step Audio model uses it as an optional argument with a default, so generation
-        works without passing it explicitly. We wrap `forward` with the same call behavior but
-        an adjusted signature to avoid the warning.
-        """
-        try:
-            original_forward = model.forward
-            signature = inspect.signature(original_forward)
-        except Exception:
+    def _ensure_untied_lm_head(self, model, model_path: str) -> None:
+        """Restore Step's audio output head only if Transformers tied it."""
+        import glob
+        from safetensors import safe_open
+
+        if not (
+            hasattr(model, "lm_head")
+            and hasattr(model, "model")
+            and hasattr(model.model, "embed_tokens")
+        ):
+            raise RuntimeError("Step model is missing lm_head or input embeddings")
+
+        loaded_norm = model.lm_head.weight.float().norm().item()
+        was_tied = (
+            model.lm_head.weight.data_ptr()
+            == model.model.embed_tokens.weight.data_ptr()
+        )
+        if not was_tied:
+            print(
+                "🧠 Step Audio EditX lm_head verified untied "
+                f"(norm={loaded_norm:.2f})"
+            )
             return
 
-        if "cache_position" not in signature.parameters:
-            return
+        checkpoint_weight = None
+        for checkpoint_path in sorted(
+            glob.glob(os.path.join(model_path, "model*.safetensors"))
+        ):
+            with safe_open(checkpoint_path, framework="pt", device="cpu") as handle:
+                if "lm_head.weight" in handle.keys():
+                    checkpoint_weight = handle.get_tensor("lm_head.weight")
+                    break
 
-        filtered_parameters = [
-            parameter
-            for name, parameter in signature.parameters.items()
-            if name != "cache_position"
-        ]
-        patched_signature = signature.replace(parameters=filtered_parameters)
+        if checkpoint_weight is None:
+            raise RuntimeError(
+                "Step checkpoint does not contain the required lm_head.weight"
+            )
 
-        @functools.wraps(original_forward)
-        def patched_forward(*args, **kwargs):
-            kwargs.pop("cache_position", None)
-            return original_forward(*args, **kwargs)
+        target_device = model.lm_head.weight.device
+        target_dtype = model.lm_head.weight.dtype
 
-        patched_forward.__signature__ = patched_signature
-        model.forward = patched_forward
+        # TTS Audio Suite patch: Step has a separately trained audio head, but
+        # affected Transformers releases incorrectly tie it to input embeddings.
+        model.lm_head.weight = torch.nn.Parameter(
+            checkpoint_weight.to(device=target_device, dtype=target_dtype)
+        )
+        restored_norm = model.lm_head.weight.float().norm().item()
+        print(
+            "🧠 Step Audio EditX lm_head restored from checkpoint "
+            f"(norm={loaded_norm:.2f} → {restored_norm:.2f})"
+        )
 
     def _cached_snapshot_download(self, model_path: str, source: str, **kwargs) -> str:
         """
@@ -277,6 +309,8 @@ class UnifiedModelLoader:
                 if should_set_torch_dtype:
                     self._apply_transformers_dtype_arg(load_kwargs, requested_dtype)
 
+                load_kwargs["config"] = self._load_step_model_config(model_path)
+
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
                     **load_kwargs
@@ -287,11 +321,10 @@ class UnifiedModelLoader:
                     trust_remote_code=True,
                     local_files_only=True
                 )
+                tokenizer = ensure_chat_template(tokenizer)
 
             elif source == ModelSource.MODELSCOPE:
                 # Load from ModelScope
-                from modelscope import AutoModelForCausalLM as MSAutoModelForCausalLM
-                from modelscope import AutoTokenizer as MSAutoTokenizer
                 model_path = self._cached_snapshot_download(model_path, ModelSource.MODELSCOPE)
 
                 load_kwargs = {
@@ -308,6 +341,8 @@ class UnifiedModelLoader:
                 if should_set_torch_dtype:
                     self._apply_transformers_dtype_arg(load_kwargs, requested_dtype)
 
+                load_kwargs["config"] = self._load_step_model_config(model_path)
+
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
                     **load_kwargs
@@ -317,6 +352,7 @@ class UnifiedModelLoader:
                     trust_remote_code=True,
                     local_files_only=True
                 )
+                tokenizer = ensure_chat_template(tokenizer)
 
             elif source == ModelSource.HUGGINGFACE:
                 model_path = self._cached_snapshot_download(model_path, ModelSource.HUGGINGFACE)
@@ -336,6 +372,8 @@ class UnifiedModelLoader:
                 if should_set_torch_dtype:
                     self._apply_transformers_dtype_arg(load_kwargs, requested_dtype)
 
+                load_kwargs["config"] = self._load_step_model_config(model_path)
+
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
                     **load_kwargs
@@ -345,6 +383,7 @@ class UnifiedModelLoader:
                     trust_remote_code=True,
                     local_files_only=True
                 )
+                tokenizer = ensure_chat_template(tokenizer)
 
             else:
                 raise ValueError(f"Unsupported model source: {source}")
@@ -352,7 +391,8 @@ class UnifiedModelLoader:
             # CRITICAL: Put model in evaluation mode (disables dropout, batch norm training mode)
             # Without this, the model generates garbage due to training-time randomness
             model.eval()
-            self._patch_remote_code_cache_position_signature(model)
+            attention_backend = install_memory_safe_attention(model)
+            print(f"🧠 Step Audio EditX attention: {attention_backend}")
 
             # ========================================================================
             # CRITICAL FIX for transformers 4.54+ weight tying bug
@@ -381,50 +421,7 @@ class UnifiedModelLoader:
             # - Issue: https://github.com/diodiogod/TTS-Audio-Suite/issues/202
             # ========================================================================
 
-            try:
-                import torch
-                from safetensors import safe_open
-                import glob
-
-                # Detect if weights were incorrectly tied during loading
-                if hasattr(model, 'lm_head') and hasattr(model, 'model') and hasattr(model.model, 'embed_tokens'):
-                    # Check if pointers are the same (indicating tied weights)
-                    if model.lm_head.weight.data_ptr() == model.model.embed_tokens.weight.data_ptr():
-                        self.logger.warning("⚠️  Detected incorrect weight tying in transformers 4.54+ - restoring original lm_head weights...")
-
-                        # Find and load correct lm_head weights from safetensors checkpoint
-                        safetensors_files = sorted(glob.glob(os.path.join(model_path, "model*.safetensors")))
-                        if safetensors_files:
-                            lm_head_weight = None
-                            for st_file in safetensors_files:
-                                try:
-                                    with safe_open(st_file, framework="pt", device="cpu") as f:
-                                        if "lm_head.weight" in f.keys():
-                                            lm_head_weight = f.get_tensor("lm_head.weight")
-                                            self.logger.debug(f"Found lm_head.weight in {os.path.basename(st_file)}")
-                                            break
-                                except Exception as e:
-                                    self.logger.debug(f"Could not read {st_file}: {e}")
-                                    continue
-
-                            if lm_head_weight is not None:
-                                # Untie weights by creating a new parameter with correct values
-                                original_norm = model.lm_head.weight.norm().item()
-                                model.lm_head.weight = torch.nn.Parameter(
-                                    lm_head_weight.to(model.lm_head.weight.dtype)
-                                                   .to(model.lm_head.weight.device)
-                                                   .clone()
-                                )
-                                restored_norm = model.lm_head.weight.norm().item()
-                                self.logger.warning(f"✅ Restored lm_head weights (norm: {original_norm:.2f} → {restored_norm:.2f})")
-                            else:
-                                self.logger.error("❌ Could not find lm_head.weight in safetensors - audio generation may be silent")
-                        else:
-                            self.logger.error("❌ No safetensors files found - cannot restore lm_head weights")
-                    else:
-                        self.logger.debug("✅ Weights are separate (not tied) - no fix needed")
-            except Exception as e:
-                self.logger.error(f"⚠️  Weight restoration failed: {e} - audio generation may have issues")
+            self._ensure_untied_lm_head(model, model_path)
 
             self.logger.debug(f"Successfully loaded model from {source}")
             return model, tokenizer, model_path

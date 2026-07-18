@@ -1052,6 +1052,7 @@ engines:
       - "Second Pass Speech Editing Node: 14 emotions"
       - "32 speaking styles"
       - "Paralinguistic effects"
+      - "Selectable main, shared, or dedicated Python runtime (shared Transformers 4 runtime recommended)"
 
     model_sources:
       - component: "Step-Audio-EditX"

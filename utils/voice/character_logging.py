@@ -17,7 +17,10 @@ def resolved_voice_name(voice_ref: Any, fallback: str = "narrator") -> str:
         for key in ("audio_path", "prompt_audio_path", "path"):
             value = voice_ref.get(key)
             if value:
-                return Path(str(value)).stem
+                path_stem = Path(str(value)).stem
+                # Temporary reference files are implementation details, not voice names.
+                if not path_stem.lower().startswith("tmp"):
+                    return path_stem
         for key in ("audio", "waveform"):
             value = voice_ref.get(key)
             if isinstance(value, (dict, list, tuple, str, os.PathLike)):
@@ -30,7 +33,9 @@ def resolved_voice_name(voice_ref: Any, fallback: str = "narrator") -> str:
             if resolved:
                 return resolved
     elif isinstance(voice_ref, (str, os.PathLike)):
-        return Path(str(voice_ref)).stem
+        path_stem = Path(str(voice_ref)).stem
+        if not path_stem.lower().startswith("tmp"):
+            return path_stem
     else:
         for key in ("character_name", "voice_name", "name", "audio_path", "path"):
             value = getattr(voice_ref, key, None)

@@ -140,7 +140,9 @@ class StepAudioTokenizer:
             tmp_path = tmp_file.name
 
         try:
-            torchaudio.save(tmp_path, audio, 16000, format="wav")
+            # TTS Audio Suite patch: TorchCodec derives the format from the .wav
+            # suffix and warns when the obsolete explicit format argument is used.
+            torchaudio.save(tmp_path, audio, 16000)
 
             # Read the WAV file into BytesIO for FunASR processing
             with open(tmp_path, 'rb') as f:

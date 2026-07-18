@@ -18,6 +18,7 @@ from utils.runtimes import (
     build_higgs_audio_isolated_proxy,
     build_qwen3_asr_isolated_proxy,
     build_qwen3_tts_isolated_proxy,
+    build_step_audio_editx_isolated_proxy,
     build_vibevoice_isolated_proxy,
 )
 from utils.models.comfyui_model_wrapper.cache_utils import invalidate_all_caches
@@ -243,6 +244,11 @@ class UnifiedModelInterface:
 
         if config.engine_name == "qwen3_asr" and config.model_type in ("asr", "aligner"):
             proxy = build_qwen3_asr_isolated_proxy(config)
+            self._isolated_model_cache[cache_key] = proxy
+            return proxy
+
+        if config.engine_name == "step_audio_editx" and config.model_type == "tts":
+            proxy = build_step_audio_editx_isolated_proxy(config)
             self._isolated_model_cache[cache_key] = proxy
             return proxy
 
@@ -1189,7 +1195,7 @@ def register_step_audio_editx_factory():
                     self.quantization = quantization
                     self.model_dir = model_path
 
-                def clone(self, prompt_wav_path, prompt_text, target_text, temperature=0.7, do_sample=True, max_new_tokens=8192, progress_bar=None):
+                def clone(self, prompt_wav_path, prompt_text, target_text, temperature=0.7, do_sample=True, max_new_tokens=1024, progress_bar=None):
                     """Delegate clone to raw TTS engine"""
                     return self._tts_engine.clone(
                         prompt_wav_path=prompt_wav_path,
@@ -1201,7 +1207,7 @@ def register_step_audio_editx_factory():
                         do_sample=do_sample
                     )
 
-                def edit_single(self, input_audio_path, audio_text, edit_type, edit_info=None, text=None, progress_bar=None, max_new_tokens=8192, temperature=0.7, do_sample=True):
+                def edit_single(self, input_audio_path, audio_text, edit_type, edit_info=None, text=None, progress_bar=None, max_new_tokens=1024, temperature=0.7, do_sample=True):
                     """Delegate edit_single to raw TTS engine"""
                     audio_tensor, sample_rate = self._tts_engine.edit(
                         input_audio_path=input_audio_path,
@@ -1221,7 +1227,7 @@ def register_step_audio_editx_factory():
                         audio_tensor = audio_tensor.squeeze(0)
                     return audio_tensor
 
-                def edit(self, input_audio_path, audio_text, edit_type, edit_info=None, text=None, progress_bar=None, max_new_tokens=8192, temperature=0.7, do_sample=True):
+                def edit(self, input_audio_path, audio_text, edit_type, edit_info=None, text=None, progress_bar=None, max_new_tokens=1024, temperature=0.7, do_sample=True):
                     """Alias for edit_single for compatibility"""
                     return self.edit_single(input_audio_path, audio_text, edit_type, edit_info, text, progress_bar, max_new_tokens, temperature, do_sample)
 

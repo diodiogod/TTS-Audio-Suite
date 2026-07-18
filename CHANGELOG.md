@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.1] - 2026-07-18
+
+### Added
+
+- Add selectable shared and dedicated runtimes to the Step Audio EditX Engine node
+
+### Changed
+
+- Improve Step Audio EditX memory use and generation reliability
+
+### Fixed
+
+- Fix Step Audio EditX voice cloning producing silence, invalid speech, or assistant-like output
+- Fix Step Audio EditX inline emotion and style editing with isolated runtimes
+- Improve Step Audio EditX progress reporting and compatibility warnings
 ## [5.5.0] - 2026-07-17
 
 ### Added

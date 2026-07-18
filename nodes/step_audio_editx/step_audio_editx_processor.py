@@ -57,9 +57,23 @@ class StepAudioEditXProcessor:
         device = engine_config.get('device', 'auto')
         torch_dtype = engine_config.get('torch_dtype', 'auto')
         quantization = engine_config.get('quantization', None)
+        runtime_mode = engine_config.get('runtime_mode', 'shared_runtime')
+        runtime_profile = engine_config.get('runtime_profile')
 
         # Load model via adapter
-        self.adapter.load_base_model(model_path, device, torch_dtype, quantization)
+        self.adapter.load_base_model(
+            model_path,
+            device,
+            torch_dtype,
+            quantization,
+            runtime_mode,
+            runtime_profile,
+        )
+        # Inline edit post-processing reuses this engine directly, so preserve
+        # the engine-node generation settings on the shared proxy/wrapper.
+        self.adapter.engine._temperature = engine_config.get('temperature', 0.7)
+        self.adapter.engine._do_sample = engine_config.get('do_sample', True)
+        self.adapter.engine._max_new_tokens = engine_config.get('max_new_tokens', 1024)
 
     def update_config(self, new_config: Dict[str, Any]):
         """Update processor configuration with new parameters."""

@@ -63,9 +63,9 @@ _QWEN3_T4_PACKAGES = [
 RUNTIME_PROFILES: Dict[str, RuntimeProfile] = {
     "vibevoice_transformers4_shared": RuntimeProfile(
         name="vibevoice_transformers4_shared",
-        engine_names=["vibevoice"],
+        engine_names=["vibevoice", "step_audio_editx"],
         python_path_hint="runtimes/shared_legacy_t4/Scripts/python.exe",
-        description="Shared legacy Transformers 4 runtime for VibeVoice/Kugel and similar engines.",
+        description="Shared legacy Transformers 4 runtime for VibeVoice/Kugel, Step Audio EditX, and similar engines.",
         inherit_base_site_packages=True,
         pip_packages=list(_VIBEVOICE_T4_PACKAGES),
         pip_packages_no_deps=[
@@ -91,11 +91,19 @@ RUNTIME_PROFILES: Dict[str, RuntimeProfile] = {
         inherit_base_site_packages=True,
         pip_packages=list(_QWEN3_T4_PACKAGES),
     ),
-    "step_audio_editx_transformers5": RuntimeProfile(
-        name="step_audio_editx_transformers5",
+    "step_audio_editx_transformers4": RuntimeProfile(
+        name="step_audio_editx_transformers4",
         engine_names=["step_audio_editx"],
-        python_path_hint="runtimes/step_audio_editx_t5/Scripts/python.exe",
-        description="Dedicated Step Audio EditX runtime with pinned remote-code stack.",
+        python_path_hint="runtimes/step_audio_editx_t4/Scripts/python.exe",
+        description="Dedicated Step Audio EditX runtime matching its released PyTorch stack.",
+        inherit_base_site_packages=True,
+        pip_packages=[
+            "transformers==4.57.6",
+            "huggingface-hub<1.0",
+            "tokenizers<0.23",
+            "accelerate>=1.10.1",
+            "safetensors>=0.6.2",
+        ],
     ),
     "moss_tts_transformers5": RuntimeProfile(
         name="moss_tts_transformers5",

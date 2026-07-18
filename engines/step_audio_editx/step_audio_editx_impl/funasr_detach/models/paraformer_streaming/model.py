@@ -12,8 +12,11 @@ from contextlib import contextmanager
 # TTS Audio Suite Patch: Remove distutils dependency (removed in Python 3.12+)
 # Original code checked if PyTorch >= 1.6.0 to use autocast
 # PyTorch 1.6.0 released in July 2020 - all modern installations have it
-# Safe to assume autocast is always available in 2026
-from torch.cuda.amp import autocast
+# Safe to assume autocast is always available in 2026.
+# TTS Audio Suite patch: use the current torch.amp API to avoid the deprecated
+# torch.cuda.amp.autocast warning on modern PyTorch.
+def autocast(enabled=True):
+    return torch.amp.autocast("cuda", enabled=enabled)
 
 from funasr_detach.register import tables
 from funasr_detach.models.ctc.ctc import CTC

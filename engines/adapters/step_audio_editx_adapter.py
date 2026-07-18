@@ -93,7 +93,9 @@ class StepAudioEditXEngineAdapter:
                        model_path: str,
                        device: str = "auto",
                        torch_dtype: str = "auto",
-                       quantization: Optional[str] = None):
+                       quantization: Optional[str] = None,
+                       runtime_mode: str = "shared_runtime",
+                       runtime_profile: Optional[str] = None):
         """
         Load Step Audio EditX engine via unified interface (with caching).
 
@@ -113,6 +115,8 @@ class StepAudioEditXEngineAdapter:
             model_name="Step-Audio-EditX",
             model_path=model_path,  # Downloader will resolve this if it's "local:xxx"
             device=resolve_torch_device(device),
+            runtime_mode=runtime_mode,
+            runtime_profile=runtime_profile,
             additional_params={
                 "torch_dtype": torch_dtype,
                 "quantization": quantization
@@ -193,7 +197,7 @@ class StepAudioEditXEngineAdapter:
             prompt_text=prompt_text,
             temperature=params.get('temperature', 0.7),
             do_sample=params.get('do_sample', True),
-            max_new_tokens=params.get('max_new_tokens', 8192),
+            max_new_tokens=params.get('max_new_tokens', 1024),
             seed=params.get('seed', 0),
             model_path=params.get('model_path', 'Step-Audio-EditX'),
             device=params.get('device', 'auto'),
@@ -210,7 +214,7 @@ class StepAudioEditXEngineAdapter:
             return cached_audio[0]
 
         # Create ComfyUI progress bar for generation tracking with time prediction
-        max_new_tokens = params.get('max_new_tokens', 8192)
+        max_new_tokens = params.get('max_new_tokens', 1024)
 
         # Estimate actual tokens based on text length (same heuristic as Qwen3-TTS)
         # Rough heuristic: ~0.7 tokens per character for TTS (conservative estimate)
