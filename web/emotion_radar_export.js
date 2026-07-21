@@ -10,6 +10,8 @@
 const MODAL_ID = "tts-audio-suite-emotion-export-modal";
 const TOAST_ID = "tts-audio-suite-emotion-feedback";
 const DEFAULT_FILENAME = "index_tts_2_emotion_vectors.json";
+const MODAL_Z_INDEX = 100010;
+const TOAST_Z_INDEX = MODAL_Z_INDEX + 1;
 let toastTimeout = null;
 
 export function showEmotionFeedback(message, level = "success") {
@@ -25,7 +27,7 @@ export function showEmotionFeedback(message, level = "success") {
         position: fixed;
         left: 50%;
         bottom: 24px;
-        z-index: 10001;
+        z-index: ${TOAST_Z_INDEX};
         transform: translateX(-50%);
         max-width: min(520px, calc(100vw - 40px));
         padding: 9px 14px;
@@ -117,7 +119,7 @@ function showEmotionConfigModal({ mode, text = "", filename = DEFAULT_FILENAME, 
     modal.style.cssText = `
         position: fixed;
         inset: 0;
-        z-index: 10000;
+        z-index: ${MODAL_Z_INDEX};
         display: flex;
         align-items: center;
         justify-content: center;
