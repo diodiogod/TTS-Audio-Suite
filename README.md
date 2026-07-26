@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 19 Engines
+## Quick Engine Comparison — 20 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -43,6 +43,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **DramaBox** | 🇺🇸 | ~16.4GB | Expressive scene prompting and stage directions, Native and SRT-aware duration targeting |
 | **OmniVoice** | 🌐 600+ languages | ~3.7GB | Inline non-verbal tags and pronunciation overrides, Reference-free voice design |
+| **VoxCPM** | 🌐 30 languages (V2); EN/ZH legacy | ~5.0GB / ~2.0GB / ~1.6GB | One architecture-gated engine for VoxCPM2, VoxCPM1.5, and legacy VoxCPM-0.5B, VoxCPM2 reference-only, controllable, and ultimate voice cloning |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +18 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | Reference-free voice design with MOSS-VoiceGenerator, Native 1-5 speaker TTSD dialogue |
 | **MOSS-SoundEffect v2** | 🇺🇸​🇨🇳 | ~11.2GB | Durations up to 30 seconds, Native negative prompting, CFG, flow shift, and diffusion-step controls |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
@@ -165,6 +166,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
   - [CosyVoice3 Multilingual Voice Cloning](#cosyvoice3-multilingual-voice-cloning)
   - [Qwen3-TTS - 4 Model Types with Text-to-Voice Design](#qwen3-tts---4-model-types-with-text-to-voice-design)
   - [OmniVoice + Visual Tag Builder](#omnivoice--visual-tag-builder)
+  - [VoxCPM - V2, 1.5, and Legacy 0.5B](#voxcpm---v2-15-and-legacy-05b)
   - [Echo-TTS Voice Cloning](#echo-tts-voice-cloning)
   - [Phoneme Text Normalizer](#phoneme-text-normalizer)
   - [Multiline TTS Tag Editor and Per-Segment Parameter Switching](#multiline-tts-tag-editor-and-per-segment-parameter-switching)
@@ -204,7 +206,7 @@ Start with the **[New Engine Guide Hub](docs/New%20Engines%20Guides/README.md)**
 ## Features
 
 - 🎤 **Multi-Engine TTS**
-- 🎨 **Voice Designer** → Create reusable voices with compatible Qwen3-TTS, MOSS, and OmniVoice engines
+- 🎨 **Voice Designer** → Create reusable voices with compatible Qwen3-TTS, MOSS, OmniVoice, and VoxCPM2 engines
 - 🌩️ **Sound Effects** → **[📖 Sound Effects Guide](docs/SOUND_EFFECTS_GUIDE.md)**
 - 🔄 **Voice Conversion**
 - ✏️ **ASR Transcription**
@@ -935,7 +937,7 @@ Instruct: 用兴奋的语气说话。
 
 **Voice Designer Node:**
 
-The shared designer accepts Qwen3-TTS, MOSS-TTS, or OmniVoice engine configurations and outputs the same `NARRATOR_VOICE` format. The voice-design instruction lives on **🎨 Voice Designer**; the engine keeps model, language, and generation settings. Select Qwen VoiceDesign or MOSS VoiceGenerator in the engine's model dropdown, or set OmniVoice to **Voice Design** mode. The corresponding engine instruction stays visible but is disabled because it would be ignored. Incompatible modes stop with a direct correction message. OmniVoice's controlled tag vocabulary can still be assembled with **📐 Visual Tag Builder**. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
+The shared designer accepts Qwen3-TTS, MOSS-TTS, OmniVoice, or VoxCPM2 engine configurations and outputs the same `NARRATOR_VOICE` format. The voice-design instruction lives on **🎨 Voice Designer**; the engine keeps model and generation settings. Select Qwen VoiceDesign or MOSS VoiceGenerator in the engine's model dropdown, or set OmniVoice or VoxCPM2 to **Voice Design** mode. Incompatible models and modes stop with a direct correction message. OmniVoice's controlled tag vocabulary can still be assembled with **📐 Visual Tag Builder**. Connect the resulting `opt_narrator` to **💾 Save Character Voice** when persistence is wanted.
 
 **💾 Save Character Voice** accepts only `opt_narrator`, keeping persistence separate from voice construction. For existing audio, use **🎭 Character Voices** with the audio and its exact transcription, then connect its `opt_narrator` output to Save Character Voice. The save node writes the established three-file format—`name.wav`, `name.reference.txt`, and metadata in `name.txt`—under `models/voices/`.
 
@@ -968,6 +970,21 @@ Description: "A deep, authoritative male voice with clear articulation"
 **Practical note:**
 
 Use the built-in OmniVoice preset in **📐 Visual Tag Builder** for the canonical voice-design workflow. If you need a different tag schema, the same node now supports reusable custom presets with saved column order.
+
+</details>
+
+<details>
+<summary><h3>VoxCPM - V2, 1.5, and Legacy 0.5B</h3></summary>
+
+One **⚙️ VoxCPM Engine** supports every official OpenBMB generation through the official runtime:
+
+* **VoxCPM2 (default)**: 30 languages, 48kHz output, reference-only cloning, controllable cloning with a style description, exact-transcript “ultimate” cloning, and Voice Design
+* **VoxCPM1.5**: English/Chinese, 44.1kHz output, lower VRAM and faster inference than V2; cloning requires the exact reference transcript
+* **VoxCPM-0.5B (legacy)**: English/Chinese, 16kHz output, lowest memory requirement; retained for compatibility rather than recommended quality
+
+The suite automatically maps the selected architecture to the correct official cloning mode. It supports TTS Text, TTS SRT, Character Voices, pause tags, per-segment seed/CFG/step overrides, and reusable VoxCPM2 voices through **🎨 Voice Designer**.
+
+The optional upstream denoiser, bundled ASR helpers from community nodes, and LoRA training are intentionally not installed by this engine. They add dependencies or separate workflows and are not required for reliable inference.
 
 </details>
 
@@ -1530,6 +1547,7 @@ For offline/manual setup:
 | DramaBox | `ComfyUI/models/TTS/dramabox/DramaBox/` | ✅ | ~16.4GB download; fast mode roughly 24GB VRAM; experimental FP8 peaks on RTX 4090: staged ~15.1GB allocated, sequential ~11.7GB allocated / ~12.4GB reserved; conditional LTX-2 Community License |
 | Fish Audio S2 Pro | `ComfyUI/models/TTS/fish_audio_s2_pro/` | ✅ | Official BF16 or optional community FP8 checkpoint; the official checkpoint can be quantized on load with BNB INT8/NF4; main T5 environment with process teardown for Clear VRAM; Fish Audio Research License |
 | OmniVoice | `ComfyUI/models/TTS/omnivoice/` | ✅ | Official OmniVoice model. Voice cloning in this suite requires explicit reference text. |
+| VoxCPM | `ComfyUI/models/TTS/voxcpm/` | ✅ | VoxCPM2 (recommended), VoxCPM1.5 (lower VRAM/faster), and VoxCPM-0.5B (legacy) |
 
 *Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*
 
@@ -1561,7 +1579,7 @@ Your support helps maintain and improve this project for the entire community!
 | **Unified 🔄 Voice Changer** | Modern voice conversion with multiple engines | • RVC + ChatterBox VC<br>• Iterative refinement<br>• Real-time conversion                                            | ✅ **Updated for v4.3** | [📁 JSON](example_workflows/Unified%20🔄%20Voice%20Changer%20-%20RVC%20X%20ChatterBox.json) |
 | **Unified ✏️ ASR Transcribe + SRT Builder** | Modular ASR + subtitle workflow | • Granite ASR + Qwen3 ASR examples<br>• Separate transcription and SRT building<br>• Works with the new Text to SRT Builder flow | ✅ **New in v4.23** | [📁 JSON](example_workflows/Unified%20✏️%20ASR%20Transcribe%20+%20SRT%20Builder.json) |
 | **Unified 🌩️ Sound Effects** | Text-to-sound generation with compatible engines | • MOSS-SoundEffect v1 and v2<br>• Per-segment parameters and pauses<br>• Long-duration chunking and audio cache | ✅ **New** | [📁 JSON](example_workflows/Unified%20🌩️%20Sound%20Effects.json) |
-| **Unified 🎨 Voice Designer** | Reference-free character voice creation | • Qwen3-TTS, MOSS-TTS, and OmniVoice<br>• Free-form descriptions or Visual Tag Builder<br>• Preview and save reusable character voices | ✅ **New** | [📁 JSON](example_workflows/Unified%20🎨%20Voice%20Designer.json) · [🖼️ Cover](example_workflows/Unified%20🎨%20Voice%20Designer.jpg) |
+| **Unified 🎨 Voice Designer** | Reference-free character voice creation | • Qwen3-TTS, MOSS-TTS, OmniVoice, and VoxCPM2<br>• Free-form descriptions or Visual Tag Builder<br>• Preview and save reusable character voices | ✅ **New** | [📁 JSON](example_workflows/Unified%20🎨%20Voice%20Designer.json) · [🖼️ Cover](example_workflows/Unified%20🎨%20Voice%20Designer.jpg) |
 
 ### Specific Workflows
 

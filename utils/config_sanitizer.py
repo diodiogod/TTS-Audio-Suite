@@ -20,18 +20,21 @@ class ConfigSanitizer:
         'repetition_penalty', 'temperature', 'top_p', 'emotion_alpha',
         'length_penalty', 'speed', 'target_rms', 'cross_fade_duration',
         'cfg_weight', 'exaggeration', 'cfg_strength', 'min_p', 'fade_for_StretchToFit',
-        'max_stretch_ratio', 'min_stretch_ratio', 'timing_tolerance'
+        'max_stretch_ratio', 'min_stretch_ratio', 'timing_tolerance',
+        'cfg_value', 'retry_badcase_ratio_threshold'
     }
 
     # Parameters that should be strings
     STRING_PARAMS = {
-        'device', 'language', 'model', 'model_version', 'model_path'
+        'device', 'language', 'model', 'model_version', 'model_path',
+        'model_variant', 'model_name', 'model_role', 'mode', 'voice_instruction'
     }
 
     # Parameters that should be integers
     INT_PARAMS = {
         'top_k', 'num_beams', 'max_mel_tokens', 'interval_silence',
-        'max_text_tokens_per_segment', 'seed', 'refinement_passes'
+        'max_text_tokens_per_segment', 'seed', 'refinement_passes',
+        'inference_timesteps', 'min_len', 'max_len', 'retry_badcase_max_times'
     }
 
     @classmethod

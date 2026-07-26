@@ -242,6 +242,11 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
                 stable_params['dtype'] = config.get('dtype', 'auto')
 
+            if engine_type == "voxcpm":
+                stable_params['model_variant'] = config.get('model_variant', 'VoxCPM2')
+                stable_params['model_name'] = config.get('model_name', 'VoxCPM2')
+                stable_params['optimize'] = config.get('optimize', False)
+
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
                 stable_params['multi_speaker_mode'] = config.get('multi_speaker_mode', 'Custom Character Switching')
@@ -690,6 +695,53 @@ Hello! This is unified SRT TTS with character switching.
 
                 engine_instance = OmniVoiceSRTWrapper(config)
 
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
+            elif engine_type == "voxcpm":
+                processor_path = os.path.join(
+                    nodes_dir, "voxcpm", "voxcpm_srt_processor.py"
+                )
+                processor_spec = importlib.util.spec_from_file_location(
+                    "voxcpm_srt_processor_module", processor_path
+                )
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                VoxCPMSRTProcessor = processor_module.VoxCPMSRTProcessor
+
+                class VoxCPMSRTWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.processor = VoxCPMSRTProcessor(self, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def process_with_error_handling(self, func):
+                        return func()
+
+                    def format_audio_output(self, audio_tensor, sample_rate):
+                        if audio_tensor.is_cuda:
+                            audio_tensor = audio_tensor.cpu()
+                        if audio_tensor.dim() == 1:
+                            audio_tensor = audio_tensor.unsqueeze(0).unsqueeze(0)
+                        elif audio_tensor.dim() == 2:
+                            audio_tensor = audio_tensor.unsqueeze(0)
+                        return {
+                            "waveform": audio_tensor,
+                            "sample_rate": int(sample_rate),
+                        }
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("VoxCPM SRT processing interrupted by user")
+
+                engine_instance = VoxCPMSRTWrapper(config)
                 import time
                 self._cached_engine_instances[cache_key] = {
                     'instance': engine_instance,
@@ -1175,6 +1227,17 @@ Hello! This is unified SRT TTS with character switching.
                     "OmniVoice voice cloning requires reference text. "
                     "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
                 )
+            if (
+                engine_type == "voxcpm"
+                and config.get("model_variant") in {"VoxCPM1.5", "VoxCPM-0.5B"}
+                and (audio_tensor is not None or audio_path)
+                and not reference_text.strip()
+            ):
+                raise ValueError(
+                    f"{config.get('model_variant')} voice cloning requires the exact reference transcript. "
+                    "Use Character Voices or a narrator voice with a matching .reference.txt file. "
+                    "VoxCPM2 supports reference-only cloning."
+                )
             
             # Create proper engine SRT node instance to preserve ALL functionality
             engine_instance = self._create_proper_engine_node_instance(TTS_engine)
@@ -1450,6 +1513,29 @@ Hello! This is unified SRT TTS with character switching.
                     timing_mode=timing_mode,
                     timing_params=timing_params,
                     enable_audio_cache=enable_audio_cache
+                )
+
+            elif engine_type == "voxcpm":
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance,
+                }
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or "",
+                    }
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache,
                 )
 
             elif engine_type == "vibevoice":

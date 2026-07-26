@@ -9,6 +9,7 @@ const ENGINE_PARAMETERS = {
     step_audio_editx: ["seed", "temperature"],
     cosyvoice3: ["seed", "speed"],
     omnivoice: ["seed", "num_steps", "guidance_scale", "duration", "t_shift", "layer_penalty_factor", "position_temperature", "class_temperature", "audio_chunk_duration", "audio_chunk_threshold", "speed"],
+    voxcpm: ["seed", "cfg", "num_steps"],
     dramabox: ["seed", "cfg", "stg_scale", "duration_multiplier", "gen_duration", "ref_duration", "rescale_scale", "negative", "template"],
 };
 const ALL_PARAMETERS = new Set(Object.values(ENGINE_PARAMETERS).flat());

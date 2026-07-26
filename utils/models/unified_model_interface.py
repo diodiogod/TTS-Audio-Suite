@@ -148,7 +148,7 @@ class UnifiedModelInterface:
         # check if a DIFFERENT variant is already loaded and unload it to prevent device conflicts
         # Only applies to engines where model variants are mutually exclusive
         if config.engine_name in (
-            "qwen3_tts", "moss_tts", "higgs_audio_v3", "dramabox"
+            "qwen3_tts", "moss_tts", "higgs_audio_v3", "dramabox", "voxcpm"
         ):
             # Check for any cached mutually-exclusive model variant for this engine
             cached_prefix = f"{config.engine_name}_tts_"
@@ -1807,6 +1807,41 @@ def register_omnivoice_factory():
     unified_model_interface.register_model_factory("omnivoice", "tts", omnivoice_factory)
 
 
+def register_voxcpm_factory():
+    """Register all official VoxCPM generations in the main environment."""
+
+    def voxcpm_factory(config: ModelLoadConfig):
+        from engines.voxcpm.voxcpm_downloader import VoxCPMDownloader
+        from engines.voxcpm.voxcpm_engine import VoxCPMEngine
+
+        downloader = VoxCPMDownloader()
+        selection = (
+            config.model_path
+            or config.model_name
+            or VoxCPMDownloader.DEFAULT_MODEL
+        )
+        resolved_path = downloader.resolve_model_path(selection)
+        spec = downloader.get_model_spec(selection, resolved_path)
+        model_name = spec["canonical"]
+        additional_params = config.additional_params or {}
+
+        print(f"🔄 Loading VoxCPM via unified interface: {model_name}")
+        engine = VoxCPMEngine(
+            model_name=model_name,
+            device=config.device or "auto",
+            optimize=bool(additional_params.get("optimize", False)),
+            model_dir=resolved_path,
+        )
+        engine._ensure_runtime_loaded()
+        print(
+            f"✅ VoxCPM '{model_name}' loaded successfully "
+            f"({engine.architecture}, {engine.sample_rate} Hz)"
+        )
+        return engine
+
+    unified_model_interface.register_model_factory("voxcpm", "tts", voxcpm_factory)
+
+
 def register_qwen3_asr_factory():
     """Register Qwen3-ASR model factory"""
     def qwen3_asr_factory(config: ModelLoadConfig):
@@ -2020,6 +2055,7 @@ def initialize_all_factories():
     register_dots_tts_factory()
     register_dramabox_factory()
     register_omnivoice_factory()
+    register_voxcpm_factory()
     register_qwen3_asr_factory()
     register_qwen3_aligner_factory()
     register_granite_asr_factory()

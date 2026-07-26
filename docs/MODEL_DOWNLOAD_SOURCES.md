@@ -142,6 +142,14 @@ Use this as the canonical list of model repositories/links for offline setup.
 |---|---|---|---|---|
 | OmniVoice | [k2-fsa/OmniVoice](https://huggingface.co/k2-fsa/OmniVoice) | ~3.7GB | ✅ | Official main model including bundled audio_tokenizer assets |
 
+## VoxCPM
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| VoxCPM2 | [openbmb/VoxCPM2](https://huggingface.co/openbmb/VoxCPM2) | ~5.0GB | ✅ | Recommended 2B model; 30 languages, Voice Design, controllable cloning, and 48kHz output |
+| VoxCPM1.5 | [openbmb/VoxCPM1.5](https://huggingface.co/openbmb/VoxCPM1.5) | ~2.0GB | ✅ | Faster/lower-VRAM English and Chinese continuation-cloning model with 44.1kHz output |
+| VoxCPM-0.5B | [openbmb/VoxCPM-0.5B](https://huggingface.co/openbmb/VoxCPM-0.5B) | ~1.6GB | ✅ | Legacy lowest-memory English and Chinese checkpoint with 16kHz output |
+
 ## MOSS-TTS
 
 | Component | Source | Size | Auto-Download | Notes |

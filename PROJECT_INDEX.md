@@ -25,7 +25,7 @@
 
 ## Engines
 
-19 engines follow the pattern above:
+20 engines follow the pattern above:
 
 | Engine | Adapter | Processor | SRT Processor | Engine Node |
 |--------|---------|-----------|---------------|-------------|
@@ -46,11 +46,12 @@
 | Dots TTS | `dots_tts_adapter.py` | `nodes/dots_tts/dots_tts_processor.py` | `dots_tts_srt_processor.py` | `dots_tts_engine_node.py` |
 | DramaBox | `dramabox_adapter.py` | `nodes/dramabox/dramabox_processor.py` | `dramabox_srt_processor.py` | `dramabox_engine_node.py` |
 | OmniVoice | `omnivoice_adapter.py` | `nodes/omnivoice/omnivoice_processor.py` | `omnivoice_srt_processor.py` | `omnivoice_engine_node.py` |
+| VoxCPM | `voxcpm_adapter.py` | `nodes/voxcpm/voxcpm_processor.py` | `voxcpm_srt_processor.py` | `voxcpm_engine_node.py` |
 | MOSS-SoundEffect v2 | `moss_soundeffect_v2_adapter.py` | — | — | `moss_soundeffect_v2_engine_node.py` |
 | RVC | — | `engines/rvc/` | — | `rvc_engine_node.py` |
 
 **Engine implementations live in:**
-- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/higgs_audio_v3/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/moss_soundeffect_v2/`, `engines/granite_asr/`, `engines/echo_tts/`, `engines/fish_audio_s2/`, `engines/dots_tts/`, `engines/dramabox/`, `engines/omnivoice/`, `engines/rvc/`
+- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/higgs_audio_v3/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/moss_soundeffect_v2/`, `engines/granite_asr/`, `engines/echo_tts/`, `engines/fish_audio_s2/`, `engines/dots_tts/`, `engines/dramabox/`, `engines/omnivoice/`, `engines/voxcpm/`, `engines/rvc/`
 
 ## Documentation Files
 
@@ -111,7 +112,7 @@
 
 ### Shared / Special Nodes
 - `nodes/shared/character_voices_node.py` - Character voice management (NARRATOR_VOICE output)
-- `nodes/shared/unified_voice_designer_node.py` - Unified Qwen VoiceDesign, MOSS VoiceGenerator, and reference-free OmniVoice design
+- `nodes/shared/unified_voice_designer_node.py` - Unified Qwen VoiceDesign, MOSS VoiceGenerator, reference-free OmniVoice design, and VoxCPM2 Voice Design
 - `nodes/shared/save_character_voice_node.py` - Explicit output node for saving any NARRATOR_VOICE into the established voice library
 - `nodes/omnivoice/omnivoice_instruction_builder_node.py` - OmniVoice voice-design instruction helper with custom visual builder UI
 - `nodes/text/phoneme_text_normalizer_node.py` - Multilingual text preprocessing

@@ -237,6 +237,11 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
                 stable_params['dtype'] = config.get('dtype', 'auto')
 
+            if engine_type == "voxcpm":
+                stable_params['model_variant'] = config.get('model_variant', 'VoxCPM2')
+                stable_params['model_name'] = config.get('model_name', 'VoxCPM2')
+                stable_params['optimize'] = config.get('optimize', False)
+
             # For MOSS-TTS, include model identity and load-time options.
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
@@ -670,6 +675,41 @@ Back to the main narrator voice for the conclusion.""",
 
                 return engine_instance
 
+            elif engine_type == "voxcpm":
+                from engines.adapters.voxcpm_adapter import VoxCPMEngineAdapter
+
+                processor_path = os.path.join(nodes_dir, "voxcpm", "voxcpm_processor.py")
+                processor_spec = importlib.util.spec_from_file_location(
+                    "voxcpm_processor_module", processor_path
+                )
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                VoxCPMProcessor = processor_module.VoxCPMProcessor
+
+                class VoxCPMWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = VoxCPMEngineAdapter(self.config)
+                        self.processor = VoxCPMProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+                        self.processor.update_config(new_config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("VoxCPM processing interrupted by user")
+
+                engine_instance = VoxCPMWrapper(config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             elif engine_type == "qwen3_tts":
                 # Create Qwen3-TTS processor instance
                 # Use global nodes_dir (already defined at module level)
@@ -1058,6 +1098,17 @@ Back to the main narrator voice for the conclusion.""",
                 raise ValueError(
                     "OmniVoice voice cloning requires reference text. "
                     "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
+                )
+            if (
+                engine_type == "voxcpm"
+                and config.get("model_variant") in {"VoxCPM1.5", "VoxCPM-0.5B"}
+                and (audio_tensor is not None or audio_path)
+                and not reference_text.strip()
+            ):
+                raise ValueError(
+                    f"{config.get('model_variant')} voice cloning requires the exact reference transcript. "
+                    "Use Character Voices or a narrator voice with a matching .reference.txt file. "
+                    "VoxCPM2 supports reference-only cloning."
                 )
             
             # Create proper engine node instance to preserve ALL functionality
@@ -1676,6 +1727,61 @@ Back to the main narrator voice for the conclusion.""",
 
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 24000)
                 result = (formatted_audio, generation_info)
+
+            elif engine_type == "voxcpm":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                    }
+
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache,
+                )
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True,
+                )
+                sample_rate = int(
+                    getattr(engine_instance.processor, "sample_rate", None)
+                    or getattr(engine_instance.adapter, "sample_rate", None)
+                    or getattr(engine_instance.adapter, "SAMPLE_RATE", 48000)
+                )
+                total_duration = (
+                    combined_audio.shape[-1] / sample_rate if combined_audio.numel() else 0.0
+                )
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                model_variant = config.get('model_variant', 'VoxCPM2')
+                base_info = (
+                    f"Generated {total_duration:.1f}s audio from {len(clean_text)} characters "
+                    f"(VoxCPM {model_variant}, narrator: {char_display})"
+                )
+                base_info += (
+                    "\n🎭 Character switching, pause tags, segment parameters, "
+                    "and architecture-gated cloning enabled"
+                )
+                generation_info = ChunkTimingHelper.enhance_generation_info(
+                    f"✅ {base_info}", chunk_info
+                )
+                result = (
+                    AudioProcessingUtils.format_for_comfyui(combined_audio, sample_rate),
+                    generation_info,
+                )
 
             elif engine_type == "moss_tts":
                 import re

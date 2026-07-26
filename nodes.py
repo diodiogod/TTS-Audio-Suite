@@ -204,6 +204,14 @@ except Exception as e:
     OMNIVOICE_ENGINE_AVAILABLE = False
 
 try:
+    voxcpm_engine_module = load_node_module("voxcpm_engine_node", "engines/voxcpm_engine_node.py")
+    VoxCPMEngineNode = voxcpm_engine_module.VoxCPMEngineNode
+    VOXCPM_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ VoxCPM Engine failed: {e}")
+    VOXCPM_ENGINE_AVAILABLE = False
+
+try:
     omnivoice_instruction_builder_module = load_node_module("omnivoice_instruction_builder_node", "omnivoice/omnivoice_instruction_builder_node.py")
     OmniVoiceInstructionBuilderNode = omnivoice_instruction_builder_module.OmniVoiceInstructionBuilderNode
     OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE = True
@@ -681,6 +689,10 @@ if FISH_AUDIO_S2_ENGINE_AVAILABLE:
 if OMNIVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceEngineNode"] = OmniVoiceEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceEngineNode"] = "⚙️ OmniVoice Engine"
+
+if VOXCPM_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VoxCPMEngineNode"] = VoxCPMEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["VoxCPMEngineNode"] = "⚙️ VoxCPM Engine"
 
 if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceInstructionBuilderNode"] = OmniVoiceInstructionBuilderNode
