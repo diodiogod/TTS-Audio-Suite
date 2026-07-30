@@ -1831,6 +1831,7 @@ def register_voxcpm_factory():
             device=config.device or "auto",
             optimize=bool(additional_params.get("optimize", False)),
             model_dir=resolved_path,
+            lora_adapter=additional_params.get("lora_adapter"),
         )
         engine._ensure_runtime_loaded()
         print(

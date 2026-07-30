@@ -111,6 +111,8 @@
 - `nodes/unified/asr_transcribe_node.py` - Universal ASR node
 
 ### Shared / Special Nodes
+- `nodes/unified/model_training_node.py` - Unified engine-routed training entry point
+- `nodes/training/voxcpm_dataset_prep_node.py` + `voxcpm_training_config_node.py` - VoxCPM2 official-format LoRA dataset/config workflow
 - `nodes/shared/character_voices_node.py` - Character voice management (NARRATOR_VOICE output)
 - `nodes/shared/unified_voice_designer_node.py` - Unified Qwen VoiceDesign, MOSS VoiceGenerator, reference-free OmniVoice design, and VoxCPM2 Voice Design
 - `nodes/shared/save_character_voice_node.py` - Explicit output node for saving any NARRATOR_VOICE into the established voice library

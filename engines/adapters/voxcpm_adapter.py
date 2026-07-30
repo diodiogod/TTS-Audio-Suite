@@ -38,8 +38,12 @@ class VoxCPMEngineAdapter:
 
     def update_config(self, new_config: Dict[str, Any]):
         previous_selection = self._model_selection()
+        previous_lora = self._lora_adapter()
         self.config = new_config.copy() if new_config else {}
-        if self._model_selection() != previous_selection:
+        if (
+            self._model_selection() != previous_selection
+            or self._lora_adapter() != previous_lora
+        ):
             self._model_spec = None
             self._resolved_model_path = None
             self._model_spec_selection = None
@@ -51,6 +55,24 @@ class VoxCPMEngineAdapter:
             or self.DEFAULT_MODEL
         )
 
+    def _lora_adapter(self) -> Optional[str]:
+        value = str(self.config.get("lora_adapter") or "").strip()
+        return os.path.abspath(os.path.expanduser(value)) if value else None
+
+    def _lora_signature(self) -> Optional[Tuple[Any, ...]]:
+        path = self._lora_adapter()
+        if not path:
+            return None
+        values = [path]
+        for filename in ("lora_config.json", "lora_weights.safetensors"):
+            target = os.path.join(path, filename)
+            try:
+                stat = os.stat(target)
+                values.extend((stat.st_size, stat.st_mtime_ns))
+            except OSError:
+                values.extend((None, None))
+        return tuple(values)
+
     def _build_load_signature(self) -> Tuple[Any, ...]:
         return (
             self._model_selection(),
@@ -58,6 +80,7 @@ class VoxCPMEngineAdapter:
             bool(self.config.get("optimize", False)),
             self.config.get("runtime_mode", "main_environment"),
             self.config.get("runtime_profile"),
+            self._lora_signature(),
         )
 
     @classmethod
@@ -126,6 +149,8 @@ class VoxCPMEngineAdapter:
                 "sample_rate": spec["sample_rate"],
                 "optimize": bool(optimize),
                 "load_denoiser": False,
+                "lora_adapter": self._lora_adapter(),
+                "lora_signature": self._lora_signature(),
             },
         )
         self._last_config = load_config
@@ -141,6 +166,7 @@ class VoxCPMEngineAdapter:
             bool(optimize),
             runtime_mode,
             runtime_profile,
+            self._lora_signature(),
         )
         return unified_model_interface.load_model(load_config)
 
@@ -427,6 +453,7 @@ class VoxCPMEngineAdapter:
                 runtime_mode=self.config.get("runtime_mode", "main_environment"),
                 runtime_profile=self.config.get("runtime_profile"),
                 model_path=self._resolved_model_path,
+                lora_adapter=self._lora_signature(),
                 load_denoiser=False,
                 sample_rate=spec["sample_rate"],
                 character=character_name or "narrator",

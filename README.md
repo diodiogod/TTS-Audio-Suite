@@ -984,7 +984,9 @@ One **⚙️ VoxCPM Engine** supports every official OpenBMB generation through 
 
 The suite automatically maps the selected architecture to the correct official cloning mode. It supports TTS Text, TTS SRT, Character Voices, pause tags, per-segment seed/CFG/step overrides, and reusable VoxCPM2 voices through **🎨 Voice Designer**.
 
-The optional upstream denoiser, bundled ASR helpers from community nodes, and LoRA training are intentionally not installed by this engine. They add dependencies or separate workflows and are not required for reliable inference.
+VoxCPM2 also supports the official LoRA workflow. Use **📦 VoxCPM2 Dataset Prep** with audio/transcript pairs, optionally connect **🎛️ VoxCPM2 LoRA Config**, then run **🎓 Model Training**. Finished adapters are stored under `models/TTS/voxcpm/loras/` and appear in the engine's LoRA selector after refreshing node definitions. Start with 1–5 steps, batch size 1, and gradient accumulation enabled to measure VRAM before a real run. Exact checkpoint resume and adapter warm-start are supported.
+
+The optional upstream denoiser and bundled ASR helpers from community nodes are not installed by this engine.
 
 </details>
 

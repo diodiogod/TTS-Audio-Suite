@@ -509,6 +509,26 @@ except Exception as e:
     MOSS_DATASET_ROWS_AVAILABLE = False
 
 try:
+    voxcpm_dataset_prep_module = load_node_module(
+        "voxcpm_dataset_prep_node", "training/voxcpm_dataset_prep_node.py"
+    )
+    VoxCPMDatasetPrepNode = voxcpm_dataset_prep_module.VoxCPMDatasetPrepNode
+    VOXCPM_DATASET_PREP_AVAILABLE = True
+except Exception as e:
+    print(f"❌ VoxCPM Dataset Prep failed: {e}")
+    VOXCPM_DATASET_PREP_AVAILABLE = False
+
+try:
+    voxcpm_training_config_module = load_node_module(
+        "voxcpm_training_config_node", "training/voxcpm_training_config_node.py"
+    )
+    VoxCPMTrainingConfigNode = voxcpm_training_config_module.VoxCPMTrainingConfigNode
+    VOXCPM_TRAINING_CONFIG_AVAILABLE = True
+except Exception as e:
+    print(f"❌ VoxCPM Training Config failed: {e}")
+    VOXCPM_TRAINING_CONFIG_AVAILABLE = False
+
+try:
     phoneme_text_normalizer_module = load_node_module("phoneme_text_normalizer_node", "text/phoneme_text_normalizer_node.py")
     PhonemeTextNormalizer = phoneme_text_normalizer_module.PhonemeTextNormalizer
     PHONEME_TEXT_NORMALIZER_AVAILABLE = True
@@ -856,6 +876,14 @@ if MOSS_CLIP_STAGING_AVAILABLE:
 if MOSS_DATASET_ROWS_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossDatasetRowsNode"] = MossDatasetRowsNode
     NODE_DISPLAY_NAME_MAPPINGS["MossDatasetRowsNode"] = "🧾 MOSS Dataset Rows"
+
+if VOXCPM_DATASET_PREP_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VoxCPMDatasetPrepNode"] = VoxCPMDatasetPrepNode
+    NODE_DISPLAY_NAME_MAPPINGS["VoxCPMDatasetPrepNode"] = "📦 VoxCPM2 Dataset Prep"
+
+if VOXCPM_TRAINING_CONFIG_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VoxCPMTrainingConfigNode"] = VoxCPMTrainingConfigNode
+    NODE_DISPLAY_NAME_MAPPINGS["VoxCPMTrainingConfigNode"] = "🎛️ VoxCPM2 LoRA Config"
 
 # Register text processing nodes
 if PHONEME_TEXT_NORMALIZER_AVAILABLE:

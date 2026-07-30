@@ -23,6 +23,16 @@ class VoxCPMEngineNode(BaseTTSNode):
     """Configure the official VoxCPM runtime for all released generations."""
 
     DOWNLOADABLE_MODELS = ["VoxCPM2", "VoxCPM1.5", "VoxCPM-0.5B"]
+    NO_LORA_OPTION = "None"
+
+    @classmethod
+    def _get_lora_options(cls):
+        try:
+            from engines.voxcpm.training.common import discover_lora_adapters
+
+            return [cls.NO_LORA_OPTION] + discover_lora_adapters()
+        except Exception:
+            return [cls.NO_LORA_OPTION]
 
     @classmethod
     def NAME(cls):
@@ -95,6 +105,17 @@ class VoxCPMEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
+                "local_lora_adapter": (cls._get_lora_options(), {
+                    "default": cls.NO_LORA_OPTION,
+                    "tooltip": (
+                        "Optional VoxCPM2 LoRA under models/TTS/voxcpm/loras. "
+                        "Legacy VoxCPM models do not accept these adapters."
+                    ),
+                }),
+                "lora_adapter_override": ("STRING", {
+                    "default": "",
+                    "tooltip": "Optional absolute VoxCPM LoRA folder path. Overrides the dropdown.",
+                }),
                 "voice_instruction": ("STRING", {
                     "default": "",
                     "multiline": True,
@@ -159,6 +180,8 @@ class VoxCPMEngineNode(BaseTTSNode):
         cfg_value,
         inference_timesteps,
         max_len,
+        local_lora_adapter="None",
+        lora_adapter_override="",
         voice_instruction="",
         normalize_text=False,
         retry_badcase=True,
@@ -167,6 +190,17 @@ class VoxCPMEngineNode(BaseTTSNode):
         optimize=False,
         mode="Text to Speech",
     ):
+        selected_lora = str(lora_adapter_override or "").strip()
+        if not selected_lora and str(local_lora_adapter) != self.NO_LORA_OPTION:
+            selected_lora = str(local_lora_adapter).strip()
+        if selected_lora:
+            selected_lora = os.path.abspath(os.path.expanduser(selected_lora))
+            from engines.voxcpm.training.common import read_lora_info
+
+            read_lora_info(selected_lora)
+            if model_variant in {"VoxCPM1.5", "VoxCPM-0.5B"}:
+                raise ValueError("VoxCPM LoRA adapters currently require VoxCPM2")
+
         if model_variant == "VoxCPM-0.5B" and int(max_len) > 4096:
             max_len = 4096
 
@@ -194,12 +228,15 @@ class VoxCPMEngineNode(BaseTTSNode):
             "retry_badcase_ratio_threshold": float(retry_badcase_ratio_threshold),
             "optimize": bool(optimize),
             "runtime_mode": "main_environment",
+            "lora_adapter": selected_lora or None,
         }
 
         print(
             f"⚙️ VoxCPM: {model_variant} on {device} | {mode} | "
             f"cfg={float(cfg_value):g}, steps={int(inference_timesteps)}, max_len={int(max_len)}"
         )
+        if selected_lora:
+            print(f"   LoRA adapter: {selected_lora}")
         return ({
             "engine_type": "voxcpm",
             "config": config,

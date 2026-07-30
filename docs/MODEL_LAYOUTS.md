@@ -471,11 +471,15 @@ ComfyUI/models/TTS/voxcpm/
 │   ├── model.safetensors
 │   ├── audiovae.pth
 │   └── tokenizer files...
-└── VoxCPM-0.5B/
-    ├── config.json
-    ├── pytorch_model.bin
-    ├── audiovae.pth
-    └── tokenizer files...
+├── VoxCPM-0.5B/
+│   ├── config.json
+│   ├── pytorch_model.bin
+│   ├── audiovae.pth
+│   └── tokenizer files...
+└── loras/
+    └── MyVoxCPM2LoRA/
+        ├── lora_config.json
+        └── lora_weights.safetensors
 ```
 
 Notes:
@@ -483,4 +487,5 @@ Notes:
 - All three official generations use one architecture-gated engine and the official `voxcpm` package.
 - VoxCPM2 is the default and outputs 48kHz audio; VoxCPM1.5 outputs 44.1kHz; VoxCPM-0.5B outputs 16kHz.
 - Complete `local:<folder>` checkpoints are detected in configured ComfyUI TTS model folders.
-- Models run in the main Transformers 5 environment. The optional upstream denoiser, ASR helpers, and LoRA training are not part of this integration.
+- Models run in the main Transformers 5 environment. The optional upstream denoiser and ASR helpers are not part of this integration.
+- VoxCPM2 supports official-format LoRA training and inference under `models/TTS/voxcpm/loras/`; legacy-generation training remains disabled pending compatibility testing.

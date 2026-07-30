@@ -6,6 +6,7 @@ import gc
 import importlib
 import importlib.metadata
 import inspect
+import json
 import os
 import random
 import re
@@ -32,12 +33,18 @@ class VoxCPMEngine:
         device: str = "auto",
         optimize: bool = False,
         model_dir: Optional[str] = None,
+        lora_adapter: Optional[str] = None,
     ):
         self.model_name = str(model_name or VoxCPMDownloader.DEFAULT_MODEL)
         self.device = str(device or "auto")
         self.optimize = bool(optimize)
         self.downloader = VoxCPMDownloader()
         self.model_dir = os.path.abspath(model_dir) if model_dir else None
+        self.lora_adapter = (
+            os.path.abspath(os.path.expanduser(str(lora_adapter)))
+            if str(lora_adapter or "").strip()
+            else None
+        )
         self._model_spec = self._inspect_model_spec(self.model_dir)
         self._runtime = None
         self._runtime_was_optimized = False
@@ -148,6 +155,37 @@ class VoxCPMEngine:
                 f"Refusing to load incomplete VoxCPM model: {self.model_dir}"
             )
 
+        if self.lora_adapter:
+            if self.architecture != "voxcpm2":
+                raise ValueError("VoxCPM LoRA adapters are currently supported only by VoxCPM2")
+            config_path = os.path.join(self.lora_adapter, "lora_config.json")
+            weights_path = os.path.join(
+                self.lora_adapter, "lora_weights.safetensors"
+            )
+            if not os.path.isfile(config_path) or not os.path.isfile(weights_path):
+                raise FileNotFoundError(
+                    "VoxCPM LoRA folder must contain lora_config.json and "
+                    f"lora_weights.safetensors: {self.lora_adapter}"
+                )
+            with open(config_path, "r", encoding="utf-8") as handle:
+                lora_info = json.load(handle)
+            suite_info = lora_info.get("tts_audio_suite") or {}
+            adapter_architecture = str(
+                suite_info.get("architecture") or "voxcpm2"
+            ).lower()
+            if adapter_architecture != self.architecture:
+                raise ValueError(
+                    f"VoxCPM LoRA architecture mismatch: adapter={adapter_architecture}, "
+                    f"base={self.architecture}"
+                )
+            adapter_variant = str(suite_info.get("model_variant") or "").strip()
+            current_variant = str(self._model_spec.get("canonical") or "").strip()
+            if adapter_variant and adapter_variant != current_variant:
+                raise ValueError(
+                    f"VoxCPM LoRA base mismatch: adapter={adapter_variant}, "
+                    f"selected={current_variant}"
+                )
+
         from utils.device import resolve_torch_device
 
         resolved_device = resolve_torch_device(self.device)
@@ -176,10 +214,13 @@ class VoxCPMEngine:
             local_files_only=True,
             optimize=effective_optimize,
             device=resolved_device,
+            lora_weights_path=self.lora_adapter,
         )
         self._runtime = runtime
         self._runtime_was_optimized = effective_optimize
         self.device = str(resolved_device)
+        if self.lora_adapter:
+            print(f"   LoRA: {self.lora_adapter}")
         print("✅ VoxCPM runtime ready")
 
     @property

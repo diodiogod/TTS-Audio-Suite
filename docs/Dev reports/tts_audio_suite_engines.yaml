@@ -1574,7 +1574,7 @@ engines:
       asr_transcribe: { supported: false, notes: "No bundled ASR; exact legacy reference transcripts must be supplied" }
       emotion_control: { supported: true, notes: "VoxCPM2 natural-language voice/style instruction" }
       native_long_form: { supported: false, notes: "Uses suite text chunking; official streaming API is not integrated" }
-      community_finetunes: { supported: false, notes: "Complete local checkpoints are supported; LoRA loading/training is not integrated" }
+      community_finetunes: { supported: true, notes: "Complete local checkpoints plus official-format VoxCPM2 LoRA training and inference" }
       vram_efficient: { supported: "partial", notes: "Official estimates are roughly 8GB for V2, 6GB for 1.5, and 5GB for legacy 0.5B" }
       speed_performance: { supported: true, notes: "Official standard runtime reports about 0.30 RTF for V2 and 0.15 RTF for 1.5 on RTX 4090" }
       reference_free_tts: { supported: true, notes: "Plain reference-free TTS for all variants; VoxCPM2 also supports instructed Voice Design" }
@@ -2560,11 +2560,15 @@ model_layouts_markdown: |
   │   ├── model.safetensors
   │   ├── audiovae.pth
   │   └── tokenizer files...
-  └── VoxCPM-0.5B/
-      ├── config.json
-      ├── pytorch_model.bin
-      ├── audiovae.pth
-      └── tokenizer files...
+  ├── VoxCPM-0.5B/
+  │   ├── config.json
+  │   ├── pytorch_model.bin
+  │   ├── audiovae.pth
+  │   └── tokenizer files...
+  └── loras/
+      └── MyVoxCPM2LoRA/
+          ├── lora_config.json
+          └── lora_weights.safetensors
   ```
 
   Notes:
@@ -2572,4 +2576,5 @@ model_layouts_markdown: |
   - All three official generations use one architecture-gated engine and the official `voxcpm` package.
   - VoxCPM2 is the default and outputs 48kHz audio; VoxCPM1.5 outputs 44.1kHz; VoxCPM-0.5B outputs 16kHz.
   - Complete `local:<folder>` checkpoints are detected in configured ComfyUI TTS model folders.
-  - Models run in the main Transformers 5 environment. The optional upstream denoiser, ASR helpers, and LoRA training are not part of this integration.
+  - Models run in the main Transformers 5 environment. The optional upstream denoiser and ASR helpers are not part of this integration.
+  - VoxCPM2 supports official-format LoRA training and inference under `models/TTS/voxcpm/loras/`; legacy-generation training remains disabled pending compatibility testing.
