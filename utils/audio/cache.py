@@ -577,6 +577,30 @@ class DotsTTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class Audio8TTSCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for official Audio8 TTS inference."""
+
+    def generate_cache_key(self, **params) -> str:
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'model_variant': params.get('model_variant', 'Audio8-TTS-Preview-0.6b'),
+            'max_new_tokens': int(params.get('max_new_tokens', 1024)),
+            'retry_max_new_tokens': int(params.get('retry_max_new_tokens', 2000)),
+            'temperature': round(float(params.get('temperature', 0.8)), 4),
+            'top_p': round(float(params.get('top_p', 0.95)), 4),
+            'top_k': int(params.get('top_k', 50)),
+            'do_sample': bool(params.get('do_sample', True)),
+            'dtype': params.get('dtype', 'auto'),
+            'device': params.get('device', 'auto'),
+            'seed': int(params.get('seed', 42)),
+            'character': params.get('character', 'narrator'),
+            'engine': 'audio8_tts',
+        }
+        return hashlib.md5(str(sorted(cache_data.items())).encode()).hexdigest()
+
+
 class DramaBoxCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for official DramaBox inference."""
 
@@ -710,6 +734,7 @@ class AudioCache:
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
             'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
             'dots_tts': DotsTTSCacheKeyGenerator(),
+            'audio8_tts': Audio8TTSCacheKeyGenerator(),
             'dramabox': DramaBoxCacheKeyGenerator(),
             'fish_audio_s2': FishAudioS2CacheKeyGenerator(),
             'omnivoice': OmniVoiceCacheKeyGenerator(),
@@ -792,6 +817,8 @@ class AudioCache:
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050
+        elif engine_type == 'audio8_tts':
+            sample_rate = 44100
         else:
             sample_rate = 44100
         return num_samples / sample_rate

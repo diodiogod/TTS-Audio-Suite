@@ -11,9 +11,14 @@ from typing import Any, Dict, Optional, Callable, Union
 from pathlib import Path
 
 from utils.models.comfyui_model_wrapper import tts_model_manager, ModelInfo
-from utils.models.factory_config import ModelLoadConfig, runtime_uses_isolation
+from utils.models.factory_config import (
+    ModelLoadConfig,
+    RUNTIME_MODE_SHARED,
+    runtime_uses_isolation,
+)
 from utils.models.engine_registry import get_default_runtime_profile
 from utils.runtimes import (
+    build_audio8_tts_isolated_proxy,
     build_fish_audio_s2_proxy,
     build_higgs_audio_isolated_proxy,
     build_qwen3_asr_isolated_proxy,
@@ -124,6 +129,10 @@ class UnifiedModelInterface:
         # Check PyTorch consistency on first model load
         self._check_pytorch_consistency()
 
+        if config.engine_name == "audio8_tts":
+            config.runtime_mode = RUNTIME_MODE_SHARED
+            config.runtime_profile = "vibevoice_transformers4_shared"
+
         if runtime_uses_isolation(config.runtime_mode):
             return self._load_isolated_model(config, force_reload=force_reload)
 
@@ -219,6 +228,13 @@ class UnifiedModelInterface:
 
         cached = self._isolated_model_cache.get(cache_key)
         if cached is not None:
+            ensure_registration = getattr(
+                cached,
+                "_ensure_comfy_model_registration",
+                None,
+            )
+            if callable(ensure_registration):
+                ensure_registration()
             return cached
 
         profile_name = config.runtime_profile or get_default_runtime_profile(config.engine_name or "")
@@ -241,6 +257,11 @@ class UnifiedModelInterface:
 
         if config.engine_name == "fish_audio_s2" and config.model_type == "tts":
             proxy = build_fish_audio_s2_proxy(config)
+            self._isolated_model_cache[cache_key] = proxy
+            return proxy
+
+        if config.engine_name == "audio8_tts" and config.model_type == "tts":
+            proxy = build_audio8_tts_isolated_proxy(config)
             self._isolated_model_cache[cache_key] = proxy
             return proxy
 
@@ -1751,6 +1772,19 @@ def register_dots_tts_factory():
     unified_model_interface.register_model_factory("dots_tts", "tts", dots_tts_factory)
 
 
+def register_audio8_tts_factory():
+    """Register Audio8 TTS through its required Transformers 4 runtime."""
+    def audio8_tts_factory(config: ModelLoadConfig):
+        del config
+        raise RuntimeError(
+            "Audio8 TTS reached its embedded factory unexpectedly; all "
+            "Audio8 loads must be routed through the shared Transformers 4 "
+            "runtime"
+        )
+
+    unified_model_interface.register_model_factory("audio8_tts", "tts", audio8_tts_factory)
+
+
 def register_dramabox_factory():
     """Register official DramaBox in the main Transformers 5 environment."""
     def dramabox_factory(config: ModelLoadConfig):
@@ -2018,6 +2052,7 @@ def initialize_all_factories():
     register_qwen3_tts_factory()
     register_fish_audio_s2_factory()
     register_dots_tts_factory()
+    register_audio8_tts_factory()
     register_dramabox_factory()
     register_omnivoice_factory()
     register_qwen3_asr_factory()

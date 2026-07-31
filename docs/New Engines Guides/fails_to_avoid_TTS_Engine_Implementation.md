@@ -4,7 +4,7 @@
 
 ### Import Errors
 - **Missing import**: Always add `import folder_paths` when using `folder_paths.get_temp_directory()` in node files
-- **Bundled code imports**: For complex bundled packages with internal cross-imports, add `sys.path.insert(0, impl_dir)` at top of main files instead of converting all imports
+- **Bundled code imports**: Never permanently prepend a bundled implementation directory to `sys.path` in the main ComfyUI process. Generic files such as `utils.py` can shadow suite packages and break later isolated workers. Prefer package-relative or vendor-namespaced imports; if upstream imports make path injection unavoidable, confine it to the isolated worker and load suite protocol modules before adding the vendor path.
 
 ### Audio Utility Functions
 - **Temp file creation**: Use `AudioProcessingUtils.save_audio_to_temp_file()` not `save_audio()` (doesn't exist)

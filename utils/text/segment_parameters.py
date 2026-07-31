@@ -115,12 +115,13 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
-        'dots_tts', 'fish_audio_s2', 'omnivoice',
+        'dots_tts', 'audio8_tts', 'fish_audio_s2', 'omnivoice',
         'echo_tts', 'moss_tts', 'moss_soundeffect_v2', 'dramabox'
     },
     'temperature': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
-        'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts',
+        'moss_tts', 'fish_audio_s2', 'audio8_tts'
     },
     'cfg': {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang',
@@ -214,10 +215,12 @@ PARAMETER_ENGINES = {
         'f5tts', 'cosyvoice', 'omnivoice'
     },
     'top_p': {
-        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts',
+        'moss_tts', 'fish_audio_s2', 'audio8_tts'
     },
     'top_k': {
-        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts'
+        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts',
+        'audio8_tts'
     },
     'audio_temperature': {
         'moss_tts'
@@ -238,7 +241,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'max_new_tokens': {
-        'higgs_audio_v3', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio_v3', 'moss_tts', 'fish_audio_s2', 'audio8_tts'
     },
     'max_generate_length': {
         'dots_tts'

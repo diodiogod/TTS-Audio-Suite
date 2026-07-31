@@ -427,6 +427,22 @@ Notes:
 - Native sample rate is 48kHz.
 - Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.
 
+## Audio8 TTS
+
+```text
+ComfyUI/models/TTS/audio8_tts/
+└── Audio8-TTS-Preview-0.6b/
+    └── (13 required official runtime files, including codec weights)
+```
+
+Notes:
+
+- The official `Audio8/Audio8-TTS-Preview-0.6b` checkpoint is about 2.39 GiB and includes the 44.1kHz neural codec.
+- The 0.6B model plus codec use about 1.75 GiB for parameters at fp16/bf16 or about 3.5 GiB at float32/CPU, before KV cache, activations, and framework overhead.
+- The suite uses the existing `vibevoice_transformers4_shared` runtime with Transformers 4.57.3. Main Transformers 5.10.2 is not compatible with Audio8 voice cloning: the official demo collapsed to 0.325s, while the shared runtime generated 10.495s for the published 10.54s demo.
+- Live shared-runtime validation produced 6.36s of reference-free audio in 39.3s including model load, 9.99s of cloned audio in 36.7s warm, and exact cache reuse in 56ms.
+- The engine has unified TTS and SRT support only: no Voice Designer support, special node, training integration, native streaming/timestamps/dialogue, or built-in presets.
+
 ## OmniVoice
 
 ```text

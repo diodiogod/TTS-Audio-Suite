@@ -6,6 +6,7 @@ separate Python environments without changing the existing ComfyUI-side UI.
 """
 
 from .bootstrap import ensure_runtime, resolve_runtime_dir, resolve_runtime_python
+from .audio8_tts_proxy import Audio8TTSIsolatedProxy, build_audio8_tts_isolated_proxy
 from .higgs_audio_proxy import HiggsAudioIsolatedProxy, build_higgs_audio_isolated_proxy
 from .fish_audio_s2_proxy import FishAudioS2Proxy, build_fish_audio_s2_proxy
 from .launcher import IsolatedRuntimeLauncher
@@ -20,6 +21,8 @@ __all__ = [
     "ensure_runtime",
     "resolve_runtime_dir",
     "resolve_runtime_python",
+    "Audio8TTSIsolatedProxy",
+    "build_audio8_tts_isolated_proxy",
     "HiggsAudioIsolatedProxy",
     "IsolatedRuntimeLauncher",
     "RuntimeProfile",

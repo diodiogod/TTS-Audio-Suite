@@ -180,6 +180,14 @@ except Exception as e:
     DOTS_TTS_ENGINE_AVAILABLE = False
 
 try:
+    audio8_tts_engine_module = load_node_module("audio8_tts_engine_node", "engines/audio8_tts_engine_node.py")
+    Audio8TTSEngineNode = audio8_tts_engine_module.Audio8TTSEngineNode
+    AUDIO8_TTS_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ Audio8 TTS Engine failed: {e}")
+    AUDIO8_TTS_ENGINE_AVAILABLE = False
+
+try:
     dramabox_engine_module = load_node_module("dramabox_engine_node", "engines/dramabox_engine_node.py")
     DramaBoxEngineNode = dramabox_engine_module.DramaBoxEngineNode
     DRAMABOX_ENGINE_AVAILABLE = True
@@ -669,6 +677,10 @@ if ECHO_TTS_ENGINE_AVAILABLE:
 if DOTS_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["DotsTTSEngineNode"] = DotsTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["DotsTTSEngineNode"] = "⚙️ Dots TTS Engine"
+
+if AUDIO8_TTS_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["Audio8TTSEngineNode"] = Audio8TTSEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["Audio8TTSEngineNode"] = "⚙️ Audio8 TTS Engine"
 
 if DRAMABOX_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["DramaBoxEngineNode"] = DramaBoxEngineNode

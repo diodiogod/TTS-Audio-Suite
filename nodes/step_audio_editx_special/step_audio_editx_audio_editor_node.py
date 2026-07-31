@@ -208,12 +208,19 @@ class StepAudioEditXAudioEditorNode:
             self._cached_settings = None
 
         # Check if engine was deleted (MUST be after settings change check, before early return)
-        engine_was_deleted = (self._engine is not None and
-                             hasattr(self._engine, '_tts_engine') and
-                             self._engine._tts_engine is None)
+        engine_was_deleted = self._engine is not None and (
+            (
+                hasattr(self._engine, '_tts_engine')
+                and self._engine._tts_engine is None
+            )
+            or (
+                hasattr(self._engine, '_initialized')
+                and not self._engine._initialized
+            )
+        )
 
         if engine_was_deleted:
-            print("⚠️ Step Audio EditX engine was deleted, reloading...")
+            print("⚠️ Step Audio EditX engine was unloaded, reloading...")
             self._engine = None
         elif self._engine is not None:
             # Using cached engine - ensure it's on the correct device

@@ -84,7 +84,7 @@ Hello! This is unified SRT TTS with character switching.
                 }),
                 "narrator_voice": (reference_files, {
                     "default": "none",
-                    "tooltip": "Fallback narrator voice from voice folders. Used when opt_narrator is not connected. Select 'none' for engines that support direct TTS without voice cloning, such as MOSS."
+                    "tooltip": "Fallback narrator voice from voice folders. Used when opt_narrator is not connected. Select 'none' for engines that support direct TTS without voice cloning, such as MOSS or Audio8."
                 }),
                 "seed": ("INT", {
                     "default": 1, "min": 0, "max": 2**32 - 1,
@@ -222,6 +222,12 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['precision'] = config.get('precision', 'auto')
                 stable_params['optimize'] = config.get('optimize', False)
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
+
+            if engine_type == "audio8_tts":
+                stable_params['model_variant'] = config.get(
+                    'model_variant', 'Audio8-TTS-Preview-0.6b'
+                )
+                stable_params['dtype'] = config.get('dtype', 'auto')
 
             if engine_type == "dramabox":
                 stable_params['model_name'] = config.get('model_name', 'DramaBox')
@@ -571,6 +577,40 @@ Hello! This is unified SRT TTS with character switching.
 
                 engine_instance = DotsTTSSRTWrapper(config)
 
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
+            elif engine_type == "audio8_tts":
+                processor_path = os.path.join(
+                    nodes_dir, "audio8_tts", "audio8_tts_srt_processor.py"
+                )
+                processor_spec = importlib.util.spec_from_file_location(
+                    "audio8_tts_srt_processor_module", processor_path
+                )
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                Audio8TTSSRTProcessor = processor_module.Audio8TTSSRTProcessor
+
+                class Audio8TTSSRTWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.processor = Audio8TTSSRTProcessor(self, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError(
+                                "Audio8 TTS SRT processing interrupted by user"
+                            )
+
+                engine_instance = Audio8TTSSRTWrapper(config)
                 import time
                 self._cached_engine_instances[cache_key] = {
                     'instance': engine_instance,
@@ -987,7 +1027,13 @@ Hello! This is unified SRT TTS with character switching.
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
         except Exception as e:
-            if isinstance(e, InterruptedError):
+            if isinstance(
+                e,
+                (
+                    InterruptedError,
+                    model_management.InterruptProcessingException,
+                ),
+            ):
                 raise
             print(f"❌ Failed to create engine SRT node instance: {e}")
             return None
@@ -1053,7 +1099,7 @@ Hello! This is unified SRT TTS with character switching.
                     print(f"📺 TTS SRT: Using direct audio input ({character_name})")
                     print(
                         "⚠️ TTS SRT: Direct audio input has no reference text - "
-                        "F5-TTS and OmniVoice cloning will fail"
+                        "Audio8 TTS, F5-TTS, and OmniVoice cloning will fail"
                     )
                     return None, audio_tensor, reference_text, character_name
             
@@ -1080,7 +1126,13 @@ Hello! This is unified SRT TTS with character switching.
             return None, None, "", "narrator"
             
         except Exception as e:
-            if isinstance(e, InterruptedError):
+            if isinstance(
+                e,
+                (
+                    InterruptedError,
+                    model_management.InterruptProcessingException,
+                ),
+            ):
                 raise
             print(f"❌ Voice reference error: {e}")
             return None, None, "", "narrator"
@@ -1174,6 +1226,13 @@ Hello! This is unified SRT TTS with character switching.
                 raise ValueError(
                     "OmniVoice voice cloning requires reference text. "
                     "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
+                )
+            if engine_type == "audio8_tts" and (audio_tensor is not None or audio_path) and not reference_text.strip():
+                raise ValueError(
+                    "Audio8 TTS voice cloning requires reference text. "
+                    "Do not connect raw audio directly. Use Character Voices with "
+                    "the exact transcript, or a narrator voice with a matching "
+                    ".reference.txt file."
                 )
             
             # Create proper engine SRT node instance to preserve ALL functionality
@@ -1373,6 +1432,30 @@ Hello! This is unified SRT TTS with character switching.
                     timing_mode=timing_mode,
                     timing_params=timing_params,
                     enable_audio_cache=enable_audio_cache
+                )
+
+            elif engine_type == "audio8_tts":
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance,
+                }
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                        'character_name': character_name or 'narrator',
+                    }
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache,
                 )
 
             elif engine_type == "dramabox":
@@ -1688,9 +1771,16 @@ Hello! This is unified SRT TTS with character switching.
                 "is a voice-design model and cannot be used with TTS SRT" in msg
                 or "Pause tags are not compatible with force_speaker_kv" in msg
                 or "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input" in msg
+                or "Audio8 TTS voice cloning requires reference text" in msg
             ):
                 raise
-            if isinstance(e, InterruptedError):
+            if isinstance(
+                e,
+                (
+                    InterruptedError,
+                    model_management.InterruptProcessingException,
+                ),
+            ):
                 raise
             error_msg = f"❌ TTS SRT generation failed: {e}"
             print(error_msg)
