@@ -42,82 +42,106 @@ class TadaEngineNode(BaseTTSNode):
             "required": {
                 "model_variant": (model_options, {
                     "default": "TADA-1B",
-                    "tooltip": "Official Hume TADA checkpoint.\n"
-                    "• TADA-1B: English only, about 3.9 GB\n"
-                    "• TADA-3B-ML: multilingual, about 8.9 GB\n"
-                    "Both auto-download with an exact ungated redistribution of Meta's Llama 3.2 "
-                    "tokenizer. Manual files are also supported under models/TTS/tada/.",
+                    "tooltip": "Choose the TADA model.\n"
+                    "• TADA-1B: faster, English only (about 3.9 GB).\n"
+                    "• TADA-3B-ML: multilingual (about 8.9 GB).\n"
+                    "Non-English characters automatically use 3B-ML. Missing files download on first use.",
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
-                    "tooltip": "TADA is designed for CUDA. CPU inference is supported by the wrapper but extremely slow.",
+                    "tooltip": "Choose where TADA runs.\n"
+                    "• Auto: recommended; uses an NVIDIA GPU when available.\n"
+                    "• CUDA: force GPU use.\n"
+                    "• CPU: works without a GPU, but is extremely slow.",
                 }),
                 "language": (list(TADA_LANGUAGE_OPTIONS), {
                     "default": "English",
-                    "tooltip": "Target and reference language. TADA-1B supports English only. "
-                    "TADA-3B-ML supports English, Arabic, Chinese, German, Spanish, French, "
-                    "Italian, Japanese, Polish, and Portuguese. A matching language aligner is downloaded on demand.",
+                    "tooltip": "Language spoken in the reference clip and generated text.\n"
+                    "This improves pronunciation and voice alignment.\n"
+                    "Character language tags can change it automatically for each speaker.",
                 }),
                 "acoustic_cfg_scale": ("FLOAT", {
                     "default": 1.6,
                     "min": 0.0,
                     "max": 5.0,
                     "step": 0.05,
-                    "tooltip": "Official acoustic classifier-free guidance scale. Higher is not automatically better.",
+                    "tooltip": "How strongly TADA follows the voice conditioning.\n"
+                    "1.6 is recommended. Higher can sound stronger but less natural.\n"
+                    "1.0 disables guidance and is faster.",
                 }),
                 "duration_cfg_scale": ("FLOAT", {
                     "default": 1.0,
                     "min": 0.0,
                     "max": 5.0,
                     "step": 0.05,
-                    "tooltip": "Official duration classifier-free guidance scale.",
+                    "tooltip": "How strongly guidance affects pauses and sound duration.\n"
+                    "Keep 1.0 for natural automatic timing.\n"
+                    "Higher values can produce unusual pacing.",
                 }),
                 "num_flow_matching_steps": ("INT", {
                     "default": 10,
                     "min": 1,
                     "max": 64,
                     "step": 1,
-                    "tooltip": "Acoustic flow-matching steps. More steps cost more time; 10 is the official default.",
+                    "tooltip": "Number of audio refinement steps.\n"
+                    "10 is recommended. Fewer is faster but may reduce quality.\n"
+                    "More is slower and may not improve the result.",
                 }),
                 "noise_temperature": ("FLOAT", {
                     "default": 0.9,
                     "min": 0.0,
                     "max": 2.0,
                     "step": 0.05,
-                    "tooltip": "Noise injected into acoustic generation. Lower values are more deterministic.",
+                    "tooltip": "Controls variation in the generated voice.\n"
+                    "0.9 is recommended. Lower is more predictable.\n"
+                    "Higher adds variation but may create unstable sounds.",
                 }),
             },
             "optional": {
                 "dtype": (["auto", "bfloat16", "float16", "float32"], {
                     "default": "auto",
-                    "tooltip": "Model precision inside the isolated Transformers-4 runtime.",
+                    "tooltip": "Controls model precision and memory use.\n"
+                    "Auto is recommended. Float16 and bfloat16 use less GPU memory.\n"
+                    "Float32 uses much more memory and is mainly for troubleshooting.",
                 }),
                 "cfg_schedule": (["cosine", "linear", "constant"], {
                     "default": "cosine",
-                    "tooltip": "How acoustic and duration CFG vary over flow-matching steps.",
+                    "tooltip": "How guidance changes during audio refinement.\n"
+                    "• Cosine: smooth reduction; recommended.\n"
+                    "• Linear: even reduction.\n"
+                    "• Constant: full guidance throughout.",
                 }),
                 "time_schedule": (["logsnr", "cosine", "uniform"], {
                     "default": "logsnr",
-                    "tooltip": "Official ODE timestep schedule.",
+                    "tooltip": "Controls where refinement steps are concentrated.\n"
+                    "• LogSNR: recommended.\n"
+                    "• Cosine: more work near the beginning and end.\n"
+                    "• Uniform: steps are evenly spaced.",
                 }),
                 "negative_condition_source": (["negative_step_output", "prompt", "zero"], {
                     "default": "negative_step_output",
-                    "tooltip": "Official CFG negative condition source. The default runs a parallel negative batch and uses more compute.",
+                    "tooltip": "Baseline used by voice guidance.\n"
+                    "• negative_step_output: recommended; stronger but uses more compute.\n"
+                    "• prompt: uses the reference prompt.\n"
+                    "• zero: simplest and fastest baseline.",
                 }),
                 "speed_up_factor": ("FLOAT", {
                     "default": 0.0,
                     "min": 0.0,
                     "max": 2.0,
                     "step": 0.05,
-                    "tooltip": "Native two-pass duration scaling. 0 disables it; values above 1 speak faster. "
-                    "Enabling this performs a second full generation pass.",
+                    "tooltip": "Changes speaking speed using TADA's native method.\n"
+                    "0 disables it; values above 1 speak faster.\n"
+                    "Enabling it performs two passes and takes about twice as long.",
                 }),
                 "num_transition_steps": ("INT", {
                     "default": 5,
                     "min": 0,
                     "max": 32,
                     "step": 1,
-                    "tooltip": "Number of prompt-to-target acoustic transition steps.",
+                    "tooltip": "Smooths the change from the reference clip to generated speech.\n"
+                    "5 is recommended. Lower is more abrupt.\n"
+                    "Higher is smoother but adds work.",
                 }),
             },
         }
