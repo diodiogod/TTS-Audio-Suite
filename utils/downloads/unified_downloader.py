@@ -5,7 +5,9 @@ Centralized downloading for all models (F5-TTS, ChatterBox, RVC, etc.) without c
 
 import os
 import requests
+import shutil
 import subprocess
+import sys
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 import fnmatch
@@ -34,6 +36,28 @@ class UnifiedDownloader:
         if not self.verify_ssl:
             print("⚠️ SSL certificate verification is DISABLED")
             print("   Set environment variable TTS_DISABLE_SSL_VERIFY=0 to re-enable")
+
+    @staticmethod
+    def _resolve_cli_executable(command: str) -> str:
+        """Resolve console scripts installed beside the active Python executable."""
+        discovered = shutil.which(command)
+        if discovered:
+            return discovered
+
+        suffix = ".exe" if os.name == "nt" else ""
+        executable_name = command if command.endswith(suffix) else f"{command}{suffix}"
+        python_dir = Path(sys.executable).resolve().parent
+        candidates = (
+            python_dir / executable_name,
+            python_dir / "Scripts" / executable_name,
+            python_dir.parent / "Scripts" / executable_name,
+            python_dir / "bin" / executable_name,
+            python_dir.parent / "bin" / executable_name,
+        )
+        for candidate in candidates:
+            if candidate.is_file():
+                return str(candidate)
+        return command
     
     def download_from_hf_cli(
         self,
@@ -63,6 +87,7 @@ class UnifiedDownloader:
 
         try:
             os.makedirs(target_dir, exist_ok=True)
+            print(f"📥 Downloading {filename} from {repo_id}")
 
             if force_download and os.path.exists(target_path):
                 try:
@@ -74,10 +99,10 @@ class UnifiedDownloader:
             env = os.environ.copy()
             env['PYTHONIOENCODING'] = 'utf-8'
 
-            # Try modern 'hf download' first, fallback to legacy 'huggingface-cli download'
-            # Show progress bar by not capturing output
+            # Try modern 'hf download' first, then the legacy CLI. Capture their
+            # noisy path/warning output and present consistent suite-level status.
             hf_command = [
-                "hf", "download",
+                self._resolve_cli_executable("hf"), "download",
                 repo_id,
                 filename,
                 "--local-dir", target_dir
@@ -90,16 +115,20 @@ class UnifiedDownloader:
                 hf_command,
                 check=False,
                 env=env,
-                capture_output=False  # Allow progress bar to show
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
 
             # If new command succeeded, return
             if result.returncode == 0 and os.path.exists(target_path):
+                print(f"✅ Downloaded: {target_path}")
                 return True
 
             # Try legacy command if new one failed
             legacy_command = [
-                "huggingface-cli", "download",
+                self._resolve_cli_executable("huggingface-cli"), "download",
                 repo_id,
                 filename,
                 "--local-dir", target_dir
@@ -112,10 +141,14 @@ class UnifiedDownloader:
                 legacy_command,
                 check=False,
                 env=env,
-                capture_output=False  # Allow progress bar to show
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
             )
 
             if result.returncode == 0 and os.path.exists(target_path):
+                print(f"✅ Downloaded: {target_path}")
                 return True
 
             return False

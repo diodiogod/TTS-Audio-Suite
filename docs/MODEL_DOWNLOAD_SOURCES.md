@@ -129,6 +129,16 @@ Use this as the canonical list of model repositories/links for offline setup.
 | dots.tts-soar | [rednote-hilab/dots.tts-soar](https://huggingface.co/rednote-hilab/dots.tts-soar) | ~6GB | ✅ | Official SOAR checkpoint for higher-quality zero-shot cloning |
 | dots.tts-mf | [rednote-hilab/dots.tts-mf](https://huggingface.co/rednote-hilab/dots.tts-mf) | ~6GB | ✅ | Official MeanFlow-distilled checkpoint for faster inference |
 
+## TADA
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| TADA 1B | [HumeAI/tada-1b](https://huggingface.co/HumeAI/tada-1b) | ~3.9GB | ✅ | English-only model; downloaded only when selected |
+| TADA 3B-ML | [HumeAI/tada-3b-ml](https://huggingface.co/HumeAI/tada-3b-ml) | ~8.9GB | ✅ | Multilingual model; downloaded only when selected |
+| TADA codec | [HumeAI/tada-codec](https://huggingface.co/HumeAI/tada-codec) | ~2.15GB per selected language | ✅ | Downloads shared encoder/decoder plus only the aligner required by the selected language |
+| Llama tokenizer | [onnx-community/Llama-3.2-1B](https://huggingface.co/onnx-community/Llama-3.2-1B) | Tokenizer files only | ✅ | Ungated redistribution; runtime files are verified against Meta's official Git blob hashes and remain under the Llama 3.2 Community License |
+| Wav2Vec aligner configuration | [facebook/wav2vec2-large](https://huggingface.co/facebook/wav2vec2-large) | Configuration file only | ✅ | Downloads config.json only; no Wav2Vec model weights |
+
 ## DramaBox
 
 | Component | Source | Size | Auto-Download | Notes |

@@ -44,6 +44,7 @@ The project code is MIT. Model weights carry their own licenses:
   Echo-TTS             CC-BY-NC-SA-4.0                                           No
   Fish Audio S2 Pro    Fish Audio Research License                               No
   Dots TTS             Apache-2.0                                                Yes
+  TADA                 MIT code / Llama 3.2 weights                              Conditional
   DramaBox             LTX-2 Community License                                   Conditional
   OmniVoice            Apache-2.0                                                Yes
   MOSS-TTS             Apache-2.0                                                Yes

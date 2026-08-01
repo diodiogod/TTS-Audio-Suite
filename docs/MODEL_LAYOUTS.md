@@ -427,6 +427,28 @@ Notes:
 - Native sample rate is 48kHz.
 - Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.
 
+## TADA
+
+```text
+ComfyUI/models/TTS/tada/
+├── TADA-1B/                  # downloaded only if selected
+├── TADA-3B-ML/               # downloaded only if selected
+├── tada-codec/
+│   ├── encoder/
+│   ├── decoder/
+│   ├── aligner[-<language>]/ # selected language only
+│   └── wav2vec2-large/
+└── llama-3.2-1b-tokenizer/   # tokenizer files only
+```
+
+Notes:
+
+- TADA runs in the shared Transformers 4 runtime with `hume-tada==0.1.9`.
+- The selected 1B or 3B-ML model, shared codec components, and selected language aligner download on demand.
+- The Llama tokenizer downloads from an ungated redistribution and is verified against Meta's official Git blob hashes. It remains under the Llama 3.2 Community License.
+- Reference audio and its exact transcript are required by this integration.
+- Native output is mono 24kHz.
+
 ## OmniVoice
 
 ```text

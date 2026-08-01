@@ -223,6 +223,13 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['optimize'] = config.get('optimize', False)
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
 
+            if engine_type == "tada":
+                stable_params['model_variant'] = config.get('model_variant', 'TADA-1B')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['attn_implementation'] = config.get('attn_implementation', 'sdpa')
+                stable_params['runtime_mode'] = config.get('runtime_mode')
+                stable_params['runtime_profile'] = config.get('runtime_profile')
+
             if engine_type == "dramabox":
                 stable_params['model_name'] = config.get('model_name', 'DramaBox')
                 stable_params['precision'] = config.get('precision', 'auto')
@@ -570,6 +577,37 @@ Hello! This is unified SRT TTS with character switching.
                             raise InterruptedError("Dots TTS SRT processing interrupted by user")
 
                 engine_instance = DotsTTSSRTWrapper(config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
+            elif engine_type == "tada":
+                processor_path = os.path.join(nodes_dir, "tada", "tada_srt_processor.py")
+                processor_spec = importlib.util.spec_from_file_location(
+                    "tada_srt_processor_module", processor_path
+                )
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                TadaSRTProcessor = processor_module.TadaSRTProcessor
+
+                class TadaSRTWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.processor = TadaSRTProcessor(self, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("TADA SRT processing interrupted by user")
+
+                engine_instance = TadaSRTWrapper(config)
 
                 import time
                 self._cached_engine_instances[cache_key] = {
@@ -1112,6 +1150,7 @@ Hello! This is unified SRT TTS with character switching.
         Returns:
             Tuple of (audio_tensor, generation_info, timing_report, adjusted_srt)
         """
+        engine_type = None
         try:
             # Apply Python 3.12 CUDNN compatibility fix before TTS generation
             from utils.comfyui_compatibility import ensure_python312_cudnn_fix
@@ -1174,6 +1213,11 @@ Hello! This is unified SRT TTS with character switching.
                 raise ValueError(
                     "OmniVoice voice cloning requires reference text. "
                     "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
+                )
+            if engine_type == "tada" and (audio_tensor is not None or audio_path) and not reference_text.strip():
+                raise ValueError(
+                    "TADA requires the exact reference transcript. Do not connect raw audio directly. "
+                    "Use Character Voices or a narrator voice with a matching .reference.txt file."
                 )
             
             # Create proper engine SRT node instance to preserve ALL functionality
@@ -1373,6 +1417,30 @@ Hello! This is unified SRT TTS with character switching.
                     timing_mode=timing_mode,
                     timing_params=timing_params,
                     enable_audio_cache=enable_audio_cache
+                )
+
+            elif engine_type == "tada":
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance,
+                }
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                    }
+
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache,
                 )
 
             elif engine_type == "dramabox":
@@ -1689,6 +1757,8 @@ Hello! This is unified SRT TTS with character switching.
                 or "Pause tags are not compatible with force_speaker_kv" in msg
                 or "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input" in msg
             ):
+                raise
+            if engine_type == "tada":
                 raise
             if isinstance(e, InterruptedError):
                 raise

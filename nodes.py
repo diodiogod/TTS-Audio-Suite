@@ -180,6 +180,14 @@ except Exception as e:
     DOTS_TTS_ENGINE_AVAILABLE = False
 
 try:
+    tada_engine_module = load_node_module("tada_engine_node", "engines/tada_engine_node.py")
+    TadaEngineNode = tada_engine_module.TadaEngineNode
+    TADA_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ TADA Engine failed: {e}")
+    TADA_ENGINE_AVAILABLE = False
+
+try:
     dramabox_engine_module = load_node_module("dramabox_engine_node", "engines/dramabox_engine_node.py")
     DramaBoxEngineNode = dramabox_engine_module.DramaBoxEngineNode
     DRAMABOX_ENGINE_AVAILABLE = True
@@ -669,6 +677,10 @@ if ECHO_TTS_ENGINE_AVAILABLE:
 if DOTS_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["DotsTTSEngineNode"] = DotsTTSEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["DotsTTSEngineNode"] = "⚙️ Dots TTS Engine"
+
+if TADA_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["TadaEngineNode"] = TadaEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["TadaEngineNode"] = "⚙️ TADA Engine"
 
 if DRAMABOX_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["DramaBoxEngineNode"] = DramaBoxEngineNode

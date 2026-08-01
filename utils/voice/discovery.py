@@ -570,8 +570,8 @@ class VoiceDiscovery:
         if engine_type in ("audio_only", "chatterbox", "moss_tts", "higgs_audio_v3"):  # Keep backward compatibility
             return character_info
         
-        # For audio+text engines (F5-TTS, Step Audio EditX, CosyVoice, Qwen3-TTS), we need both audio and text
-        if engine_type in ("audio_and_text", "f5tts", "step_audio_editx", "cosyvoice", "index_tts", "qwen3_tts"):
+        # For audio+text engines (F5-TTS, Step Audio EditX, CosyVoice, Qwen3-TTS, TADA), we need both audio and text
+        if engine_type in ("audio_and_text", "f5tts", "step_audio_editx", "cosyvoice", "index_tts", "qwen3_tts", "tada"):
             if character_info.get('text_content'):
                 return character_info
         

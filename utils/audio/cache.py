@@ -413,6 +413,67 @@ class Qwen3TTSCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class TadaCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for the TADA engine."""
+
+    def generate_cache_key(self, **params) -> str:
+        """Include every TADA input that can change the generated waveform."""
+        rounded_fields = {
+            'acoustic_cfg_scale': params.get('acoustic_cfg_scale', 1.6),
+            'duration_cfg_scale': params.get('duration_cfg_scale', 1.0),
+            'noise_temperature': params.get('noise_temperature', 0.9),
+            'speed_up_factor': params.get('speed_up_factor'),
+        }
+        for key, value in list(rounded_fields.items()):
+            if isinstance(value, (int, float)):
+                rounded_fields[key] = round(float(value), 3)
+
+        audio_component = (
+            params.get('audio_component')
+            or params.get('reference_audio_hash')
+            or params.get('prompt_audio_hash')
+            or ''
+        )
+        reference_text = (
+            params.get('reference_text')
+            or params.get('prompt_text')
+            or params.get('ref_text')
+            or ''
+        )
+
+        cache_data = {
+            'text': params.get('text', ''),
+            'model_variant': params.get('model_variant', 'TADA-1B'),
+            'language': params.get('language', 'English'),
+            'audio_component': audio_component,
+            'reference_text': reference_text,
+            'seed': params.get('seed', 0),
+            'acoustic_cfg_scale': rounded_fields['acoustic_cfg_scale'],
+            'duration_cfg_scale': rounded_fields['duration_cfg_scale'],
+            'noise_temperature': rounded_fields['noise_temperature'],
+            'num_flow_matching_steps': params.get('num_flow_matching_steps', 10),
+            'cfg_schedule': params.get('cfg_schedule', 'cosine'),
+            'time_schedule': params.get('time_schedule', 'logsnr'),
+            'negative_condition_source': params.get(
+                'negative_condition_source', 'negative_step_output'
+            ),
+            'speed_up_factor': rounded_fields['speed_up_factor'],
+            'num_transition_steps': params.get('num_transition_steps', 5),
+            'device': params.get('device', 'auto'),
+            'dtype': params.get('dtype', 'auto'),
+            'attn_implementation': params.get('attn_implementation', 'sdpa'),
+            'runtime_mode': params.get('runtime_mode', params.get('runtime', 'shared_runtime')),
+            'runtime_profile': params.get(
+                'runtime_profile', 'vibevoice_transformers4_shared'
+            ),
+            'character': params.get('character', 'narrator'),
+            'engine': 'tada',
+        }
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class MossTTSCacheKeyGenerator(CacheKeyGenerator):
     """Cache key generator for MOSS-TTS engine."""
 
@@ -709,6 +770,7 @@ class AudioCache:
             'index_tts': IndexTTSCacheKeyGenerator(),
             'cosyvoice': CosyVoiceCacheKeyGenerator(),
             'qwen3_tts': Qwen3TTSCacheKeyGenerator(),
+            'tada': TadaCacheKeyGenerator(),
             'dots_tts': DotsTTSCacheKeyGenerator(),
             'dramabox': DramaBoxCacheKeyGenerator(),
             'fish_audio_s2': FishAudioS2CacheKeyGenerator(),
@@ -788,7 +850,7 @@ class AudioCache:
         # Use engine-specific sample rates
         if engine_type in ('dots_tts', 'dramabox', 'moss_soundeffect_v2'):
             sample_rate = 48000
-        elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3', 'omnivoice'):
+        elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'tada', 'moss_tts', 'higgs_audio_v3', 'omnivoice'):
             sample_rate = 24000
         elif engine_type in ('index_tts', 'cosyvoice'):
             sample_rate = 22050

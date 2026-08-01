@@ -218,6 +218,13 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['optimize'] = config.get('optimize', False)
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
 
+            if engine_type == "tada":
+                stable_params['model_variant'] = config.get('model_variant', 'TADA-1B')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['attn_implementation'] = config.get('attn_implementation', 'sdpa')
+                stable_params['runtime_mode'] = config.get('runtime_mode')
+                stable_params['runtime_profile'] = config.get('runtime_profile')
+
             if engine_type == "dramabox":
                 stable_params['model_name'] = config.get('model_name', 'DramaBox')
                 stable_params['precision'] = config.get('precision', 'auto')
@@ -578,6 +585,37 @@ Back to the main narrator voice for the conclusion.""",
                     'timestamp': time.time()
                 }
 
+                return engine_instance
+
+            elif engine_type == "tada":
+                from engines.adapters.tada_adapter import TadaEngineAdapter
+
+                processor_path = os.path.join(nodes_dir, "tada", "tada_processor.py")
+                processor_spec = importlib.util.spec_from_file_location(
+                    "tada_processor_module", processor_path
+                )
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                TadaProcessor = processor_module.TadaProcessor
+
+                class TadaWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = TadaEngineAdapter(self.config)
+                        self.processor = TadaProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+                        self.processor.update_config(new_config)
+
+                engine_instance = TadaWrapper(config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
                 return engine_instance
 
             elif engine_type == "dramabox":
@@ -1059,6 +1097,11 @@ Back to the main narrator voice for the conclusion.""",
                     "OmniVoice voice cloning requires reference text. "
                     "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
                 )
+            if engine_type == "tada" and (audio_tensor is not None or audio_path) and not reference_text.strip():
+                raise ValueError(
+                    "TADA requires the exact reference transcript. Do not connect raw audio directly. "
+                    "Use Character Voices or a narrator voice with a matching .reference.txt file."
+                )
             
             # Create proper engine node instance to preserve ALL functionality
             engine_instance = self._create_proper_engine_node_instance(TTS_engine)
@@ -1518,6 +1561,49 @@ Back to the main narrator voice for the conclusion.""",
                 generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
 
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 48000)
+                result = (formatted_audio, generation_info)
+
+            elif engine_type == "tada":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                    }
+
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache,
+                )
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True,
+                )
+
+                total_duration = combined_audio.shape[-1] / 24000.0 if combined_audio.numel() else 0.0
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                base_info = (
+                    f"Generated {total_duration:.1f}s audio from {len(clean_text)} characters "
+                    f"(TADA, narrator: {char_display})"
+                )
+                base_info += "\n🎭 Character switching, expression transfer, and pause tags enabled"
+                generation_info = ChunkTimingHelper.enhance_generation_info(
+                    f"✅ {base_info}", chunk_info
+                )
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 24000)
                 result = (formatted_audio, generation_info)
 
             elif engine_type == "dramabox":
@@ -2083,6 +2169,8 @@ Back to the main narrator voice for the conclusion.""",
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
             if engine_type == "index_tts":
+                raise
+            if engine_type == "tada":
                 raise
             if isinstance(e, InterruptedError):
                 raise

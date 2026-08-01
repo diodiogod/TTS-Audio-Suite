@@ -19,6 +19,7 @@ from utils.runtimes import (
     build_qwen3_asr_isolated_proxy,
     build_qwen3_tts_isolated_proxy,
     build_step_audio_editx_isolated_proxy,
+    build_tada_isolated_proxy,
     build_vibevoice_isolated_proxy,
 )
 from utils.models.comfyui_model_wrapper.cache_utils import invalidate_all_caches
@@ -236,6 +237,11 @@ class UnifiedModelInterface:
 
         if config.engine_name == "qwen3_tts" and config.model_type == "tts":
             proxy = build_qwen3_tts_isolated_proxy(config)
+            self._isolated_model_cache[cache_key] = proxy
+            return proxy
+
+        if config.engine_name == "tada" and config.model_type == "tts":
+            proxy = build_tada_isolated_proxy(config)
             self._isolated_model_cache[cache_key] = proxy
             return proxy
 
@@ -1723,6 +1729,14 @@ def register_fish_audio_s2_factory():
     unified_model_interface.register_model_factory("fish_audio_s2", "tts", fish_audio_s2_factory)
 
 
+def register_tada_factory():
+    """Register TADA; normal routing constructs it in the isolated T4 runtime."""
+    def tada_factory(config: ModelLoadConfig):
+        return build_tada_isolated_proxy(config)
+
+    unified_model_interface.register_model_factory("tada", "tts", tada_factory)
+
+
 def register_dots_tts_factory():
     """Register Dots TTS model factory."""
     def dots_tts_factory(config: ModelLoadConfig):
@@ -2017,6 +2031,7 @@ def initialize_all_factories():
     register_moss_soundeffect_v2_factory()
     register_qwen3_tts_factory()
     register_fish_audio_s2_factory()
+    register_tada_factory()
     register_dots_tts_factory()
     register_dramabox_factory()
     register_omnivoice_factory()

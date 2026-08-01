@@ -1339,6 +1339,110 @@ engines:
       speed_performance: { supported: "partial", notes: "Moderate; mf variant is faster" }
       reference_free_tts: { supported: true, notes: "(default speaker)" }
 
+  - id: tada
+    name: TADA
+    models: "TADA 1B (English), TADA 3B-ML"
+    size: "~6.1GB / ~11GB with selected codec assets"
+    license: "MIT code / Llama 3.2 weights"
+    commercial: conditional
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    special_features:
+      - "Zero-shot voice cloning"
+      - "Reference-conditioned expression transfer"
+
+    readme_key_features:
+      - "Voice cloning"
+      - "Reference-conditioned expression transfer"
+
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "shared_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      notes: "The supported path uses the shared Transformers 4 runtime with hume-tada 0.1.9. TADA is incompatible with the suite's main Transformers 5 environment."
+
+    model_sources:
+      - component: "TADA 1B"
+        source_name: "HumeAI/tada-1b"
+        source_url: "https://huggingface.co/HumeAI/tada-1b"
+        size: "~3.9GB"
+        auto_download: true
+        notes: "English-only model; downloaded only when selected"
+      - component: "TADA 3B-ML"
+        source_name: "HumeAI/tada-3b-ml"
+        source_url: "https://huggingface.co/HumeAI/tada-3b-ml"
+        size: "~8.9GB"
+        auto_download: true
+        notes: "Multilingual model; downloaded only when selected"
+      - component: "TADA codec"
+        source_name: "HumeAI/tada-codec"
+        source_url: "https://huggingface.co/HumeAI/tada-codec"
+        size: "~2.15GB per selected language"
+        auto_download: true
+        notes: "Downloads shared encoder/decoder plus only the aligner required by the selected language"
+      - component: "Llama tokenizer"
+        source_name: "onnx-community/Llama-3.2-1B"
+        source_url: "https://huggingface.co/onnx-community/Llama-3.2-1B"
+        size: "Tokenizer files only"
+        auto_download: true
+        notes: "Ungated redistribution; runtime files are verified against Meta's official Git blob hashes and remain under the Llama 3.2 Community License"
+      - component: "Wav2Vec aligner configuration"
+        source_name: "facebook/wav2vec2-large"
+        source_url: "https://huggingface.co/facebook/wav2vec2-large"
+        size: "Configuration file only"
+        auto_download: true
+        notes: "Downloads config.json only; no Wav2Vec model weights"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "(1B and 3B-ML)" }
+      zh: { supported: true, flag: "🇨🇳", notes: "(3B-ML; backend code `ch`)" }
+      de: { supported: true, flag: "🇩🇪", notes: "(3B-ML)" }
+      es: { supported: true, flag: "🇪🇸", notes: "(3B-ML)" }
+      fr: { supported: true, flag: "🇫🇷", notes: "(3B-ML)" }
+      it: { supported: true, flag: "🇮🇹", notes: "(3B-ML)" }
+      ja: { supported: true, flag: "🇯🇵", notes: "(3B-ML)" }
+      ko: { supported: false, flag: "🇰🇷", notes: "" }
+      ru: { supported: false, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "(3B-ML)" }
+      pl: { supported: true, flag: "🇵🇱", notes: "(3B-ML)" }
+      hi: { supported: false, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇦🇪", notes: "(3B-ML)" }
+      tr: { supported: false, flag: "🇹🇷", notes: "" }
+      th: { supported: false, flag: "🇹🇭", notes: "" }
+      no: { supported: false, flag: "🇳🇴", notes: "" }
+      vi: { supported: false, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: false, flag: "🇩🇰", notes: "" }
+      fi: { supported: false, flag: "🇫🇮", notes: "" }
+      el: { supported: false, flag: "🇬🇷", notes: "" }
+      he: { supported: false, flag: "🇮🇱", notes: "" }
+      ms: { supported: false, flag: "🇲🇾", notes: "" }
+      nl: { supported: false, flag: "🇳🇱", notes: "" }
+      sv: { supported: false, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "Reference audio plus exact transcript" }
+      reference_transcript: { requirement: required }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "No direct emotion control; expression may transfer from the reference audio" }
+      native_long_form: { supported: false, notes: "Suite text chunking is used" }
+      community_finetunes: { supported: false, notes: "No suite integration" }
+      vram_efficient: { supported: "partial", notes: "1B is the lighter option; suite VRAM measurements are pending" }
+      speed_performance: { supported: "partial", notes: "No suite benchmark; no streaming or batch inference" }
+      reference_free_tts: { supported: false, notes: "This integration requires a reference voice and exact transcript" }
+
   - id: dramabox
     name: DramaBox
     models: "DramaBox 3.3B"
@@ -1904,13 +2008,15 @@ table_notes:
     Conditional means the transcript is required only for the specific mode:
     CosyVoice3 zero-shot, Qwen3-TTS full Base cloning, or MOSS-TTSD cloned-speaker
     dialogue. Higgs Audio 2, Higgs Audio v3, and Dots TTS accept matching text
-    when provided but do not require it.
+    when provided but do not require it. TADA always requires an exact transcript
+    for its reference audio in this integration.
   language_support:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
     - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"
     - "**Higgs Audio v3**: Official model card lists 102 languages total: 85 polished-production languages and 17 usable but less polished languages."
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
     - "**MOSS-TTS**: Official list includes ZH, EN, DE, ES, FR, JA, IT, HU, KO, RU, FA, AR, PL, PT, CS, DA, SV, EL, TR; HU/FA/CS are not separate columns in this matrix."
+    - "**TADA**: TADA 1B is English-only. TADA 3B-ML supports EN, AR, ZH, DE, ES, FR, IT, JA, PL, and PT; the upstream backend calls Chinese `ch`."
     - "**OmniVoice**: Official model supports 600+ languages; this matrix only shows the suite's comparison subset."
     - "**RVC**: Language-agnostic voice conversion/post-processing; it is marked supported for every language row."
     - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
@@ -1980,6 +2086,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/dots_tts/"
     auto_download: "✅"
     notes: "Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder"
+  - engine: "TADA"
+    primary_model_path: "ComfyUI/models/TTS/tada/"
+    auto_download: "✅"
+    notes: "Selected 1B or 3B-ML model plus language-specific codec assets and an exact hash-verified ungated Llama tokenizer redistribution"
   - engine: "DramaBox"
     primary_model_path: "ComfyUI/models/TTS/dramabox/DramaBox/"
     auto_download: "✅"
@@ -2422,6 +2532,28 @@ model_layouts_markdown: |
   - Downloads into a dedicated `dots_tts/` folder.
   - Native sample rate is 48kHz.
   - Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.
+
+  ## TADA
+
+  ```text
+  ComfyUI/models/TTS/tada/
+  ├── TADA-1B/                  # downloaded only if selected
+  ├── TADA-3B-ML/               # downloaded only if selected
+  ├── tada-codec/
+  │   ├── encoder/
+  │   ├── decoder/
+  │   ├── aligner[-<language>]/ # selected language only
+  │   └── wav2vec2-large/
+  └── llama-3.2-1b-tokenizer/   # tokenizer files only
+  ```
+
+  Notes:
+
+  - TADA runs in the shared Transformers 4 runtime with `hume-tada==0.1.9`.
+  - The selected 1B or 3B-ML model, shared codec components, and selected language aligner download on demand.
+  - The Llama tokenizer downloads from an ungated redistribution and is verified against Meta's official Git blob hashes. It remains under the Llama 3.2 Community License.
+  - Reference audio and its exact transcript are required by this integration.
+  - Native output is mono 24kHz.
 
   ## OmniVoice
 

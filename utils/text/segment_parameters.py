@@ -28,6 +28,23 @@ PARAMETER_ALIASES = {
     'cfg_weight': 'cfg',  # cfg_weight alias -> cfg (more universal)
     'cfgweight': 'cfg',
     'cfg_scale': 'cfg',
+    'acoustic_cfg': 'acoustic_cfg_scale',
+    'acoustic_cfg_scale': 'acoustic_cfg_scale',
+    'duration_cfg': 'duration_cfg_scale',
+    'duration_cfg_scale': 'duration_cfg_scale',
+    'noise_temp': 'noise_temperature',
+    'noise_temperature': 'noise_temperature',
+    'flow_steps': 'num_flow_matching_steps',
+    'flow_matching_steps': 'num_flow_matching_steps',
+    'num_flow_matching_steps': 'num_flow_matching_steps',
+    'cfg_schedule': 'cfg_schedule',
+    'time_schedule': 'time_schedule',
+    'negative_condition': 'negative_condition_source',
+    'negative_condition_source': 'negative_condition_source',
+    'speed_up': 'speed_up_factor',
+    'speed_up_factor': 'speed_up_factor',
+    'transition_steps': 'num_transition_steps',
+    'num_transition_steps': 'num_transition_steps',
     'stg': 'stg_scale',
     'stg_scale': 'stg_scale',
     'duration_multiplier': 'duration_multiplier',
@@ -115,7 +132,7 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
-        'dots_tts', 'fish_audio_s2', 'omnivoice',
+        'dots_tts', 'fish_audio_s2', 'omnivoice', 'tada',
         'echo_tts', 'moss_tts', 'moss_soundeffect_v2', 'dramabox'
     },
     'temperature': {
@@ -124,8 +141,17 @@ PARAMETER_ENGINES = {
     },
     'cfg': {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang',
-        'moss_soundeffect_v2', 'dramabox'
+        'moss_soundeffect_v2', 'dramabox', 'tada'
     },
+    'acoustic_cfg_scale': {'tada'},
+    'duration_cfg_scale': {'tada'},
+    'noise_temperature': {'tada'},
+    'num_flow_matching_steps': {'tada'},
+    'cfg_schedule': {'tada'},
+    'time_schedule': {'tada'},
+    'negative_condition_source': {'tada'},
+    'speed_up_factor': {'tada'},
+    'num_transition_steps': {'tada'},
     'stg_scale': {
         'dramabox'
     },
@@ -145,7 +171,7 @@ PARAMETER_ENGINES = {
         'dramabox'
     },
     'num_steps': {
-        'echo_tts', 'dots_tts', 'omnivoice'
+        'echo_tts', 'dots_tts', 'omnivoice', 'tada'
     },
     'guidance_scale': {
         'dots_tts', 'omnivoice'
@@ -211,7 +237,7 @@ PARAMETER_ENGINES = {
         'chatterbox', 'chatterbox_official_23lang'
     },
     'speed': {
-        'f5tts', 'cosyvoice', 'omnivoice'
+        'f5tts', 'cosyvoice', 'omnivoice', 'tada'
     },
     'top_p': {
         'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
@@ -283,6 +309,17 @@ PARAMETER_VALIDATION = {
     'seed': (int, 0, 2**32 - 1, "Random seed for reproducible generation"),
     'temperature': (float, 0.1, 2.0, "Randomness/creativity control (lower=more deterministic)"),
     'cfg': (float, 0.0, 20.0, "Classifier-free guidance strength"),
+    'acoustic_cfg_scale': (float, 0.0, 10.0, "TADA acoustic classifier-free guidance scale"),
+    'duration_cfg_scale': (float, 0.0, 10.0, "TADA duration classifier-free guidance scale"),
+    'noise_temperature': (float, 0.0, 3.0, "TADA acoustic noise temperature"),
+    'num_flow_matching_steps': (int, 1, 100, "TADA flow-matching inference steps"),
+    'cfg_schedule': (str, None, None, "TADA CFG schedule: constant, linear, or cosine"),
+    'time_schedule': (str, None, None, "TADA time schedule: uniform, cosine, or logsnr"),
+    'negative_condition_source': (
+        str, None, None, "TADA negative condition: negative_step_output, prompt, or zero"
+    ),
+    'speed_up_factor': (float, 0.0, 4.0, "TADA speech speed-up factor; 0 disables it"),
+    'num_transition_steps': (int, 0, 64, "TADA prompt-to-generation transition steps"),
     'stg_scale': (float, 0.0, 5.0, "DramaBox skip-token guidance strength"),
     'duration_multiplier': (float, 0.5, 3.0, "DramaBox estimated-duration multiplier"),
     'gen_duration': (float, 0.0, 60.0, "DramaBox explicit output duration"),
@@ -350,14 +387,27 @@ PARAMETER_NODE_KEYS = {
         'f5tts': 'cfg_strength',
         'moss_soundeffect_v2': 'cfg_scale',
         'dramabox': 'cfg_scale',
+        'tada': 'acoustic_cfg_scale',
     },  # Engine-specific mapping
+    'acoustic_cfg_scale': 'acoustic_cfg_scale',
+    'duration_cfg_scale': 'duration_cfg_scale',
+    'noise_temperature': 'noise_temperature',
+    'num_flow_matching_steps': 'num_flow_matching_steps',
+    'cfg_schedule': 'cfg_schedule',
+    'time_schedule': 'time_schedule',
+    'negative_condition_source': 'negative_condition_source',
+    'speed_up_factor': 'speed_up_factor',
+    'num_transition_steps': 'num_transition_steps',
     'stg_scale': 'stg_scale',
     'duration_multiplier': 'duration_multiplier',
     'gen_duration': 'gen_duration',
     'ref_duration': 'ref_duration',
     'rescale_scale': 'rescale_scale',
     'prompt_template': 'prompt_template',
-    'num_steps': 'num_steps',
+    'num_steps': {
+        'default': 'num_steps',
+        'tada': 'num_flow_matching_steps',
+    },
     'guidance_scale': 'guidance_scale',
     'duration': 'duration',
     't_shift': 't_shift',
@@ -379,7 +429,10 @@ PARAMETER_NODE_KEYS = {
     'speaker_kv_min_t': 'speaker_kv_min_t',
     'sequence_length': 'sequence_length',
     'exaggeration': 'exaggeration',
-    'speed': 'speed',
+    'speed': {
+        'default': 'speed',
+        'tada': 'speed_up_factor',
+    },
     'top_p': 'top_p',
     'top_k': 'top_k',
     'audio_temperature': 'audio_temperature',
@@ -477,6 +530,17 @@ class ParameterValidator:
                     converted = float(normalized)
                     if not 0.0 <= converted <= 1.0:
                         return False, "rescale_scale must be 'auto' or between 0 and 1", value
+
+            allowed_values = {
+                'cfg_schedule': {'constant', 'linear', 'cosine'},
+                'time_schedule': {'uniform', 'cosine', 'logsnr'},
+                'negative_condition_source': {'negative_step_output', 'prompt', 'zero'},
+            }
+            if param_name in allowed_values:
+                converted = str(converted).strip().lower()
+                if converted not in allowed_values[param_name]:
+                    choices = ', '.join(sorted(allowed_values[param_name]))
+                    return False, f"{param_name} must be one of: {choices}", value
 
             # Check bounds
             if min_val is not None and max_val is not None and (converted < min_val or converted > max_val):
