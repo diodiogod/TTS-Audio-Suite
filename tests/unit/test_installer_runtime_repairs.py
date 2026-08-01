@@ -19,6 +19,25 @@ from utils.runtimes.profiles import get_runtime_profile
 
 
 @pytest.mark.unit
+def test_nested_module_check_does_not_import_parent(tmp_path, monkeypatch):
+    package = tmp_path / "explosive_parent"
+    package.mkdir()
+    (package / "__init__.py").write_text(
+        "raise RuntimeError('parent package must not be imported')\n",
+        encoding="utf-8",
+    )
+    (package / "runtime.py").write_text("", encoding="utf-8")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "explosive_parent", raising=False)
+
+    installer = INSTALL_MODULE.TTSAudioInstaller()
+
+    assert installer.module_available("explosive_parent.runtime") is True
+    assert installer.module_available("explosive_parent.missing") is False
+    assert "explosive_parent" not in sys.modules
+
+
+@pytest.mark.unit
 def test_fish_source_restore_accepts_namespace_package(tmp_path, monkeypatch):
     source_root = tmp_path / "source"
     source_package = source_root / "fish_speech"

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.3] - 2026-08-01
+
+### Changed
+
+- Improve runtime availability checks so package startup code is not executed during installation
+
+### Fixed
+
+- Fix TTS Audio Suite installer validation failures
+- Fix ComfyUI Desktop installation failing on supported PyTorch and TorchAudio combinations
 ## [5.6.2] - 2026-07-30
 
 ### Changed

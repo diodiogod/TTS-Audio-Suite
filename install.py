@@ -15,6 +15,7 @@ import subprocess
 import sys
 import os
 import platform
+import importlib.machinery
 import importlib.util
 import hashlib
 import json
@@ -519,7 +520,25 @@ class TTSAudioInstaller:
     def module_available(self, module_name: str) -> bool:
         """Check module presence without starting another Python process or importing it."""
         try:
-            return importlib.util.find_spec(module_name) is not None
+            parts = module_name.split(".")
+            spec = importlib.util.find_spec(parts[0])
+            if spec is None:
+                return False
+
+            # util.find_spec() imports the parent when given a dotted name.
+            # Walk the package paths directly so presence checks stay side-effect free.
+            for index in range(1, len(parts)):
+                search_locations = spec.submodule_search_locations
+                if search_locations is None:
+                    return False
+                qualified_name = ".".join(parts[: index + 1])
+                spec = importlib.machinery.PathFinder.find_spec(
+                    qualified_name,
+                    search_locations,
+                )
+                if spec is None:
+                    return False
+            return True
         except (ImportError, ModuleNotFoundError, AttributeError, ValueError):
             return False
 
