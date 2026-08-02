@@ -1,5 +1,13 @@
 """mel-spectrogram extraction in Matcha-TTS"""
 import logging
+
+# Smart numba compatibility for mel spectrogram extraction
+from utils.compatibility import setup_numba_compatibility
+setup_numba_compatibility(
+    quick_startup=True,
+    verbose=False,
+)
+
 from librosa.filters import mel as librosa_mel_fn
 import torch
 import numpy as np
