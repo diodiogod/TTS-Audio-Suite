@@ -61,13 +61,6 @@ class MossDatasetPrepNode(BaseTTSNode):
                         "If you leave this blank, the node will automatically split dataset_source into train + validation for you."
                     )
                 }),
-                "recursive_folder_scan": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": (
-                        "When dataset_source or validation_source is a folder, also scan its subfolders. "
-                        "Disabled by default; direct files in the selected folder are always scanned."
-                    )
-                }),
                 "validation_split": ("FLOAT", {
                     "default": 0.05,
                     "min": 0.01,
@@ -110,6 +103,13 @@ class MossDatasetPrepNode(BaseTTSNode):
                 "reuse_existing": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "Reuse a matching prepared dataset cache instead of re-encoding audio codes every run."
+                }),
+                "recursive_folder_scan": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": (
+                        "When dataset_source or validation_source is a folder, also scan its subfolders. "
+                        "Disabled by default; direct files in the selected folder are always scanned."
+                    )
                 }),
             },
         }
