@@ -28,7 +28,7 @@ _VIBEVOICE_T4_PACKAGES = [
     "numpy>=1.26.4,<2.3.0",
     "soundfile>=0.12.0",
     "omegaconf>=2.3.0",
-    "transformers>=4.51.3,<=4.57.3",
+    "transformers>=4.57.0,<=4.57.3",
     "kernels>=0.6.1,<=0.9",
     "accelerate",
     "requests",
@@ -63,9 +63,12 @@ _QWEN3_T4_PACKAGES = [
 RUNTIME_PROFILES: Dict[str, RuntimeProfile] = {
     "vibevoice_transformers4_shared": RuntimeProfile(
         name="vibevoice_transformers4_shared",
-        engine_names=["vibevoice", "step_audio_editx"],
+        engine_names=["vibevoice", "step_audio_editx", "audio8_tts"],
         python_path_hint="runtimes/shared_legacy_t4/Scripts/python.exe",
-        description="Shared legacy Transformers 4 runtime for VibeVoice/Kugel, Step Audio EditX, and similar engines.",
+        description=(
+            "Shared legacy Transformers 4 runtime for VibeVoice/Kugel, "
+            "Step Audio EditX, Audio8 TTS, and similar engines."
+        ),
         inherit_base_site_packages=True,
         pip_packages=list(_VIBEVOICE_T4_PACKAGES),
         pip_packages_no_deps=[

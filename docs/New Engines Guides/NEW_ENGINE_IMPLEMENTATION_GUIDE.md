@@ -466,7 +466,7 @@ Also to test, requirements and dependencies need to be added.
 - [ ] Pause tags work with `[pause:1.5s]`
 - [ ] Caching works (same input = cached output)
 - [ ] Model auto-download works
-- [ ] VRAM management works (model unloads)
+- [ ] VRAM management works (unload, switch to another isolated engine, then switch back with cache disabled)
 - [ ] Different parameter combinations work
 - [ ] Engine prints a standard `Settings:` summary with the active generation/load parameters
 - [ ] **Interrupt handling works** - User can stop SRT generation and it stops within ~1 segment

@@ -1,8 +1,8 @@
-from __future__ import annotations
-
 """
 Persistent JSON-line worker session for isolated runtimes.
 """
+
+from __future__ import annotations
 
 import json
 import subprocess
@@ -117,6 +117,24 @@ class JsonLineWorkerSession:
                 self._process.wait(timeout=5)
 
         self._process = None
+
+    def terminate_now(self) -> None:
+        """Stop a worker without waiting for the request lock."""
+        process = self._process
+        if process is None or process.poll() is not None:
+            return
+        try:
+            process.terminate()
+        except OSError:
+            return
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            try:
+                process.kill()
+                process.wait(timeout=2)
+            except OSError:
+                pass
 
     def __del__(self):
         try:

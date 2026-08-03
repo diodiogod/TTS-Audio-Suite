@@ -129,6 +129,12 @@ Use this as the canonical list of model repositories/links for offline setup.
 | dots.tts-soar | [rednote-hilab/dots.tts-soar](https://huggingface.co/rednote-hilab/dots.tts-soar) | ~6GB | ✅ | Official SOAR checkpoint for higher-quality zero-shot cloning |
 | dots.tts-mf | [rednote-hilab/dots.tts-mf](https://huggingface.co/rednote-hilab/dots.tts-mf) | ~6GB | ✅ | Official MeanFlow-distilled checkpoint for faster inference |
 
+## Audio8 TTS
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| Audio8 TTS Preview 0.6B | [Audio8/Audio8-TTS-Preview-0.6b](https://huggingface.co/Audio8/Audio8-TTS-Preview-0.6b) | ~2.39 GiB | ✅ | Official 0.6B Preview checkpoint with bundled 44.1kHz codec; suite uses the shared Transformers 4.57.3 runtime because voice cloning is not compatible with main Transformers 5.10.2 |
+
 ## DramaBox
 
 | Component | Source | Size | Auto-Download | Notes |

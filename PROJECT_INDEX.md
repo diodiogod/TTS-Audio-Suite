@@ -17,7 +17,7 @@
 **Key architectural rules:**
 - Chunking happens in the **processor**, not the adapter (`generate_single()` on adapter = raw single call)
 - Runtime routing happens through `ModelLoadConfig.runtime_mode` + `runtime_profile`, not ad-hoc subprocess calls
-- Shared runtime workers are currently used for fragile engine families such as VibeVoice, Qwen3-TTS / ASR, Granite forced alignment, and Higgs Audio 2. Engines that support the modern stack run natively in the main Transformers 5 environment.
+- Shared runtime workers are currently used for fragile engine families such as VibeVoice, Qwen3-TTS / ASR, Granite forced alignment, Higgs Audio 2, and Audio8 TTS. Engines that support the modern stack run natively in the main Transformers 5 environment.
 - YAML (`docs/Dev reports/tts_audio_suite_engines.yaml`) is source of truth for engine doc tables → run `python3 scripts/generate_engine_tables.py --readme` to regenerate
 - Auxiliary YAML (`docs/Dev reports/tts_audio_suite_aux_models.yaml`) is source of truth for helper/post-process model docs → run `python3 scripts/generate_aux_model_docs.py`
 - All models download to `ComfyUI/models/TTS/<model-name>/`
@@ -25,7 +25,7 @@
 
 ## Engines
 
-19 engines follow the pattern above:
+20 engines follow the pattern above:
 
 | Engine | Adapter | Processor | SRT Processor | Engine Node |
 |--------|---------|-----------|---------------|-------------|
@@ -44,13 +44,14 @@
 | Echo-TTS | `echo_tts_adapter.py` | `nodes/echo_tts/echo_tts_processor.py` | `echo_tts_srt_processor.py` | `echo_tts_engine_node.py` |
 | Fish Audio S2 Pro | `fish_audio_s2_adapter.py` | `nodes/fish_audio_s2/fish_audio_s2_processor.py` | `fish_audio_s2_srt_processor.py` | `fish_audio_s2_engine_node.py` |
 | Dots TTS | `dots_tts_adapter.py` | `nodes/dots_tts/dots_tts_processor.py` | `dots_tts_srt_processor.py` | `dots_tts_engine_node.py` |
+| Audio8 TTS | `audio8_tts_adapter.py` | `nodes/audio8_tts/audio8_tts_processor.py` | `audio8_tts_srt_processor.py` | `audio8_tts_engine_node.py` |
 | DramaBox | `dramabox_adapter.py` | `nodes/dramabox/dramabox_processor.py` | `dramabox_srt_processor.py` | `dramabox_engine_node.py` |
 | OmniVoice | `omnivoice_adapter.py` | `nodes/omnivoice/omnivoice_processor.py` | `omnivoice_srt_processor.py` | `omnivoice_engine_node.py` |
 | MOSS-SoundEffect v2 | `moss_soundeffect_v2_adapter.py` | — | — | `moss_soundeffect_v2_engine_node.py` |
 | RVC | — | `engines/rvc/` | — | `rvc_engine_node.py` |
 
 **Engine implementations live in:**
-- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/higgs_audio_v3/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/moss_soundeffect_v2/`, `engines/granite_asr/`, `engines/echo_tts/`, `engines/fish_audio_s2/`, `engines/dots_tts/`, `engines/dramabox/`, `engines/omnivoice/`, `engines/rvc/`
+- `engines/chatterbox/`, `engines/chatterbox_official_23lang/`, `engines/f5tts/`, `engines/higgs_audio/`, `engines/higgs_audio_v3/`, `engines/vibevoice_engine/`, `engines/step_audio_editx/`, `engines/cosyvoice/`, `engines/qwen3_tts/`, `engines/qwen3_asr/`, `engines/moss_tts/`, `engines/moss_soundeffect_v2/`, `engines/granite_asr/`, `engines/echo_tts/`, `engines/fish_audio_s2/`, `engines/dots_tts/`, `engines/audio8_tts/`, `engines/dramabox/`, `engines/omnivoice/`, `engines/rvc/`
 
 ## Documentation Files
 
@@ -145,13 +146,14 @@
 - `launcher.py` - runtime bootstrap, venv creation, Windows toolchain env setup
 - `session.py`, `protocol.py` - JSONL worker transport and message protocol
 - `bootstrap.py` - shared runtime bootstrap helpers
-- `vibevoice_proxy.py`, `qwen3_tts_proxy.py`, `qwen3_asr_proxy.py`, `higgs_audio_proxy.py` - parent-process proxies
-- `workers/` - worker subprocess entrypoints for VibeVoice, Qwen3-TTS, Qwen3-ASR/aligner, Higgs Audio
+- `vibevoice_proxy.py`, `qwen3_tts_proxy.py`, `qwen3_asr_proxy.py`, `higgs_audio_proxy.py`, `audio8_tts_proxy.py` - parent-process proxies
+- `workers/` - worker subprocess entrypoints for VibeVoice, Qwen3-TTS, Qwen3-ASR/aligner, Higgs Audio, and Audio8 TTS
 - Current shared legacy T4 runtime profile is reused by:
   - VibeVoice / Kugel
   - Qwen3-TTS
   - Qwen3-ASR and Granite's optional Qwen forced aligner
   - Higgs Audio 2
+  - Audio8 TTS
 
 ### Audio (`utils/audio/`)
 - `processing.py` - Tensor manipulation, normalization, format conversion

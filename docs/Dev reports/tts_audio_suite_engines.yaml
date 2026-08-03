@@ -1339,6 +1339,77 @@ engines:
       speed_performance: { supported: "partial", notes: "Moderate; mf variant is faster" }
       reference_free_tts: { supported: true, notes: "(default speaker)" }
 
+  - id: audio8_tts
+    name: Audio8 TTS
+    models: "Audio8 TTS Preview 0.6B"
+    size: "~2.39 GiB"
+    license: "Apache-2.0"
+    commercial: true
+    language_summary_full: "11 recommended languages (including Cantonese)"
+    language_summary_compact: "🌐 11 recommended languages"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      training: false
+
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      main_environment: false
+      shared_runtime: true
+      dedicated_runtime: false
+      runtime_profile: "vibevoice_transformers4_shared"
+      notes: "Required for feature-complete Audio8 inference: main Transformers 5.10.2 collapsed the official voice-clone demo to 0.325s, while the shared Transformers 4.57.3 runtime generated 10.495s for the published 10.54s demo"
+
+    readme_key_features:
+      - "Reference-free TTS + zero-shot/cross-lingual cloning"
+      - "44.1kHz output with sampling or greedy decoding"
+
+    special_features:
+      - "44.1kHz reference-free TTS and zero-shot/cross-lingual voice cloning"
+      - "Exact reference transcript required when voice cloning"
+      - "Greedy or sampled decoding with temperature, top-p, top-k, seed, and token-limit controls"
+      - "Suite text chunking, character switching, and SRT timing/assembly"
+      - "No explicit language selector; multilingual behavior is text-driven"
+      - "No native emotion/style/speed controls, streaming, timestamps, dialogue/multi-speaker mode, or presets"
+      - "Not compatible with Voice Designer: the official model has no instruction-conditioned voice-design mode"
+      - "Unified TTS/SRT integration only; no special node or suite training integration"
+
+    model_sources:
+      - component: "Audio8 TTS Preview 0.6B"
+        source_name: "Audio8/Audio8-TTS-Preview-0.6b"
+        source_url: "https://huggingface.co/Audio8/Audio8-TTS-Preview-0.6b"
+        size: "~2.39 GiB"
+        auto_download: true
+        notes: "Official 0.6B Preview checkpoint with bundled 44.1kHz codec; suite uses the shared Transformers 4.57.3 runtime because voice cloning is not compatible with main Transformers 5.10.2"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "" }
+      zh: { supported: true, flag: "🇨🇳", notes: "(Chinese; upstream separately recommends Cantonese, folded into this matrix row)" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "Zero-shot and cross-lingual; reference audio must be paired with its exact transcript" }
+      reference_transcript: { requirement: conditional }
+      native_multi_speaker: { supported: false, notes: "No native dialogue or multi-speaker interface; suite character switching generates speakers as separate segments" }
+      voice_conversion: { supported: false, notes: "No separate voice-conversion mode" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: false, notes: "No native emotion, style, or speed controls" }
+      native_long_form: { supported: false, notes: "(uses suite text chunking and SRT assembly)" }
+      community_finetunes: { supported: false, notes: "No community model or upstream SFT/training integration in the suite" }
+      vram_efficient: { supported: "partial", notes: "~1.75 GiB model-plus-codec parameter memory at fp16/bf16 or ~3.5 GiB at float32/CPU, before KV cache, activations, and framework overhead; shared runtime reuses the main environment's PyTorch" }
+      speed_performance: { supported: "partial", notes: "Live shared-runtime validation: 6.36s reference-free audio in 39.3s including load; 9.99s cloned audio in 36.7s warm; exact cache reuse in 56ms" }
+      reference_free_tts: { supported: true, notes: "Reference audio is optional" }
+
   - id: dramabox
     name: DramaBox
     models: "DramaBox 3.3B"
@@ -1903,8 +1974,9 @@ table_notes:
   reference_transcript: >-
     Conditional means the transcript is required only for the specific mode:
     CosyVoice3 zero-shot, Qwen3-TTS full Base cloning, or MOSS-TTSD cloned-speaker
-    dialogue. Higgs Audio 2, Higgs Audio v3, and Dots TTS accept matching text
-    when provided but do not require it.
+    dialogue, and Audio8 TTS zero-shot/cross-lingual cloning. Higgs Audio 2,
+    Higgs Audio v3, and Dots TTS accept matching text when provided but do not
+    require it.
   language_support:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
     - "**Higgs Audio 2**: Trained on EN, ZH (Mandarin), KO, DE, ES (English majority) - 10M hours AudioVerse dataset"
@@ -1912,6 +1984,7 @@ table_notes:
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
     - "**MOSS-TTS**: Official list includes ZH, EN, DE, ES, FR, JA, IT, HU, KO, RU, FA, AR, PL, PT, CS, DA, SV, EL, TR; HU/FA/CS are not separate columns in this matrix."
     - "**OmniVoice**: Official model supports 600+ languages; this matrix only shows the suite's comparison subset."
+    - "**Audio8 TTS**: The Preview recommends Cantonese, Chinese, Dutch, English, French, German, Italian, Japanese, Korean, Polish, and Spanish. It has no explicit language selector; language behavior is text-driven. Cantonese is folded into the Chinese row in this matrix."
     - "**RVC**: Language-agnostic voice conversion/post-processing; it is marked supported for every language row."
     - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
 
@@ -1980,6 +2053,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/dots_tts/"
     auto_download: "✅"
     notes: "Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder"
+  - engine: "Audio8 TTS"
+    primary_model_path: "ComfyUI/models/TTS/audio8_tts/Audio8-TTS-Preview-0.6b/"
+    auto_download: "✅"
+    notes: "~2.39 GiB official 0.6B Preview checkpoint; shared Transformers 4.57.3 runtime required because main 5.10.2 collapses voice cloning"
   - engine: "DramaBox"
     primary_model_path: "ComfyUI/models/TTS/dramabox/DramaBox/"
     auto_download: "✅"
@@ -2422,6 +2499,22 @@ model_layouts_markdown: |
   - Downloads into a dedicated `dots_tts/` folder.
   - Native sample rate is 48kHz.
   - Main-environment support works on Transformers 5; on Windows, `normalize_text` falls back to no-op if `WeTextProcessing` is unavailable.
+
+  ## Audio8 TTS
+
+  ```text
+  ComfyUI/models/TTS/audio8_tts/
+  └── Audio8-TTS-Preview-0.6b/
+      └── (13 required official runtime files, including codec weights)
+  ```
+
+  Notes:
+
+  - The official `Audio8/Audio8-TTS-Preview-0.6b` checkpoint is about 2.39 GiB and includes the 44.1kHz neural codec.
+  - The 0.6B model plus codec use about 1.75 GiB for parameters at fp16/bf16 or about 3.5 GiB at float32/CPU, before KV cache, activations, and framework overhead.
+  - The suite uses the existing `vibevoice_transformers4_shared` runtime with Transformers 4.57.3. Main Transformers 5.10.2 is not compatible with Audio8 voice cloning: the official demo collapsed to 0.325s, while the shared runtime generated 10.495s for the published 10.54s demo.
+  - Live shared-runtime validation produced 6.36s of reference-free audio in 39.3s including model load, 9.99s of cloned audio in 36.7s warm, and exact cache reuse in 56ms.
+  - The engine has unified TTS and SRT support only: no Voice Designer support, special node, training integration, native streaming/timestamps/dialogue, or built-in presets.
 
   ## OmniVoice
 

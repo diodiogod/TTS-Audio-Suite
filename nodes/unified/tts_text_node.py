@@ -89,7 +89,7 @@ Back to the main narrator voice for the conclusion.""",
                 }),
                 "narrator_voice": (reference_files, {
                     "default": "none",
-                    "tooltip": "Fallback narrator voice from voice folders. Used when opt_narrator is not connected. Select 'none' for engines that support direct TTS without voice cloning, such as MOSS."
+                    "tooltip": "Fallback narrator voice from voice folders. Used when opt_narrator is not connected. Select 'none' for engines that support direct TTS without voice cloning, such as MOSS or Audio8."
                 }),
                 "seed": ("INT", {
                     "default": 1, "min": 0, "max": 2**32 - 1,
@@ -217,6 +217,12 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['precision'] = config.get('precision', 'auto')
                 stable_params['optimize'] = config.get('optimize', False)
                 stable_params['max_generate_length'] = config.get('max_generate_length', 500)
+
+            if engine_type == "audio8_tts":
+                stable_params['model_variant'] = config.get(
+                    'model_variant', 'Audio8-TTS-Preview-0.6b'
+                )
+                stable_params['dtype'] = config.get('dtype', 'auto')
 
             if engine_type == "dramabox":
                 stable_params['model_name'] = config.get('model_name', 'DramaBox')
@@ -445,7 +451,13 @@ Back to the main narrator voice for the conclusion.""",
                                         voice_mapping[char] = {"waveform": waveform, "sample_rate": sample_rate}
                                         print(f"🎭 VibeVoice: Using character-specific voice for '{char}'")
                                     except Exception as e:
-                                        if isinstance(e, InterruptedError):
+                                        if isinstance(
+                                            e,
+                                            (
+                                                InterruptedError,
+                                                model_management.InterruptProcessingException,
+                                            ),
+                                        ):
                                             raise
                                         print(f"⚠️ Failed to load character audio for '{char}': {e}")
                                         voice_mapping[char] = char_audio  # Fallback to main voice
@@ -578,6 +590,38 @@ Back to the main narrator voice for the conclusion.""",
                     'timestamp': time.time()
                 }
 
+                return engine_instance
+
+            elif engine_type == "audio8_tts":
+                from engines.adapters.audio8_tts_adapter import Audio8TTSEngineAdapter
+
+                processor_path = os.path.join(
+                    nodes_dir, "audio8_tts", "audio8_tts_processor.py"
+                )
+                processor_spec = importlib.util.spec_from_file_location(
+                    "audio8_tts_processor_module", processor_path
+                )
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                Audio8TTSProcessor = processor_module.Audio8TTSProcessor
+
+                class Audio8TTSWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = Audio8TTSEngineAdapter(self.config)
+                        self.processor = Audio8TTSProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+                        self.processor.update_config(new_config)
+
+                engine_instance = Audio8TTSWrapper(config)
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
                 return engine_instance
 
             elif engine_type == "dramabox":
@@ -837,7 +881,13 @@ Back to the main narrator voice for the conclusion.""",
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
         except Exception as e:
-            if isinstance(e, InterruptedError):
+            if isinstance(
+                e,
+                (
+                    InterruptedError,
+                    model_management.InterruptProcessingException,
+                ),
+            ):
                 raise
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
@@ -906,7 +956,8 @@ Back to the main narrator voice for the conclusion.""",
                     print(f"🎤 TTS Text: Using direct audio input ({character_name})")
                     print(
                         "⚠️ TTS Text: Direct audio input has no reference text - "
-                        "F5-TTS and OmniVoice cloning will fail, Qwen3-TTS will use x_vector_only mode (lower quality)"
+                        "Audio8 TTS, F5-TTS, and OmniVoice cloning will fail; "
+                        "Qwen3-TTS will use x_vector_only mode (lower quality)"
                     )
                     return None, audio_tensor, reference_text, character_name
             
@@ -952,7 +1003,13 @@ Back to the main narrator voice for the conclusion.""",
             return None, None, "", "narrator"
             
         except Exception as e:
-            if isinstance(e, InterruptedError):
+            if isinstance(
+                e,
+                (
+                    InterruptedError,
+                    model_management.InterruptProcessingException,
+                ),
+            ):
                 raise
             print(f"❌ Voice reference error: {e}")
             return None, None, "", "narrator"
@@ -1058,6 +1115,13 @@ Back to the main narrator voice for the conclusion.""",
                 raise ValueError(
                     "OmniVoice voice cloning requires reference text. "
                     "Do not connect raw audio directly. Use Character Voices node or a narrator voice with a matching .reference.txt file."
+                )
+            if engine_type == "audio8_tts" and (audio_tensor is not None or audio_path) and not reference_text.strip():
+                raise ValueError(
+                    "Audio8 TTS voice cloning requires reference text. "
+                    "Do not connect raw audio directly. Use Character Voices with "
+                    "the exact transcript, or a narrator voice with a matching "
+                    ".reference.txt file."
                 )
             
             # Create proper engine node instance to preserve ALL functionality
@@ -1520,6 +1584,59 @@ Back to the main narrator voice for the conclusion.""",
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 48000)
                 result = (formatted_audio, generation_info)
 
+            elif engine_type == "audio8_tts":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                        'character_name': character_name or 'narrator',
+                    }
+
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache,
+                )
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True,
+                )
+
+                total_duration = (
+                    combined_audio.shape[-1] / 44100.0
+                    if combined_audio.numel()
+                    else 0.0
+                )
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                base_info = (
+                    f"Generated {total_duration:.1f}s audio from {len(clean_text)} characters "
+                    f"(Audio8 TTS, narrator: {char_display})"
+                )
+                base_info += (
+                    "\n🎭 Reference-free speech, zero-shot cloning, character switching, "
+                    "and pause tags enabled"
+                )
+                generation_info = ChunkTimingHelper.enhance_generation_info(
+                    f"✅ {base_info}", chunk_info
+                )
+                result = (
+                    AudioProcessingUtils.format_for_comfyui(combined_audio, 44100),
+                    generation_info,
+                )
+
             elif engine_type == "dramabox":
                 import re
                 from utils.audio.chunk_timing import ChunkTimingHelper
@@ -1900,7 +2017,13 @@ Back to the main narrator voice for the conclusion.""",
                                 }
                                 print(f"🎭 Qwen3-TTS: Using character-specific voice for '{character}' (ICL mode)")
                             except Exception as e:
-                                if isinstance(e, InterruptedError):
+                                if isinstance(
+                                    e,
+                                    (
+                                        InterruptedError,
+                                        model_management.InterruptProcessingException,
+                                    ),
+                                ):
                                     raise
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
@@ -1945,7 +2068,13 @@ Back to the main narrator voice for the conclusion.""",
                                 print(f"⚠️⚠️ Qwen3-TTS: Character '{character}' has audio but NO reference text")
                                 print(f"⚠️⚠️ Using x_vector_only mode (speaker embedding only) - LOWER QUALITY than ICL mode")
                             except Exception as e:
-                                if isinstance(e, InterruptedError):
+                                if isinstance(
+                                    e,
+                                    (
+                                        InterruptedError,
+                                        model_management.InterruptProcessingException,
+                                    ),
+                                ):
                                     raise
                                 print(f"⚠️ Failed to load character audio for '{character}': {e}")
                                 # Fallback to narrator voice if available
@@ -2082,9 +2211,17 @@ Back to the main narrator voice for the conclusion.""",
                 raise
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
+            if "Audio8 TTS voice cloning requires reference text" in str(e):
+                raise
             if engine_type == "index_tts":
                 raise
-            if isinstance(e, InterruptedError):
+            if isinstance(
+                e,
+                (
+                    InterruptedError,
+                    model_management.InterruptProcessingException,
+                ),
+            ):
                 raise
             error_msg = f"❌ TTS Text generation failed: {e}"
             print(error_msg)

@@ -157,6 +157,15 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         fallback_languages=["English"],
     ),
 
+    "audio8_tts": EngineCapabilities(
+        supports_voice_conversion=False,
+        multilingual_model_switching=False,
+        can_corrupt_on_reload=False,
+        fallback_languages=["English"],
+        supports_runtime_isolation=True,
+        default_runtime_profile="vibevoice_transformers4_shared",
+    ),
+
     "dramabox": EngineCapabilities(
         supports_voice_conversion=False,
         multilingual_model_switching=False,

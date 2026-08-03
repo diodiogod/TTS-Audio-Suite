@@ -70,6 +70,7 @@ PRIORITY SYSTEM - When both .txt and .reference.txt exist:
                     "tooltip": """Create reference text on-the-fly for connected audio input.
 
 ENGINE REQUIREMENTS:
+• Audio8 TTS: REQUIRES the exact spoken transcript for voice cloning
 • F5-TTS: REQUIRES reference text (must match spoken audio exactly)
 • Higgs Audio 2: Optional but uses reference text if provided
 • ChatterBox/VibeVoice/IndexTTS: Don't use reference text
