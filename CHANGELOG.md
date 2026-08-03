@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.4] - 2026-08-03
+
+### Added
+
+- Add MOSS-TTS training dataset folder support
+- Add direct loading of matching audio and transcript files from a folder
+- Support WAV, FLAC, MP3, OGG, and M4A training clips
+- Add optional recursive scanning for datasets organized into subfolders
+- Preserve existing JSONL manifest workflows
 ## [5.6.3] - 2026-08-01
 
 ### Changed

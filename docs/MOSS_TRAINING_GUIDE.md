@@ -29,6 +29,23 @@ Current ComfyUI flow:
 4. `🎛️ MOSS Training Config`
 5. `🎓 Model Training`
 
+If clips and transcripts are already prepared on disk, you can skip the first two
+nodes. Set `dataset_source` on `📦 MOSS Dataset Prep` to a folder containing
+same-name audio and text pairs:
+
+```text
+my_dataset/
+├── clip001.wav
+├── clip001.txt
+├── clip002.flac
+└── clip002.txt
+```
+
+Each `.txt` file must contain the transcript spoken in its matching audio file.
+Folder scanning supports WAV, FLAC, MP3, OGG, and M4A. Subfolders are ignored
+unless `recursive_folder_scan` is enabled. Existing JSONL manifest paths continue
+to work unchanged.
+
 ## The Important Fields
 
 ### `text_lines`

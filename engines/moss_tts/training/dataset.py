@@ -25,6 +25,7 @@ from engines.moss_tts.training.common import (
     load_jsonl,
     resolve_codec_path,
     resolve_delay_training_variant,
+    resolve_moss_dataset_source,
     resolve_model_path,
     split_train_val,
     slugify,
@@ -215,18 +216,19 @@ def prepare_moss_training_dataset(
     n_vq: int = 0,
     encode_reference_audio: bool = True,
     reuse_existing: bool = True,
+    recursive_folder_scan: bool = False,
 ) -> Dict[str, Any]:
     # Node UI uses prep_batch_size; keep batch_size for compatibility with older callers.
     effective_batch_size = int(prep_batch_size) if int(prep_batch_size or 0) > 0 else int(batch_size)
 
     variant = resolve_delay_training_variant(shared_settings)
 
-    train_manifest_path = os.path.abspath(dataset_source)
-    if not os.path.isfile(train_manifest_path):
-        raise FileNotFoundError(f"MOSS training manifest not found: {dataset_source}")
-    val_manifest_path = os.path.abspath(validation_source) if str(validation_source or "").strip() else ""
-    if val_manifest_path and not os.path.isfile(val_manifest_path):
-        raise FileNotFoundError(f"MOSS validation manifest not found: {validation_source}")
+    train_manifest_path = resolve_moss_dataset_source(dataset_source, recursive=recursive_folder_scan)
+    val_manifest_path = (
+        resolve_moss_dataset_source(validation_source, recursive=recursive_folder_scan)
+        if str(validation_source or "").strip()
+        else ""
+    )
 
     fingerprint_inputs = [train_manifest_path]
     if val_manifest_path:

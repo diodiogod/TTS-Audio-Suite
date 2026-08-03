@@ -27,6 +27,7 @@ FRIENDLY_VARIANT_MAP = {
 }
 
 SUPPORTED_DELAY_TRAINING_VARIANTS = {"MOSS-TTS", "MOSS-TTS-v1.5"}
+MOSS_DATASET_AUDIO_EXTENSIONS = {".wav", ".flac", ".mp3", ".ogg", ".m4a"}
 
 
 def slugify(value: str) -> str:
@@ -63,6 +64,71 @@ def resolve_manifest_path(dataset_source: str) -> str:
             return os.path.abspath(candidate)
 
     raise FileNotFoundError(f"MOSS training manifest not found: {dataset_source}")
+
+
+def _resolve_dataset_source_path(dataset_source: str) -> Path:
+    raw = os.path.expanduser(str(dataset_source or "").strip())
+    if not raw:
+        raise ValueError("dataset_source is required")
+
+    input_dir = folder_paths.get_input_directory()
+    candidates = [Path(raw), Path(input_dir, raw), Path(input_dir, "datasets", raw)]
+    for candidate in candidates:
+        if candidate.is_file() or candidate.is_dir():
+            return candidate.resolve()
+    raise FileNotFoundError(f"MOSS dataset source not found: {dataset_source}")
+
+
+def _build_manifest_from_audio_folder(dataset_dir: Path, recursive: bool) -> str:
+    iterator = dataset_dir.rglob("*") if recursive else dataset_dir.iterdir()
+    audio_paths = sorted(
+        (path for path in iterator if path.is_file() and path.suffix.lower() in MOSS_DATASET_AUDIO_EXTENSIONS),
+        key=lambda path: str(path.relative_to(dataset_dir)).lower(),
+    )
+    if not audio_paths:
+        scope = "recursively" if recursive else ""
+        raise ValueError(f"No supported audio files found {scope} in MOSS dataset folder: {dataset_dir}")
+
+    records: List[Dict[str, str]] = []
+    missing_transcripts: List[str] = []
+    source_paths: List[str] = []
+    for audio_path in audio_paths:
+        transcript_path = audio_path.with_suffix(".txt")
+        if not transcript_path.is_file():
+            missing_transcripts.append(str(audio_path.relative_to(dataset_dir)))
+            continue
+        transcript = transcript_path.read_text(encoding="utf-8-sig").strip()
+        if not transcript:
+            missing_transcripts.append(str(audio_path.relative_to(dataset_dir)))
+            continue
+        records.append({"audio": str(audio_path.resolve()), "text": transcript})
+        source_paths.extend((str(audio_path), str(transcript_path)))
+
+    if missing_transcripts:
+        preview = ", ".join(missing_transcripts[:10])
+        remainder = len(missing_transcripts) - 10
+        if remainder > 0:
+            preview += f", and {remainder} more"
+        raise ValueError(
+            "Every MOSS dataset audio file needs a non-empty .txt transcript with the same basename. "
+            f"Missing or empty transcripts for: {preview}"
+        )
+
+    source_hash = fingerprint_paths(source_paths)
+    manifest_dir = Path(get_moss_training_root(), "imported_manifests")
+    manifest_path = manifest_dir / f"{slugify(dataset_dir.name)}_{source_hash[:12]}.jsonl"
+    if not manifest_path.is_file():
+        dump_jsonl(records, manifest_path)
+    print(f"MOSS dataset folder imported: {dataset_dir} | {len(records)} clips")
+    return str(manifest_path)
+
+
+def resolve_moss_dataset_source(dataset_source: str, recursive: bool = False) -> str:
+    """Resolve an existing JSONL manifest or import a folder of audio/.txt pairs."""
+    source_path = _resolve_dataset_source_path(dataset_source)
+    if source_path.is_file():
+        return str(source_path)
+    return _build_manifest_from_audio_folder(source_path, recursive=bool(recursive))
 
 
 def fingerprint_paths(paths: Sequence[str]) -> str:
