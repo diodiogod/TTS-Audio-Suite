@@ -10,9 +10,9 @@ class UnifiedVoiceDesignerNode:
             "required": {
                 "TTS_engine": ("TTS_ENGINE", {
                     "tooltip": (
-                        "Configured Qwen3-TTS, MOSS-TTS, or OmniVoice engine. This node owns the voice-design "
+                        "Configured Qwen3-TTS, MOSS-TTS, OmniVoice, or VoxCPM2 engine. This node owns the voice-design "
                         "instruction; the engine owns its model, language, and generation settings. Qwen and "
-                        "MOSS require their voice-design model, while OmniVoice requires Voice Design mode."
+                        "MOSS require their voice-design model, while OmniVoice and VoxCPM2 require Voice Design mode."
                     )
                 }),
                 "reference_text": ("STRING", {

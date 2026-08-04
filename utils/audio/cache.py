@@ -694,6 +694,42 @@ class OmniVoiceCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class VoxCPMCacheKeyGenerator(CacheKeyGenerator):
+    """Cache-key generator for all official VoxCPM checkpoint generations."""
+
+    def generate_cache_key(self, **params) -> str:
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'model_variant': params.get('model_variant', 'VoxCPM2'),
+            'architecture': params.get('architecture', ''),
+            'voice_instruction': params.get('voice_instruction', ''),
+            'cfg_value': round(float(params.get('cfg_value', 2.0)), 3),
+            'inference_timesteps': int(params.get('inference_timesteps', 10)),
+            'min_len': int(params.get('min_len', 2)),
+            'max_len': int(params.get('max_len', 4096)),
+            'normalize_text': bool(params.get('normalize_text', False)),
+            'retry_badcase': bool(params.get('retry_badcase', True)),
+            'retry_badcase_max_times': int(params.get('retry_badcase_max_times', 3)),
+            'retry_badcase_ratio_threshold': round(
+                float(params.get('retry_badcase_ratio_threshold', 6.0)), 3
+            ),
+            'seed': int(params.get('seed', 0)),
+            'device': params.get('device', 'auto'),
+            'optimize': bool(params.get('optimize', False)),
+            'runtime_mode': params.get('runtime_mode', 'main_environment'),
+            'runtime_profile': params.get('runtime_profile'),
+            'model_path': params.get('model_path', ''),
+            'load_denoiser': bool(params.get('load_denoiser', False)),
+            'sample_rate': int(params.get('sample_rate', 48000)),
+            'character': params.get('character', 'narrator'),
+            'engine': 'voxcpm',
+        }
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -713,6 +749,7 @@ class AudioCache:
             'dramabox': DramaBoxCacheKeyGenerator(),
             'fish_audio_s2': FishAudioS2CacheKeyGenerator(),
             'omnivoice': OmniVoiceCacheKeyGenerator(),
+            'voxcpm': VoxCPMCacheKeyGenerator(),
             'moss_tts': MossTTSCacheKeyGenerator(),
             'moss_soundeffect_v2': MossSoundEffectV2CacheKeyGenerator(),
             'echo_tts': EchoTTSCacheKeyGenerator()
@@ -776,7 +813,12 @@ class AudioCache:
         
         return cache_fn
     
-    def _calculate_duration(self, audio_tensor: torch.Tensor, engine_type: str) -> float:
+    def _calculate_duration(
+        self,
+        audio_tensor: torch.Tensor,
+        engine_type: str,
+        sample_rate: Optional[int] = None,
+    ) -> float:
         """Calculate audio duration based on engine type."""
         if audio_tensor.dim() == 1:
             num_samples = audio_tensor.shape[0]
@@ -786,15 +828,16 @@ class AudioCache:
             num_samples = audio_tensor.numel()
 
         # Use engine-specific sample rates
-        if engine_type in ('dots_tts', 'dramabox', 'moss_soundeffect_v2'):
-            sample_rate = 48000
-        elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3', 'omnivoice'):
-            sample_rate = 24000
-        elif engine_type in ('index_tts', 'cosyvoice'):
-            sample_rate = 22050
-        else:
-            sample_rate = 44100
-        return num_samples / sample_rate
+        if sample_rate is None:
+            if engine_type in ('dots_tts', 'dramabox', 'moss_soundeffect_v2', 'voxcpm'):
+                sample_rate = 48000
+            elif engine_type in ('f5tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'higgs_audio_v3', 'omnivoice'):
+                sample_rate = 24000
+            elif engine_type in ('index_tts', 'cosyvoice'):
+                sample_rate = 22050
+            else:
+                sample_rate = 44100
+        return num_samples / int(sample_rate)
     
     def clear_cache(self):
         """Clear all cached audio."""

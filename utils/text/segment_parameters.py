@@ -115,7 +115,7 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
-        'dots_tts', 'fish_audio_s2', 'omnivoice',
+        'dots_tts', 'fish_audio_s2', 'omnivoice', 'voxcpm',
         'echo_tts', 'moss_tts', 'moss_soundeffect_v2', 'dramabox'
     },
     'temperature': {
@@ -124,7 +124,7 @@ PARAMETER_ENGINES = {
     },
     'cfg': {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang',
-        'moss_soundeffect_v2', 'dramabox'
+        'moss_soundeffect_v2', 'dramabox', 'voxcpm'
     },
     'stg_scale': {
         'dramabox'
@@ -145,7 +145,7 @@ PARAMETER_ENGINES = {
         'dramabox'
     },
     'num_steps': {
-        'echo_tts', 'dots_tts', 'omnivoice'
+        'echo_tts', 'dots_tts', 'omnivoice', 'voxcpm'
     },
     'guidance_scale': {
         'dots_tts', 'omnivoice'
@@ -259,7 +259,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'inference_steps': {
-        'vibevoice', 'moss_soundeffect_v2'
+        'vibevoice', 'moss_soundeffect_v2', 'voxcpm'
     },
     'sigma_shift': {
         'moss_soundeffect_v2'
@@ -350,6 +350,7 @@ PARAMETER_NODE_KEYS = {
         'f5tts': 'cfg_strength',
         'moss_soundeffect_v2': 'cfg_scale',
         'dramabox': 'cfg_scale',
+        'voxcpm': 'cfg_value',
     },  # Engine-specific mapping
     'stg_scale': 'stg_scale',
     'duration_multiplier': 'duration_multiplier',
@@ -357,7 +358,10 @@ PARAMETER_NODE_KEYS = {
     'ref_duration': 'ref_duration',
     'rescale_scale': 'rescale_scale',
     'prompt_template': 'prompt_template',
-    'num_steps': 'num_steps',
+    'num_steps': {
+        'default': 'num_steps',
+        'voxcpm': 'inference_timesteps',
+    },
     'guidance_scale': 'guidance_scale',
     'duration': 'duration',
     't_shift': 't_shift',
@@ -395,7 +399,10 @@ PARAMETER_NODE_KEYS = {
     'quality': 'quality',
     'sound_event': 'sound_event',
     'ambient_sound': 'ambient_sound',
-    'inference_steps': 'inference_steps',
+    'inference_steps': {
+        'default': 'inference_steps',
+        'voxcpm': 'inference_timesteps',
+    },
     'sigma_shift': 'sigma_shift',
     'negative_prompt': 'negative_prompt',
     'duration_seconds': 'duration_seconds',

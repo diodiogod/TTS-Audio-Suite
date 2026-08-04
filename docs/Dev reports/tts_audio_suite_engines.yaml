@@ -1493,6 +1493,92 @@ engines:
       speed_performance: { supported: true, notes: "Fast; upstream reports sub-realtime RTF" }
       reference_free_tts: { supported: true, notes: "(native default voice; instruct also works without narrator)" }
 
+  - id: voxcpm
+    name: VoxCPM
+    models: "VoxCPM2, VoxCPM1.5, VoxCPM-0.5B (legacy)"
+    size: "~5.0GB / ~2.0GB / ~1.6GB"
+    license: "Apache-2.0"
+    commercial: true
+    language_summary_compact: "🌐 30 languages (V2); EN/ZH legacy"
+    language_summary_full: "30 (VoxCPM2); English/Chinese (1.5 and 0.5B)"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      voice_design: true
+      training: false
+
+    special_features:
+      - "One architecture-gated engine for VoxCPM2, VoxCPM1.5, and legacy VoxCPM-0.5B"
+      - "VoxCPM2 reference-only, controllable, and ultimate voice cloning"
+      - "VoxCPM2 reference-free Voice Design"
+      - "30-language text-driven synthesis with no language tag"
+      - "Per-model 48kHz, 44.1kHz, or 16kHz native output"
+
+    model_sources:
+      - component: "VoxCPM2"
+        source_name: "openbmb/VoxCPM2"
+        source_url: "https://huggingface.co/openbmb/VoxCPM2"
+        size: "~5.0GB"
+        auto_download: true
+        notes: "Recommended 2B model; 30 languages, Voice Design, controllable cloning, and 48kHz output"
+      - component: "VoxCPM1.5"
+        source_name: "openbmb/VoxCPM1.5"
+        source_url: "https://huggingface.co/openbmb/VoxCPM1.5"
+        size: "~2.0GB"
+        auto_download: true
+        notes: "Faster/lower-VRAM English and Chinese continuation-cloning model with 44.1kHz output"
+      - component: "VoxCPM-0.5B"
+        source_name: "openbmb/VoxCPM-0.5B"
+        source_url: "https://huggingface.co/openbmb/VoxCPM-0.5B"
+        size: "~1.6GB"
+        auto_download: true
+        notes: "Legacy lowest-memory English and Chinese checkpoint with 16kHz output"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "All variants" }
+      zh: { supported: true, flag: "🇨🇳", notes: "All variants; VoxCPM2 also supports nine documented Chinese dialects" }
+      de: { supported: true, flag: "🇩🇪", notes: "VoxCPM2" }
+      es: { supported: true, flag: "🇪🇸", notes: "VoxCPM2" }
+      fr: { supported: true, flag: "🇫🇷", notes: "VoxCPM2" }
+      it: { supported: true, flag: "🇮🇹", notes: "VoxCPM2" }
+      ja: { supported: true, flag: "🇯🇵", notes: "VoxCPM2" }
+      ko: { supported: true, flag: "🇰🇷", notes: "VoxCPM2" }
+      ru: { supported: true, flag: "🇷🇺", notes: "VoxCPM2" }
+      pt: { supported: true, flag: "🇵🇹", notes: "VoxCPM2" }
+      pl: { supported: true, flag: "🇵🇱", notes: "VoxCPM2" }
+      hi: { supported: true, flag: "🇮🇳", notes: "VoxCPM2" }
+      ar: { supported: true, flag: "🇦🇪", notes: "VoxCPM2" }
+      tr: { supported: true, flag: "🇹🇷", notes: "VoxCPM2" }
+      th: { supported: true, flag: "🇹🇭", notes: "VoxCPM2" }
+      no: { supported: true, flag: "🇳🇴", notes: "VoxCPM2" }
+      vi: { supported: true, flag: "🇻🇳", notes: "VoxCPM2" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: false, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "VoxCPM2" }
+      fi: { supported: true, flag: "🇫🇮", notes: "VoxCPM2" }
+      el: { supported: true, flag: "🇬🇷", notes: "VoxCPM2" }
+      he: { supported: true, flag: "🇮🇱", notes: "VoxCPM2" }
+      ms: { supported: true, flag: "🇲🇾", notes: "VoxCPM2" }
+      nl: { supported: true, flag: "🇳🇱", notes: "VoxCPM2" }
+      sv: { supported: true, flag: "🇸🇪", notes: "VoxCPM2" }
+      sw: { supported: true, flag: "🇰🇪", notes: "VoxCPM2" }
+
+    features:
+      voice_cloning: { supported: true, notes: "VoxCPM2 supports reference-only and controllable cloning; all variants support continuation cloning with the exact transcript" }
+      reference_transcript: { requirement: conditional }
+      native_multi_speaker: { supported: false, notes: "Suite character switching generates speakers as separate segments" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "No bundled ASR; exact legacy reference transcripts must be supplied" }
+      emotion_control: { supported: true, notes: "VoxCPM2 natural-language voice/style instruction" }
+      native_long_form: { supported: false, notes: "Uses suite text chunking; official streaming API is not integrated" }
+      community_finetunes: { supported: true, notes: "Complete local checkpoints plus official-format VoxCPM2 LoRA training and inference" }
+      vram_efficient: { supported: "partial", notes: "Official estimates are roughly 8GB for V2, 6GB for 1.5, and 5GB for legacy 0.5B" }
+      speed_performance: { supported: true, notes: "Official standard runtime reports about 0.30 RTF for V2 and 0.15 RTF for 1.5 on RTX 4090" }
+      reference_free_tts: { supported: true, notes: "Plain reference-free TTS for all variants; VoxCPM2 also supports instructed Voice Design" }
+
   - id: moss-tts
     name: MOSS-TTS
     models: "Local 1.7B, Delay 8B v1.5/1.0, VoiceGenerator 1.7B, SoundEffect 8B v1, TTSD 8B"
@@ -1903,7 +1989,9 @@ table_notes:
   reference_transcript: >-
     Conditional means the transcript is required only for the specific mode:
     CosyVoice3 zero-shot, Qwen3-TTS full Base cloning, or MOSS-TTSD cloned-speaker
-    dialogue. Higgs Audio 2, Higgs Audio v3, and Dots TTS accept matching text
+    dialogue. VoxCPM1.5 and VoxCPM-0.5B require it for cloning, while VoxCPM2
+    can clone from reference audio alone and uses the transcript for ultimate
+    cloning. Higgs Audio 2, Higgs Audio v3, and Dots TTS accept matching text
     when provided but do not require it.
   language_support:
     - "**CosyVoice3 Chinese**: Includes 18+ dialects (Cantonese, Sichuan, Dongbei, Shanghai, etc.)"
@@ -1912,6 +2000,7 @@ table_notes:
     - "**IndexTTS-2**: Trained on 55K+ hours - ZH, EN, JA primary."
     - "**MOSS-TTS**: Official list includes ZH, EN, DE, ES, FR, JA, IT, HU, KO, RU, FA, AR, PL, PT, CS, DA, SV, EL, TR; HU/FA/CS are not separate columns in this matrix."
     - "**OmniVoice**: Official model supports 600+ languages; this matrix only shows the suite's comparison subset."
+    - "**VoxCPM**: VoxCPM2 supports 30 languages without language tags; VoxCPM1.5 and the legacy 0.5B model support English and Chinese."
     - "**RVC**: Language-agnostic voice conversion/post-processing; it is marked supported for every language row."
     - "Qwen3-TTS: Supports pt-BR only with instruction (voice design or harcoded voices). Base can't do instructions, so it will always ouput pt-PT."
 
@@ -1992,6 +2081,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/omnivoice/"
     auto_download: "✅"
     notes: "Official OmniVoice model. Voice cloning in this suite requires explicit reference text."
+  - engine: "VoxCPM"
+    primary_model_path: "ComfyUI/models/TTS/voxcpm/"
+    auto_download: "✅"
+    notes: "VoxCPM2 (recommended), VoxCPM1.5 (lower VRAM/faster), and VoxCPM-0.5B (legacy)"
 
 model_layouts_markdown: |
   # Model Folder Layouts
@@ -2451,3 +2544,37 @@ model_layouts_markdown: |
   - Native sample rate is 24kHz.
   - The main OmniVoice model stays in the main Transformers 5 environment.
   - Voice cloning requires reference audio plus explicit reference text in this suite.
+
+  ## VoxCPM
+
+  ```text
+  ComfyUI/models/TTS/voxcpm/
+  ├── VoxCPM2/
+  │   ├── config.json
+  │   ├── model.safetensors
+  │   ├── audiovae.pth
+  │   ├── tokenization_voxcpm2.py
+  │   └── tokenizer files...
+  ├── VoxCPM1.5/
+  │   ├── config.json
+  │   ├── model.safetensors
+  │   ├── audiovae.pth
+  │   └── tokenizer files...
+  ├── VoxCPM-0.5B/
+  │   ├── config.json
+  │   ├── pytorch_model.bin
+  │   ├── audiovae.pth
+  │   └── tokenizer files...
+  └── loras/
+      └── MyVoxCPM2LoRA/
+          ├── lora_config.json
+          └── lora_weights.safetensors
+  ```
+
+  Notes:
+
+  - All three official generations use one architecture-gated engine and the official `voxcpm` package.
+  - VoxCPM2 is the default and outputs 48kHz audio; VoxCPM1.5 outputs 44.1kHz; VoxCPM-0.5B outputs 16kHz.
+  - Complete `local:<folder>` checkpoints are detected in configured ComfyUI TTS model folders.
+  - Models run in the main Transformers 5 environment. The optional upstream denoiser and ASR helpers are not part of this integration.
+  - VoxCPM2 supports official-format LoRA training and inference under `models/TTS/voxcpm/loras/`; legacy-generation training remains disabled pending compatibility testing.

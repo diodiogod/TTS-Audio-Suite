@@ -202,6 +202,58 @@ class OmniVoiceDesignerProvider:
         return VoiceDesignResult(opt_narrator, audio, info)
 
 
+class VoxCPMVoiceDesignerProvider:
+    def design(self, engine_data, voice_instruction, reference_text, seed):
+        from engines.adapters.voxcpm_adapter import VoxCPMEngineAdapter
+
+        config = dict(_engine_config(engine_data))
+        selected_model = str(
+            config.get("model_variant") or config.get("model_name") or "VoxCPM2"
+        )
+        if config.get("model_role") != "voice_design":
+            raise ValueError(
+                "VoxCPM is configured for Text to Speech. Set mode to 'Voice Design' "
+                "in the VoxCPM Engine, then run the workflow again."
+            )
+        if selected_model in {"VoxCPM1.5", "VoxCPM-0.5B"}:
+            raise ValueError(
+                f"{selected_model} cannot design voices. Select VoxCPM2 or a local "
+                "checkpoint whose config architecture is voxcpm2."
+            )
+
+        instruction = str(voice_instruction or "").strip()
+        config["voice_instruction"] = instruction
+        adapter = VoxCPMEngineAdapter(config)
+        waveform = adapter.generate_single(
+            reference_text,
+            voice_ref=None,
+            seed=seed,
+            enable_audio_cache=True,
+            character_name="voice_design",
+        )
+        sample_rate = int(
+            getattr(adapter, "sample_rate", None)
+            or getattr(adapter, "SAMPLE_RATE", 48000)
+        )
+        audio = _audio_output(waveform, sample_rate)
+        opt_narrator = _narrator(
+            audio,
+            reference_text,
+            instruction,
+            "voxcpm",
+            selected_model,
+            "Auto",
+        )
+        _attach_generation_fingerprint(
+            opt_narrator, "voxcpm", config, reference_text, seed
+        )
+        info = (
+            "Voice designed with VoxCPM2\n"
+            f"Instruction: {instruction}\nModel: {selected_model}"
+        )
+        return VoiceDesignResult(opt_narrator, audio, info)
+
+
 class MossVoiceDesignerProvider:
     MODEL_NAME = "MOSS-VoiceGenerator"
 
@@ -265,6 +317,7 @@ _PROVIDERS: Dict[str, VoiceDesignerProvider] = {
     "qwen3_tts": QwenVoiceDesignerProvider(),
     "moss_tts": MossVoiceDesignerProvider(),
     "omnivoice": OmniVoiceDesignerProvider(),
+    "voxcpm": VoxCPMVoiceDesignerProvider(),
 }
 
 

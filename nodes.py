@@ -204,6 +204,14 @@ except Exception as e:
     OMNIVOICE_ENGINE_AVAILABLE = False
 
 try:
+    voxcpm_engine_module = load_node_module("voxcpm_engine_node", "engines/voxcpm_engine_node.py")
+    VoxCPMEngineNode = voxcpm_engine_module.VoxCPMEngineNode
+    VOXCPM_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ VoxCPM Engine failed: {e}")
+    VOXCPM_ENGINE_AVAILABLE = False
+
+try:
     omnivoice_instruction_builder_module = load_node_module("omnivoice_instruction_builder_node", "omnivoice/omnivoice_instruction_builder_node.py")
     OmniVoiceInstructionBuilderNode = omnivoice_instruction_builder_module.OmniVoiceInstructionBuilderNode
     OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE = True
@@ -501,6 +509,26 @@ except Exception as e:
     MOSS_DATASET_ROWS_AVAILABLE = False
 
 try:
+    voxcpm_dataset_prep_module = load_node_module(
+        "voxcpm_dataset_prep_node", "training/voxcpm_dataset_prep_node.py"
+    )
+    VoxCPMDatasetPrepNode = voxcpm_dataset_prep_module.VoxCPMDatasetPrepNode
+    VOXCPM_DATASET_PREP_AVAILABLE = True
+except Exception as e:
+    print(f"❌ VoxCPM Dataset Prep failed: {e}")
+    VOXCPM_DATASET_PREP_AVAILABLE = False
+
+try:
+    voxcpm_training_config_module = load_node_module(
+        "voxcpm_training_config_node", "training/voxcpm_training_config_node.py"
+    )
+    VoxCPMTrainingConfigNode = voxcpm_training_config_module.VoxCPMTrainingConfigNode
+    VOXCPM_TRAINING_CONFIG_AVAILABLE = True
+except Exception as e:
+    print(f"❌ VoxCPM Training Config failed: {e}")
+    VOXCPM_TRAINING_CONFIG_AVAILABLE = False
+
+try:
     phoneme_text_normalizer_module = load_node_module("phoneme_text_normalizer_node", "text/phoneme_text_normalizer_node.py")
     PhonemeTextNormalizer = phoneme_text_normalizer_module.PhonemeTextNormalizer
     PHONEME_TEXT_NORMALIZER_AVAILABLE = True
@@ -682,6 +710,10 @@ if OMNIVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceEngineNode"] = OmniVoiceEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceEngineNode"] = "⚙️ OmniVoice Engine"
 
+if VOXCPM_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VoxCPMEngineNode"] = VoxCPMEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["VoxCPMEngineNode"] = "⚙️ VoxCPM Engine"
+
 if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceInstructionBuilderNode"] = OmniVoiceInstructionBuilderNode
     NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceInstructionBuilderNode"] = "📐 Visual Tag Builder"
@@ -844,6 +876,14 @@ if MOSS_CLIP_STAGING_AVAILABLE:
 if MOSS_DATASET_ROWS_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossDatasetRowsNode"] = MossDatasetRowsNode
     NODE_DISPLAY_NAME_MAPPINGS["MossDatasetRowsNode"] = "🧾 MOSS Dataset Rows"
+
+if VOXCPM_DATASET_PREP_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VoxCPMDatasetPrepNode"] = VoxCPMDatasetPrepNode
+    NODE_DISPLAY_NAME_MAPPINGS["VoxCPMDatasetPrepNode"] = "📦 VoxCPM2 Dataset Prep"
+
+if VOXCPM_TRAINING_CONFIG_AVAILABLE:
+    NODE_CLASS_MAPPINGS["VoxCPMTrainingConfigNode"] = VoxCPMTrainingConfigNode
+    NODE_DISPLAY_NAME_MAPPINGS["VoxCPMTrainingConfigNode"] = "🎛️ VoxCPM2 LoRA Config"
 
 # Register text processing nodes
 if PHONEME_TEXT_NORMALIZER_AVAILABLE:

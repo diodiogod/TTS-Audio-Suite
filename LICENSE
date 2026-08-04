@@ -46,6 +46,7 @@ The project code is MIT. Model weights carry their own licenses:
   Dots TTS             Apache-2.0                                                Yes
   DramaBox             LTX-2 Community License                                   Conditional
   OmniVoice            Apache-2.0                                                Yes
+  VoxCPM               Apache-2.0                                                Yes
   MOSS-TTS             Apache-2.0                                                Yes
   MOSS-SoundEffect v2  Apache-2.0                                                Yes
   RVC                  MIT (framework); community models vary                    Varies

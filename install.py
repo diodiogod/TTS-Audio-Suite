@@ -30,7 +30,7 @@ class TTSAudioInstaller:
 
     # Bump when the install procedure itself gains or changes dependencies.
     # This keeps normal ComfyUI patch updates on the fast path.
-    INSTALL_STATE_VERSION = 2
+    INSTALL_STATE_VERSION = 3
 
     CORE_MODULE_CHECKS = (
         ("torch", "PyTorch"),
@@ -48,6 +48,7 @@ class TTSAudioInstaller:
         ("VibeVoice", ("vibevoice", "av")),
         ("Echo-TTS", ("echo_tts",)),
         ("OmniVoice", ("omnivoice",)),
+        ("VoxCPM", ("voxcpm",)),
         ("Dots TTS", ("dots_tts.runtime",)),
         ("DramaBox", ("av", "einops", "yaml")),
         ("Fish Audio S2", ("fish_speech.inference_engine",)),
@@ -1200,6 +1201,7 @@ class TTSAudioInstaller:
             "descript-audiotools",  # Forces protobuf downgrade from 6.x to 3.19.x
             "cached-path",          # Forces package downgrades
             "omnivoice",            # Keep shared dependency resolution under our control
+            "voxcpm==2.0.3",        # Official runtime; its broad dependency set would replace suite packages
             "torchcrepe",          # Conflicts via librosa dependency
             # NOTE: onnxruntime moved to install_onnxruntime_with_gpu_support() for smart GPU detection
             "opencv-python",       # Forces numpy downgrade from 2.x to 1.26.x - dependencies pre-installed
