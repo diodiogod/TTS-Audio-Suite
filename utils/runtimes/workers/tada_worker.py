@@ -93,6 +93,7 @@ def main() -> int:
                     device=request.get("device") or "auto",
                     dtype=payload.get("dtype", "auto"),
                     attn_implementation=payload.get("attn_implementation", "sdpa"),
+                    use_torch_compile=payload.get("use_torch_compile", False),
                     prompt_cache_size=payload.get("prompt_cache_size", 8),
                 )
                 _emit(

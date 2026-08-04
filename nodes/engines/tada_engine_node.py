@@ -98,6 +98,12 @@ class TadaEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
+                "use_torch_compile": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Compile TADA's audio refinement stage for faster repeated generation.\n"
+                    "The first run is slower while compiling; later runs reuse a persistent cache.\n"
+                    "Uses extra disk space and may use slightly more GPU memory.",
+                }),
                 "dtype": (["auto", "bfloat16", "float16", "float32"], {
                     "default": "auto",
                     "tooltip": "Controls model precision and memory use.\n"
@@ -160,6 +166,7 @@ class TadaEngineNode(BaseTTSNode):
         duration_cfg_scale: float,
         num_flow_matching_steps: int,
         noise_temperature: float,
+        use_torch_compile: bool = False,
         dtype: str = "auto",
         cfg_schedule: str = "cosine",
         time_schedule: str = "logsnr",
@@ -175,6 +182,7 @@ class TadaEngineNode(BaseTTSNode):
             "model_path": model_variant,
             "device": device,
             "dtype": dtype,
+            "use_torch_compile": bool(use_torch_compile),
             "attn_implementation": "sdpa",
             "language": language,
             "acoustic_cfg_scale": float(acoustic_cfg_scale),
@@ -191,7 +199,10 @@ class TadaEngineNode(BaseTTSNode):
         }
 
         print(f"⚙️ TADA: Configured {model_variant} on {device} ({language})")
-        print(f"   Runtime: Shared Transformers-4 | dtype={dtype}")
+        print(
+            f"   Runtime: Shared Transformers-4 | dtype={dtype} | "
+            f"torch.compile={'on' if use_torch_compile else 'off'}"
+        )
         print(
             "   Settings: "
             f"acoustic_cfg={acoustic_cfg_scale}, duration_cfg={duration_cfg_scale}, "

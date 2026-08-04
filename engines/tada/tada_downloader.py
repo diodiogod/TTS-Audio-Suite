@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import folder_paths
+from huggingface_hub import snapshot_download
 
-from utils.downloads.unified_downloader import unified_downloader
+from utils.hf_download_logging import quiet_hf_download_logs
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
 
 from .languages import normalize_tada_language, validate_tada_model_language
@@ -139,19 +140,31 @@ class TadaDownloader:
         if not force and TadaDownloader._files_ready(target_dir, files):
             return target_dir
         os.makedirs(target_dir, exist_ok=True)
-        result = unified_downloader.download_huggingface_model(
-            repo_id=repo_id,
-            model_name=label,
-            files=[{"remote": name, "local": name} for name in files],
-            engine_type="tada",
-            target_dir=target_dir,
-            force_download=force,
-        )
-        if not result or not TadaDownloader._files_ready(target_dir, files):
+        print(f"\n{'=' * 60}")
+        print("📦 TADA Asset Download")
+        print(f"{'=' * 60}")
+        print(f"Asset: {label}")
+        print(f"Repository: {repo_id}")
+        print(f"Target: {target_dir}")
+        print(f"Files: {len(files)}")
+        print(f"{'=' * 60}\n")
+        try:
+            with quiet_hf_download_logs():
+                snapshot_download(
+                    repo_id=repo_id,
+                    local_dir=target_dir,
+                    allow_patterns=files,
+                    force_download=force,
+                )
+        except Exception as exc:
+            raise RuntimeError(f"Failed to download {label} from {repo_id}: {exc}") from exc
+
+        if not TadaDownloader._files_ready(target_dir, files):
             missing = [name for name in files if not os.path.isfile(os.path.join(target_dir, name))]
             raise RuntimeError(
                 f"TADA asset download for {label} is incomplete. Missing files: {missing}"
             )
+        print(f"✅ TADA asset ready: {target_dir}")
         return target_dir
 
     def _search_roots(self) -> List[str]:

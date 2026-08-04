@@ -54,6 +54,7 @@ class TadaIsolatedProxy:
         self.tokenizer_path = str(params.get("tokenizer_path") or "")
         self.load_dtype = str(params.get("dtype", "auto"))
         self.attn_implementation = str(params.get("attn_implementation", "sdpa"))
+        self.use_torch_compile = bool(params.get("use_torch_compile", False))
         self.prompt_cache_size = int(params.get("prompt_cache_size", 8))
 
         if not self.model_path or not self.codec_path or not self.tokenizer_path:
@@ -74,6 +75,7 @@ class TadaIsolatedProxy:
         worker_env["HF_HUB_OFFLINE"] = "1"
         worker_env["TRANSFORMERS_OFFLINE"] = "1"
         worker_env.setdefault("PYTHONUTF8", "1")
+        self.compile_cache_dir = self._configure_compile_cache(worker_env)
         python_path = ensure_runtime(profile)
         self._session = JsonLineWorkerSession(
             python_path=str(python_path),
@@ -82,6 +84,25 @@ class TadaIsolatedProxy:
         )
         self._initialize_remote_engine()
         self._register_with_comfy_model_management()
+
+    def _configure_compile_cache(self, worker_env: Dict[str, str]) -> Optional[Path]:
+        if not self.use_torch_compile:
+            return None
+        try:
+            model_dir = Path(self.model_path).resolve()
+            cache_root = model_dir.parent.parent / "compile_cache"
+            inductor_dir = cache_root / "torchinductor"
+            triton_dir = cache_root / "triton"
+            inductor_dir.mkdir(parents=True, exist_ok=True)
+            triton_dir.mkdir(parents=True, exist_ok=True)
+            worker_env["TORCHINDUCTOR_FX_GRAPH_CACHE"] = "1"
+            worker_env["TORCHINDUCTOR_CACHE_DIR"] = str(inductor_dir)
+            worker_env["TRITON_CACHE_DIR"] = str(triton_dir)
+            print(f"   TADA compile cache: {cache_root}")
+            return cache_root
+        except Exception as exc:
+            print(f"⚠️ TADA: failed to configure persistent compile cache: {exc}")
+            return None
 
     def _request(self, action: str, payload: Optional[Dict[str, Any]] = None):
         response = self._session.request(
@@ -111,6 +132,7 @@ class TadaIsolatedProxy:
                 "tokenizer_path": self.tokenizer_path,
                 "dtype": self.load_dtype,
                 "attn_implementation": self.attn_implementation,
+                "use_torch_compile": self.use_torch_compile,
                 "prompt_cache_size": self.prompt_cache_size,
             },
         )

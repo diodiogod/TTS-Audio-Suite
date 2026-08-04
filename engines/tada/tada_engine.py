@@ -37,6 +37,7 @@ class TadaEngine:
         device: str = "auto",
         dtype: str = "auto",
         attn_implementation: str = "sdpa",
+        use_torch_compile: bool = False,
         prompt_cache_size: int = 8,
     ):
         self.model_name = str(model_name)
@@ -46,6 +47,7 @@ class TadaEngine:
         self.device = self._resolve_device(device)
         self.dtype = self._resolve_dtype(dtype)
         self.attn_implementation = str(attn_implementation or "sdpa")
+        self.use_torch_compile = bool(use_torch_compile)
         self.prompt_cache_size = max(0, int(prompt_cache_size))
         self._prompt_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
         self.model = None
@@ -188,7 +190,46 @@ class TadaEngine:
         model._tokenizer = tokenizer
         model.to(self.device)
         model.eval()
+        if self.use_torch_compile:
+            self._enable_torch_compile(model)
         self.model = model
+
+    def _enable_torch_compile(self, model) -> None:
+        if self.device.type != "cuda":
+            print("⚠️ TADA: torch.compile is only enabled on CUDA; using standard inference.")
+            self.use_torch_compile = False
+            return
+        try:
+            import triton  # noqa: F401
+        except Exception as exc:
+            print(f"⚠️ TADA: torch.compile requires a working Triton install; using standard inference. ({exc})")
+            self.use_torch_compile = False
+            return
+
+        original_forward = model.prediction_head.forward
+        try:
+            compiled_forward = torch.compile(original_forward, mode="default")
+        except Exception as exc:
+            print(f"⚠️ TADA: could not prepare torch.compile; using standard inference. ({exc})")
+            self.use_torch_compile = False
+            return
+
+        failed = False
+
+        def compile_with_fallback(*args, **kwargs):
+            nonlocal failed
+            try:
+                return compiled_forward(*args, **kwargs)
+            except Exception as exc:
+                if not failed:
+                    print(f"⚠️ TADA: compiled refinement failed; falling back to standard inference. ({exc})")
+                    failed = True
+                model.prediction_head.forward = original_forward
+                self.use_torch_compile = False
+                return original_forward(*args, **kwargs)
+
+        model.prediction_head.forward = compile_with_fallback
+        print("✅ TADA: torch.compile enabled for audio refinement (first generation will compile).")
 
     def _required_aligner_subfolder(self, language: object) -> str:
         code = validate_tada_model_language(self.model_name, language)
