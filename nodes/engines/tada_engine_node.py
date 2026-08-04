@@ -19,7 +19,14 @@ BaseTTSNode = base_module.BaseTTSNode
 
 from engines.tada.languages import TADA_LANGUAGE_OPTIONS, validate_tada_model_language
 from engines.tada.tada_downloader import TadaDownloader
-from utils.models.factory_config import RUNTIME_MODE_SHARED
+from utils.models.factory_config import (
+    RUNTIME_MODE_SHARED,
+    normalize_runtime_mode,
+)
+
+
+RUNTIME_MODE_MAIN_LABEL = "Main Environment"
+RUNTIME_MODE_SHARED_LABEL = "⚠️ Shared Runtime"
 
 
 class TadaEngineNode(BaseTTSNode):
@@ -98,12 +105,6 @@ class TadaEngineNode(BaseTTSNode):
                 }),
             },
             "optional": {
-                "use_torch_compile": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Compile TADA's audio refinement stage for faster repeated generation.\n"
-                    "The first run is slower while compiling; later runs reuse a persistent cache.\n"
-                    "Uses extra disk space and may use slightly more GPU memory.",
-                }),
                 "dtype": (["auto", "bfloat16", "float16", "float32"], {
                     "default": "auto",
                     "tooltip": "Controls model precision and memory use.\n"
@@ -149,6 +150,18 @@ class TadaEngineNode(BaseTTSNode):
                     "5 is recommended. Lower is more abrupt.\n"
                     "Higher is smoother but adds work.",
                 }),
+                "use_torch_compile": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Compile TADA's audio refinement stage for faster repeated generation.\n"
+                    "The first run is slower while compiling; later runs reuse a persistent cache.\n"
+                    "Uses extra disk space and may use slightly more GPU memory.",
+                }),
+                "runtime_mode": ([RUNTIME_MODE_SHARED_LABEL, RUNTIME_MODE_MAIN_LABEL], {
+                    "default": RUNTIME_MODE_SHARED_LABEL,
+                    "tooltip": "Choose the Python environment used by TADA.\n"
+                    "• Shared Runtime: recommended; uses the compatible Transformers 4 environment.\n"
+                    "• Main Environment: only works if ComfyUI already has compatible TADA dependencies.",
+                }),
             },
         }
 
@@ -166,15 +179,18 @@ class TadaEngineNode(BaseTTSNode):
         duration_cfg_scale: float,
         num_flow_matching_steps: int,
         noise_temperature: float,
-        use_torch_compile: bool = False,
         dtype: str = "auto",
         cfg_schedule: str = "cosine",
         time_schedule: str = "logsnr",
         negative_condition_source: str = "negative_step_output",
         speed_up_factor: float = 0.0,
         num_transition_steps: int = 5,
+        use_torch_compile: bool = False,
+        runtime_mode: str = RUNTIME_MODE_SHARED_LABEL,
     ) -> tuple:
         validate_tada_model_language(model_variant, language)
+        runtime_mode = normalize_runtime_mode(runtime_mode)
+        runtime_profile = self.RUNTIME_PROFILE if runtime_mode == RUNTIME_MODE_SHARED else None
         config = {
             "engine_type": "tada",
             "model_variant": model_variant,
@@ -194,13 +210,14 @@ class TadaEngineNode(BaseTTSNode):
             "negative_condition_source": negative_condition_source,
             "speed_up_factor": float(speed_up_factor),
             "num_transition_steps": int(num_transition_steps),
-            "runtime_mode": RUNTIME_MODE_SHARED,
-            "runtime_profile": self.RUNTIME_PROFILE,
+            "runtime_mode": runtime_mode,
+            "runtime_profile": runtime_profile,
         }
 
         print(f"⚙️ TADA: Configured {model_variant} on {device} ({language})")
+        runtime_label = "Shared Transformers-4" if runtime_mode == RUNTIME_MODE_SHARED else "Main Environment"
         print(
-            f"   Runtime: Shared Transformers-4 | dtype={dtype} | "
+            f"   Runtime: {runtime_label} | dtype={dtype} | "
             f"torch.compile={'on' if use_torch_compile else 'off'}"
         )
         print(

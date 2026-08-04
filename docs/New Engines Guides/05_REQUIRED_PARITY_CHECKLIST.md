@@ -27,7 +27,7 @@ Downloads and dependencies:
 - Did you document dependency conflicts or install.py changes?
 - Did you test `--no-deps` on Main/T5 and simple patching before falling back to the shared T4 runtime?
 - Did you avoid creating another environment or downloading/reinstalling Torch or Transformers without explicit maintainer approval?
-- If runtime isolation is needed, did you document the default mode and the reason in YAML/README?
+- If runtime isolation is recommended, does the engine expose the standard runtime selector, default to the recommended mode, route every choice honestly, and document why?
 
 Audio format:
 - Did you verify the model native sample rate?
@@ -42,7 +42,7 @@ Generated audio cache:
 
 Text features:
 - Did you wire character tags if this node supports text generation?
-- Did you handle narrator fallback?
+- Does a missing character use narrator fallback while an existing but invalid voice (for example, missing required transcript) raises a clear error?
 - Did you wire pause tags?
 - Did you wire parameter switching for real native parameters?
 - Did you avoid adding fake unsupported parameters?

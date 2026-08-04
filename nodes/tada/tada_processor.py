@@ -210,6 +210,17 @@ class TadaProcessor:
                     audio_path, reference_text = discovered_voices.get(character, (None, None))
                     if audio_path:
                         voice_ref = {"audio_path": audio_path, "reference_text": reference_text or ""}
+                    else:
+                        discovered = voice_discovery.get_character_voice_info(
+                            character, engine_type="audio_only"
+                        )
+                        if discovered and discovered.get("audio_path") and not str(
+                            discovered.get("text_content") or ""
+                        ).strip():
+                            raise ValueError(
+                                f"TADA found reference audio for '{character}', but it has no transcript. "
+                                "Add a matching .txt or .reference.txt file; TADA cannot use audio-only voices."
+                            )
 
                 self._validate_voice(character, voice_ref)
 

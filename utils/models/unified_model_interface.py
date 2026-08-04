@@ -149,7 +149,7 @@ class UnifiedModelInterface:
         # check if a DIFFERENT variant is already loaded and unload it to prevent device conflicts
         # Only applies to engines where model variants are mutually exclusive
         if config.engine_name in (
-            "qwen3_tts", "moss_tts", "higgs_audio_v3", "dramabox"
+            "qwen3_tts", "moss_tts", "higgs_audio_v3", "dramabox", "tada"
         ):
             # Check for any cached mutually-exclusive model variant for this engine
             cached_prefix = f"{config.engine_name}_tts_"
@@ -1730,9 +1730,22 @@ def register_fish_audio_s2_factory():
 
 
 def register_tada_factory():
-    """Register TADA; normal routing constructs it in the isolated T4 runtime."""
+    """Register TADA for explicit Main Environment routing."""
     def tada_factory(config: ModelLoadConfig):
-        return build_tada_isolated_proxy(config)
+        from engines.tada.tada_engine import TadaEngine
+
+        params = config.additional_params or {}
+        return TadaEngine(
+            model_name=config.model_name or "TADA-1B",
+            model_path=config.model_path,
+            codec_path=params.get("codec_path"),
+            tokenizer_path=params.get("tokenizer_path"),
+            device=config.device or "auto",
+            dtype=params.get("dtype", "auto"),
+            attn_implementation=params.get("attn_implementation", "sdpa"),
+            use_torch_compile=bool(params.get("use_torch_compile", False)),
+            prompt_cache_size=int(params.get("prompt_cache_size", 8)),
+        )
 
     unified_model_interface.register_model_factory("tada", "tts", tada_factory)
 

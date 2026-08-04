@@ -542,6 +542,17 @@ class TadaEngine:
             raise RuntimeError("TADA produced an empty or invalid waveform.")
         return waveform, TADA_SAMPLE_RATE
 
+    def to(self, device):
+        self.device = self._resolve_device(device)
+        if self.model is not None:
+            self.model.to(self.device)
+        return self
+
+    def eval(self):
+        if self.model is not None:
+            self.model.eval()
+        return self
+
     def cleanup(self) -> None:
         self._prompt_cache.clear()
         model = self.model

@@ -26,6 +26,7 @@
 
 ### Voice References
 - **Reference text requirement**: F5-TTS and Step Audio EditX REQUIRE `prompt_text` (transcript), ChatterBox/VibeVoice/Higgs don't
+- **Missing vs invalid character voice**: A character with no saved voice may fall back to narrator; a discovered/selected voice missing an engine-required transcript is invalid and MUST raise a clear error instead of silently using narrator
 - **Narrator voice mapping**: Map narrator from TTS Text node input by saving `audio_tensor` to temp file with `reference_text`
 - **Voice discovery**: Use `get_character_mapping()` not `discover_voices_for_engine()` (latter doesn't exist)
 
