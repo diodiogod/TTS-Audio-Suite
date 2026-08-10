@@ -1774,8 +1774,6 @@ def register_dramabox_factory():
                 "transformer_quantization", "none"
             ),
             compile_model=bool(additional_params.get("compile_model", False)),
-            lora_path=additional_params.get("lora_path", ""),
-            lora_strength=float(additional_params.get("lora_strength", 1.0)),
         )
         engine._ensure_runtime_loaded()
         print(f"✅ DramaBox model '{model_name}' loaded successfully")

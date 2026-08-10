@@ -79,10 +79,17 @@ at each save step. It requires a second GPU: set `validation_gpu` to that
 physical CUDA device index. The suite rejects validation on the training GPU
 instead of allowing both full model processes to compete for the same VRAM.
 
-DramaBox LoRA inference supports the normal transformer precision and the
-optional `torch.compile` path. It does not support `fp8_cast`: merging BF16
-LoRA deltas into the official cast-only Float8 storage is unsafe, so the engine
-reports a clear configuration error for that combination.
+DramaBox LoRA inference supports normal transformer precision, `fp8_cast`, and
+the optional `torch.compile` path. With normal precision the live adapter is
+reversibly merged for fast inference. With FP8 storage the BF16 adapter remains
+unmerged above the immutable FP8 base weights, avoiding unsafe mixed-dtype
+weight fusion while retaining the main FP8 memory saving.
+
+The base DramaBox runtime is reused when the selected adapter or LoRA strength
+changes. Strength updates are applied directly to the live PEFT adapter, while
+the generated-audio cache still treats adapter path, file revision, and strength
+as distinct generation settings. Replacing an adapter with a different rank may
+retrace compiled transformer blocks, but does not reload the base checkpoint.
 
 ## Hindi and other languages
 

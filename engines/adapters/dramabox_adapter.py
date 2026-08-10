@@ -26,6 +26,7 @@ class DramaBoxEngineAdapter:
         self.audio_cache = get_audio_cache()
         self._last_config: Optional[ModelLoadConfig] = None
         self._load_signature = None
+        self._lora_signature = None
         self.last_generation_status: Dict[str, Any] = {"near_silent": False}
 
     def update_config(self, new_config: Dict[str, Any]):
@@ -100,6 +101,7 @@ class DramaBoxEngineAdapter:
         }
 
     def _build_load_signature(self) -> Tuple[Any, ...]:
+        """Identity of the expensive base runtime, excluding live LoRA state."""
         return (
             self.config.get("model_name", "DramaBox"),
             self.config.get("device", "auto"),
@@ -107,42 +109,52 @@ class DramaBoxEngineAdapter:
             self.config.get("memory_mode", "fast"),
             self.config.get("transformer_quantization", "none"),
             bool(self.config.get("compile_model", False)),
-            self._lora_revision(self.config.get("lora_path", "")),
+        )
+
+    def _build_lora_signature(self) -> Tuple[Any, ...]:
+        path = self.config.get("lora_path", "")
+        return (
+            str(path or "").strip(),
+            self._lora_revision(path),
             float(self.config.get("lora_strength", 1.0)),
         )
 
     def _ensure_model_loaded(self):
         signature = self._build_load_signature()
-        if signature == self._load_signature and self._last_config is not None:
-            return
-
-        self._last_config = ModelLoadConfig(
-            engine_name="dramabox",
-            model_type="tts",
-            model_name=self.config.get("model_name", "DramaBox"),
-            device=self.config.get("device", "auto"),
-            additional_params={
-                "precision": self.config.get("precision", "auto"),
-                "memory_mode": self.config.get("memory_mode", "fast"),
-                "transformer_quantization": self.config.get(
-                    "transformer_quantization", "none"
-                ),
-                "compile_model": bool(self.config.get("compile_model", False)),
-                "lora_path": self.config.get("lora_path", ""),
-                "lora_strength": float(self.config.get("lora_strength", 1.0)),
-                "lora_revision": self._lora_revision(self.config.get("lora_path", "")),
-            },
-        )
         from utils.models.unified_model_interface import unified_model_interface
 
-        unified_model_interface.load_model(self._last_config)
-        self._load_signature = signature
+        if signature != self._load_signature or self._last_config is None:
+            self._last_config = ModelLoadConfig(
+                engine_name="dramabox",
+                model_type="tts",
+                model_name=self.config.get("model_name", "DramaBox"),
+                device=self.config.get("device", "auto"),
+                additional_params={
+                    "precision": self.config.get("precision", "auto"),
+                    "memory_mode": self.config.get("memory_mode", "fast"),
+                    "transformer_quantization": self.config.get(
+                        "transformer_quantization", "none"
+                    ),
+                    "compile_model": bool(self.config.get("compile_model", False)),
+                },
+            )
+            self._load_signature = signature
+            self._lora_signature = None
+
+        engine = unified_model_interface.load_model(self._last_config)
+        lora_signature = self._build_lora_signature()
+        if lora_signature != self._lora_signature:
+            lora_path, lora_revision, lora_strength = lora_signature
+            engine.set_lora(
+                lora_path=lora_path,
+                strength=lora_strength,
+                revision=lora_revision,
+            )
+            self._lora_signature = lora_signature
+        return engine
 
     def _get_engine(self):
-        self._ensure_model_loaded()
-        from utils.models.unified_model_interface import unified_model_interface
-
-        return unified_model_interface.load_model(self._last_config)
+        return self._ensure_model_loaded()
 
     def _extract_voice_reference(
         self, voice_ref: Optional[Dict[str, Any]]

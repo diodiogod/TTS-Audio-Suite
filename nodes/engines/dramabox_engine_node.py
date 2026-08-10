@@ -147,7 +147,7 @@ class DramaBoxEngineNode(BaseTTSNode):
                     "tooltip": (
                         "Official LTX FP8 weight-storage policy for the diffusion transformer. "
                         "fp8_cast lowers VRAM but upcasts each linear layer during inference. "
-                        "It is not compatible with a DramaBox LoRA adapter."
+                        "DramaBox LoRAs remain as an unmerged BF16 branch over the FP8 base."
                     ),
                 }),
                 "compile_model": ("BOOLEAN", {
@@ -208,11 +208,6 @@ class DramaBoxEngineNode(BaseTTSNode):
         lora_strength: float = 1.0,
     ) -> tuple:
         lora_path = self._resolve_lora_adapter(local_lora_adapter, lora_adapter_override)
-        if lora_path and float(lora_strength) != 0.0 and transformer_quantization == "fp8_cast":
-            raise ValueError(
-                "DramaBox LoRA adapters currently require transformer_quantization='none'. "
-                "The official FP8 cast storage cannot safely merge PEFT LoRA weights."
-            )
         config = {
             "engine_type": "dramabox",
             "model_name": model_name,

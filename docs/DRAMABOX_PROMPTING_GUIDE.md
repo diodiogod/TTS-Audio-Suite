@@ -140,9 +140,8 @@ The segment override ends at the next character tag.
   VRAM. It additionally keeps the diffusion transformer in system RAM while
   another major stage uses CUDA. It transfers the transformer for every
   generated segment or long-form chunk and is therefore substantially slower.
-  With `fp8_cast`,
-  this measured about 11.7GB peak allocated and 12.4GB peak reserved VRAM on
-  an RTX 4090; leave additional headroom for ComfyUI and other loaded models.
+  Actual peak usage varies with the environment, generation settings, and
+  other loaded components; no minimum GPU size is guaranteed.
   System RAM must hold the offloaded transformer (about 3.4GB with FP8 or
   6.6GB without it).
 - `fp8_cast` uses the official LTX FP8 transformer weight-storage policy and

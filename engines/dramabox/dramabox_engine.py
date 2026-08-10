@@ -175,6 +175,17 @@ class DramaBoxEngine:
             "sample_rate": int(sample_rate),
         }
 
+    def set_lora(self, lora_path: str = "", strength: float = 1.0, revision: str = ""):
+        """Update the live adapter without rebuilding the base DramaBox runtime."""
+        self.lora_path = str(lora_path or "").strip()
+        self.lora_strength = float(strength)
+        if self._server is not None:
+            self._server.configure_lora(
+                self.lora_path,
+                self.lora_strength,
+                revision=str(revision or ""),
+            )
+
     def parameters(self) -> Iterator[torch.nn.Parameter]:
         """Expose loaded submodule parameters for ComfyUI memory accounting."""
         if self._server is None:

@@ -227,7 +227,7 @@ Notes:
 
 ```text
 ComfyUI/models/TTS/dramabox/
-└── DramaBox/
+├── DramaBox/
     ├── dramabox-dit-v1.safetensors
     ├── dramabox-audio-components.safetensors
     ├── assets/
@@ -238,6 +238,10 @@ ComfyUI/models/TTS/dramabox/
         ├── model-00002-of-00002.safetensors
         ├── model.safetensors.index.json
         └── tokenizer and processor files...
+└── loras/
+    └── <adapter_name>/
+        ├── adapter_config.json
+        └── adapter_model.safetensors
 ```
 
 Notes:
@@ -245,6 +249,8 @@ Notes:
 - Both repositories download directly into the organized suite folder.
 - Transformers is forced into local-only loading after download.
 - Requires NVIDIA CUDA. Fast mode targets approximately 24GB VRAM; experimental staged/sequential modes can run with less.
+- Integrated training exports LoRA adapters into `dramabox/loras/<adapter_name>/`.
+- Training jobs, normalized datasets, preprocessing caches, checkpoints, and logs are stored under `ComfyUI/output/tts_audio_suite_training/dramabox/`.
 - The LTX-2 Community License requires a paid license for entities with at
   least USD 10 million in annual revenue.
 
