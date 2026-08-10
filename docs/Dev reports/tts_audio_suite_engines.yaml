@@ -1416,7 +1416,7 @@ engines:
       emotion_control: { supported: true, notes: "Natural-language scene prompt and stage directions" }
       native_long_form: { supported: true, notes: "Official duration-aware quote-group chunking; ~37s target / 45s cap" }
       native_srt_duration_targeting: { supported: true, notes: "Subtitle duration is passed as gen_duration before the selected SRT timing mode applies final correction" }
-      community_finetunes: { supported: true, notes: "Official audio-branch IC-LoRA adapters can be trained and loaded; new-language quality remains experimental" }
+      community_finetunes: { supported: true, notes: "Official audio-branch IC-LoRA adapters can be trained and loaded" }
       vram_efficient: { supported: true, notes: "Fast mode is ~24GB; experimental FP8, staged, and sequential options can reduce VRAM, but practical peak usage varies by environment and loaded components" }
       speed_performance: { supported: "partial", notes: "Fast favors repeated generation; staged reloads temporary components; sequential also transfers the transformer; optional block-level torch.compile accelerates repeat denoising" }
       reference_free_tts: { supported: true, notes: "Voice reference is optional" }

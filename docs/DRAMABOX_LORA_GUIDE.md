@@ -91,13 +91,6 @@ the generated-audio cache still treats adapter path, file revision, and strength
 as distinct generation settings. Replacing an adapter with a different rank may
 retrace compiled transformer blocks, but does not reload the base checkpoint.
 
-## Hindi and other languages
-
-The official DramaBox base model is documented as English-only. Training on
-Hindi or another language may improve a voice/accent or style, but it is an
-experiment and is not a guarantee of full language support. Use transcripts in
-the target language and listen to intermediate checkpoints.
-
 ## CPU-safe preflight
 
 Training and Gemma/VAE preprocessing are GPU workloads. For development or
