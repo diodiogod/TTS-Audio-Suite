@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.7.0] - 2026-08-10
+
+### Added
+
+- Add integrated DramaBox LoRA model training
+- Add dataset preparation and training controls for DramaBox voice adapters
+- Add live training progress and loss reporting in the Model Training panel
+- Add DramaBox LoRA loading and adjustable adapter strength for inference
+- Add a ready-to-use DramaBox LoRA training workflow and guide
+
+### Changed
+
+- Improve shared speech-clip dataset staging for model training
 ## [5.6.5] - 2026-08-03
 
 ### Fixed
