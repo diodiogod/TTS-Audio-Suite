@@ -58,8 +58,8 @@ class MossDatasetRowsNode(BaseTTSNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "clip_dataset": ("MOSS_CLIP_DATASET", {
-                    "tooltip": "Staged clip dataset from MOSS Clip Staging."
+                "clip_dataset": ("TRAINING_CLIP_DATASET", {
+                    "tooltip": "Staged clip dataset from Training Clip Staging."
                 }),
                 "manifest_name": ("STRING", {
                     "default": "moss_train.jsonl",
@@ -224,8 +224,11 @@ class MossDatasetRowsNode(BaseTTSNode):
         output_subdir: str = "",
         overwrite: bool = True,
     ):
-        if not isinstance(clip_dataset, dict) or clip_dataset.get("type") != "moss_clip_dataset":
-            raise ValueError("clip_dataset must be a MOSS_CLIP_DATASET payload from MOSS Clip Staging")
+        if not isinstance(clip_dataset, dict) or clip_dataset.get("type") not in {
+            "training_clip_dataset",
+            "moss_clip_dataset",
+        }:
+            raise ValueError("clip_dataset must come from Training Clip Staging")
 
         clips = clip_dataset.get("clips") or []
         if not clips:

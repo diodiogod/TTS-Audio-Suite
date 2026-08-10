@@ -1,0 +1,25 @@
+# Validation prompts run by src/validate.py at every --save-every checkpoint.
+# Each entry produces one .wav under <output_dir>/val_step_<N>/<name>.wav.
+#
+# Fields:
+#   name      — short tag used as the output filename
+#   prompt    — full DramaBox-style scene prompt
+#   reference — (optional) absolute path to a 10+ s voice reference clip;
+#               omit for prompt-only generation
+
+speakers:
+  - name: villain_growl
+    prompt: 'A shadowy villain speaks with cold menace, "You have entered my domain, mortal." He chuckles darkly, "Such arrogance will be your undoing."'
+    reference: /path/to/voice_refs/male_villain.wav
+
+  - name: tender_whisper
+    prompt: 'A woman speaks tenderly, "It has been a long day, my love." She whispers, "Close your eyes. I am right here."'
+    reference: /path/to/voice_refs/female_warm.wav
+
+  - name: catgirl_giggle
+    prompt: 'A playful girl already mid-giggle, "Hehehe, oh my gosh you should see your face!" She gasps, "Oh my, hehe, I cannot stop!"'
+    # No `reference:` here — pure prompt-driven generation.
+
+  - name: announcer_smug
+    prompt: 'A confident announcer speaks proudly, "And now, the moment you have all been waiting for." He chuckles knowingly, "Heheh."'
+    reference: /path/to/voice_refs/male_announcer.wav

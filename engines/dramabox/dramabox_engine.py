@@ -28,6 +28,8 @@ class DramaBoxEngine:
         memory_mode: str = "fast",
         transformer_quantization: str = "none",
         compile_model: bool = False,
+        lora_path: str = "",
+        lora_strength: float = 1.0,
     ):
         self.model_name = model_name
         self.device = resolve_torch_device(device)
@@ -36,6 +38,8 @@ class DramaBoxEngine:
         self.memory_mode = str(memory_mode)
         self.transformer_quantization = str(transformer_quantization)
         self.compile_model = bool(compile_model)
+        self.lora_path = str(lora_path or "").strip()
+        self.lora_strength = float(lora_strength)
         self._server = None
         self._server_module = None
 
@@ -104,6 +108,8 @@ class DramaBoxEngine:
             bnb_4bit=True,
             memory_mode=self.memory_mode,
             transformer_quantization=self.transformer_quantization,
+            lora_path=self.lora_path,
+            lora_strength=self.lora_strength,
         )
         print("✅ DramaBox runtime ready")
 

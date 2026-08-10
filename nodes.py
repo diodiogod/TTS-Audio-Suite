@@ -501,6 +501,30 @@ except Exception as e:
     MOSS_DATASET_ROWS_AVAILABLE = False
 
 try:
+    dramabox_dataset_prep_module = load_node_module("dramabox_dataset_prep_node", "training/dramabox_dataset_prep_node.py")
+    DramaBoxDatasetPrepNode = dramabox_dataset_prep_module.DramaBoxDatasetPrepNode
+    DRAMABOX_DATASET_PREP_AVAILABLE = True
+except Exception as e:
+    print(f"❌ DramaBox Dataset Prep failed: {e}")
+    DRAMABOX_DATASET_PREP_AVAILABLE = False
+
+try:
+    dramabox_dataset_rows_module = load_node_module("dramabox_dataset_rows_node", "training/dramabox_dataset_rows_node.py")
+    DramaBoxDatasetRowsNode = dramabox_dataset_rows_module.DramaBoxDatasetRowsNode
+    DRAMABOX_DATASET_ROWS_AVAILABLE = True
+except Exception as e:
+    print(f"❌ DramaBox Dataset Rows failed: {e}")
+    DRAMABOX_DATASET_ROWS_AVAILABLE = False
+
+try:
+    dramabox_training_config_module = load_node_module("dramabox_training_config_node", "training/dramabox_training_config_node.py")
+    DramaBoxTrainingConfigNode = dramabox_training_config_module.DramaBoxTrainingConfigNode
+    DRAMABOX_TRAINING_CONFIG_AVAILABLE = True
+except Exception as e:
+    print(f"❌ DramaBox Training Config failed: {e}")
+    DRAMABOX_TRAINING_CONFIG_AVAILABLE = False
+
+try:
     phoneme_text_normalizer_module = load_node_module("phoneme_text_normalizer_node", "text/phoneme_text_normalizer_node.py")
     PhonemeTextNormalizer = phoneme_text_normalizer_module.PhonemeTextNormalizer
     PHONEME_TEXT_NORMALIZER_AVAILABLE = True
@@ -839,11 +863,23 @@ if MOSS_TRAINING_CONFIG_AVAILABLE:
 
 if MOSS_CLIP_STAGING_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossClipStagingNode"] = MossClipStagingNode
-    NODE_DISPLAY_NAME_MAPPINGS["MossClipStagingNode"] = "🎞️ MOSS Clip Staging"
+    NODE_DISPLAY_NAME_MAPPINGS["MossClipStagingNode"] = "🎞️ Training Clip Staging"
 
 if MOSS_DATASET_ROWS_AVAILABLE:
     NODE_CLASS_MAPPINGS["MossDatasetRowsNode"] = MossDatasetRowsNode
     NODE_DISPLAY_NAME_MAPPINGS["MossDatasetRowsNode"] = "🧾 MOSS Dataset Rows"
+
+if DRAMABOX_DATASET_PREP_AVAILABLE:
+    NODE_CLASS_MAPPINGS["DramaBoxDatasetPrepNode"] = DramaBoxDatasetPrepNode
+    NODE_DISPLAY_NAME_MAPPINGS["DramaBoxDatasetPrepNode"] = "📦 DramaBox Dataset Prep"
+
+if DRAMABOX_DATASET_ROWS_AVAILABLE:
+    NODE_CLASS_MAPPINGS["DramaBoxDatasetRowsNode"] = DramaBoxDatasetRowsNode
+    NODE_DISPLAY_NAME_MAPPINGS["DramaBoxDatasetRowsNode"] = "🧾 DramaBox Dataset Rows"
+
+if DRAMABOX_TRAINING_CONFIG_AVAILABLE:
+    NODE_CLASS_MAPPINGS["DramaBoxTrainingConfigNode"] = DramaBoxTrainingConfigNode
+    NODE_DISPLAY_NAME_MAPPINGS["DramaBoxTrainingConfigNode"] = "🎛️ DramaBox Training Config"
 
 # Register text processing nodes
 if PHONEME_TEXT_NORMALIZER_AVAILABLE:

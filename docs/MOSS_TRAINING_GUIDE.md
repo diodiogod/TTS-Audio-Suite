@@ -23,7 +23,7 @@ It does **not** currently support:
 
 Current ComfyUI flow:
 
-1. `🎞️ MOSS Clip Staging`
+1. `🎞️ Training Clip Staging`
 2. `🧾 MOSS Dataset Rows`
 3. `📦 MOSS Dataset Prep`
 4. `🎛️ MOSS Training Config`
@@ -246,7 +246,7 @@ If you do not have a separate validation manifest:
 
 If you want the least confusing starting point:
 
-- use `🎞️ MOSS Clip Staging`
+- use `🎞️ Training Clip Staging`
 - use `🧾 MOSS Dataset Rows`
 - fill only `text_lines`
 - leave `reference_clip_lines` blank

@@ -277,6 +277,9 @@ This matters because the suite now has a clearer split:
   FP8-cast transformer storage, and optional `torch.compile`
 * **Generation diagnostics**: conservative near-silence detection in console
   output, TTS generation information, and SRT timing reports
+* **LoRA training**: official DramaBox audio-branch IC-LoRA training through
+  the unified training nodes, with normalized manifest/index input and managed
+  adapter export
 
 **Important limitations:**
 
@@ -288,6 +291,8 @@ This matters because the suite now has a clearer split:
 
 See the **[DramaBox Prompting Guide](docs/DRAMABOX_PROMPTING_GUIDE.md)** for
 prompt syntax, controls, memory modes, duration behavior, and examples.
+See the **[DramaBox LoRA Training Guide](docs/DRAMABOX_LORA_GUIDE.md)** for
+dataset formats, training workflow, adapter loading, and CPU-safe preflight.
 
 </details>
 
