@@ -1,0 +1,63 @@
+# DramaBox IC-LoRA training config — values become the defaults for
+# `accelerate launch src/train.py --config configs/training_args.example.yaml`.
+# Any flag explicitly passed on the CLI overrides the YAML.
+
+# ── Data ───────────────────────────────────────────────────────────────────
+# One entry per preprocessed dataset (output dirs from src/preprocess.py).
+data_dir:
+  - /path/to/preprocessed_dataset_a/
+  - /path/to/preprocessed_dataset_b/
+
+# One index file per data_dir entry. Each line follows the format you fed to
+# preprocess.py — see README "Prepare your index file".
+speaker_index:
+  - /path/to/preprocessed_dataset_a/index.txt
+  - /path/to/preprocessed_dataset_b/index.txt
+
+# Output directory for LoRA shards + logs (relative paths resolve against the
+# repo root).
+output_dir: tts_iclora_v1
+
+# ── Base model ─────────────────────────────────────────────────────────────
+# Train your LoRA on top of DramaBox itself (recommended) — the trimmed audio
+# components are enough; no need to ship the raw LTX-2.3 base.
+checkpoint: dramabox-dit-v1.safetensors
+full_checkpoint: dramabox-audio-components.safetensors
+base_model: dev          # 'dev' = ShiftedLogitNormal sampler; 'distilled' = DistilledTimestepSampler
+
+# ── LoRA hyperparams (rank == alpha → scale = 1.0) ─────────────────────────
+lora_rank: 128
+lora_alpha: 128
+lora_dropout: 0.1        # ~0.1 helps regularize on small datasets
+
+# Resume an existing LoRA — step number parsed from the filename
+# (e.g. lora_step_05000.safetensors → starts at step 5000).
+# resume_lora: tts_iclora_v0/lora_step_05000.safetensors
+
+# ── Voice-cloning reference tokens ─────────────────────────────────────────
+ref_ratio: 0.3           # fraction of training samples that get a ref-token tail
+max_ref_tokens: 200      # cap on appended ref tokens after patchification
+
+# CFG training: probability of zeroing the text condition (forces reliance on
+# the voice ref / unconditional path).
+text_dropout: 0.4
+
+# ── Schedule ───────────────────────────────────────────────────────────────
+# Cosine + 1e-4 = from-scratch fine-tune.
+# Constant + 1e-5 = polish on top of an existing LoRA (use with `resume_lora`).
+steps: 10000
+lr: 1.0e-04
+lr_scheduler: cosine
+warmup_steps: 500
+
+batch_size: 1
+grad_accum: 4
+max_grad_norm: 1.0
+
+save_every: 500
+log_every: 50
+seed: 53
+
+# Optional per-save-step validation pass. Generates a sample for every speaker
+# in the val_config so you can A/B listen during training.
+# val_config: configs/val_config.example.yaml

@@ -125,7 +125,8 @@ def auto_rescale_for_cfg(cfg: float) -> float:
 class TTSServer:
     def __init__(self, checkpoint=None, full_checkpoint=None, gemma_root=None,
                  device="cuda", dtype="bf16", compile_model=True, bnb_4bit=True,
-                 memory_mode="fast", transformer_quantization="none"):
+                 memory_mode="fast", transformer_quantization="none",
+                 lora_path="", lora_strength=1.0):
         MODELS = APP_DIR / "models"
         self.checkpoint = checkpoint or str(MODELS / "ltx-2.3-22b-dev-audio-only-v13-merged.safetensors")
         self.full_checkpoint = full_checkpoint or os.environ.get(
@@ -140,6 +141,14 @@ class TTSServer:
         self.bnb_4bit = bnb_4bit
         self.memory_mode = str(memory_mode)
         self.transformer_quantization = str(transformer_quantization)
+        # TTS Audio Suite patch: accept a trained DramaBox audio LoRA at
+        # runtime so training artifacts can be used without a second CLI.
+        self.lora_path = str(lora_path or "").strip()
+        self.lora_strength = float(lora_strength)
+        self._active_lora_revision = ""
+        self._active_lora_file = ""
+        self._applied_lora_strength = 0.0
+        self._unmerged_lora_weight_scale = 1.0
         if self.memory_mode not in {"fast", "staged", "sequential"}:
             raise ValueError(f"Unknown DramaBox memory mode: {self.memory_mode}")
         if self.transformer_quantization not in {"none", "fp8_cast"}:
@@ -262,6 +271,8 @@ class TTSServer:
         self._velocity_model = builder.build(
             device=self.device, dtype=build_dtype
         ).to(self.device).eval()
+        if self.lora_path and self.lora_strength != 0.0:
+            self.configure_lora(self.lora_path, self.lora_strength)
         n_params = sum(p.numel() for p in self._velocity_model.parameters()) / 1e9
         vram_gb = sum(p.numel() * p.element_size() for p in self._velocity_model.parameters()) / 1e9
         logging.info(f"  Transformer: {time.time()-t0:.1f}s ({n_params:.1f}B params, {vram_gb:.1f}GB VRAM, {self.dtype})")
@@ -286,6 +297,260 @@ class TTSServer:
             warm=self.memory_mode == "fast",
         )
         logging.info(f"  AudioDecoder (warm): {time.time()-t0:.1f}s")
+
+    @staticmethod
+    def _resolve_lora_file(lora_path: str) -> Path:
+        path = Path(os.path.expanduser(str(lora_path or "").strip()))
+        if path.is_dir():
+            candidates = sorted(path.glob("lora_step_*.safetensors"))
+            candidates += [path / "adapter_model.safetensors"]
+            for candidate in reversed(candidates):
+                if candidate.is_file():
+                    return candidate
+        if path.is_file():
+            return path
+        raise FileNotFoundError(f"DramaBox LoRA file not found: {lora_path}")
+
+    # TTS Audio Suite patch: keep PEFT state attached and reversibly merge it
+    # so strength changes avoid both a base reload and per-step LoRA matmuls.
+    @staticmethod
+    def _set_lora_strength(model, strength: float) -> None:
+        """Re-merge the live adapter at a new strength without reloading the base."""
+        try:
+            from peft.tuners.lora.layer import LoraLayer
+        except ImportError as exc:
+            raise RuntimeError("DramaBox LoRA inference requires peft.") from exc
+
+        updated = 0
+        if any(
+            isinstance(module, LoraLayer) and bool(module.merged)
+            for module in model.modules()
+        ):
+            model.unmerge_adapter()
+
+        for module in model.modules():
+            if isinstance(module, LoraLayer) and "default" in module.lora_A:
+                module.set_scale("default", float(strength))
+                updated += 1
+        if updated <= 0:
+            raise RuntimeError("DramaBox LoRA modules are missing from the live model.")
+        if hasattr(model, "set_adapter"):
+            model.set_adapter("default")
+        if float(strength) == 0.0:
+            model.disable_adapter_layers()
+        else:
+            model.enable_adapter_layers()
+            model.merge_adapter(adapter_names=["default"])
+
+    @staticmethod
+    def _set_unmerged_lora_strength(
+        model, strength: float, current_weight_scale: float
+    ) -> float:
+        """Scale a BF16 PEFT branch over an immutable FP8 base in place."""
+        try:
+            from peft.tuners.lora.layer import LoraLayer
+        except ImportError as exc:
+            raise RuntimeError("DramaBox LoRA inference requires peft.") from exc
+
+        if float(strength) == 0.0:
+            model.disable_adapter_layers()
+            return float(current_weight_scale)
+
+        model.enable_adapter_layers()
+        if hasattr(model, "set_adapter"):
+            model.set_adapter("default")
+        ratio = float(strength) / float(current_weight_scale)
+        updated = 0
+        for module in model.modules():
+            if isinstance(module, LoraLayer) and "default" in module.lora_A:
+                if ratio != 1.0:
+                    with torch.no_grad():
+                        module.lora_B["default"].weight.mul_(ratio)
+                updated += 1
+        if updated <= 0:
+            raise RuntimeError("DramaBox LoRA modules are missing from the live model.")
+        return float(strength)
+
+    def _prepare_unmerged_lora(self, model) -> None:
+        """Keep PEFT matrices in the activation dtype used above FP8 storage."""
+        from peft.tuners.lora.layer import LoraLayer
+
+        for module in model.modules():
+            if isinstance(module, LoraLayer) and "default" in module.lora_A:
+                module.lora_A["default"].to(device=self.device, dtype=self.dtype)
+                module.lora_B["default"].to(device=self.device, dtype=self.dtype)
+
+    # TTS Audio Suite patch: replace only the live adapter modules while
+    # preserving the already-loaded official DramaBox transformer weights.
+    @classmethod
+    def _attach_lora(cls, model, lora_path: str, strength: float):
+        """Attach or replace the official PEFT-compatible audio LoRA in place."""
+        try:
+            from peft import LoraConfig, PeftModel, get_peft_model
+            from safetensors.torch import load_file
+        except ImportError as exc:
+            raise RuntimeError(
+                "DramaBox LoRA inference requires peft and safetensors."
+            ) from exc
+
+        lora_file = cls._resolve_lora_file(lora_path)
+        adapter_config_path = lora_file.parent / "adapter_config.json"
+        rank = 128
+        alpha = 128
+        if adapter_config_path.is_file():
+            try:
+                metadata = json.loads(adapter_config_path.read_text(encoding="utf-8"))
+                rank = int(metadata.get("r", rank))
+                alpha = int(metadata.get("lora_alpha", alpha))
+            except Exception as exc:
+                logging.warning("Could not read DramaBox LoRA adapter_config.json: %s", exc)
+
+        lora_state = load_file(str(lora_file))
+        # Standalone upstream checkpoints may omit adapter_config.json. Infer
+        # the rank from the first LoRA-A tensor so those files remain usable.
+        if not adapter_config_path.is_file():
+            for key, value in lora_state.items():
+                if ".lora_A." in key or key.endswith(".lora_A.weight"):
+                    rank = int(value.shape[0])
+                    alpha = rank
+                    break
+        lora_config = LoraConfig(
+            r=rank,
+            lora_alpha=alpha,
+            lora_dropout=0.0,
+            bias="none",
+            target_modules=[
+                "audio_attn1.to_k",
+                "audio_attn1.to_q",
+                "audio_attn1.to_v",
+                "audio_attn1.to_out.0",
+                "audio_attn2.to_k",
+                "audio_attn2.to_q",
+                "audio_attn2.to_v",
+                "audio_attn2.to_out.0",
+                "audio_ff.net.0.proj",
+                "audio_ff.net.2",
+            ],
+        )
+        if isinstance(model, PeftModel):
+            if any(
+                hasattr(module, "merged") and bool(module.merged)
+                for module in model.modules()
+            ):
+                model.unmerge_adapter()
+            if "default" in model.peft_config:
+                model.delete_adapter("default")
+            model.add_adapter("default", lora_config)
+            adapted = model
+        else:
+            adapted = get_peft_model(model, lora_config)
+        mapped = {}
+        is_peft_format = any("base_model.model." in key for key in lora_state)
+        is_original_format = any("diffusion_model." in key for key in lora_state)
+        compiled_blocks = any("._orig_mod." in key for key in adapted.state_dict())
+        for key, value in lora_state.items():
+            if is_peft_format:
+                new_key = key
+            elif is_original_format:
+                new_key = key.replace("diffusion_model.", "base_model.model.")
+            else:
+                continue
+            new_key = new_key.replace(".lora_A.weight", ".lora_A.default.weight")
+            new_key = new_key.replace(".lora_B.weight", ".lora_B.default.weight")
+            if compiled_blocks and "._orig_mod." not in new_key:
+                # TTS Audio Suite patch: torch.compile wraps every official
+                # transformer block in OptimizedModule and inserts `_orig_mod`
+                # into its state-dict path before PEFT attaches the adapter.
+                new_key = re.sub(
+                    r"(transformer_blocks\.\d+)\.",
+                    r"\1._orig_mod.",
+                    new_key,
+                    count=1,
+                )
+            mapped[new_key] = value
+        if not mapped:
+            raise RuntimeError(
+                f"DramaBox LoRA '{lora_file}' is not in a recognized PEFT/ID-LoRA format."
+            )
+
+        missing, unexpected = adapted.load_state_dict(mapped, strict=False)
+        loaded = len(mapped) - len(unexpected)
+        if loaded <= 0:
+            raise RuntimeError(
+                f"DramaBox LoRA '{lora_file}' did not match the audio transformer modules."
+            )
+        logging.info(
+            "DramaBox LoRA loaded: %s (%d tensors, strength %.2f)",
+            lora_file,
+            loaded,
+            float(strength),
+        )
+        return adapted.eval(), str(lora_file.resolve())
+
+    # TTS Audio Suite patch: split mutable adapter identity from the expensive
+    # base-model cache identity used by the suite's ComfyUI model wrapper.
+    def configure_lora(self, lora_path: str, strength: float, revision: str = "") -> None:
+        """Hot-swap a DramaBox adapter or update only its runtime strength."""
+        path = str(lora_path or "").strip()
+        strength = float(strength)
+        revision = str(revision or "")
+        use_unmerged_fp8 = self.transformer_quantization == "fp8_cast"
+
+        if not path:
+            if self._active_lora_file:
+                if use_unmerged_fp8:
+                    self._unmerged_lora_weight_scale = self._set_unmerged_lora_strength(
+                        self._velocity_model, 0.0, self._unmerged_lora_weight_scale
+                    )
+                else:
+                    self._set_lora_strength(self._velocity_model, 0.0)
+                logging.info("DramaBox LoRA disabled without reloading the base model")
+            self.lora_path = ""
+            self.lora_strength = strength
+            self._applied_lora_strength = 0.0
+            return
+
+        lora_file = str(self._resolve_lora_file(path).resolve())
+        same_adapter = (
+            lora_file == self._active_lora_file
+            and revision == self._active_lora_revision
+        )
+        if same_adapter:
+            if strength != self._applied_lora_strength:
+                if use_unmerged_fp8:
+                    self._unmerged_lora_weight_scale = self._set_unmerged_lora_strength(
+                        self._velocity_model,
+                        strength,
+                        self._unmerged_lora_weight_scale,
+                    )
+                else:
+                    self._set_lora_strength(self._velocity_model, strength)
+                logging.info(
+                    "DramaBox LoRA strength updated in place: %.2f", strength
+                )
+        else:
+            self._velocity_model, lora_file = self._attach_lora(
+                self._velocity_model, path, strength
+            )
+            self._active_lora_file = lora_file
+            self._active_lora_revision = revision
+            if use_unmerged_fp8:
+                self._prepare_unmerged_lora(self._velocity_model)
+                self._unmerged_lora_weight_scale = 1.0
+                self._unmerged_lora_weight_scale = self._set_unmerged_lora_strength(
+                    self._velocity_model,
+                    strength,
+                    self._unmerged_lora_weight_scale,
+                )
+                logging.info(
+                    "DramaBox FP8 base: using an unmerged BF16 LoRA branch"
+                )
+            else:
+                self._set_lora_strength(self._velocity_model, strength)
+
+        self.lora_path = path
+        self.lora_strength = strength
+        self._applied_lora_strength = strength
 
     def _move_velocity_model(self, target: torch.device) -> None:
         """Move the persistent DiT between CUDA and RAM for staged inference."""

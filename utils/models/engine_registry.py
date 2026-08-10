@@ -162,6 +162,8 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         multilingual_model_switching=False,
         can_corrupt_on_reload=False,
         fallback_languages=["English"],
+        supports_training=True,
+        training_modes=["audio_lora"],
         supports_runtime_isolation=False,
     ),
 

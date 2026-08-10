@@ -3,6 +3,7 @@
 import importlib.util
 import os
 import sys
+from typing import List
 
 current_dir = os.path.dirname(__file__)
 nodes_dir = os.path.dirname(current_dir)
@@ -18,6 +19,7 @@ base_spec.loader.exec_module(base_module)
 BaseTTSNode = base_module.BaseTTSNode
 
 from engines.dramabox.dramabox_downloader import DramaBoxDownloader
+from utils.models.extra_paths import get_all_tts_model_paths
 
 
 class DramaBoxEngineNode(BaseTTSNode):
@@ -144,7 +146,8 @@ class DramaBoxEngineNode(BaseTTSNode):
                     "default": "none",
                     "tooltip": (
                         "Official LTX FP8 weight-storage policy for the diffusion transformer. "
-                        "fp8_cast lowers VRAM but upcasts each linear layer during inference."
+                        "fp8_cast lowers VRAM but upcasts each linear layer during inference. "
+                        "DramaBox LoRAs remain as an unmerged BF16 branch over the FP8 base."
                     ),
                 }),
                 "compile_model": ("BOOLEAN", {
@@ -153,6 +156,27 @@ class DramaBoxEngineNode(BaseTTSNode):
                         "Compile the diffusion transformer blocks. First generation is much "
                         "slower and may reserve more VRAM; later denoising can be faster."
                     ),
+                }),
+                "local_lora_adapter": (cls._get_ui_lora_options(), {
+                    "default": "None",
+                    "tooltip": (
+                        "Optional DramaBox audio LoRA discovered under models/TTS/dramabox/loras. "
+                        "Training outputs are copied there when a run completes."
+                    ),
+                }),
+                "lora_adapter_override": ("STRING", {
+                    "default": "",
+                    "tooltip": (
+                        "Advanced local path to a DramaBox LoRA file or adapter folder. "
+                        "If filled, this overrides the local adapter dropdown."
+                    ),
+                }),
+                "lora_strength": ("FLOAT", {
+                    "default": 1.0,
+                    "min": 0.0,
+                    "max": 2.0,
+                    "step": 0.05,
+                    "tooltip": "Scale applied to the trained DramaBox LoRA. 1.0 uses the adapter's trained strength; 0 disables it.",
                 }),
             },
         }
@@ -179,7 +203,11 @@ class DramaBoxEngineNode(BaseTTSNode):
         memory_mode: str = "fast",
         transformer_quantization: str = "none",
         compile_model: bool = False,
+        local_lora_adapter: str = "None",
+        lora_adapter_override: str = "",
+        lora_strength: float = 1.0,
     ) -> tuple:
+        lora_path = self._resolve_lora_adapter(local_lora_adapter, lora_adapter_override)
         config = {
             "engine_type": "dramabox",
             "model_name": model_name,
@@ -197,6 +225,8 @@ class DramaBoxEngineNode(BaseTTSNode):
             "memory_mode": str(memory_mode),
             "transformer_quantization": str(transformer_quantization),
             "compile_model": bool(compile_model),
+            "lora_path": lora_path,
+            "lora_strength": float(lora_strength),
         }
         print(f"⚙️ DramaBox: {model_name} on {device} ({precision})")
         print(
@@ -206,12 +236,59 @@ class DramaBoxEngineNode(BaseTTSNode):
             f"watermark={watermark}, memory_mode={memory_mode}, "
             f"transformer_quantization={transformer_quantization}, compile={compile_model}"
         )
+        if lora_path:
+            print(f"   LoRA: {lora_path} (strength={float(lora_strength):.2f})")
         print("   Prompt: dialogue in quotes; expressive stage directions outside quotes")
         return ({
             "engine_type": "dramabox",
             "config": config,
             "capabilities": ["tts"],
         },)
+
+    @classmethod
+    def _discover_local_loras(cls) -> List[str]:
+        discovered: List[str] = []
+        seen = set()
+        try:
+            for base_path in get_all_tts_model_paths("TTS"):
+                root = os.path.join(base_path, "dramabox", "loras")
+                if not os.path.isdir(root):
+                    continue
+                for name in sorted(os.listdir(root)):
+                    candidate = os.path.join(root, name)
+                    if os.path.isdir(candidate):
+                        has_weights = any(
+                            filename.endswith(".safetensors")
+                            for filename in os.listdir(candidate)
+                        )
+                    else:
+                        has_weights = os.path.isfile(candidate) and candidate.endswith(".safetensors")
+                    if has_weights and f"local:{name}" not in seen:
+                        seen.add(f"local:{name}")
+                        discovered.append(f"local:{name}")
+        except Exception:
+            pass
+        return discovered
+
+    @classmethod
+    def _get_ui_lora_options(cls) -> List[str]:
+        return ["None"] + cls._discover_local_loras()
+
+    @classmethod
+    def _resolve_lora_adapter(cls, local_value: str, override: str) -> str:
+        manual = str(override or "").strip()
+        if manual:
+            return os.path.abspath(os.path.expanduser(manual))
+        selected = str(local_value or "").strip()
+        if not selected or selected == "None":
+            return ""
+        if selected.startswith("local:"):
+            name = selected.split(":", 1)[1]
+            for base_path in get_all_tts_model_paths("TTS"):
+                candidate = os.path.join(base_path, "dramabox", "loras", name)
+                if os.path.exists(candidate):
+                    return candidate
+        return os.path.abspath(os.path.expanduser(selected))
 
     @staticmethod
     def _validate_rescale_scale(value: str):

@@ -277,6 +277,9 @@ This matters because the suite now has a clearer split:
   FP8-cast transformer storage, and optional `torch.compile`
 * **Generation diagnostics**: conservative near-silence detection in console
   output, TTS generation information, and SRT timing reports
+* **LoRA training**: official DramaBox audio-branch IC-LoRA training through
+  the unified training nodes, with normalized manifest/index input and managed
+  adapter export
 
 **Important limitations:**
 
@@ -288,6 +291,8 @@ This matters because the suite now has a clearer split:
 
 See the **[DramaBox Prompting Guide](docs/DRAMABOX_PROMPTING_GUIDE.md)** for
 prompt syntax, controls, memory modes, duration behavior, and examples.
+See the **[DramaBox LoRA Training Guide](docs/DRAMABOX_LORA_GUIDE.md)** for
+dataset formats, training workflow, adapter loading, and CPU-safe preflight.
 
 </details>
 
@@ -1527,7 +1532,7 @@ For offline/manual setup:
 | Granite ASR | `ComfyUI/models/TTS/granite_asr/` | ✅ | Granite ASR models; plus adds native diarization/timestamps, optional Qwen forced aligner reused lazily for timestamps/SRT fallback |
 | Echo-TTS | `ComfyUI/models/TTS/echo-tts-base/` | ✅ | ~7.1GB total (base + dac); CC-BY-NC-SA |
 | Dots TTS | `ComfyUI/models/TTS/dots_tts/` | ✅ | Official base / soar / mf checkpoints with tokenizer, vocoder, speaker encoder |
-| DramaBox | `ComfyUI/models/TTS/dramabox/DramaBox/` | ✅ | ~16.4GB download; fast mode roughly 24GB VRAM; experimental FP8 peaks on RTX 4090: staged ~15.1GB allocated, sequential ~11.7GB allocated / ~12.4GB reserved; conditional LTX-2 Community License |
+| DramaBox | `ComfyUI/models/TTS/dramabox/DramaBox/` | ✅ | ~16.4GB download; fast mode roughly 24GB VRAM; experimental FP8, staged, and sequential options can reduce VRAM, but no minimum GPU size is guaranteed; conditional LTX-2 Community License |
 | Fish Audio S2 Pro | `ComfyUI/models/TTS/fish_audio_s2_pro/` | ✅ | Official BF16 or optional community FP8 checkpoint; the official checkpoint can be quantized on load with BNB INT8/NF4; main T5 environment with process teardown for Clear VRAM; Fish Audio Research License |
 | OmniVoice | `ComfyUI/models/TTS/omnivoice/` | ✅ | Official OmniVoice model. Voice cloning in this suite requires explicit reference text. |
 
@@ -1568,6 +1573,7 @@ Your support helps maintain and improve this project for the entire community!
 | Workflow                                       | Description                                                | Status               | Files                                                                                                               |
 | ---------------------------------------------- | ---------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | **🤐 Voice Cleaning**                          | Audio restoration & cleanup with dual tool pipeline        | ✅ **New in v4.13**   | [📁 JSON](example_workflows/Voice%20Cleaning%20-%20🤐%20Noise%20or%20Vocal%20Removal%20+%20🤐%20Voice%20Fixer.json) |
+| **DramaBox LoRA 🎓 Model Training**           | DramaBox IC-LoRA training workflow from staged speech clips | ✅ **New**           | [📁 JSON](example_workflows/DramaBox%20LoRA%20🎓%20Model%20Training.json)                                          |
 | **MOSS LoRA 🎓 Model Training**               | Initial MOSS LoRA training workflow from clipped speech dataset | ✅ **New in v4.27** | [📁 JSON](example_workflows/MOSS%20LoRA%20🎓%20Model%20Training.json)                                               |
 | **RVC 🎓 Model Training**                     | RVC voice model training workflow                          | ✅ **New in v4.25**   | [📁 JSON](example_workflows/RVC%20🎓%20Model%20Training.json)                                                       |
 | **🎨 Step Audio EditX - Audio Editor**         | Step Audio EditX audio editing with inline edit tags       | ✅ **New in v4.14**   | [📁 JSON](example_workflows/🎨%20Step%20Audio%20EditX%20-%20Audio%20Editor%20+%20Inline%20Edit%20Tags.json)        |

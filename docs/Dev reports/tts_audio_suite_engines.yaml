@@ -1351,7 +1351,7 @@ engines:
       srt: true
       vc: false
       asr: false
-      training: false
+      training: true
 
     special_features:
       - "Expressive scene prompting and stage directions"
@@ -1362,6 +1362,7 @@ engines:
       - "Explicit generation/reference durations, CFG rescale control, and optional Perth watermark"
       - "Experimental staged and sequential strategies for lowering peak VRAM; official LTX FP8-cast storage"
       - "Optional official torch.compile path"
+      - "Official audio-branch IC-LoRA training workflow"
 
     model_sources:
       - component: "DramaBox DiT + audio components"
@@ -1415,8 +1416,8 @@ engines:
       emotion_control: { supported: true, notes: "Natural-language scene prompt and stage directions" }
       native_long_form: { supported: true, notes: "Official duration-aware quote-group chunking; ~37s target / 45s cap" }
       native_srt_duration_targeting: { supported: true, notes: "Subtitle duration is passed as gen_duration before the selected SRT timing mode applies final correction" }
-      community_finetunes: { supported: false, notes: "Not integrated" }
-      vram_efficient: { supported: true, notes: "Fast mode is ~24GB; experimental FP8 peaks on RTX 4090: staged ~15.1GB allocated, sequential ~11.7GB allocated / ~12.4GB reserved" }
+      community_finetunes: { supported: true, notes: "Official audio-branch IC-LoRA adapters can be trained and loaded" }
+      vram_efficient: { supported: true, notes: "Fast mode is ~24GB; experimental FP8, staged, and sequential options can reduce VRAM, but practical peak usage varies by environment and loaded components" }
       speed_performance: { supported: "partial", notes: "Fast favors repeated generation; staged reloads temporary components; sequential also transfers the transformer; optional block-level torch.compile accelerates repeat denoising" }
       reference_free_tts: { supported: true, notes: "Voice reference is optional" }
 
@@ -1983,7 +1984,7 @@ readme_model_download_table:
   - engine: "DramaBox"
     primary_model_path: "ComfyUI/models/TTS/dramabox/DramaBox/"
     auto_download: "✅"
-    notes: "~16.4GB download; fast mode roughly 24GB VRAM; experimental FP8 peaks on RTX 4090: staged ~15.1GB allocated, sequential ~11.7GB allocated / ~12.4GB reserved; conditional LTX-2 Community License"
+    notes: "~16.4GB download; fast mode roughly 24GB VRAM; experimental FP8, staged, and sequential options can reduce VRAM, but no minimum GPU size is guaranteed; conditional LTX-2 Community License"
   - engine: "Fish Audio S2 Pro"
     primary_model_path: "ComfyUI/models/TTS/fish_audio_s2_pro/"
     auto_download: "✅"
@@ -2223,7 +2224,7 @@ model_layouts_markdown: |
 
   ```text
   ComfyUI/models/TTS/dramabox/
-  └── DramaBox/
+  ├── DramaBox/
       ├── dramabox-dit-v1.safetensors
       ├── dramabox-audio-components.safetensors
       ├── assets/
@@ -2234,6 +2235,10 @@ model_layouts_markdown: |
           ├── model-00002-of-00002.safetensors
           ├── model.safetensors.index.json
           └── tokenizer and processor files...
+  └── loras/
+      └── <adapter_name>/
+          ├── adapter_config.json
+          └── adapter_model.safetensors
   ```
 
   Notes:
@@ -2241,6 +2246,8 @@ model_layouts_markdown: |
   - Both repositories download directly into the organized suite folder.
   - Transformers is forced into local-only loading after download.
   - Requires NVIDIA CUDA. Fast mode targets approximately 24GB VRAM; experimental staged/sequential modes can run with less.
+  - Integrated training exports LoRA adapters into `dramabox/loras/<adapter_name>/`.
+  - Training jobs, normalized datasets, preprocessing caches, checkpoints, and logs are stored under `ComfyUI/output/tts_audio_suite_training/dramabox/`.
   - The LTX-2 Community License requires a paid license for entities with at
     least USD 10 million in annual revenue.
 

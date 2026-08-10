@@ -1,6 +1,4 @@
-"""
-MOSS clip staging node for unified training workflows.
-"""
+"""Engine-neutral audio clip staging for training workflows."""
 
 import os
 import re
@@ -59,7 +57,7 @@ class DynamicAudioOptionalInputs(dict):
 def _slugify(value: str) -> str:
     safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(value).strip())
     safe = safe.strip("_")
-    return safe or "moss_dataset"
+    return safe or "training_dataset"
 
 
 def _iter_audio_batches(waveform):
@@ -74,7 +72,7 @@ def _iter_audio_batches(waveform):
             yield clip[None, :]
         return
     if waveform.ndim != 3:
-        raise ValueError(f"Unsupported audio tensor shape for MOSS clip staging: {tuple(waveform.shape)}")
+        raise ValueError(f"Unsupported audio tensor shape for clip staging: {tuple(waveform.shape)}")
     for clip in waveform:
         if clip.ndim == 1:
             yield clip[None, :]
@@ -96,17 +94,19 @@ def _write_audio_clip(audio_tensor, sample_rate: int, output_path: str):
 
 
 class MossClipStagingNode(BaseTTSNode):
+    """Legacy class id retained so existing MOSS workflows keep loading."""
+
     @classmethod
     def NAME(cls):
-        return "🎞️ MOSS Clip Staging"
+        return "🎞️ Training Clip Staging"
 
     @classmethod
     def INPUT_TYPES(cls):
         optional_inputs = DynamicAudioOptionalInputs(
             {
                 "output_subdir": ("STRING", {
-                    "default": "tts_audio_suite_training/moss_tts/staged_audio",
-                    "tooltip": "Subdirectory inside ComfyUI input/ where staged MOSS training clips will be written."
+                    "default": "tts_audio_suite_training/staged_audio",
+                    "tooltip": "Subdirectory inside ComfyUI input/ where reusable training clips will be written."
                 }),
                 "overwrite": ("BOOLEAN", {
                     "default": True,
@@ -124,14 +124,14 @@ class MossClipStagingNode(BaseTTSNode):
         return {
             "required": {
                 "dataset_name": ("STRING", {
-                    "default": "MyMossDataset",
-                    "tooltip": "Base name for the staged clip set."
+                    "default": "MyTrainingDataset",
+                    "tooltip": "Base name for the staged clip set. The output can feed engine-specific Dataset Rows nodes."
                 }),
             },
             "optional": optional_inputs,
         }
 
-    RETURN_TYPES = ("MOSS_CLIP_DATASET", "STRING")
+    RETURN_TYPES = ("TRAINING_CLIP_DATASET", "STRING")
     RETURN_NAMES = ("clip_dataset", "dataset_info")
     FUNCTION = "stage_clips"
     CATEGORY = "TTS Audio Suite/🎓 Training"
@@ -159,7 +159,7 @@ class MossClipStagingNode(BaseTTSNode):
     ):
         audio_inputs = self._collect_audio_inputs(opt_audio1=opt_audio1, **kwargs)
         if not audio_inputs:
-            raise ValueError("MOSS Clip Staging requires at least one connected AUDIO input")
+            raise ValueError("Training Clip Staging requires at least one connected AUDIO input")
 
         dataset_slug = _slugify(dataset_name)
         input_root = folder_paths.get_input_directory()
@@ -172,7 +172,7 @@ class MossClipStagingNode(BaseTTSNode):
                 import shutil
                 shutil.rmtree(dataset_dir)
             else:
-                raise FileExistsError(f"MOSS staged clip folder already exists: {dataset_dir}")
+                raise FileExistsError(f"Staged clip folder already exists: {dataset_dir}")
         os.makedirs(dataset_dir, exist_ok=True)
 
         clips: List[Dict[str, object]] = []
@@ -201,18 +201,18 @@ class MossClipStagingNode(BaseTTSNode):
                 })
 
         if not clips:
-            raise RuntimeError("MOSS Clip Staging produced no clips")
+            raise RuntimeError("Training Clip Staging produced no clips")
 
         dataset = {
-            "type": "moss_clip_dataset",
+            "type": "training_clip_dataset",
             "dataset_name": dataset_name,
             "dataset_dir": dataset_dir,
             "clips": clips,
         }
-        info = f"MOSS clip dataset ready: {dataset_name} | {len(clips)} clips"
+        info = f"Training clip dataset ready: {dataset_name} | {len(clips)} clips"
         print(f"🎞️ {info}")
         return dataset, info
 
 
 NODE_CLASS_MAPPINGS = {"MossClipStagingNode": MossClipStagingNode}
-NODE_DISPLAY_NAME_MAPPINGS = {"MossClipStagingNode": "🎞️ MOSS Clip Staging"}
+NODE_DISPLAY_NAME_MAPPINGS = {"MossClipStagingNode": "🎞️ Training Clip Staging"}
