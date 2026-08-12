@@ -220,7 +220,11 @@ class MossTTSEngine:
         if configured_name and configured_name == expected_name:
             return
 
-        compatible_delay_bases = {"moss-tts", "moss-tts-v1.5"}
+        compatible_delay_bases = {
+            "moss-tts",
+            "moss-tts-v1.5",
+            "moss-tts-v1.5-8b-voice-acting",
+        }
         if configured_name in compatible_delay_bases and expected_name in compatible_delay_bases:
             print(
                 "⚠️ MOSS LoRA base version differs: "
@@ -244,6 +248,31 @@ class MossTTSEngine:
             "Use the matching MOSS variant or a LoRA trained for this model."
         )
 
+    def _resolve_model_architecture(self) -> str:
+        canonical = str(self.model_variant or "").removeprefix("local:")
+        known_architecture = self.MODEL_VARIANTS.get(canonical, {}).get("architecture")
+        if known_architecture:
+            return str(known_architecture)
+
+        config_path = os.path.join(self.model_path, "config.json")
+        try:
+            with open(config_path, "r", encoding="utf-8") as handle:
+                config = json.load(handle)
+        except Exception as e:
+            raise RuntimeError(
+                f"Cannot identify local MOSS model architecture from '{config_path}': {e}"
+            ) from e
+
+        if config.get("local_num_layers") is not None:
+            return "local"
+        if config.get("model_type") == "moss_tts_delay" and int(config.get("n_vq", 0) or 0) == 32:
+            return "delay"
+        raise RuntimeError(
+            "Unsupported local MOSS model architecture. Community full checkpoints must use the "
+            "MOSS local-transformer layout or the 32-codebook MOSS-TTS Delay layout. "
+            f"Found model_type={config.get('model_type')!r}, n_vq={config.get('n_vq')!r}."
+        )
+
     def _ensure_model_loaded(self) -> None:
         if self._model is not None and self._processor is not None:
             return
@@ -262,7 +291,7 @@ class MossTTSEngine:
         if self.lora_adapter:
             print(f"   LoRA: {self.lora_adapter}")
 
-        architecture = self.MODEL_VARIANTS.get(self.model_variant, {}).get("architecture", "local")
+        architecture = self._resolve_model_architecture()
         if architecture == "local":
             package_base = "engines.moss_tts.impl.local_transformer"
         elif architecture == "ttsd":
@@ -518,7 +547,7 @@ class MossTTSEngine:
         max_new_tokens: int,
         n_vq_for_inference: Optional[int] = None,
     ):
-        architecture = self.MODEL_VARIANTS.get(self.model_variant, {}).get("architecture", "local")
+        architecture = self._resolve_model_architecture()
         if architecture == "local":
             return self._model.generate(
                 input_ids=input_ids,

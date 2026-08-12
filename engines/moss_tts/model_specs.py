@@ -39,6 +39,23 @@ MOSS_MODEL_SPECS = {
             "model-00003-of-00004.safetensors", "model-00004-of-00004.safetensors",
         ],
     },
+    "moss-tts-v1.5-8b-voice-acting": {
+        "repo_id": "laion/moss-tts-v1.5-8b-voice-acting",
+        "architecture": "delay",
+        "role": "tts",
+        "display": "MOSS-TTS v1.5 Voice Acting 8B (Community - LAION)",
+        "description": "Community full fine-tune of MOSS-TTS v1.5 for expressive voice acting",
+        "codec_model": "MOSS-Audio-Tokenizer",
+        "sample_rate": 24000,
+        "audio_temperature": 0.8,
+        "audio_top_p": 0.95,
+        "audio_top_k": 25,
+        "audio_repetition_penalty": 1.1,
+        "max_new_tokens": 4096,
+        "required_files": [
+            "config.json", "processor_config.json", "tokenizer.json", "model.safetensors",
+        ],
+    },
     "MOSS-TTS": {
         "repo_id": "OpenMOSS-Team/MOSS-TTS",
         "architecture": "delay",

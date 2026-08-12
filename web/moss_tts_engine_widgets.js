@@ -127,6 +127,9 @@ function supportsLora(value) {
 
 function canonicalModelName(value) {
     const text = String(value || "").replace(/^local:/, "");
+    if (text.includes("Voice Acting") || text.includes("voice-acting")) {
+        return "moss-tts-v1.5-8b-voice-acting";
+    }
     if (text.includes("SoundEffect") || text.includes("Sound Effects")) return "MOSS-SoundEffect";
     if (text.includes("VoiceGenerator") || text.includes("Voice Design")) return "MOSS-VoiceGenerator";
     if (text.includes("TTSD") || text.includes("Native") && text.includes("Dialogue")) return "MOSS-TTSD-v1.0";

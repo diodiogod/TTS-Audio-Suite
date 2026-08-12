@@ -1504,7 +1504,7 @@ engines:
 
   - id: moss-tts
     name: MOSS-TTS
-    models: "Local 1.7B, Delay 8B v1.5/1.0, VoiceGenerator 1.7B, SoundEffect 8B v1, TTSD 8B"
+    models: "Local 1.7B, Delay 8B v1.5/1.0, LAION Voice Acting 8B community fine-tune, VoiceGenerator 1.7B, SoundEffect 8B v1, TTSD 8B"
     size: "~8.5GB tokenizer + ~6.1GB/17GB/18GB model"
     license: "Apache-2.0"
     commercial: true
@@ -1522,6 +1522,8 @@ engines:
       - "Reference-free voice design with MOSS-VoiceGenerator"
       - "Native 1-5 speaker TTSD dialogue"
       - "31-language generation with MOSS-TTS-v1.5"
+      - "Optional LAION community 8B voice-acting fine-tune"
+      - "Config-based discovery of compatible local MOSS full checkpoints"
       - "Prompt-only sound-effect generation with MOSS-SoundEffect v1"
       - "Long-form generation (TTSD/Delay)"
       - "Duration token hint"
@@ -1547,6 +1549,12 @@ engines:
         size: "~17GB"
         auto_download: true
         notes: "Current official 8B delay model with 31 languages and more stable voice cloning"
+      - component: "MOSS-TTS v1.5 Voice Acting 8B (Community - LAION)"
+        source_name: "laion/moss-tts-v1.5-8b-voice-acting"
+        source_url: "https://huggingface.co/laion/moss-tts-v1.5-8b-voice-acting"
+        size: "~17GB"
+        auto_download: true
+        notes: "Third-party full MOSS-TTS v1.5 fine-tune for expressive voice acting; not an official OpenMOSS model"
       - component: "MOSS-VoiceGenerator"
         source_name: "OpenMOSS-Team/MOSS-VoiceGenerator"
         source_url: "https://huggingface.co/OpenMOSS-Team/MOSS-VoiceGenerator"
@@ -1609,7 +1617,7 @@ engines:
       asr_transcribe: { supported: false, notes: "" }
       emotion_control: { supported: true, notes: "(MOSS-VoiceGenerator instruction-conditioned voice design)" }
       native_long_form: { supported: true, notes: "(TTSD/Delay long-form; use chunk orchestration for very long inputs)" }
-      community_finetunes: { supported: true, notes: "(LoRA adapter inference supported; initial integrated LoRA training support added for MOSS-TTS Delay 8B)" }
+      community_finetunes: { supported: true, notes: "(Compatible full local checkpoints, LAION Voice Acting 8B auto-download, and LoRA adapter inference/training supported)" }
       vram_efficient: { supported: "partial", notes: "(Local 1.7B smaller; tokenizer is large)" }
       speed_performance: { supported: true, notes: "Fast with CUDA/FlashAttention" }
       reference_free_tts: { supported: true, notes: "(direct TTS and prompt-only generation)" }
@@ -2300,6 +2308,7 @@ model_layouts_markdown: |
   ComfyUI/models/TTS/moss_tts/
   ├── MOSS-TTS-Local-Transformer/
   ├── MOSS-TTS-v1.5/
+  ├── moss-tts-v1.5-8b-voice-acting/  # Community - LAION
   ├── MOSS-TTS/
   ├── MOSS-VoiceGenerator/
   ├── MOSS-SoundEffect/
@@ -2316,6 +2325,8 @@ model_layouts_markdown: |
   - `MOSS-Audio-Tokenizer` is required by the official TTS and TTSD variants.
   - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
   - `MOSS-TTS-v1.5` is the current 8B delay model with 31-language support.
+  - `moss-tts-v1.5-8b-voice-acting` is an optional third-party LAION full fine-tune for expressive speech, not an official OpenMOSS model.
+  - Other compatible full checkpoints placed here are discovered from their `config.json`; unsupported MOSS architectures are rejected explicitly.
   - `MOSS-TTS` is the legacy official 8B delay model.
   - `MOSS-VoiceGenerator` is the 1.7B voice-design provider used by Voice Designer.
   - `MOSS-SoundEffect` is the v1 sound-effect checkpoint used through the MOSS-TTS engine and 🌩️ Sound Effects.

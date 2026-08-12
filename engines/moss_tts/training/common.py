@@ -23,10 +23,15 @@ FRIENDLY_VARIANT_MAP = {
     "8B (Delay)": "MOSS-TTS",
     "Recommended 8B v1.5 (Delay)": "MOSS-TTS-v1.5",
     "Legacy 8B v1.0 (Delay)": "MOSS-TTS",
+    "Voice Acting 8B (Community - LAION)": "moss-tts-v1.5-8b-voice-acting",
     "Native 8B Dialogue (MOSS-TTSD-v1.0)": "MOSS-TTSD-v1.0",
 }
 
-SUPPORTED_DELAY_TRAINING_VARIANTS = {"MOSS-TTS", "MOSS-TTS-v1.5"}
+SUPPORTED_DELAY_TRAINING_VARIANTS = {
+    "MOSS-TTS",
+    "MOSS-TTS-v1.5",
+    "moss-tts-v1.5-8b-voice-acting",
+}
 MOSS_DATASET_AUDIO_EXTENSIONS = {".wav", ".flac", ".mp3", ".ogg", ".m4a"}
 
 
@@ -175,7 +180,7 @@ def resolve_delay_training_variant(config: Dict[str, Any]) -> str:
     variant = resolve_variant_name(config.get("model_variant", "MOSS-TTS"))
     if variant not in SUPPORTED_DELAY_TRAINING_VARIANTS:
         raise RuntimeError(
-            "MOSS training supports the Delay 8B v1.0 and v1.5 models only. "
+            "MOSS training supports the Delay 8B v1.0/v1.5 models and compatible registered Delay fine-tunes only. "
             f"Selected variant '{variant}' is not supported yet."
         )
     return variant

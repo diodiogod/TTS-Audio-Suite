@@ -295,6 +295,7 @@ Notes:
 ComfyUI/models/TTS/moss_tts/
 ├── MOSS-TTS-Local-Transformer/
 ├── MOSS-TTS-v1.5/
+├── moss-tts-v1.5-8b-voice-acting/  # Community - LAION
 ├── MOSS-TTS/
 ├── MOSS-VoiceGenerator/
 ├── MOSS-SoundEffect/
@@ -311,6 +312,8 @@ Notes:
 - `MOSS-Audio-Tokenizer` is required by the official TTS and TTSD variants.
 - `MOSS-TTS-Local-Transformer` is the smaller 1.7B model.
 - `MOSS-TTS-v1.5` is the current 8B delay model with 31-language support.
+- `moss-tts-v1.5-8b-voice-acting` is an optional third-party LAION full fine-tune for expressive speech, not an official OpenMOSS model.
+- Other compatible full checkpoints placed here are discovered from their `config.json`; unsupported MOSS architectures are rejected explicitly.
 - `MOSS-TTS` is the legacy official 8B delay model.
 - `MOSS-VoiceGenerator` is the 1.7B voice-design provider used by Voice Designer.
 - `MOSS-SoundEffect` is the v1 sound-effect checkpoint used through the MOSS-TTS engine and 🌩️ Sound Effects.

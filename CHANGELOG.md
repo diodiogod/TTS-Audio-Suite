@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.1] - 2026-08-11
+
+### Added
+
+- Add MOSS-TTS community voice-acting model support
+- Add the clearly labeled LAION Voice Acting 8B community model with automatic download
+- Add compatible local full-checkpoint discovery from the MOSS model folder
+- Support experimental LoRA training with the LAION community checkpoint
+
+### Changed
+
+- Improve errors for unsupported local MOSS model layouts
 ## [5.8.0] - 2026-08-11
 
 ### Added

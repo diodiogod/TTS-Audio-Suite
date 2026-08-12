@@ -45,6 +45,9 @@ class MossTTSEngineNode(BaseTTSNode):
         "v1.5 8B",
         "v1 8B",
     ]
+    COMMUNITY_MODEL_OPTIONS = [
+        "Voice Acting 8B (Community - LAION)",
+    ]
     NATIVE_MODEL_OPTION = "TTSD v1 8B"
     VOICE_DESIGN_MODEL_OPTION = "Voice Design 1.7B"
     SOUND_EFFECT_MODEL_OPTION = "Sound Effects v1 8B"
@@ -52,6 +55,7 @@ class MossTTSEngineNode(BaseTTSNode):
         "1.7B": "MOSS-TTS-Local-Transformer",
         "v1.5 8B": "MOSS-TTS-v1.5",
         "v1 8B": "MOSS-TTS",
+        "Voice Acting 8B (Community - LAION)": "moss-tts-v1.5-8b-voice-acting",
         "TTSD v1 8B": "MOSS-TTSD-v1.0",
         "Voice Design 1.7B": "MOSS-VoiceGenerator",
         "Sound Effects v1 8B": "MOSS-SoundEffect",
@@ -96,6 +100,7 @@ class MossTTSEngineNode(BaseTTSNode):
                         "1.7B: smaller local-transformer architecture.\n"
                         "v1.5 8B: current multilingual model.\n"
                         "v1 8B: original checkpoint.\n"
+                        "Voice Acting 8B (Community - LAION): third-party full v1.5 fine-tune for expressive speech.\n"
                         "Voice Design 1.7B: MOSS-VoiceGenerator for Voice Designer only.\n"
                         "Sound Effects 8B v1: MOSS-SoundEffect for the 🌩️ Sound Effects node only.\n"
                         "\n"
@@ -367,20 +372,13 @@ class MossTTSEngineNode(BaseTTSNode):
 
     @classmethod
     def _get_ui_model_options(cls) -> List[str]:
-        values = cls._get_ui_standard_model_options() + [
+        values = cls._get_ui_standard_model_options() + list(cls.COMMUNITY_MODEL_OPTIONS) + [
             cls.VOICE_DESIGN_MODEL_OPTION,
             cls.SOUND_EFFECT_MODEL_OPTION,
             cls._get_ui_native_model_option(),
         ]
-        for model_name in (
-            "MOSS-TTS-Local-Transformer",
-            "MOSS-TTS-v1.5",
-            "MOSS-TTS",
-            "MOSS-VoiceGenerator",
-            "MOSS-SoundEffect",
-            "MOSS-TTSD-v1.0",
-        ):
-            local_model = cls._find_local_variant(model_name)
+        for model_name in cls._get_model_variants():
+            local_model = model_name if model_name.startswith("local:") else cls._find_local_variant(model_name)
             if local_model.startswith("local:") and local_model not in values:
                 values.append(local_model)
         return values

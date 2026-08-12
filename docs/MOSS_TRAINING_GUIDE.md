@@ -9,9 +9,12 @@ Use this if `🧾 MOSS Dataset Rows` feels unclear.
 Current first training slice supports:
 
 - **MOSS-TTS 8B v1.0 and v1.5 (Delay)**
+- **LAION MOSS-TTS v1.5 Voice Acting 8B community full checkpoint (Delay, compatibility path; training results not yet validated by the suite maintainers)**
 - **LoRA adapter training**
 
 The model selected on the connected MOSS engine is used for dataset preparation and training. Prepare the dataset again after switching between v1.0 and v1.5.
+
+The LAION Voice Acting checkpoint uses the same Delay architecture and can use this LoRA training path, but the suite maintainers have not completed an inference or training run with its full weights. Treat it as community-tested support and report results or incompatibilities.
 
 It does **not** currently support:
 

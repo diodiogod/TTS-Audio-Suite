@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v5.8.0
+# TTS Audio Suite v5.8.1
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -990,10 +990,14 @@ Use the built-in OmniVoice preset in **📐 Visual Tag Builder** for the canonic
 
 * **1.7B**: `MOSS-TTS-Local-Transformer`
 * **v1.5 8B**: `MOSS-TTS-v1.5` — 31 languages and more stable cloning
+* **Voice Acting 8B (Community - LAION)**: optional third-party full v1.5 fine-tune for expressive delivery; selecting it downloads `laion/moss-tts-v1.5-8b-voice-acting`
 * **v1 8B**: `MOSS-TTS`
 * **Native 8B Dialogue**: `MOSS-TTSD-v1.0`
 * **Voice Designer 1.7B**: `MOSS-VoiceGenerator` — select it in the MOSS engine for Voice Designer
 * **Shared Codec**: `MOSS-Audio-Tokenizer`
+
+Compatible community full checkpoints can also be placed in `models/TTS/moss_tts/<model-name>/`.
+They are listed as `local:<model-name>` and classified from `config.json`; unsupported layouts fail explicitly.
 
 **Supported Native Input Forms (TTSD):**
 
@@ -1036,6 +1040,7 @@ Per-segment overrides are supported with `[]` parameter syntax for whole-segment
 
 * **Initial MOSS LoRA training support is now integrated** through the unified `🎓 Model Training` flow.
 * Current scope is **MOSS-TTS 8B (Delay) LoRA training** with local adapter export into `models/TTS/moss_tts/loras/`.
+* The LAION Voice Acting 8B community checkpoint is accepted by the same training path because it uses the v1.5 Delay architecture, but full inference/training validation is pending community feedback.
 * Dataset-building UX is still early and will need refinement, but the end-to-end workflow is functional.
 
 </details>
