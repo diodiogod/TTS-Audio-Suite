@@ -12,7 +12,12 @@ from utils.text.character_parser import character_parser
 from utils.text.pause_processor import PauseTagProcessor
 from utils.text.segment_parameters import ParameterValidator, apply_segment_parameters
 from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment
+from utils.voice.character_logging import (
+    format_resolved_character_block,
+    resolved_character_label,
+)
 from utils.voice.discovery import get_available_characters, get_character_mapping, voice_discovery
+from utils.voice.reference import effective_voice_audio
 
 
 class AudioCppProcessor:
@@ -139,6 +144,56 @@ class AudioCppProcessor:
         limit = ImprovedChatterBoxChunker.validate_chunking_params(max_chars)
         return ImprovedChatterBoxChunker.split_into_chunks(text, max_chars=limit)
 
+    @staticmethod
+    def _voice_log_note(voice_ref: Mapping[str, Any]) -> str:
+        if not isinstance(voice_ref, Mapping) or effective_voice_audio(voice_ref) is None:
+            return " [no voice reference - model default]"
+        reference_text = str(voice_ref.get("reference_text") or "").strip()
+        if reference_text:
+            return f" [ref text: {len(reference_text)} chars]"
+        return ""
+
+    @staticmethod
+    def _format_parameter_log(
+        parameters: Mapping[str, Any], current_config: Mapping[str, Any], current_seed: int
+    ) -> str:
+        if not parameters:
+            return ""
+        parts = []
+        for key in parameters:
+            if key == "seed":
+                value = current_seed
+            else:
+                value = current_config.get(key, parameters.get(key))
+            if value is not None and value != "":
+                parts.append(f"{key}={value}")
+        return ", ".join(parts)
+
+    def _log_generation_text(
+        self,
+        character: str,
+        text: str,
+        voice_ref: Mapping[str, Any],
+        language: str,
+        family: str,
+        chunk_count: int,
+        parameter_log: str,
+    ) -> None:
+        display_name = resolved_character_label(character, voice_ref)
+        voice_note = self._voice_log_note(voice_ref)
+        print(
+            f"🎭 Audio.cpp ({family}) - Generating for '{display_name}' "
+            f"(Language: {language}){voice_note}:"
+        )
+        if parameter_log:
+            print(f"🎛️ Audio.cpp params: {parameter_log}")
+        print(format_resolved_character_block(character, text, voice_ref))
+        if chunk_count > 1:
+            print(
+                f"📝 Chunking {display_name}'s text into {chunk_count} chunks "
+                f"(Language: {language}){voice_note}"
+            )
+
     def get_character_order(self, text: str) -> List[str]:
         self._setup_character_parser(text)
         seen: List[str] = []
@@ -195,10 +250,13 @@ class AudioCppProcessor:
                 continue
             character = segment.character or "narrator"
             parameters = dict(segment.parameters or {})
+            filtered_parameters: Dict[str, Any] = {}
             current_config = base_config
             current_seed = int(seed)
             if parameters:
-                ParameterValidator.filter_parameters_for_engine(parameters, "audio_cpp")
+                filtered_parameters = ParameterValidator.filter_parameters_for_engine(
+                    parameters, "audio_cpp"
+                )
                 current_config = apply_segment_parameters(base_config, parameters, "audio_cpp")
                 current_seed = int(current_config.get("seed", seed))
             if self._should_apply_segment_language(segment, base_config):
@@ -210,7 +268,19 @@ class AudioCppProcessor:
             def generate_fragment(content: str, edit_tags: List[Any]) -> None:
                 chunks = self._chunks(content, enable_chunking, max_chars_per_chunk)
                 if show_text_logging:
-                    print(f"🎭 audio.cpp - {character}: {content}")
+                    language = str(current_config.get("language", "auto") or "auto")
+                    family = str(current_config.get("family", "unknown") or "unknown")
+                    self._log_generation_text(
+                        character,
+                        content,
+                        voice_ref,
+                        language,
+                        family,
+                        len(chunks),
+                        self._format_parameter_log(
+                            filtered_parameters, current_config, current_seed
+                        ),
+                    )
                 for chunk_index, chunk in enumerate(chunks):
                     self._check_interrupt()
                     waveform, response_rate = self.adapter.generate_single(

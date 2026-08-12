@@ -68,6 +68,44 @@ def huggingface_resolve_url(repo: str, revision: str, remote_path: str) -> str:
     )
 
 
+def package_download_size(
+    package: Union[str, PackageRecord],
+    *,
+    catalog: Optional[AudioCppCatalog] = None,
+    token: Optional[str] = None,
+    timeout: int = 30,
+    opener=None,
+) -> Optional[int]:
+    """Return the declared HTTP size of every package file when available."""
+
+    current_catalog = catalog or load_catalog()
+    record = current_catalog.package(package) if isinstance(package, str) else package
+    headers = {"User-Agent": "TTS-Audio-Suite/audio.cpp-model-installer"}
+    hf_token = resolve_hf_token(token)
+    if hf_token:
+        headers["Authorization"] = f"Bearer {hf_token}"
+    open_request = opener or urllib.request.urlopen
+    total = 0
+    try:
+        for remote_path in record.files:
+            request = urllib.request.Request(
+                huggingface_resolve_url(record.repo, record.revision, remote_path),
+                headers=headers,
+                method="HEAD",
+            )
+            response = open_request(request, timeout=timeout)
+            try:
+                length = response.headers.get("Content-Length") if response.headers else None
+                if not length:
+                    return None
+                total += int(length)
+            finally:
+                response.close()
+    except (OSError, TypeError, ValueError, urllib.error.URLError):
+        return None
+    return total or None
+
+
 def download_url_to_path(
     url: str,
     destination: Union[str, Path],

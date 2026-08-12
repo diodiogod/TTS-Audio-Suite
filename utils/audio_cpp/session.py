@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import threading
+import time
 import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
@@ -223,6 +224,7 @@ class AudioCppSession:
         self._process: Optional[AudioCppServerProcess] = None
         self._lock = threading.RLock()
         self._closed = False
+        self._model_ready_reported = False
         self._proxy = AudioCppRuntimeProxy(self) if self.owned else None
 
     @property
@@ -259,6 +261,13 @@ class AudioCppSession:
                 _clear_conflicting_suite_tts_models()
             process_config = dict(self.config)
             process_config["model_id"] = self.model_id
+            family = self.family or str(self.config.get("family", "unknown"))
+            backend = str(self.config.get("backend", "auto"))
+            print(
+                f"🚀 audio.cpp: Starting {backend} server for {family} "
+                f"('{self.model_id}')..."
+            )
+            started = time.monotonic()
             process = AudioCppServerProcess(process_config)
             process.start()
             self._process = process
@@ -267,6 +276,10 @@ class AudioCppSession:
             self._probe_opt_in_features()
             if self._proxy is not None:
                 self._proxy.register()
+            print(
+                f"✅ audio.cpp: Server ready at {self.endpoint} "
+                f"({time.monotonic() - started:.2f}s); model will load on first generation"
+            )
 
     def _ensure_client(self) -> AudioCppClient:
         if self._closed:
@@ -300,20 +313,32 @@ class AudioCppSession:
         timeout = float(_first(self.config, "request_timeout", "request_timeout_seconds", default=600.0))
         with self._lock:
             client = self._ensure_client()
+            first_request = not self._model_ready_reported
+            started = time.monotonic()
+            if first_request:
+                action = "Loading model" if self.owned else "Sending first request to model"
+                print(f"⏳ audio.cpp: {action} '{self.model_id}'...")
             try:
-                return client.run_task(self.model_id, normalized_request, timeout=timeout)
+                result = client.run_task(self.model_id, normalized_request, timeout=timeout)
             except AudioCppConnectionError:
                 if not self.owned:
                     raise
                 client = self._restart_after_transport_failure()
-                return client.run_task(self.model_id, normalized_request, timeout=timeout)
+                result = client.run_task(self.model_id, normalized_request, timeout=timeout)
             except AudioCppTimeoutError:
                 # A live server may still be executing after the client times out.
                 # Only restart when the exact child has actually exited.
                 if not self.owned or (self._process is not None and self._process.running):
                     raise
                 client = self._restart_after_transport_failure()
-                return client.run_task(self.model_id, normalized_request, timeout=timeout)
+                result = client.run_task(self.model_id, normalized_request, timeout=timeout)
+            if first_request:
+                self._model_ready_reported = True
+                print(
+                    f"✅ audio.cpp: Model '{self.model_id}' loaded; first generation completed "
+                    f"in {time.monotonic() - started:.2f}s"
+                )
+            return result
 
     def voices(self) -> list[str]:
         timeout = float(_first(self.config, "connect_timeout", "connect_timeout_seconds", default=5.0))
@@ -335,6 +360,7 @@ class AudioCppSession:
             process = self._process
             self._process = None
             self._client = None
+            self._model_ready_reported = False
             if unregister and self._proxy is not None:
                 self._proxy.unregister()
             if process is not None:

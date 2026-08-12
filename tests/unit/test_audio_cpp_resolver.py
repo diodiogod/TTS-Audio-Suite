@@ -149,16 +149,18 @@ def test_missing_assets_download_only_to_managed_roots(monkeypatch, tmp_path):
     real_downloader = resolver._downloader_module()
     real_runtime = resolver._runtime_installer_module()
 
-    def install_package(package, root, catalog):
+    def install_package(package, root, catalog, progress=None):
         calls["model_root"] = Path(root)
+        calls["model_progress"] = progress
         target = package_install_path(package, root)
         target.mkdir(parents=True)
         (target / package.local_files[0]).write_bytes(b"gguf")
-        return SimpleNamespace(path=target)
+        return SimpleNamespace(path=target, bytes_downloaded=4)
 
-    def install_runtime(root, backend):
+    def install_runtime(root, backend, progress=None):
         calls["runtime_root"] = Path(root)
         calls["backend"] = backend
+        calls["runtime_progress"] = progress
         executable = runtime_install_path(root, backend) / "audiocpp_server.exe"
         executable.parent.mkdir(parents=True)
         executable.write_bytes(b"exe")
@@ -175,6 +177,7 @@ def test_missing_assets_download_only_to_managed_roots(monkeypatch, tmp_path):
         "_runtime_installer_module",
         lambda: SimpleNamespace(
             runtime_install_path=real_runtime.runtime_install_path,
+            get_runtime_manifest=real_runtime.get_runtime_manifest,
             install_windows_runtime=install_runtime,
         ),
     )
@@ -193,6 +196,8 @@ def test_missing_assets_download_only_to_managed_roots(monkeypatch, tmp_path):
     assert calls["model_root"] == managed_models
     assert calls["runtime_root"] == managed_models.parent / "runtime"
     assert calls["backend"] == "cpu"
+    assert callable(calls["model_progress"])
+    assert callable(calls["runtime_progress"])
     assert not external_models.exists()
     assert result["model_path"].startswith(str(managed_models.resolve()))
     assert result["binary_path"].startswith(str((managed_models.parent / "runtime").resolve()))

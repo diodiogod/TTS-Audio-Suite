@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from utils.audio_cpp.catalog import load_catalog
-from utils.audio_cpp.downloader import AudioCppDownloadError, install_package
+from utils.audio_cpp.downloader import AudioCppDownloadError, install_package, package_download_size
 from utils.audio_cpp.discovery import package_install_path
 
 
@@ -21,6 +21,20 @@ class FakeResponse(io.BytesIO):
         self.headers = {
             "Content-Length": str(len(payload) if content_length is None else content_length)
         }
+
+
+@pytest.mark.unit
+def test_package_download_size_uses_hf_metadata_without_downloading():
+    package = load_catalog().package("pocket_tts_english_q8_0")
+    requests = []
+
+    def opener(request, timeout):
+        requests.append(request)
+        return FakeResponse(b"", content_length=123_456)
+
+    assert package_download_size(package, token="secret-token", opener=opener) == 123_456
+    assert requests[0].method == "HEAD"
+    assert requests[0].get_header("Authorization") == "Bearer secret-token"
 
 
 @pytest.mark.unit

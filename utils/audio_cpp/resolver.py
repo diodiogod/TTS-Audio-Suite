@@ -16,6 +16,53 @@ class AudioCppResolutionError(RuntimeError):
     """Raised when an audio.cpp engine configuration cannot be made runnable."""
 
 
+class _SuiteDownloadProgress:
+    """Match UnifiedDownloader's single-line console progress convention."""
+
+    def __init__(self) -> None:
+        self._completed: set[str] = set()
+
+    def __call__(self, label: str, downloaded: int, total: Optional[int]) -> None:
+        if not total or total <= 0:
+            return
+        filename = Path(label).name
+        percent = min(100.0, downloaded * 100.0 / total)
+        print(f"\r📥 Downloading {filename}: {percent:.1f}%", end="", flush=True)
+        if downloaded >= total and label not in self._completed:
+            self._completed.add(label)
+            print()
+
+
+def _print_download_block(
+    title: str,
+    *,
+    model: str,
+    description: str,
+    repository: str,
+    target: Path,
+    size_bytes: Optional[int] = None,
+) -> None:
+    """Use the same boxed pre-download summary as the Suite engine downloaders."""
+
+    print(f"\n{'=' * 60}")
+    print(f"📦 {title}")
+    print("=" * 60)
+    print(f"Model: {model}")
+    print(f"Description: {description}")
+    print(f"Repository: {repository}")
+    print(f"Download size: {_format_download_size(size_bytes)}")
+    print(f"Target: {target}")
+    print(f"{'=' * 60}\n")
+
+
+def _format_download_size(size_bytes: Optional[int]) -> str:
+    if size_bytes is None or size_bytes < 0:
+        return "Unknown"
+    if size_bytes >= 1024**3:
+        return f"{size_bytes / 1024**3:.2f} GB"
+    return f"{size_bytes / 1024**2:.1f} MB"
+
+
 _EXTERNAL_MODES = {
     "external",
     "external_server",
@@ -379,11 +426,29 @@ def resolve_audio_cpp_config(
         if resolved_model is not None:
             model_path = Path(resolved_model.path).resolve()
         elif _as_bool(_first_value(workflow, "auto_download_model", default=False)):
+            downloader_api = _downloader_module()
+            size_resolver = getattr(downloader_api, "package_download_size", None)
+            download_size = (
+                size_resolver(package, catalog=catalog) if callable(size_resolver) else None
+            )
+            _print_download_block(
+                "audio.cpp Model Download",
+                model=package.display_name,
+                description=(
+                    f"{family_record.display_name} {package.precision.upper()} "
+                    f"{package.format.upper()} package"
+                ),
+                repository=package.repo,
+                target=(Path(managed_model_root) / package.target_directory).resolve(),
+                size_bytes=download_size,
+            )
+            print(f"📥 Downloading {package_id} directly (no cache)")
             try:
-                download_result = _downloader_module().install_package(
+                download_result = downloader_api.install_package(
                     package,
                     managed_model_root,
                     catalog=catalog,
+                    progress=_SuiteDownloadProgress(),
                 )
             except Exception as exc:
                 raise AudioCppResolutionError(
@@ -391,6 +456,7 @@ def resolve_audio_cpp_config(
                     f"{managed_model_root}: {exc}"
                 ) from exc
             model_path = Path(download_result.path).resolve()
+            print(f"✅ Downloaded: {model_path}")
         else:
             searched = discovery_api.resolve_model_roots(
                 _explicit_roots(workflow), settings=settings
@@ -434,10 +500,24 @@ def resolve_audio_cpp_config(
                     f"audio.cpp {backend} server runtime is not installed at {expected}. "
                     "Provide binary_path or enable auto_download_runtime."
                 )
+            runtime_manifest = runtime_api.get_runtime_manifest(backend)
+            _print_download_block(
+                "audio.cpp Runtime Download",
+                model=f"audio.cpp {runtime_manifest.release_version} ({backend})",
+                description=(
+                    f"Official Windows {runtime_manifest.profile} runtime, "
+                    f"pinned to {runtime_manifest.release_tag}"
+                ),
+                repository="0xShug0/audio.cpp",
+                target=runtime_api.runtime_install_path(managed_runtime_root, backend),
+                size_bytes=sum(asset.size for asset in runtime_manifest.assets),
+            )
+            print(f"📥 Downloading audio.cpp {backend} runtime directly (no cache)")
             try:
                 runtime_result = runtime_api.install_windows_runtime(
                     managed_runtime_root,
                     backend,
+                    progress=_SuiteDownloadProgress(),
                 )
             except Exception as exc:
                 raise AudioCppResolutionError(
@@ -445,6 +525,7 @@ def resolve_audio_cpp_config(
                     f"{managed_runtime_root}: {exc}"
                 ) from exc
             binary_path = Path(runtime_result.executable).resolve()
+            print(f"✅ Downloaded: {binary_path}")
 
     result = dict(merged)
     result.update(
