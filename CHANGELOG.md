@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.0] - 2026-08-11
+
+### Added
+
+- Add IndexTTS 2.5 as a new version of the existing IndexTTS engine
+- Add Chinese, English, Japanese, Spanish, and Arabic generation
+- Add explicit per-segment language switching for IndexTTS 2.5
+- Add official duration-factor and text-normalization controls
+- Keep IndexTTS 2.0 available for workflows that prefer its voice resemblance
+
+### Fixed
+
+- Fix stale audio or models when switching between IndexTTS 2.0 and 2.5
 ## [5.7.0] - 2026-08-10
 
 ### Added

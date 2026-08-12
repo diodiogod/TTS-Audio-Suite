@@ -36,7 +36,7 @@ The project code is MIT. Model weights carry their own licenses:
   VibeVoice            MIT (research-only per model card)                        No
   Higgs Audio 2        Boson Higgs Audio 2 Community License                     Conditional
   Higgs Audio v3       Boson Higgs Audio v3 Research and Non-Commercial License  No
-  IndexTTS-2           bilibili Model Use License                                Conditional
+  IndexTTS 2 / 2.5     bilibili Model Use License                                Conditional
   CosyVoice3           Apache-2.0                                                Yes
   Qwen3-TTS            Apache-2.0                                                Yes
   Granite ASR          Apache-2.0                                                Yes
