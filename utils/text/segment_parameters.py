@@ -32,6 +32,8 @@ PARAMETER_ALIASES = {
     'stg_scale': 'stg_scale',
     'duration_multiplier': 'duration_multiplier',
     'dur_mult': 'duration_multiplier',
+    'duration_factor': 'duration_factor',
+    'dur_factor': 'duration_factor',
     'gen_duration': 'gen_duration',
     'generation_duration': 'gen_duration',
     'ref_duration': 'ref_duration',
@@ -131,6 +133,9 @@ PARAMETER_ENGINES = {
     },
     'duration_multiplier': {
         'dramabox'
+    },
+    'duration_factor': {
+        'index_tts'
     },
     'gen_duration': {
         'dramabox'
@@ -285,6 +290,7 @@ PARAMETER_VALIDATION = {
     'cfg': (float, 0.0, 20.0, "Classifier-free guidance strength"),
     'stg_scale': (float, 0.0, 5.0, "DramaBox skip-token guidance strength"),
     'duration_multiplier': (float, 0.5, 3.0, "DramaBox estimated-duration multiplier"),
+    'duration_factor': (float, 0.5, 2.0, "IndexTTS-2.5 internal feature-duration scaling"),
     'gen_duration': (float, 0.0, 60.0, "DramaBox explicit output duration"),
     'ref_duration': (float, 3.0, 30.0, "DramaBox reference-audio duration"),
     'rescale_scale': (str, None, None, "DramaBox CFG rescale: auto or 0 to 1"),
@@ -353,6 +359,7 @@ PARAMETER_NODE_KEYS = {
     },  # Engine-specific mapping
     'stg_scale': 'stg_scale',
     'duration_multiplier': 'duration_multiplier',
+    'duration_factor': 'duration_factor',
     'gen_duration': 'gen_duration',
     'ref_duration': 'ref_duration',
     'rescale_scale': 'rescale_scale',

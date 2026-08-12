@@ -135,13 +135,18 @@ See the [Sound Effects Guide](SOUND_EFFECTS_GUIDE.md) for pauses, crossfades, lo
 | `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
 | `inference_steps` | `steps` | int | 1-100 | Number of inference steps |
 
-#### IndexTTS-2
+#### IndexTTS 2 / 2.5
 | Parameter | Alias | Type | Range | Description |
 |-----------|-------|------|-------|-------------|
 | `cfg` | — | float | 0.0-20.0 | CFG strength |
 | `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
 | `top_k` | `topk` | int | 1-100 | Top-k sampling |
-| `emotion_alpha` | — | float | 0.0-2.0 | Shared audio/vector/text emotion intensity |
+| `emotion_alpha` | — | float | 0.0-1.0 | Shared audio/vector/text emotion intensity |
+| `duration_factor` | `dur_factor` | float | 0.5-2.0 | Official IndexTTS-2.5 internal feature-duration scaling; 0.5 shorter/faster, 2.0 longer/slower |
+
+`duration_factor` is a 2.5-only upstream parameter. It uses nearest-neighbor scaling inside the semantic length regulator after speech codes are generated. It is not natural prosody planning, exact-seconds targeting, waveform playback-speed control, or an inference-performance control. IndexTTS continues to use the suite's ordinary final timing modes in TTS SRT.
+
+Switching the engine node between IndexTTS-2 and IndexTTS-2.5 invalidates the cached Text/SRT processor and model identity. `language`, `duration_factor`, and `text_normalization` also participate in the generated-audio cache identity, so changing a supported 2.5 generation parameter cannot return audio produced with the previous setting.
 
 IndexTTS-2 also supports inline emotion controls. Named unsigned values replace
 that dimension; explicitly signed values adjust the connected vector:

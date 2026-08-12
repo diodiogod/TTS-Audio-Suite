@@ -866,6 +866,8 @@ class TTSAudioInstaller:
             "safetensors>=0.6.2",       # Required by MOSS-TTS HF checkpoints
             "orjson>=3.11.0",           # Required by MOSS-TTS remote code
             "tiktoken>=0.12.0",         # Required by MOSS-TTS tokenizer
+            "fugashi>=1.4.0",            # IndexTTS-2.5 Japanese G2P
+            "unidic-lite>=1.0.8",        # IndexTTS-2.5 Japanese dictionary
             # NOTE: opencv-python and pillow installed via install_problematic_packages() with --no-deps
             # to prevent forced numpy/pillow downgrades
 

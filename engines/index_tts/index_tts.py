@@ -26,6 +26,13 @@ class IndexTTSEngine:
     """
     
     EMOTION_LABELS = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"]
+    LANGUAGE_CODES = {
+        "zh": "ZH", "zh-cn": "ZH", "chinese": "ZH", "mandarin": "ZH",
+        "en": "EN", "en-us": "EN", "en-gb": "EN", "english": "EN",
+        "ja": "JA", "jp": "JA", "japanese": "JA",
+        "es": "ES", "spanish": "ES",
+        "ar": "AR", "arabic": "AR",
+    }
     
     def __init__(self, model_dir: str = "IndexTTS-2", device: str = "auto",
                  use_fp16: bool = True, use_cuda_kernel: Optional[bool] = None,
@@ -46,6 +53,8 @@ class IndexTTSEngine:
         """
         # Resolve model directory using extra_model_paths
         self.model_dir = self._find_model_directory(model_dir)
+        self.model_name = os.path.basename(self.model_dir.rstrip("/\\")) or str(model_dir)
+        self.model_version = "2.5" if os.path.isfile(os.path.join(self.model_dir, "codec.pth")) or "2.5" in self.model_name else "2"
 
         self.device = self._resolve_device(device)
         self.use_fp16 = use_fp16 and self.device != "cpu"
@@ -137,7 +146,7 @@ class IndexTTSEngine:
         self._model_config = ModelLoadConfig(
             engine_name="index_tts",
             model_type="tts",
-            model_name="IndexTTS-2",
+            model_name=self.model_name,
             device=self.device,
             model_path=self.model_dir,
             additional_params={
@@ -146,7 +155,8 @@ class IndexTTSEngine:
                 "use_deepspeed": self.use_deepspeed,
                 "use_torch_compile": self.use_torch_compile,
                 "use_accel": self.use_accel,
-                "low_vram": self.low_vram
+                "low_vram": self.low_vram,
+                "model_version": self.model_version,
             }
         )
 
@@ -178,6 +188,9 @@ class IndexTTSEngine:
         num_beams: int = 3,
         repetition_penalty: float = 10.0,
         max_mel_tokens: int = 1500,
+        language: str = "EN",
+        duration_factor: float = 1.0,
+        text_normalization: bool = True,
         **kwargs
     ) -> torch.Tensor:
         """
@@ -202,6 +215,9 @@ class IndexTTSEngine:
             num_beams: Number of beams for beam search
             repetition_penalty: Repetition penalty
             max_mel_tokens: Maximum mel tokens to generate
+            language: IndexTTS-2.5 language code/name
+            duration_factor: Official 2.5 internal feature-duration multiplier (0.5-2.0)
+            text_normalization: Enable upstream multilingual text normalization
             
         Returns:
             Generated audio as torch.Tensor with shape [1, samples]
@@ -335,8 +351,7 @@ class IndexTTSEngine:
             if unsupported_keys:
                 print(f"⚠️ Filtering unsupported kwargs: {unsupported_keys}")
 
-            # Call IndexTTS-2 inference
-            result = self._tts_engine.infer(
+            infer_kwargs = dict(
                 spk_audio_prompt=speaker_audio,
                 text=text,
                 output_path=None,
@@ -359,6 +374,44 @@ class IndexTTSEngine:
                 max_mel_tokens=max_mel_tokens,
                 **supported_kwargs
             )
+            if self.model_version == "2.5":
+                language_key = str(language or "EN").strip().lower()
+                language_code = self.LANGUAGE_CODES.get(language_key, str(language or "EN").upper())
+                if language_code not in {"ZH", "EN", "JA", "ES", "AR"}:
+                    raise ValueError(
+                        f"Unsupported IndexTTS-2.5 language '{language}'. "
+                        "Choose Chinese, English, Japanese, Spanish, or Arabic."
+                    )
+                duration_factor = float(duration_factor)
+                if not 0.5 <= duration_factor <= 2.0:
+                    raise ValueError("IndexTTS-2.5 duration_factor must be between 0.5 and 2.0")
+                infer_kwargs.update(
+                    lang=language_code,
+                    duration_factor=duration_factor,
+                    text_normalization=bool(text_normalization),
+                )
+
+            # Call the selected IndexTTS backend.
+            result = self._tts_engine.infer(**infer_kwargs)
+
+            if supported_kwargs.get("stream_return", False):
+                # TTS Audio Suite patch: Normalize native streamed int16 chunks
+                # instead of trying to unpack the generator as a final WAV tuple.
+                def normalized_stream():
+                    for chunk in result:
+                        if not isinstance(chunk, torch.Tensor):
+                            continue
+                        chunk = chunk.detach().cpu()
+                        if chunk.dtype == torch.int16:
+                            chunk = chunk.float() / 32767.0
+                        else:
+                            chunk = chunk.float()
+                        if chunk.dim() == 1:
+                            chunk = chunk.unsqueeze(0)
+                        elif chunk.dim() > 2:
+                            chunk = chunk.reshape(-1, chunk.shape[-1]).mean(dim=0, keepdim=True)
+                        yield chunk
+                return normalized_stream()
 
             # Get audio tensor directly from infer result
             # infer() with output_path=None returns a tuple (sampling_rate, wav_data)

@@ -76,7 +76,20 @@ class IndexTTSProcessor:
         """
         self.config = engine_config
         self.adapter = IndexTTSAdapter()
-        self.character_parser = CharacterParser()
+        language_defaults = {
+            "English": "en",
+            "Chinese": "zh",
+            "Japanese": "ja",
+            "Spanish": "es",
+            "Arabic": "ar",
+        }
+        configured_language = str(engine_config.get("language", "English"))
+        self.character_parser = CharacterParser(
+            default_language=language_defaults.get(
+                configured_language,
+                configured_language.lower(),
+            )
+        )
         self.pause_processor = PauseTagProcessor()
         self.sample_rate = 22050  # IndexTTS-2 native sample rate
 
@@ -182,6 +195,7 @@ class IndexTTSProcessor:
             # Parse character segments with emotion support and parameters
             character_segment_objects = self.character_parser.parse_text_segments(text)
             character_segments = [(seg.character, seg.text, seg.language, seg.emotion) for seg in character_segment_objects]
+
             any_inline_edit_tags = False
             for seg in character_segment_objects:
                 _, seg_edit_tags = get_edit_tags_for_segment(seg.text)
@@ -254,6 +268,7 @@ class IndexTTSProcessor:
                 segment_params: Optional[Dict[str, Any]] = None,
                 character_name: Optional[str] = None,
                 emotion_reference: Optional[str] = None,
+                segment_language: Optional[str] = None,
             ) -> torch.Tensor:
                 # Import references for nested function scope
                 import torchaudio as ta
@@ -386,6 +401,9 @@ class IndexTTSProcessor:
                             num_beams=current_config.get('num_beams', 3),
                             repetition_penalty=current_config.get('repetition_penalty', 10.0),
                             max_mel_tokens=current_config.get('max_mel_tokens', 1500),
+                            language=language or current_config.get('language', 'English'),
+                            duration_factor=current_config.get('duration_factor', 1.0),
+                            text_normalization=current_config.get('text_normalization', True),
                             stream_return=current_config.get('stream_return', False),
                             more_segment_before=current_config.get('more_segment_before', 0)
                         )
@@ -493,6 +511,9 @@ class IndexTTSProcessor:
                         num_beams=current_config.get('num_beams', 3),
                         repetition_penalty=current_config.get('repetition_penalty', 10.0),
                         max_mel_tokens=current_config.get('max_mel_tokens', 1500),
+                        language=segment_language or current_config.get('language', 'English'),
+                        duration_factor=current_config.get('duration_factor', 1.0),
+                        text_normalization=current_config.get('text_normalization', True),
                         stream_return=current_config.get('stream_return', False),
                         more_segment_before=current_config.get('more_segment_before', 0)
                     )
@@ -547,6 +568,7 @@ class IndexTTSProcessor:
                             seg_obj.parameters,
                             seg_obj.character,
                             seg_obj.emotion,
+                            seg_obj.language,
                         )
                         if isinstance(segment_audio, torch.Tensor) and segment_audio.numel() > 0:
                             if segment_audio.dim() == 1:
@@ -581,7 +603,8 @@ class IndexTTSProcessor:
                     segment_params = character_segment_objects[0].parameters if character_segment_objects and character_segment_objects[0].parameters else None
                     character_name = character_segment_objects[0].character if character_segment_objects else None
                     emotion_reference = character_segment_objects[0].emotion if character_segment_objects else None
-                    return tts_generate_func(text_content, segment_params, character_name, emotion_reference)
+                    segment_language = character_segment_objects[0].language if character_segment_objects else None
+                    return tts_generate_func(text_content, segment_params, character_name, emotion_reference, segment_language)
 
                 # Generate audio with pauses
                 if segments:
@@ -595,7 +618,8 @@ class IndexTTSProcessor:
                     segment_params = character_segment_objects[0].parameters if character_segment_objects and character_segment_objects[0].parameters else None
                     character_name = character_segment_objects[0].character if character_segment_objects else None
                     emotion_reference = character_segment_objects[0].emotion if character_segment_objects else None
-                    result = tts_generate_func(text, segment_params, character_name, emotion_reference)
+                    segment_language = character_segment_objects[0].language if character_segment_objects else None
+                    result = tts_generate_func(text, segment_params, character_name, emotion_reference, segment_language)
             
             # Ensure correct tensor format
             if isinstance(result, torch.Tensor):

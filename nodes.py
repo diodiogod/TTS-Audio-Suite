@@ -224,7 +224,7 @@ try:
     IndexTTSEngineNode = index_tts_engine_module.IndexTTSEngineNode
     INDEX_TTS_ENGINE_AVAILABLE = True
 except Exception as e:
-    print(f"❌ IndexTTS-2 Engine failed: {e}")
+    print(f"❌ IndexTTS Engine failed: {e}")
     INDEX_TTS_ENGINE_AVAILABLE = False
 
 try:
@@ -716,7 +716,7 @@ if CHATTERBOX_OFFICIAL_23LANG_ENGINE_AVAILABLE:
 
 if INDEX_TTS_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["IndexTTSEngineNode"] = IndexTTSEngineNode
-    NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEngineNode"] = "⚙️ IndexTTS-2 Engine"
+    NODE_DISPLAY_NAME_MAPPINGS["IndexTTSEngineNode"] = "⚙️ IndexTTS 2 / 2.5 Engine"
 
 if COSYVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["CosyVoiceEngineNode"] = CosyVoiceEngineNode

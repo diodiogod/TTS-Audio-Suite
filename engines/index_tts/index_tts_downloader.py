@@ -81,6 +81,34 @@ class IndexTTSDownloader:
                 "qwen0.6bemo4-merge/vocab.json"
             ],
             "description": "IndexTTS-2 main model with emotion control"
+        },
+        "IndexTTS-2.5": {
+            "repo_id": "IndexTeam/IndexTTS-2.5",
+            # TTS Audio Suite patch: Pin the audited release snapshot because
+            # the upstream repository is changing rapidly immediately post-release.
+            "revision": "ba2480d9f7f629eb18f6acaebb357679d9ba88a4",
+            "files": [
+                "config.yaml",
+                "codec.pth",
+                "feat1.pt",
+                "feat2.pt",
+                "gpt.pth",
+                "s2mel.pth",
+                "multilingual_zh_ja_yue_char_del.tiktoken",
+                "wav2vec2bert_stats.pt",
+                "qwen0.6bemo4-merge/Modelfile",
+                "qwen0.6bemo4-merge/added_tokens.json",
+                "qwen0.6bemo4-merge/chat_template.jinja",
+                "qwen0.6bemo4-merge/config.json",
+                "qwen0.6bemo4-merge/generation_config.json",
+                "qwen0.6bemo4-merge/merges.txt",
+                "qwen0.6bemo4-merge/model.safetensors",
+                "qwen0.6bemo4-merge/special_tokens_map.json",
+                "qwen0.6bemo4-merge/tokenizer.json",
+                "qwen0.6bemo4-merge/tokenizer_config.json",
+                "qwen0.6bemo4-merge/vocab.json",
+            ],
+            "description": "IndexTTS-2.5 multilingual model with official duration-factor scaling and emotion control",
         }
     }
     
@@ -157,6 +185,7 @@ class IndexTTSDownloader:
                 model_name=model_name,
                 files=file_list,
                 engine_type="IndexTTS",
+                revision=model_info.get("revision"),
                 **kwargs
             )
             

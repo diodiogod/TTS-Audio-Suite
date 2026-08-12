@@ -250,8 +250,16 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attention'] = config.get('attention', 'auto')
 
-            # For IndexTTS-2, include low_vram in cache key since it requires model reload
+            # IndexTTS 2.0 and 2.5 are distinct checkpoints/backends. Every
+            # load-time option must participate in the processor cache key or
+            # changing the engine node can silently keep the old adapter alive.
             if engine_type == "index_tts":
+                stable_params['model_path'] = config.get('model_path', 'IndexTTS-2')
+                stable_params['use_fp16'] = config.get('use_fp16', True)
+                stable_params['use_cuda_kernel'] = config.get('use_cuda_kernel')
+                stable_params['use_deepspeed'] = config.get('use_deepspeed', False)
+                stable_params['use_torch_compile'] = config.get('use_torch_compile', False)
+                stable_params['use_accel'] = config.get('use_accel', False)
                 stable_params['low_vram'] = config.get('low_vram', False)
 
             # For CosyVoice, include actual model identity and load options in cache key.

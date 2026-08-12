@@ -76,6 +76,8 @@ json5>=0.12.0         # JSON5 parsing for IndexTTS-2 config files
 ninja>=1.11.0         # Build tool for CUDA kernel compilation (BigVGAN optimization)
 sentencepiece>=0.2.1  # Text tokenization
 textstat>=0.7.10      # Text statistics and readability
+fugashi>=1.4.0        # IndexTTS-2.5 Japanese segmentation/G2P
+unidic-lite>=1.0.8    # Dictionary data for IndexTTS-2.5 fugashi backend
 punctuators           # ONNX punctuation/truecase post-processing for ASR text
 
 # Step Audio EditX engine dependencies (safe)

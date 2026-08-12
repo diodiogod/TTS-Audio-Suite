@@ -11,6 +11,33 @@ This document tracks updates applied to our bundled IndexTTS-2 code from the ups
 
 ---
 
+## 2026-08-11: IndexTTS-2.5 Version Integration
+
+**Official sources:** `index-tts/index-tts` commit `b5ea881bec284b72f0b1cc04e0a724ff0c6b93e9`; model snapshot `ba2480d9f7f629eb18f6acaebb357679d9ba88a4`
+
+### Changes applied
+
+- Added IndexTTS-2.5 as a selectable version of the existing `index_tts` engine.
+- Bundled the official 25 Hz semantic codec, multilingual tokenizer, Japanese G2P, and NeMo normalization bridge.
+- Preserved suite dual-source audio plus vector/text emotion blending.
+- Added Chinese, English, Japanese, Spanish, and Arabic conditioning.
+- Added the official 2.5-only `duration_factor`, documented honestly as nearest-neighbor internal semantic-feature scaling rather than natural prosody or exact-duration planning.
+- Deliberately excluded IndexTTS-2.5 from TTS SRT's native-duration option; the suite-owned exact-seconds extrapolation was removed after source and listening review.
+- Kept legacy IndexTTS-2 checkpoints, FP16 loading, MaskGCT, workflows, and node identity intact.
+- Pinned the audited Hugging Face model revision and retained the main Transformers 5 environment.
+- Added model-aware Text/SRT processor and audio-cache identities so switching 2.0/2.5 or a 2.5 generation parameter cannot reuse stale output.
+- Documented the suite's manual finding that 2.5 is not a universal cloning-quality upgrade: 2.0 may retain speaker resemblance better under strong different-speaker emotion transfer.
+
+### Validation status
+
+- [x] Python compilation
+- [x] Bundled backend import under `TTS_SUITE_TEST_VENV_PYTHON`
+- [x] Full checkpoint download and live ComfyUI generation
+- [x] Manual audio-quality review of the official duration factor and 2.0/2.5 speaker resemblance
+- [x] Live 2.5 → 2.0 model switching after processor-cache invalidation fix
+
+---
+
 ## 2025-09-18: Major Update - Cache & Emotion Improvements
 
 **Reference commit range:** `8336824..64cb31a` (September 11 → September 18, 2025)

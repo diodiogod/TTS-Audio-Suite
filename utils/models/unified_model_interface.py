@@ -893,9 +893,9 @@ def register_vibevoice_factory():
 
 
 def register_index_tts_factory():
-    """Register IndexTTS-2 model factory"""
+    """Register the shared IndexTTS-2 / IndexTTS-2.5 model factory."""
     def index_tts_factory(config: ModelLoadConfig):
-        """Factory for IndexTTS-2 models with ComfyUI integration"""
+        """Factory for versioned IndexTTS models with ComfyUI integration."""
         import os
         import sys
 
@@ -908,9 +908,14 @@ def register_index_tts_factory():
         use_torch_compile = config.additional_params.get("use_torch_compile", False) if config.additional_params else False
         use_accel = config.additional_params.get("use_accel", False) if config.additional_params else False
         low_vram = config.additional_params.get("low_vram", False) if config.additional_params else False
+        requested_version = config.additional_params.get("model_version") if config.additional_params else None
+        is_v25 = requested_version == "2.5" or (
+            requested_version is None and os.path.isfile(os.path.join(model_path or "", "codec.pth"))
+        )
+        version_label = "IndexTTS-2.5" if is_v25 else "IndexTTS-2"
         
         if not model_path or not os.path.exists(model_path):
-            raise RuntimeError(f"IndexTTS-2 model not found at {model_path}. Auto-download should have been triggered earlier.")
+            raise RuntimeError(f"{version_label} model not found at {model_path}. Auto-download should have been triggered earlier.")
         
         try:
             # Add bundled IndexTTS path to sys.path so internal imports work
@@ -957,35 +962,50 @@ def register_index_tts_factory():
                 # Some other issue with indextts, proceed anyway
                 pass
 
-            # Import from our bundled IndexTTS engine
-            from engines.index_tts.indextts.infer_v2 import IndexTTS2
+            # TTS Audio Suite patch: Select the backend by model version while
+            # preserving the stable index_tts engine/cache identity.
+            if is_v25:
+                from engines.index_tts.indextts.infer_v2_5 import IndexTTS2
+            else:
+                from engines.index_tts.indextts.infer_v2 import IndexTTS2
             
             # Initialize IndexTTS-2 engine
             config_path = os.path.join(model_path, "config.yaml")
 
             # Verify config file exists after download
             if not os.path.exists(config_path):
-                raise RuntimeError(f"IndexTTS-2 config.yaml not found at {config_path} even after download. Please check model integrity.")
+                raise RuntimeError(f"{version_label} config.yaml not found at {config_path} even after download. Please check model integrity.")
             
-            engine = IndexTTS2(
+            common_kwargs = dict(
                 cfg_path=config_path,
                 model_dir=model_path,
                 device=device,
-                use_fp16=use_fp16 and device != "cpu",
                 use_cuda_kernel=use_cuda_kernel,
                 use_deepspeed=use_deepspeed,
                 use_torch_compile=use_torch_compile,
                 use_accel=use_accel,
-                low_vram=low_vram
+                low_vram=low_vram,
             )
+            if is_v25:
+                qwen_dir = os.path.join(model_path, "qwen0.6bemo4-merge")
+                engine = IndexTTS2(
+                    use_bf16=use_fp16 and device != "cpu",
+                    use_qwen_emo=os.path.isdir(qwen_dir),
+                    **common_kwargs,
+                )
+            else:
+                engine = IndexTTS2(
+                    use_fp16=use_fp16 and device != "cpu",
+                    **common_kwargs,
+                )
             
-            print(f"✅ IndexTTS-2 model loaded via unified interface on {device}")
+            print(f"✅ {version_label} model loaded via unified interface on {device}")
             return engine
             
         except ImportError as e:
-            raise ImportError(f"IndexTTS-2 dependencies not available. Error: {e}")
+            raise ImportError(f"{version_label} dependencies not available. Error: {e}")
         except Exception as e:
-            raise RuntimeError(f"Failed to load IndexTTS-2 model: {e}")
+            raise RuntimeError(f"Failed to load {version_label} model: {e}")
     
     unified_model_interface.register_model_factory("index_tts", "tts", index_tts_factory)
 

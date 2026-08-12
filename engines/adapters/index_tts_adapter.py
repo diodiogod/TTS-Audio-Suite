@@ -115,6 +115,9 @@ class IndexTTSAdapter:
                 num_beams: int = 3,
                 repetition_penalty: float = 10.0,
                 max_mel_tokens: int = 1500,
+                language: str = "English",
+                duration_factor: float = 1.0,
+                text_normalization: bool = True,
                 # Streaming parameters
                 stream_return: bool = False,
                 more_segment_before: int = 0,
@@ -140,6 +143,9 @@ class IndexTTSAdapter:
             num_beams: Number of beams for beam search
             repetition_penalty: Repetition penalty
             max_mel_tokens: Maximum mel tokens to generate
+            language: IndexTTS-2.5 language code/name
+            duration_factor: Official 2.5 internal feature-duration multiplier
+            text_normalization: Enable multilingual text normalization
             **kwargs: Additional parameters
             
         Returns:
@@ -157,7 +163,29 @@ class IndexTTSAdapter:
             
             if len(processed_segments) > 1:
                 # Multi-segment character switching - process each segment separately
-                return self._generate_multi_character_segments(processed_segments, speaker_audio, emotion_audio, **kwargs)
+                return self._generate_multi_character_segments(
+                    processed_segments, speaker_audio, emotion_audio,
+                    emotion_alpha=emotion_alpha,
+                    emotion_vector=emotion_vector,
+                    use_emotion_text=use_emotion_text,
+                    emotion_text=emotion_text,
+                    use_random=use_random,
+                    interval_silence=interval_silence,
+                    max_text_tokens_per_segment=max_text_tokens_per_segment,
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                    length_penalty=length_penalty,
+                    num_beams=num_beams,
+                    repetition_penalty=repetition_penalty,
+                    max_mel_tokens=max_mel_tokens,
+                    language=language,
+                    duration_factor=duration_factor,
+                    text_normalization=text_normalization,
+                    stream_return=stream_return,
+                    more_segment_before=more_segment_before,
+                    **kwargs,
+                )
             elif processed_segments:
                 # Single character segment
                 first_segment = processed_segments[0]
@@ -234,6 +262,9 @@ class IndexTTSAdapter:
             max_mel_tokens=max_mel_tokens,
             max_text_tokens_per_segment=max_text_tokens_per_segment,
             interval_silence=interval_silence,
+            language=language,
+            duration_factor=duration_factor,
+            text_normalization=text_normalization,
             stream_return=stream_return,
             more_segment_before=more_segment_before,
             **kwargs  # Include seed and other kwargs in cache key
@@ -300,6 +331,9 @@ class IndexTTSAdapter:
                 num_beams=num_beams,
                 repetition_penalty=repetition_penalty,
                 max_mel_tokens=max_mel_tokens,
+                language=language,
+                duration_factor=duration_factor,
+                text_normalization=text_normalization,
                 **engine_kwargs
             )
         except torch.OutOfMemoryError as e:
@@ -408,6 +442,9 @@ class IndexTTSAdapter:
             character_name = segment.get('character', 'narrator')
             segment_text = segment.get('text', '').strip()
             emotion_ref = segment.get('emotion')
+            segment_kwargs = dict(kwargs)
+            if segment.get('language'):
+                segment_kwargs['language'] = segment['language']
             
             if not segment_text:
                 continue
@@ -435,7 +472,7 @@ class IndexTTSAdapter:
                 text=segment_text,
                 speaker_audio=speaker_audio,
                 emotion_audio=emotion_audio,
-                **kwargs
+                **segment_kwargs
             )
 
             # Check cache first
@@ -450,7 +487,7 @@ class IndexTTSAdapter:
                         text=segment_text,
                         speaker_audio=speaker_audio,
                         emotion_audio=emotion_audio,
-                        **kwargs
+                        **segment_kwargs
                     )
                 except torch.OutOfMemoryError as e:
                     # Analyze audio after OOM in multi-character segments
@@ -476,7 +513,16 @@ class IndexTTSAdapter:
     
     def _generate_cache_key(self, **params) -> str:
         """Generate cache key for IndexTTS-2."""
-        return self.audio_cache.generate_cache_key('index_tts', **params)
+        model_identity = {}
+        if self.engine is not None:
+            model_identity = {
+                "model_name": getattr(self.engine, "model_name", None),
+                "model_version": getattr(self.engine, "model_version", None),
+                "model_path": getattr(self.engine, "model_dir", None),
+            }
+        return self.audio_cache.generate_cache_key(
+            'index_tts', **model_identity, **params
+        )
 
     def _analyze_audio_after_oom(self, speaker_audio: str, emotion_audio: str, max_mel_tokens: int) -> str:
         """
@@ -596,7 +642,3 @@ class IndexTTSAdapter:
         if self.engine:
             self.engine.unload()
             self.engine = None
-    
-    def __del__(self):
-        """Cleanup on deletion."""
-        self.unload()

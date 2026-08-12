@@ -316,6 +316,11 @@ class IndexTTSCacheKeyGenerator(CacheKeyGenerator):
             'max_text_tokens_per_segment': params.get('max_text_tokens_per_segment', 120),
             'interval_silence': params.get('interval_silence', 200),
             'model_name': params.get('model_name', 'IndexTTS-2'),
+            'model_version': params.get('model_version', '2'),
+            'model_path': params.get('model_path', ''),
+            'language': params.get('language', 'English'),
+            'duration_factor': round(float(params.get('duration_factor', 1.0)), 4),
+            'text_normalization': params.get('text_normalization', True),
             'device': params.get('device', 'auto'),
             'character': params.get('character', 'narrator'),
             'use_torch_compile': params.get('use_torch_compile', False),  # Optimization may affect output precision

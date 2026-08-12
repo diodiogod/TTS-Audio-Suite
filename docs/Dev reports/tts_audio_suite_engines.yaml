@@ -687,9 +687,9 @@ engines:
       reference_free_tts: { supported: true, notes: "(zero-shot)" }
 
   - id: indextts-2
-    name: IndexTTS-2
-    models: "IndexTTS-2"
-    size: "~4.7GB"
+    name: IndexTTS 2 / 2.5
+    models: "IndexTTS-2, IndexTTS-2.5"
+    size: "~4.7GB / ~5.49GB"
     license: "bilibili Model Use License"
     commercial: "conditional"
 
@@ -704,6 +704,8 @@ engines:
       - "Emotion Control: 8 vectors"
       - "Text as reference"
       - "Audio as reference"
+      - "IndexTTS-2.5 official internal feature-duration scaling (not prosody planning)"
+      - "IndexTTS-2.5 pronunciation annotations"
 
     model_sources:
       - component: "IndexTTS-2"
@@ -712,6 +714,12 @@ engines:
         size: "Multiple files"
         auto_download: true
         notes: "Main TTS engine"
+      - component: "IndexTTS-2.5"
+        source_name: "IndexTeam/IndexTTS-2.5"
+        source_url: "https://huggingface.co/IndexTeam/IndexTTS-2.5"
+        size: "~5.49GB"
+        auto_download: true
+        notes: "Multilingual backend with bundled codec and official feature-duration scaling"
       - component: "w2v-bert-2.0"
         source_name: "facebook/w2v-bert-2.0"
         source_url: "https://huggingface.co/facebook/w2v-bert-2.0"
@@ -728,16 +736,16 @@ engines:
       en: { supported: true, flag: "🇺🇸", notes: "" }
       zh: { supported: true, flag: "🇨🇳", notes: "" }
       de: { supported: false, flag: "🇩🇪", notes: "" }
-      es: { supported: false, flag: "🇪🇸", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "IndexTTS-2.5" }
       fr: { supported: false, flag: "🇫🇷", notes: "" }
       it: { supported: false, flag: "🇮🇹", notes: "" }
-      ja: { supported: true, flag: "🇯🇵", notes: "?" }
+      ja: { supported: true, flag: "🇯🇵", notes: "IndexTTS-2.5" }
       ko: { supported: false, flag: "🇰🇷", notes: "" }
       ru: { supported: false, flag: "🇷🇺", notes: "" }
       pt: { supported: false, flag: "🇧🇷", notes: "" }
       pl: { supported: false, flag: "🇵🇱", notes: "" }
       hi: { supported: false, flag: "🇮🇳", notes: "" }
-      ar: { supported: false, flag: "��", notes: "" }
+      ar: { supported: true, flag: "🇸🇦", notes: "IndexTTS-2.5" }
       tr: { supported: false, flag: "🇹🇷", notes: "" }
       th: { supported: false, flag: "🇹🇭", notes: "" }
       no: { supported: false, flag: "🇳🇴", notes: "" }

@@ -178,17 +178,21 @@ Notes:
 - Training datasets, logs, progress snapshots, and resumable checkpoints are stored under `ComfyUI/output/tts_audio_suite_training/rvc/`, not inside the custom node repo.
 - UVR models are downloaded under `ComfyUI/models/TTS/UVR/` (or legacy `ComfyUI/models/UVR/`).
 
-## IndexTTS-2
+## IndexTTS 2 / 2.5
 
 ```text
 ComfyUI/models/TTS/IndexTTS/
+├── IndexTTS-2.5/
 ├── IndexTTS-2/
-└── w2v-bert-2.0/
+├── w2v-bert-2.0/
+├── campplus/
+└── bigvgan_v2_22khz_80band_256x/
 ```
 
 Notes:
 
-- Emotion components and semantic feature models auto-download.
+- Both versions reuse the suite's shared emotion, W2V-BERT, CampPlus, and BigVGAN support.
+- IndexTTS-2.5 bundles `codec.pth`; legacy MaskGCT is needed only by IndexTTS-2.
 
 ## Step Audio EditX
 
