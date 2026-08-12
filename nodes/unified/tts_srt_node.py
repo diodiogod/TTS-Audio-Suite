@@ -254,6 +254,16 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attention'] = config.get('attention', 'auto')
 
+            if engine_type == "audio_cpp":
+                for key in (
+                    'connection_mode', 'server_url', 'server_model_id', 'model_id',
+                    'binary_path', 'model_path', 'model_roots', 'family',
+                    'package_id', 'task', 'backend', 'device', 'device_index',
+                    'threads', 'model_spec_override', 'load_options',
+                    'session_options',
+                ):
+                    stable_params[key] = config.get(key)
+
             # IndexTTS 2.0 and 2.5 are distinct checkpoints/backends. Every
             # load-time option must participate in the processor cache key or
             # changing the engine node can silently keep the old adapter alive.
@@ -995,6 +1005,38 @@ Hello! This is unified SRT TTS with character switching.
                 }
                 return engine_instance
 
+            elif engine_type == "audio_cpp":
+                processor_path = os.path.join(nodes_dir, "audio_cpp", "audio_cpp_srt_processor.py")
+                processor_spec = importlib.util.spec_from_file_location(
+                    "audio_cpp_srt_processor_module", processor_path
+                )
+                if processor_spec is None or processor_spec.loader is None:
+                    raise ImportError(f"Cannot load audio.cpp SRT processor from {processor_path}")
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                AudioCppSRTProcessor = processor_module.AudioCppSRTProcessor
+
+                class AudioCppSRTWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.processor = AudioCppSRTProcessor(self, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(self.config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("audio.cpp SRT processing interrupted by user")
+
+                engine_instance = AudioCppSRTWrapper(config)
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time(),
+                }
+                return engine_instance
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
                 
@@ -1660,6 +1702,29 @@ Hello! This is unified SRT TTS with character switching.
                     timing_params=timing_params
                 )
 
+            elif engine_type == "audio_cpp":
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                    }
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance,
+                }
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache,
+                )
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
             
@@ -1701,6 +1766,8 @@ Hello! This is unified SRT TTS with character switching.
                 or "Pause tags are not compatible with force_speaker_kv" in msg
                 or "MOSS-TTSD Native Multi-Speaker Dialogue does not support this SRT input" in msg
             ):
+                raise
+            if engine_type == "audio_cpp":
                 raise
             if isinstance(e, InterruptedError):
                 raise

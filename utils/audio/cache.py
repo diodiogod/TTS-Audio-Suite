@@ -702,6 +702,43 @@ class OmniVoiceCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class AudioCppCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for the generic audio.cpp server backend."""
+
+    def generate_cache_key(self, **params) -> str:
+        cache_data = {
+            'text': params.get('text', ''),
+            'audio_component': params.get('audio_component', ''),
+            'reference_text': params.get('reference_text', ''),
+            'family': params.get('family', ''),
+            'package_id': params.get('package_id', ''),
+            'model_path': params.get('model_path', ''),
+            'model_id': params.get('model_id', ''),
+            'task': params.get('task', ''),
+            'connection_mode': params.get('connection_mode', ''),
+            'server_url': params.get('server_url', ''),
+            'binary_path': params.get('binary_path', ''),
+            'backend': params.get('backend', ''),
+            'device_index': params.get('device_index', 0),
+            'language': params.get('language', ''),
+            'voice_id': params.get('voice_id', ''),
+            'instruct': params.get('instruct', ''),
+            'temperature': params.get('temperature'),
+            'top_p': params.get('top_p'),
+            'top_k': params.get('top_k'),
+            'repetition_penalty': params.get('repetition_penalty'),
+            'max_tokens': params.get('max_tokens'),
+            'max_steps': params.get('max_steps'),
+            'num_inference_steps': params.get('num_inference_steps'),
+            'guidance_scale': params.get('guidance_scale'),
+            'seed': params.get('seed', 0),
+            'request_options': params.get('request_options', ''),
+            'character': params.get('character', 'narrator'),
+            'engine': 'audio_cpp',
+        }
+        return hashlib.md5(str(sorted(cache_data.items())).encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -720,6 +757,7 @@ class AudioCache:
             'dots_tts': DotsTTSCacheKeyGenerator(),
             'dramabox': DramaBoxCacheKeyGenerator(),
             'fish_audio_s2': FishAudioS2CacheKeyGenerator(),
+            'audio_cpp': AudioCppCacheKeyGenerator(),
             'omnivoice': OmniVoiceCacheKeyGenerator(),
             'moss_tts': MossTTSCacheKeyGenerator(),
             'moss_soundeffect_v2': MossSoundEffectV2CacheKeyGenerator(),

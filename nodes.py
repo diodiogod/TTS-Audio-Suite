@@ -196,6 +196,14 @@ except Exception as e:
     FISH_AUDIO_S2_ENGINE_AVAILABLE = False
 
 try:
+    audio_cpp_engine_module = load_node_module("audio_cpp_engine_node", "engines/audio_cpp_engine_node.py")
+    AudioCppEngineNode = audio_cpp_engine_module.AudioCppEngineNode
+    AUDIO_CPP_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ audio.cpp Engine failed: {e}")
+    AUDIO_CPP_ENGINE_AVAILABLE = False
+
+try:
     omnivoice_engine_module = load_node_module("omnivoice_engine_node", "engines/omnivoice_engine_node.py")
     OmniVoiceEngineNode = omnivoice_engine_module.OmniVoiceEngineNode
     OMNIVOICE_ENGINE_AVAILABLE = True
@@ -701,6 +709,10 @@ if DRAMABOX_ENGINE_AVAILABLE:
 if FISH_AUDIO_S2_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["FishAudioS2EngineNode"] = FishAudioS2EngineNode
     NODE_DISPLAY_NAME_MAPPINGS["FishAudioS2EngineNode"] = "⚙️ Fish Audio S2 Pro Engine"
+
+if AUDIO_CPP_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["AudioCppEngineNode"] = AudioCppEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["AudioCppEngineNode"] = "⚙️ audio.cpp TTS Engine"
 
 if OMNIVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceEngineNode"] = OmniVoiceEngineNode

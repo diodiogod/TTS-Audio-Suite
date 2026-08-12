@@ -118,11 +118,11 @@ PARAMETER_ENGINES = {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
         'dots_tts', 'fish_audio_s2', 'omnivoice',
-        'echo_tts', 'moss_tts', 'moss_soundeffect_v2', 'dramabox'
+        'echo_tts', 'moss_tts', 'moss_soundeffect_v2', 'dramabox', 'audio_cpp'
     },
     'temperature': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
-        'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'fish_audio_s2', 'audio_cpp'
     },
     'cfg': {
         'f5tts', 'vibevoice', 'index_tts', 'chatterbox', 'chatterbox_official_23lang',
@@ -150,10 +150,10 @@ PARAMETER_ENGINES = {
         'dramabox'
     },
     'num_steps': {
-        'echo_tts', 'dots_tts', 'omnivoice'
+        'echo_tts', 'dots_tts', 'omnivoice', 'audio_cpp'
     },
     'guidance_scale': {
-        'dots_tts', 'omnivoice'
+        'dots_tts', 'omnivoice', 'audio_cpp'
     },
     'duration': {
         'omnivoice'
@@ -216,13 +216,13 @@ PARAMETER_ENGINES = {
         'chatterbox', 'chatterbox_official_23lang'
     },
     'speed': {
-        'f5tts', 'cosyvoice', 'omnivoice'
+        'f5tts', 'cosyvoice', 'omnivoice', 'audio_cpp'
     },
     'top_p': {
-        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2', 'audio_cpp'
     },
     'top_k': {
-        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts'
+        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts', 'audio_cpp'
     },
     'audio_temperature': {
         'moss_tts'
@@ -234,7 +234,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'repetition_penalty': {
-        'moss_tts', 'fish_audio_s2'
+        'moss_tts', 'fish_audio_s2', 'audio_cpp'
     },
     'audio_repetition_penalty': {
         'moss_tts'
@@ -243,7 +243,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'max_new_tokens': {
-        'higgs_audio_v3', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio_v3', 'moss_tts', 'fish_audio_s2', 'audio_cpp'
     },
     'max_generate_length': {
         'dots_tts'
@@ -252,7 +252,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'instruction': {
-        'moss_tts'
+        'moss_tts', 'audio_cpp'
     },
     'quality': {
         'moss_tts'
@@ -364,7 +364,10 @@ PARAMETER_NODE_KEYS = {
     'ref_duration': 'ref_duration',
     'rescale_scale': 'rescale_scale',
     'prompt_template': 'prompt_template',
-    'num_steps': 'num_steps',
+    'num_steps': {
+        'default': 'num_steps',
+        'audio_cpp': 'num_inference_steps',
+    },
     'guidance_scale': 'guidance_scale',
     'duration': 'duration',
     't_shift': 't_shift',
@@ -386,7 +389,10 @@ PARAMETER_NODE_KEYS = {
     'speaker_kv_min_t': 'speaker_kv_min_t',
     'sequence_length': 'sequence_length',
     'exaggeration': 'exaggeration',
-    'speed': 'speed',
+    'speed': {
+        'default': 'speed',
+        'audio_cpp': 'speaking_rate',
+    },
     'top_p': 'top_p',
     'top_k': 'top_k',
     'audio_temperature': 'audio_temperature',
@@ -395,10 +401,16 @@ PARAMETER_NODE_KEYS = {
     'repetition_penalty': 'repetition_penalty',
     'audio_repetition_penalty': 'audio_repetition_penalty',
     'duration_tokens': 'duration_tokens',
-    'max_new_tokens': 'max_new_tokens',
+    'max_new_tokens': {
+        'default': 'max_new_tokens',
+        'audio_cpp': 'max_tokens',
+    },
     'max_generate_length': 'max_generate_length',
     'n_vq_for_inference': 'n_vq_for_inference',
-    'instruction': 'instruction',
+    'instruction': {
+        'default': 'instruction',
+        'audio_cpp': 'instruct',
+    },
     'quality': 'quality',
     'sound_event': 'sound_event',
     'ambient_sound': 'ambient_sound',

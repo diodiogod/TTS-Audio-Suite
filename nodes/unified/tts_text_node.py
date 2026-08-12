@@ -250,6 +250,19 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['dtype'] = config.get('dtype', 'auto')
                 stable_params['attention'] = config.get('attention', 'auto')
 
+            if engine_type == "audio_cpp":
+                # audio.cpp owns a persistent native server. Everything that changes
+                # that server/model session belongs in the instance cache identity;
+                # request-time sampling controls deliberately do not.
+                for key in (
+                    'connection_mode', 'server_url', 'server_model_id', 'model_id',
+                    'binary_path', 'model_path', 'model_roots', 'family',
+                    'package_id', 'task', 'backend', 'device', 'device_index',
+                    'threads', 'model_spec_override', 'load_options',
+                    'session_options',
+                ):
+                    stable_params[key] = config.get(key)
+
             # IndexTTS 2.0 and 2.5 are distinct checkpoints/backends. Every
             # load-time option must participate in the processor cache key or
             # changing the engine node can silently keep the old adapter alive.
@@ -744,6 +757,48 @@ Back to the main narrator voice for the conclusion.""",
                     'timestamp': time.time()
                 }
 
+                return engine_instance
+
+            elif engine_type == "audio_cpp":
+                adapter_path = os.path.join(project_root, "engines", "adapters", "audio_cpp_adapter.py")
+                adapter_spec = importlib.util.spec_from_file_location(
+                    "audio_cpp_adapter_module", adapter_path
+                )
+                if adapter_spec is None or adapter_spec.loader is None:
+                    raise ImportError(f"Cannot load audio.cpp adapter from {adapter_path}")
+                adapter_module = importlib.util.module_from_spec(adapter_spec)
+                adapter_spec.loader.exec_module(adapter_module)
+                AudioCppEngineAdapter = adapter_module.AudioCppEngineAdapter
+                processor_path = os.path.join(nodes_dir, "audio_cpp", "audio_cpp_processor.py")
+                processor_spec = importlib.util.spec_from_file_location(
+                    "audio_cpp_processor_module", processor_path
+                )
+                if processor_spec is None or processor_spec.loader is None:
+                    raise ImportError(f"Cannot load audio.cpp processor from {processor_path}")
+                processor_module = importlib.util.module_from_spec(processor_spec)
+                processor_spec.loader.exec_module(processor_module)
+                AudioCppProcessor = processor_module.AudioCppProcessor
+
+                class AudioCppWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = AudioCppEngineAdapter(self.config)
+                        self.processor = AudioCppProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(self.config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("audio.cpp processing interrupted by user")
+
+                engine_instance = AudioCppWrapper(config)
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time(),
+                }
                 return engine_instance
 
             elif engine_type == "step_audio_editx":
@@ -2055,6 +2110,52 @@ Back to the main narrator voice for the conclusion.""",
                     seed=seed
                 )
 
+            elif engine_type == "audio_cpp":
+                import re
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                        'reference_text': reference_text or '',
+                    }
+
+                audio_segments = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    enable_audio_cache=enable_audio_cache,
+                )
+                audio_result, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=audio_segments,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True,
+                )
+                sample_rate = engine_instance.processor.sample_rate
+                if not sample_rate:
+                    raise RuntimeError("audio.cpp returned no sample rate")
+                clean_text = re.sub(r'\[.*?\]', '', text)
+                duration = audio_result.shape[-1] / sample_rate if audio_result.numel() else 0.0
+                family = config.get('family') or config.get('server_model_id') or 'external model'
+                base_info = (
+                    f"Generated {duration:.1f}s audio from {len(clean_text)} characters "
+                    f"(audio.cpp {family}, {sample_rate} Hz, narrator: {char_display})"
+                )
+                base_info += "\n🎭 Character switching, pause tags, and per-segment parameters supported"
+                from utils.audio.chunk_timing import ChunkTimingHelper
+                generation_info = ChunkTimingHelper.enhance_generation_info(
+                    f"✅ {base_info}", chunk_info
+                )
+                result = (
+                    AudioProcessingUtils.format_for_comfyui(audio_result, sample_rate),
+                    generation_info,
+                )
+
             else:
                 raise ValueError(f"Unknown engine type: {engine_type}")
             
@@ -2090,7 +2191,7 @@ Back to the main narrator voice for the conclusion.""",
                 raise
             if "MOSS LoRA/base model mismatch" in str(e):
                 raise
-            if engine_type == "index_tts":
+            if engine_type in {"index_tts", "audio_cpp"}:
                 raise
             if isinstance(e, InterruptedError):
                 raise
