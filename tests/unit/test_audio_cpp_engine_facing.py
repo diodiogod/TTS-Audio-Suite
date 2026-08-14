@@ -146,7 +146,7 @@ def test_processor_uses_glm_transcripts_and_resets_rate_between_generations(monk
 
     def mapping(characters, engine_type):
         discovery_modes.append(engine_type)
-        return {"Alice": (None, None)}
+        return {"Alice": ("alice.wav", "matching transcript")}
 
     monkeypatch.setattr(processor_module, "get_character_mapping", mapping)
     adapter = _ProcessorAdapter(24000)

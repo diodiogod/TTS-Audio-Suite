@@ -712,7 +712,7 @@ if FISH_AUDIO_S2_ENGINE_AVAILABLE:
 
 if AUDIO_CPP_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["AudioCppEngineNode"] = AudioCppEngineNode
-    NODE_DISPLAY_NAME_MAPPINGS["AudioCppEngineNode"] = "⚙️ audio.cpp TTS Engine"
+    NODE_DISPLAY_NAME_MAPPINGS["AudioCppEngineNode"] = "⚙️ audio.cpp Multi-TTS Engine"
 
 if OMNIVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceEngineNode"] = OmniVoiceEngineNode

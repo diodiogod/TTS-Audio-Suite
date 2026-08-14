@@ -1,0 +1,232 @@
+schema_version: 1
+release: release-0.5.1
+
+# Verified from Hugging Face file metadata on 2026-08-13. These are offline UI
+# estimates; live Content-Length values remain authoritative during downloads.
+package_sizes:
+  citrinet_asr_q8_0: 40574432
+  chatterbox_f16: 3744360386
+  chatterbox_q8_0: 2088393668
+  chatterbox_safetensors: 3191859618
+  confucius4_tts_orig: 8192757760
+  dramabox_q8_0: 18942803808
+  fish_audio_s2_pro_bf16: 10229278080
+  fish_audio_s2_pro_q8_0: 6317911232
+  fun_asr_nano_2512_f16: 1675708832
+  fun_asr_nano_2512_q8_0: 1045334432
+  fun_asr_nano_2512_safetensors: 1671205126
+  glm_tts_q8_0: 5143813728
+  higgs_audio_tts_4b_bf16: 8501587648
+  higgs_audio_tts_4b_q8_0: 5095354048
+  higgs_audio_stt_f16: 5367453248
+  higgs_audio_stt_q8_0: 3158310848
+  hviske_asr_q8_0: 2436359808
+  hviske_asr_safetensors: 4132293306
+  index_tts2_f16: 4646898304
+  index_tts2_orig: 8084552000
+  index_tts2_q8_0: 3633888608
+  index_tts2_safetensors: 3484956803
+  inflect_micro_v2_orig: 72082176
+  irodori_tts_500m_v3_f16: 1254813120
+  irodori_tts_500m_v3_q8_0: 1093739584
+  irodori_tts_600m_v3_voicedesign_f16: 1463787680
+  irodori_tts_600m_v3_voicedesign_q8_0: 1272140064
+  irodori_tts_v4_small_f16: 1762148352
+  irodori_tts_v4_small_q8_0: 1368991360
+  kroko_asr_community_q8_0: 167756928
+  miotts_1_7b_bf16: 3518532512
+  miotts_1_7b_orig: 3518532512
+  miotts_1_7b_q8_0: 2197326752
+  moss_tts_local_v1_5_bf16: 13367797280
+  moss_tts_local_v1_5_q8_0: 7512220768
+  moss_tts_nano_100m_bf16: 332423040
+  moss_tts_nano_100m_q8_0: 193337984
+  nemotron_asr_f16: 1277710880
+  nemotron_asr_q8_0: 930620256
+  nemotron_asr_safetensors: 2552818890
+  omnivoice_bf16: 1639548640
+  omnivoice_f16: 1639548768
+  omnivoice_q8_0: 1350288416
+  omnivoice_safetensors: 2461770336
+  outetts_1_0_1b_q8_0: 3029895456
+  parakeet_tdt_f16: 1255384320
+  parakeet_tdt_q8_0: 915733744
+  pocket_tts_english_bf16: 219096064
+  pocket_tts_english_q8_0: 127856704
+  pocket_tts_english_safetensors: 385107895
+  pocket_tts_german_bf16: 219096544
+  pocket_tts_german_q8_0: 127857184
+  pocket_tts_italian_bf16: 219096800
+  pocket_tts_italian_q8_0: 127857440
+  pocket_tts_portuguese_bf16: 219097728
+  pocket_tts_portuguese_q8_0: 127858368
+  pocket_tts_spanish_bf16: 219097600
+  pocket_tts_spanish_q8_0: 127858240
+  qwen3_tts_0_6b_base_safetensors: 2511651783
+  qwen3_tts_1_7b_base_bf16: 4203158464
+  qwen3_tts_1_7b_base_orig: 4544273280
+  qwen3_tts_1_7b_base_q8_0: 2695175104
+  qwen3_tts_1_7b_base_safetensors: 4539721255
+  qwen3_tts_1_7b_customvoice_bf16: 4179144352
+  qwen3_tts_1_7b_customvoice_q8_0: 2817044064
+  qwen3_tts_1_7b_voicedesign_bf16: 4179089248
+  qwen3_tts_1_7b_voicedesign_q8_0: 2816988960
+  qwen3_asr_0_6b_f16: 1880642016
+  qwen3_asr_0_6b_q8_0: 1151272416
+  qwen3_asr_0_6b_safetensors: 1876110856
+  qwen3_asr_1_7b_f16: 4087653248
+  qwen3_asr_1_7b_q8_0: 2473010048
+  qwen3_asr_1_7b_safetensors: 4087626782
+  seed_vc_mlx_f16: 3629186560
+  seed_vc_mlx_orig: 7003311936
+  seed_vc_mlx_q8_0: 3120809248
+  seed_vc_mlx_safetensors: 712430273
+  supertonic_3_f16: 312784196
+  supertonic_3_orig: 454072836
+  supertonic_3_q8_0: 454072836
+  supertonic_3_safetensors: 397279577
+  vevo2_f16: 5021112128
+  vevo2_orig: 7449615488
+  vevo2_q8_0: 3242124800
+  vibevoice_1_5b_bf16: 5420021858
+  vibevoice_1_5b_q8_0: 3224701538
+  vibevoice_asr_f16: 17361090304
+  vibevoice_asr_q8_0: 9858644224
+  vietneu_tts_v3_turbo_q8_0: 170482368
+  voxcpm2_bf16: 4772288288
+  voxcpm2_orig: 4960716192
+  voxcpm2_q8_0: 2955000480
+  voxcpm2_safetensors: 4583766759
+  voxtral_realtime_bf16: 8874402784
+  voxtral_realtime_q4_k: 3097662432
+  voxtral_realtime_q8_0: 5104567264
+
+# Runtime dependencies omitted by upstream TTS package declarations. These are
+# installed independently and passed to audio.cpp through absolute session paths.
+package_dependencies:
+  miotts_1_7b_q8_0: &miotts_codec_dependency
+    - id: miocodec_q8_0
+      family: miocodec
+      display_name: "MioCodec 25Hz 44.1kHz v2 Q8_0 GGUF"
+      target_directory: "MioCodec-25Hz-44.1kHz-v2-GGUF"
+      format: gguf
+      precision: q8_0
+      files: ["MioCodec-25Hz-44.1kHz-v2-GGUF/miocodec-25hz-44khz-v2-q8_0.gguf"]
+      strip_prefix: "MioCodec-25Hz-44.1kHz-v2-GGUF"
+      repo: "audio-cpp/audio.cpp-gguf"
+      revision: main
+      estimated_download_bytes: 299066464
+      session_option: "miotts.codec_model_path"
+  miotts_1_7b_bf16: *miotts_codec_dependency
+  miotts_1_7b_orig: *miotts_codec_dependency
+
+# Suite-owned UI and validation metadata. Download/package truth remains in
+# model_specs/*.json, which are unmodified snapshots of audio.cpp.
+defaults:
+  suite_support: supported
+  suite_tasks: [tts, srt, character_switching]
+  reference_audio: none
+  reference_transcript: none
+  built_in_voices: false
+  voice_design: false
+  inline_controls: false
+  native_multi_speaker: {supported: false, max_speakers: 1, suite_status: unavailable}
+  asr_features: {diarization: none, timing: none}
+
+families:
+  citrinet_asr:
+    suite_tasks: [asr]
+    summary: "Compact English transcription using a Citrinet CTC model."
+  chatterbox:
+    reference_audio: required
+    suite_tasks: [tts, srt, character_switching, voice_conversion]
+    summary: "Voice cloning and reference-targeted voice conversion."
+  confucius4_tts: {reference_audio: required, summary: "Voice cloning from reference audio."}
+  dramabox: {reference_audio: optional, summary: "TTS and optional voice cloning."}
+  fish_audio: {reference_audio: optional, summary: "Reference-conditioned TTS."}
+  fun_asr_nano:
+    suite_tasks: [asr]
+    summary: "Multilingual speech recognition for Chinese, English, and Japanese."
+  glm_tts:
+    reference_audio: required
+    reference_transcript: required
+    summary: "Zero-shot cloning; reference audio and its transcript are required."
+  higgs_audio_tts:
+    reference_audio: optional
+    reference_transcript: optional
+    inline_controls: true
+    summary: "Expressive multilingual TTS, cloning, and inline style/sound controls."
+  higgs_audio_stt:
+    suite_tasks: [asr]
+    summary: "English transcription using the Higgs Audio v3 speech model."
+  hviske_asr:
+    suite_tasks: [asr]
+    summary: "Multilingual transcription across 16 languages."
+  index_tts2: {reference_audio: optional, summary: "TTS with optional voice cloning."}
+  inflect_v2: {summary: "Reference-free expressive TTS."}
+  irodori_tts:
+    reference_audio: optional
+    voice_design: true
+    summary: "TTS, optional cloning, and voice design."
+  kroko_asr:
+    suite_tasks: [asr]
+    asr_features: {timing: native_word}
+    summary: "Small multilingual community ASR model."
+  miotts: {reference_audio: optional, summary: "Reference-conditioned TTS."}
+  moss_tts_local: {reference_audio: optional, summary: "TTS with optional voice cloning."}
+  moss_tts_nano: {reference_audio: optional, summary: "Compact TTS with optional cloning."}
+  nemotron_asr:
+    suite_tasks: [asr]
+    asr_features: {timing: native_word}
+    summary: "Streaming-capable multilingual NVIDIA Nemotron transcription."
+  omnivoice:
+    reference_audio: optional
+    reference_transcript: optional
+    voice_design: true
+    summary: "Reference cloning or instruction-based voice design."
+  outetts:
+    reference_audio: optional
+    reference_transcript: optional
+    summary: "Multilingual TTS; a transcript improves reference cloning."
+  parakeet_tdt:
+    suite_tasks: [asr]
+    asr_features: {timing: native_word}
+    summary: "Fast multilingual Parakeet-TDT transcription."
+  pocket_tts: {reference_audio: optional, summary: "Small CPU-friendly TTS and cloning."}
+  qwen3_tts:
+    reference_audio: optional
+    voice_design: true
+    summary: "TTS with package-dependent cloning or voice design."
+  qwen3_asr:
+    suite_tasks: [asr]
+    asr_features: {timing: optional_forced_aligner}
+    summary: "Broad multilingual Qwen3 transcription; word timestamps require an optional forced aligner."
+  seed_vc:
+    suite_tasks: [voice_conversion]
+    reference_audio: required
+    summary: "Reference-targeted voice conversion through Seed-VC."
+  supertonic:
+    built_in_voices: true
+    summary: "Fast multilingual TTS using built-in voices."
+  vevo2:
+    reference_audio: optional
+    suite_tasks: [tts, srt, character_switching, voice_conversion]
+    summary: "TTS and reference-targeted voice conversion; S2S/SVC remain advanced upstream routes."
+  vibevoice:
+    reference_audio: required_per_speaker
+    native_multi_speaker: {supported: true, max_speakers: 4, suite_status: partial}
+    summary: "Long-form dialogue for up to four speakers. Native single-request mode is not wired yet."
+  vibevoice_asr:
+    suite_tasks: [asr, diarization]
+    asr_features: {diarization: native, timing: native_segment}
+    summary: "Multilingual transcription with native timestamped speaker turns."
+  vietneu_tts:
+    voice_design: true
+    summary: "Vietnamese TTS and voice design."
+  voxcpm2:
+    reference_audio: optional
+    voice_design: true
+    summary: "TTS with reference conditioning and voice design."
+  voxtral_realtime:
+    suite_tasks: [asr]
+    summary: "Multilingual realtime-oriented Voxtral transcription."

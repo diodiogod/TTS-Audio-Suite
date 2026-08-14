@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 from .client import AudioCppClient, AudioCppClientError
+from .windows_job import WindowsKillOnCloseJob
 
 
 class AudioCppProcessError(RuntimeError):
@@ -146,6 +147,7 @@ class AudioCppServerProcess:
         self._log_path: Optional[Path] = None
         self._log_handle = None
         self._closed = False
+        self._parent_job: Optional[WindowsKillOnCloseJob] = None
 
     @staticmethod
     def _resolve_device_index(value: Any) -> int:
@@ -299,19 +301,27 @@ class AudioCppServerProcess:
                         )
                     env.update({str(key): str(value) for key, value in extra_env.items()})
                 env.setdefault("PYTHONUTF8", "1")
-                creationflags = (
-                    getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
-                )
+                visible_console = bool(self.config.get("show_server_console", False))
+                creationflags = 0
+                if os.name == "nt":
+                    creationflags = getattr(
+                        subprocess,
+                        "CREATE_NEW_CONSOLE" if visible_console else "CREATE_NO_WINDOW",
+                        0,
+                    )
                 self._process = subprocess.Popen(
                     self._command(),
                     cwd=str(self.binary_path.parent),
                     env=env,
                     stdin=subprocess.DEVNULL,
-                    stdout=self._log_handle,
-                    stderr=subprocess.STDOUT,
+                    stdout=None if visible_console else self._log_handle,
+                    stderr=None if visible_console else subprocess.STDOUT,
                     shell=False,
                     creationflags=creationflags,
                 )
+                if os.name == "nt":
+                    self._parent_job = WindowsKillOnCloseJob()
+                    self._parent_job.assign(int(self._process._handle))
                 self._client = AudioCppClient(
                     self.base_url,
                     connect_timeout=self.connect_timeout,
@@ -391,6 +401,9 @@ class AudioCppServerProcess:
                     process.wait(timeout=self.stop_timeout)
         finally:
             self._process = None
+            if self._parent_job is not None:
+                self._parent_job.close()
+                self._parent_job = None
 
     def _cleanup_files(self) -> None:
         if self._log_handle is not None:

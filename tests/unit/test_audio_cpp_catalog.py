@@ -20,19 +20,21 @@ from utils.audio_cpp.catalog import (
 
 
 @pytest.mark.unit
-def test_pinned_release_catalog_has_exact_tts_surface():
+def test_pinned_release_catalog_has_exact_suite_compatible_surface():
     catalog = load_catalog()
 
     assert AUDIO_CPP_RELEASE_VERSION == "0.5.1"
-    assert len(catalog.families) == 21
-    assert len(catalog.packages) == 67
+    assert len(catalog.families) == 32
+    assert len(catalog.packages) == 96
     assert set(family_choices()) == set(catalog.families)
-    assert len(package_choices()) == 67
+    assert len(package_choices()) == 96
     assert set(path.name for path in get_model_specs_dir().glob("*.json")) == {
         family.spec_filename for family in catalog.families.values()
     }
     assert "vevo2" in catalog.families
     assert catalog.family("vevo2").runtime_tasks == ("tts", "vc", "s2s", "svc")
+    assert catalog.family("qwen3_asr").runtime_tasks == ("asr",)
+    assert catalog.family("seed_vc").runtime_tasks == ("vc", "svc")
 
 
 @pytest.mark.unit

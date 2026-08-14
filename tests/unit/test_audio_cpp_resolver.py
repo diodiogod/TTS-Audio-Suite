@@ -228,6 +228,57 @@ def test_missing_model_without_permission_has_actionable_error(monkeypatch, tmp_
 
 
 @pytest.mark.unit
+def test_miotts_installs_codec_dependency_and_sets_absolute_session_path(monkeypatch, tmp_path):
+    managed_models = tmp_path / "managed" / "models"
+    catalog = resolver._catalog_module().load_catalog()
+    miotts = catalog.package("miotts_1_7b_q8_0")
+    miotts_dir = package_install_path(miotts, managed_models)
+    for relative in miotts.local_files:
+        target = miotts_dir / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"miotts")
+    binary = tmp_path / "audiocpp_server.exe"
+    binary.write_bytes(b"exe")
+    installed = {}
+
+    def install_package(package, root, **_kwargs):
+        target = package_install_path(package, root)
+        for relative in package.local_files:
+            path = target / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"codec")
+        installed[package.id] = target
+        return SimpleNamespace(path=target, bytes_downloaded=5)
+
+    monkeypatch.setattr(
+        resolver,
+        "load_settings",
+        lambda: AudioCppSettings(managed_model_root=str(managed_models)),
+    )
+    monkeypatch.setattr(
+        resolver,
+        "_downloader_module",
+        lambda: SimpleNamespace(install_package=install_package),
+    )
+
+    result = resolver.resolve_audio_cpp_config(
+        {
+            "connection_mode": "managed",
+            "family": "miotts",
+            "package_id": "miotts_1_7b_q8_0",
+            "backend": "cpu",
+            "binary_path": str(binary),
+            "auto_download_model": True,
+        }
+    )
+
+    assert "miocodec_q8_0" in installed
+    assert result["session_options"]["miotts.codec_model_path"] == str(
+        installed["miocodec_q8_0"].resolve()
+    )
+
+
+@pytest.mark.unit
 def test_owned_existing_binary_allows_explicit_hip_backend(monkeypatch, tmp_path):
     binary = tmp_path / "audiocpp_server.exe"
     binary.write_bytes(b"exe")

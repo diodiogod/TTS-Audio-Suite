@@ -355,6 +355,8 @@ def setup_api_routes():
 
         from utils.voice.alias_api import register_character_alias_routes
         register_character_alias_routes(PromptServer.instance.routes, web)
+        from utils.audio_cpp.capability_api import register_audio_cpp_capability_routes
+        register_audio_cpp_capability_routes(PromptServer.instance.routes, web)
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/index-tts-emotion-presets")
         async def get_index_tts_emotion_presets_endpoint(request):

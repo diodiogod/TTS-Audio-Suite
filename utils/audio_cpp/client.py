@@ -72,9 +72,9 @@ class AudioCppAudio:
 class AudioCppTaskResult:
     """Decoded result from ``POST /v1/tasks/run``."""
 
-    waveform: torch.Tensor
-    sample_rate: int
-    channels: int
+    waveform: Optional[torch.Tensor] = None
+    sample_rate: Optional[int] = None
+    channels: Optional[int] = None
     named_audio: Dict[str, AudioCppAudio] = field(default_factory=dict)
     raw: Dict[str, Any] = field(default_factory=dict)
 
@@ -376,22 +376,25 @@ class AudioCppClient:
             self._validate_declared_audio_metadata(item, decoded, f"named_audio_outputs[{index}]")
             named_audio[output_id] = decoded
 
+        primary: Optional[AudioCppAudio] = None
         if "audio" in payload and payload.get("audio") is not None:
             primary = _decode_base64_wav(payload.get("audio"), context="audio")
             self._validate_declared_audio_metadata(payload, primary, "audio")
         elif len(named_audio) == 1:
             primary = next(iter(named_audio.values()))
-        elif not named_audio:
-            raise AudioCppProtocolError("audio.cpp task result did not contain audio")
-        else:
+        elif len(named_audio) > 1:
             raise AudioCppProtocolError(
                 "audio.cpp task result contains multiple named audio outputs but no primary audio"
             )
+        elif not named_audio and not any(
+            key in payload for key in ("text", "segments", "speaker_turns", "words")
+        ):
+            raise AudioCppProtocolError("audio.cpp task result did not contain task output")
 
         return AudioCppTaskResult(
-            waveform=primary.waveform,
-            sample_rate=primary.sample_rate,
-            channels=primary.channels,
+            waveform=primary.waveform if primary is not None else None,
+            sample_rate=primary.sample_rate if primary is not None else None,
+            channels=primary.channels if primary is not None else None,
             named_audio=named_audio,
             raw=payload,
         )

@@ -51,7 +51,7 @@ GLOBAL_RVC_ITERATION_CACHE = {}
 class UnifiedVoiceChangerNode(BaseVCNode):
     """
     Unified Voice Changer Node - Engine-agnostic voice conversion.
-    Currently supports ChatterBox, prepared for future RVC and other voice conversion engines.
+    Routes ChatterBox, CosyVoice, RVC, and compatible audio.cpp families.
     Replaces ChatterBox VC node with engine-agnostic architecture.
     """
     
@@ -64,7 +64,7 @@ class UnifiedVoiceChangerNode(BaseVCNode):
         return {
             "required": {
                 "TTS_engine": ("TTS_ENGINE", {
-                    "tooltip": "TTS/VC engine configuration. Supports ChatterBox TTS Engine, CosyVoice Engine, and RVC Engine for voice conversion."
+                    "tooltip": "Engine configuration for source-to-target voice conversion. Supports ChatterBox, CosyVoice, RVC, and audio.cpp families whose panel shows Voice conversion (Chatterbox, VeVo2, or Seed-VC)."
                 }),
                 "source_audio": (any_typ, {
                     "tooltip": "The original voice audio you want to convert to sound like the target voice. Accepts AUDIO input or Character Voices node output."
@@ -592,6 +592,17 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 }
                 return engine_instance
 
+            elif engine_type == "audio_cpp":
+                from engines.adapters.audio_cpp_vc_adapter import AudioCppVoiceConversionAdapter
+
+                engine_instance = AudioCppVoiceConversionAdapter(config)
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
             elif engine_type == "f5tts":
                 # F5-TTS doesn't have voice conversion capability
                 raise ValueError("F5-TTS engine does not support voice conversion. Use ChatterBox or CosyVoice engine for voice conversion.")
@@ -840,6 +851,14 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                 )
                 converted_chunk_audio = result[0]
 
+            elif engine_type == "audio_cpp":
+                result = engine_instance.convert_voice(
+                    source_audio=chunk_audio_dict,
+                    target_audio=target_audio,
+                    refinement_passes=refinement_passes,
+                )
+                converted_chunk_audio = result[0]
+
             else:
                 raise ValueError(f"Unsupported engine type for chunking: {engine_type}")
 
@@ -917,8 +936,13 @@ class UnifiedVoiceChangerNode(BaseVCNode):
             print(f"🔄 Voice Changer: Starting {engine_type} voice conversion")
             
             # Validate engine supports voice conversion
-            if engine_type not in ["chatterbox", "chatterbox_official_23lang", "rvc", "cosyvoice"]:
-                raise ValueError(f"Engine '{engine_type}' does not support voice conversion. Currently supported engines: ChatterBox, ChatterBox Official 23-Lang, RVC, CosyVoice")
+            if engine_type not in ["chatterbox", "chatterbox_official_23lang", "rvc", "cosyvoice", "audio_cpp"]:
+                raise ValueError(f"Engine '{engine_type}' does not support voice conversion. Currently supported engines: ChatterBox, ChatterBox Official 23-Lang, RVC, CosyVoice, audio.cpp")
+            if engine_type == "audio_cpp" and "voice_conversion" not in TTS_engine.get("capabilities", []):
+                family = config.get("family", "selected family")
+                raise ValueError(
+                    f"audio.cpp family '{family}' does not map to the Suite's source/target Voice Changer contract"
+                )
             
             # Extract audio data from flexible inputs (support both AUDIO and NARRATOR_VOICE types)
             processed_source_audio = self._extract_audio_from_input(source_audio, "source_audio")
@@ -1124,6 +1148,39 @@ class UnifiedVoiceChangerNode(BaseVCNode):
                         f"🔄 Voice Changer (Unified) - COSYVOICE3 Engine:\n"
                         f"{conversion_info}"
                     )
+
+            elif engine_type == "audio_cpp":
+                if len(source_chunks) > 1:
+                    converted_waveform, output_sample_rate = self._process_chunks_with_conversion(
+                        source_chunks,
+                        processed_narrator_target,
+                        engine_instance,
+                        engine_type,
+                        refinement_passes,
+                        config,
+                        source_sample_rate,
+                    )
+                    converted_audio = {
+                        "waveform": converted_waveform,
+                        "sample_rate": output_sample_rate,
+                    }
+                    conversion_info = (
+                        f"Model family: {config.get('family', 'external')}\n"
+                        f"Chunks: {len(source_chunks)} ({chunk_method}, {max_chunk_duration}s max)\n"
+                        f"Refinement passes: {refinement_passes}\n"
+                        f"Output sample rate: {output_sample_rate} Hz\n"
+                        "Conversion completed successfully"
+                    )
+                else:
+                    converted_audio, conversion_info = engine_instance.convert_voice(
+                        source_audio=processed_source_audio,
+                        target_audio=processed_narrator_target,
+                        refinement_passes=refinement_passes,
+                    )
+                conversion_info = (
+                    "🔄 Voice Changer (Unified) - AUDIO.CPP Engine:\n"
+                    f"{conversion_info}"
+                )
 
             else:
                 # Future engines will be handled here

@@ -9,6 +9,14 @@ from typing import Any, Dict, List, Mapping, Optional
 from urllib.parse import urlparse
 
 
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+
+any_type = AnyType("*")
+
+
 def _catalog_module():
     try:
         from utils.audio_cpp import catalog
@@ -78,7 +86,7 @@ def _recommended_package(family: str) -> str:
 
 def _resolve_task(family: str, package_id: str, requested: str) -> str:
     requested = str(requested or "auto").lower()
-    if requested in {"tts", "clon", "vdes"}:
+    if requested in {"tts", "clon", "vdes", "vc", "s2s", "svc", "asr", "diar"}:
         return requested
     catalog = _catalog_module()
     if catalog is not None and callable(getattr(catalog, "resolve_task", None)):
@@ -109,7 +117,7 @@ class AudioCppEngineNode:
 
     @classmethod
     def NAME(cls):
-        return "⚙️ audio.cpp Engine"
+        return "⚙️ audio.cpp Multi-TTS Engine"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -125,7 +133,13 @@ class AudioCppEngineNode:
                         "tooltip": "Auto prefers a supplied server or binary, then the suite-managed runtime.",
                     },
                 ),
-                "family": (families, {"default": default_family}),
+                "family": (
+                    families,
+                    {
+                        "default": default_family,
+                        "tooltip": "audio.cpp model family. The package list and capability panel update to match this selection.",
+                    },
+                ),
                 "package_id": (
                     packages,
                     {
@@ -134,14 +148,28 @@ class AudioCppEngineNode:
                     },
                 ),
                 "task": (
-                    ["auto", "tts", "clon", "vdes"],
+                    ["auto", "tts", "clon", "vdes", "vc", "s2s", "svc", "asr", "diar"],
                     {
                         "default": "auto",
-                        "tooltip": "Runtime task id. Auto follows the package; existing servers remain authoritative.",
+                        "tooltip": "Runtime task. Auto lets the connected unified node use the family's normal task; choose an explicit task only for advanced routing or external-server matching.",
                     },
                 ),
-                "backend": (["auto", "cuda", "cpu", "vulkan", "metal", "hip"], {"default": "auto"}),
-                "device": ("INT", {"default": 0, "min": 0, "max": 31}),
+                "backend": (
+                    ["auto", "cuda", "cpu", "vulkan", "metal", "hip"],
+                    {
+                        "default": "auto",
+                        "tooltip": "Native audio.cpp compute backend. Auto selects an installed CUDA runtime when available, otherwise CPU.",
+                    },
+                ),
+                "device": (
+                    "INT",
+                    {
+                        "default": 0,
+                        "min": 0,
+                        "max": 31,
+                        "tooltip": "Zero-based native device index. Keep 0 unless using another GPU/device.",
+                    },
+                ),
                 "threads": (
                     "INT",
                     {
@@ -151,7 +179,13 @@ class AudioCppEngineNode:
                         "tooltip": "Native backend/OpenMP workers. Four matches the audio.cpp CLI default; tune for your CPU.",
                     },
                 ),
-                "language": ("STRING", {"default": "auto"}),
+                "language": (
+                    "STRING",
+                    {
+                        "default": "auto",
+                        "tooltip": "Language code passed to audio.cpp. Auto lets the selected model infer or use its default language.",
+                    },
+                ),
             },
             "optional": {
                 "server_url": (
@@ -161,24 +195,56 @@ class AudioCppEngineNode:
                         "tooltip": "Required only for external_server mode, for example http://127.0.0.1:8080.",
                     },
                 ),
-                "binary_path": ("STRING", {"default": ""}),
-                "model_path": ("STRING", {"default": ""}),
-                "model_id": ("STRING", {"default": ""}),
-                "voice_id": ("STRING", {"default": ""}),
-                "instruct": ("STRING", {"default": "", "multiline": True}),
-                "temperature": ("FLOAT", {"default": -1.0, "min": -1.0, "max": 5.0, "step": 0.05}),
-                "top_p": ("FLOAT", {"default": -1.0, "min": -1.0, "max": 1.0, "step": 0.01}),
-                "top_k": ("INT", {"default": -1, "min": -1, "max": 1000}),
+                "binary_path": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": "Optional path to an existing audiocpp_server executable. Leave blank to use the Suite-managed runtime.",
+                    },
+                ),
+                "model_path": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": "Optional existing audio.cpp model/package directory. Leave blank for discovery or managed download.",
+                    },
+                ),
+                "model_id": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": "Server model identifier. Usually leave blank; required when an external server exposes multiple models.",
+                    },
+                ),
+                "voice_id": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": "Optional built-in voice/preset ID for families such as Supertonic. Reference audio takes precedence when supported.",
+                    },
+                ),
+                "instruct": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "multiline": True,
+                        "tooltip": "Optional natural-language voice design or style instruction. Used only by families/tasks that support instructions.",
+                    },
+                ),
+                "speaker2": (any_type, {"tooltip": "Optional ordered character/Speaker 2 reference."}),
+                "temperature": ("FLOAT", {"default": -1.0, "min": -1.0, "max": 5.0, "step": 0.05, "tooltip": "Sampling temperature. -1 uses the selected model/package default."}),
+                "top_p": ("FLOAT", {"default": -1.0, "min": -1.0, "max": 1.0, "step": 0.01, "tooltip": "Nucleus sampling threshold. -1 uses the model default."}),
+                "top_k": ("INT", {"default": -1, "min": -1, "max": 1000, "tooltip": "Top-k sampling limit. -1 uses the model default."}),
                 "repetition_penalty": (
                     "FLOAT",
-                    {"default": -1.0, "min": -1.0, "max": 5.0, "step": 0.05},
+                    {"default": -1.0, "min": -1.0, "max": 5.0, "step": 0.05, "tooltip": "Token repetition penalty. -1 uses the model default."},
                 ),
-                "max_tokens": ("INT", {"default": 0, "min": 0, "max": 131072}),
-                "max_steps": ("INT", {"default": 0, "min": 0, "max": 4096}),
-                "num_inference_steps": ("INT", {"default": 0, "min": 0, "max": 1000}),
+                "max_tokens": ("INT", {"default": 0, "min": 0, "max": 131072, "tooltip": "Maximum generated tokens. 0 lets the model choose its normal limit."}),
+                "max_steps": ("INT", {"default": 0, "min": 0, "max": 4096, "tooltip": "Maximum generation/decoder steps where supported. 0 uses the model default."}),
+                "num_inference_steps": ("INT", {"default": 0, "min": 0, "max": 1000, "tooltip": "Flow/diffusion inference steps where supported. 0 uses the model default."}),
                 "guidance_scale": (
                     "FLOAT",
-                    {"default": -1.0, "min": -1.0, "max": 100.0, "step": 0.05},
+                    {"default": -1.0, "min": -1.0, "max": 100.0, "step": 0.05, "tooltip": "Classifier-free guidance scale where supported. -1 uses the model default."},
                 ),
                 "advanced_json": (
                     "STRING",
@@ -191,15 +257,22 @@ class AudioCppEngineNode:
                 "auto_download_runtime": (
                     "BOOLEAN",
                     {
-                        "default": False,
-                        "tooltip": "Explicitly allow installing the pinned audio.cpp runtime into managed storage.",
+                        "default": True,
+                        "tooltip": "Automatically install the pinned audio.cpp runtime into Suite-managed storage when no usable runtime is found. Existing external binaries are never copied.",
                     },
                 ),
                 "auto_download_model": (
                     "BOOLEAN",
                     {
+                        "default": True,
+                        "tooltip": "Automatically download the selected audio.cpp package into models/TTS/audio.cpp/models when it is not already available. Downloads use direct files, not the Hugging Face cache.",
+                    },
+                ),
+                "show_server_console": (
+                    "BOOLEAN",
+                    {
                         "default": False,
-                        "tooltip": "Explicitly allow downloading the selected package into models/TTS/audio.cpp/models.",
+                        "tooltip": "Debug only: launch a visible console for a Suite-owned audio.cpp server.",
                     },
                 ),
             },
@@ -235,8 +308,12 @@ class AudioCppEngineNode:
         num_inference_steps: int = 0,
         guidance_scale: float = -1.0,
         advanced_json: str = "{}",
-        auto_download_runtime: bool = False,
-        auto_download_model: bool = False,
+        auto_download_runtime: bool = True,
+        auto_download_model: bool = True,
+        show_server_console: bool = False,
+        speaker_mode: str = "Custom Character Switching",
+        speaker2: Any = None,
+        **kwargs: Any,
     ) -> tuple:
         mode = str(connection_mode).strip().lower()
         if mode not in {"auto", "external_server", "existing_binary", "managed"}:
@@ -297,7 +374,31 @@ class AudioCppEngineNode:
             "advanced_options": dict(advanced),
             "auto_download_runtime": bool(auto_download_runtime),
             "auto_download_model": bool(auto_download_model),
+            "show_server_console": bool(show_server_console),
+            "multi_speaker_mode": str(speaker_mode),
         }
+        speakers = [speaker2] if speaker2 is not None else []
+        dynamic_speakers = []
+        for key, value in kwargs.items():
+            if key.startswith("speaker") and key[7:].isdigit() and value is not None:
+                dynamic_speakers.append((int(key[7:]), value))
+        speakers.extend(value for _, value in sorted(dynamic_speakers))
+        config["speaker_references"] = speakers
+
+        try:
+            from utils.audio_cpp.capabilities import get_capability
+
+            capability = get_capability(family)
+            maximum = int(capability["native_multi_speaker"]["max_speakers"])
+            if len(speakers) > max(0, maximum - 1):
+                raise ValueError(f"audio.cpp {family} supports at most {maximum} speakers")
+            if speaker_mode == "Native Multi-Speaker" and capability["native_multi_speaker"]["suite_status"] != "supported":
+                raise ValueError(
+                    f"audio.cpp {family} native multi-speaker mode is not integrated; "
+                    "use Custom Character Switching"
+                )
+        except ImportError:
+            pass
         optional_values = {
             "temperature": float(temperature),
             "top_p": float(top_p),
@@ -316,9 +417,28 @@ class AudioCppEngineNode:
             if value > 0:
                 config[key] = value
 
-        capabilities = ["tts", "voice_design"] if resolved_task == "vdes" else ["tts"]
+        try:
+            from utils.audio_cpp.capabilities import get_capability as load_capability
+
+            family_capability = load_capability(family)
+            suite_tasks = set(family_capability.get("suite_tasks", []))
+        except (ImportError, KeyError, ValueError):
+            suite_tasks = {"tts"}
+        capabilities = []
+        if "tts" in suite_tasks:
+            capabilities.append("tts")
+        if "asr" in suite_tasks:
+            capabilities.append("asr")
+        if "voice_conversion" in suite_tasks:
+            capabilities.append("voice_conversion")
+        if "diarization" in suite_tasks:
+            capabilities.append("diarization")
+        catalog_module = _catalog_module()
+        family_record = catalog_module.get_family(family) if catalog_module is not None else None
+        if resolved_task == "vdes" or "vdes" in getattr(family_record, "runtime_tasks", ()):
+            capabilities.append("voice_design")
         return ({"engine_type": "audio_cpp", "config": config, "capabilities": capabilities},)
 
 
 NODE_CLASS_MAPPINGS = {"AudioCppEngineNode": AudioCppEngineNode}
-NODE_DISPLAY_NAME_MAPPINGS = {"AudioCppEngineNode": "⚙️ audio.cpp Engine"}
+NODE_DISPLAY_NAME_MAPPINGS = {"AudioCppEngineNode": "⚙️ audio.cpp Multi-TTS Engine"}

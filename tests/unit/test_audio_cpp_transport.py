@@ -31,6 +31,7 @@ from utils.audio_cpp.process import AudioCppServerProcess, normalize_audio_cpp_t
 from utils.audio_cpp.settings import AudioCppSettings
 from utils.audio_cpp import resolver as audio_cpp_resolver
 from utils.audio_cpp.session import (
+    audio_cpp_session_statuses,
     close_all_audio_cpp_sessions,
     get_audio_cpp_session,
 )
@@ -117,6 +118,16 @@ class _FakeAudioCppHandler(BaseHTTPRequestHandler):
                     {"id": "right", "audio": encoded},
                 ]
             })
+        elif text == "transcript-only":
+            self._json({
+                "text": "hello world",
+                "language": "en",
+                "words": [
+                    {"word": "hello", "start_sample": 0, "end_sample": 8000},
+                    {"word": "world", "start_sample": 8000, "end_sample": 16000},
+                ],
+                "timing": {"wall_ms": 1.0},
+            })
         else:
             self._json({
                 "audio": encoded,
@@ -186,6 +197,17 @@ def test_client_selects_sole_named_audio_and_rejects_ambiguous_output(fake_audio
 
     with pytest.raises(AudioCppProtocolError, match="multiple named audio"):
         client.run_task("pocket", {"text": "ambiguous"})
+
+
+@pytest.mark.unit
+def test_client_accepts_structured_transcript_without_audio(fake_audio_cpp_server):
+    _, url = fake_audio_cpp_server
+    result = AudioCppClient(url).run_task("asr", {"text": "transcript-only"})
+
+    assert result.waveform is None
+    assert result.sample_rate is None
+    assert result.raw["text"] == "hello world"
+    assert len(result.raw["words"]) == 2
 
 
 @pytest.mark.unit
@@ -367,10 +389,17 @@ def test_owned_session_restarts_and_reregisters_after_exact_child_exit(tmp_path,
     assert second_process is not first_process
     assert len(fake_management.current_loaded_models) == 1
 
+    session.restart_owned_runtime()
+    reset_process = session.process.process
+    assert second_process.poll() is not None
+    assert reset_process is not second_process
+    assert session.run({"text": "after explicit reset"}).sample_rate == 22050
+    assert len(fake_management.current_loaded_models) == 1
+
     assert session.proxy.partially_unload("cpu", 1) == 0
     tracked_model = fake_management.current_loaded_models[0]
     session.proxy.unpatch_model("cpu")
-    assert second_process.poll() is not None
+    assert reset_process.poll() is not None
     assert fake_management.current_loaded_models == [tracked_model]
     fake_management.current_loaded_models.pop(0)
 
@@ -464,3 +493,12 @@ def test_external_session_selects_the_servers_sole_model(fake_audio_cpp_server):
     assert session.model_metadata["family"] == "pocket_tts"
     assert session.task == "tts"
     assert server.model_queries == 1
+
+    before = next(item for item in audio_cpp_session_statuses() if item["model_id"] == "pocket")
+    assert before["state"] == "server_ready"
+    assert before["owned"] is False
+    assert before["endpoint"] == url
+
+    session.run({"text": "status"})
+    after = next(item for item in audio_cpp_session_statuses() if item["model_id"] == "pocket")
+    assert after["state"] == "model_ready"

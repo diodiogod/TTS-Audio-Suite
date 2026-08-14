@@ -7,7 +7,7 @@ import re
 import shutil
 import urllib.parse
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 from .settings import AudioCppSettings, load_settings
 
@@ -298,7 +298,7 @@ def _external_task(config: Mapping[str, Any]) -> str:
         _first_value(config, "requested_task", "task", default="auto") or "auto"
     ).strip().lower().replace("-", "_").replace(" ", "_")
     requested = _TASK_ALIASES.get(requested, requested)
-    supported = {"auto", "tts", "clon", "vdes", "vc", "s2s", "svc"}
+    supported = {"auto", "tts", "clon", "vdes", "vc", "s2s", "svc", "asr", "diar"}
     if requested not in supported:
         raise AudioCppResolutionError(f"Unsupported audio.cpp task: {requested!r}")
     return requested
@@ -467,6 +467,60 @@ def resolve_audio_cpp_config(
                 + ". Provide model_path or enable auto_download_model."
             )
 
+    dependency_session_options: Dict[str, Any] = {}
+    try:
+        from .capabilities import get_package_dependencies
+
+        dependencies = get_package_dependencies(package_id)
+    except (ImportError, KeyError, TypeError, ValueError) as exc:
+        raise AudioCppResolutionError(
+            f"Cannot resolve audio.cpp dependencies for {package_id!r}: {exc}"
+        ) from exc
+    dependency_roots = discovery_api.resolve_model_roots(
+        _explicit_roots(workflow), settings=settings
+    )
+    for dependency in dependencies:
+        dependency_package = dependency["package"]
+        dependency_path = discovery_api.find_installed_package(
+            dependency_package,
+            dependency_roots,
+            settings=settings,
+        )
+        if dependency_path is None:
+            if not _as_bool(_first_value(workflow, "auto_download_model", default=False)):
+                raise AudioCppResolutionError(
+                    f"audio.cpp package {package_id!r} requires {dependency_package.id!r}, "
+                    "which is not installed. Enable auto_download_model to install it."
+                )
+            downloader_api = _downloader_module()
+            _print_download_block(
+                "audio.cpp Dependency Download",
+                model=dependency_package.display_name,
+                description=f"Required by {family_record.display_name}",
+                repository=dependency_package.repo,
+                target=(
+                    Path(managed_model_root) / dependency_package.target_directory
+                ).resolve(),
+                size_bytes=int(dependency["estimated_download_bytes"]),
+            )
+            print(f"📥 Downloading {dependency_package.id} directly (no cache)")
+            try:
+                dependency_result = downloader_api.install_package(
+                    dependency_package,
+                    managed_model_root,
+                    progress=_SuiteDownloadProgress(),
+                )
+            except Exception as exc:
+                raise AudioCppResolutionError(
+                    f"Failed to install dependency {dependency_package.id!r} for "
+                    f"audio.cpp package {package_id!r}: {exc}"
+                ) from exc
+            dependency_path = Path(dependency_result.path).resolve()
+            print(f"✅ Downloaded dependency: {dependency_path}")
+        dependency_session_options[str(dependency["session_option"])] = str(
+            Path(dependency_path).resolve()
+        )
+
     explicit_binary = _first_value(
         workflow, "binary_path", "server_binary", "executable_path", "audio_cpp_binary"
     )
@@ -528,6 +582,8 @@ def resolve_audio_cpp_config(
             print(f"✅ Downloaded: {binary_path}")
 
     result = dict(merged)
+    session_options = dict(result.get("session_options") or {})
+    session_options.update(dependency_session_options)
     result.update(
         {
             "connection_mode": "owned_process",
@@ -544,6 +600,7 @@ def resolve_audio_cpp_config(
             "device_index": device_index,
             "binary_path": str(binary_path),
             "model_path": str(model_path),
+            "session_options": session_options,
         }
     )
     return result

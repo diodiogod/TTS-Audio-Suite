@@ -48,7 +48,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
         return {
             "required": {
                 "engine": ("TTS_ENGINE", {
-                    "tooltip": "ASR-capable engine configuration (for example Qwen3-TTS Engine or Granite ASR Engine). This node auto-routes to the correct ASR adapter based on the engine type."
+                    "tooltip": "ASR-capable engine configuration. Supports Qwen3-TTS ASR, Granite ASR, and audio.cpp families whose capability panel shows ASR. The unified node routes to the correct adapter and preserves available timing/speaker data."
                 }),
                 "audio": (any_typ, {
                     "tooltip": "Audio to transcribe. Accepts AUDIO, Character Voices output, or VideoHelper audio."
@@ -96,7 +96,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 }),
                 "timestamps": (["none", "word"], {
                     "default": "none",
-                    "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, no reusable timed words/segments\n• word: Word-level timings for timestamp-capable ASR paths\n\nUse word timings if you plan to feed this into the Text to SRT Builder.\n\nGranite note: word timestamps are native on the plus model variant when diarization is off. Other Granite timestamp paths use the separate Qwen forced aligner."
+                    "tooltip": "Timing detail for the ASR timing output:\n• none: Text only, except native speaker turns may still carry segment timing\n• word: Request or preserve word timings when the selected ASR family supports them\n\nUse word timings for Text to SRT Builder.\n\nGranite: the plus model has native timestamps; other variants use the Qwen forced aligner.\naudio.cpp: native words/segments are preserved. Qwen3-ASR specifically needs its optional forced-aligner model for requested word timings and will otherwise continue with text only."
                 }),
                 "chunk_size": ("INT", {
                     "default": 30, "min": 0, "max": 600, "step": 1,
@@ -112,7 +112,7 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
                 }),
                 "diarization": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Speaker Diarization (Speaker Attribution):\n• True: Attribute speech to speakers if supported (for example [Speaker 1] hello)\n• False: Plain transcription without speaker turns\n\nGranite note: Native speaker attribution is supported on the 'plus' model variant. If combined with word-level timestamps, the system automatically uses the Qwen forced aligner to time-align the speakers' words."
+                    "tooltip": "Speaker attribution:\n• True: Preserve speaker turns when the selected ASR engine returns them\n• False: Return plain transcription/timing\n\nGranite 4.1 plus and audio.cpp VibeVoice-ASR provide native speaker attribution. Other audio.cpp ASR families return a warning instead of inventing speaker labels."
                 }),
             }
         }
@@ -171,6 +171,13 @@ class UnifiedASRTranscribeNode(BaseChatterBoxNode):
             engine_cfg = engine.get("config", engine)
             cache_data = {
                 "engine_type": engine.get("engine_type"),
+                "family": engine_cfg.get("family"),
+                "package_id": engine_cfg.get("package_id"),
+                "model_id": engine_cfg.get("model_id"),
+                "model_path": engine_cfg.get("model_path"),
+                "connection_mode": engine_cfg.get("connection_mode"),
+                "server_url": engine_cfg.get("server_url"),
+                "advanced_options": str(engine_cfg.get("advanced_options", {})),
                 "model_name": engine_cfg.get("model_name"),
                 "model_size": engine_cfg.get("model_size"),
                 "device": engine_cfg.get("device"),

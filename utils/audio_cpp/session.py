@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 import urllib.parse
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
@@ -159,6 +160,7 @@ def _session_key(config: Mapping[str, Any], mode: str, model_id: str, endpoint: 
             "config_id",
             "weight_id",
             "model_spec_override",
+            "show_server_console",
         )
         identity = {"mode": mode, "model_id": model_id}
         for key in identity_keys:
@@ -225,6 +227,7 @@ class AudioCppSession:
         self._lock = threading.RLock()
         self._closed = False
         self._model_ready_reported = False
+        self.ui_session_id = uuid.uuid4().hex
         self._proxy = AudioCppRuntimeProxy(self) if self.owned else None
 
     @property
@@ -278,7 +281,7 @@ class AudioCppSession:
                 self._proxy.register()
             print(
                 f"✅ audio.cpp: Server ready at {self.endpoint} "
-                f"({time.monotonic() - started:.2f}s); model will load on first generation"
+                f"({time.monotonic() - started:.2f}s); model will load on first request"
             )
 
     def _ensure_client(self) -> AudioCppClient:
@@ -305,6 +308,14 @@ class AudioCppSession:
         if self._client is None:
             raise RuntimeError("audio.cpp owned runtime restart did not create a client")
         return self._client
+
+    def restart_owned_runtime(self) -> None:
+        """Recreate an owned server when an upstream session cannot be reused safely."""
+        if not self.owned:
+            raise RuntimeError("Cannot restart an external audio.cpp server")
+        with self._lock:
+            self._stop_owned_runtime()
+            self._start_owned_runtime()
 
     def run(self, request: Mapping[str, Any]) -> AudioCppTaskResult:
         if not isinstance(request, Mapping):
@@ -335,7 +346,7 @@ class AudioCppSession:
             if first_request:
                 self._model_ready_reported = True
                 print(
-                    f"✅ audio.cpp: Model '{self.model_id}' loaded; first generation completed "
+                    f"✅ audio.cpp: Model '{self.model_id}' loaded; first {self.task} request completed "
                     f"in {time.monotonic() - started:.2f}s"
                 )
             return result
@@ -542,12 +553,74 @@ def close_all_audio_cpp_sessions() -> None:
             _warn("Failed to close audio.cpp session during shutdown", exc)
 
 
+def audio_cpp_session_statuses() -> list[Dict[str, Any]]:
+    """Return a path-free, side-effect-free snapshot for the frontend indicator."""
+    with _SESSIONS_LOCK:
+        sessions = list({id(session): session for session in _SESSIONS.values()}.values())
+    statuses = []
+    for session in sessions:
+        if session._closed:
+            continue
+        if session.owned:
+            if session.running:
+                state = "model_ready" if session._model_ready_reported else "server_ready"
+            else:
+                state = "configured"
+        else:
+            state = "model_ready" if session._model_ready_reported else "server_ready"
+        statuses.append(
+            {
+                "session_id": session.ui_session_id,
+                "state": state,
+                "owned": session.owned,
+                "family": session.family,
+                "model_id": session.model_id,
+                "endpoint": session.endpoint if not session.owned else "",
+                "pid": session.process.process.pid if session.owned and session.running else None,
+                **_process_memory_status(
+                    session.process.process.pid if session.owned and session.running else None
+                ),
+            }
+        )
+    return statuses
+
+
+def _process_memory_status(pid: Optional[int]) -> Dict[str, Optional[int]]:
+    if not pid:
+        return {"working_set_bytes": None, "private_bytes": None}
+    try:
+        import psutil
+
+        info = psutil.Process(pid).memory_info()
+        return {
+            "working_set_bytes": int(info.rss),
+            "private_bytes": int(getattr(info, "private", info.vms)),
+        }
+    except Exception:
+        return {"working_set_bytes": None, "private_bytes": None}
+
+
+def stop_owned_audio_cpp_session(session_id: str) -> bool:
+    """Stop, but retain, an exact Suite-owned session for lazy restart."""
+    with _SESSIONS_LOCK:
+        sessions = list({id(session): session for session in _SESSIONS.values()}.values())
+    session = next((item for item in sessions if item.ui_session_id == session_id), None)
+    if session is None:
+        return False
+    if not session.owned:
+        raise PermissionError("External audio.cpp servers cannot be stopped by the Suite")
+    session._stop_owned_runtime()
+    return True
+
+
 atexit.register(close_all_audio_cpp_sessions)
 
 
 __all__ = [
     "AudioCppRuntimeProxy",
     "AudioCppSession",
+    "audio_cpp_session_statuses",
     "close_all_audio_cpp_sessions",
     "get_audio_cpp_session",
+    "stop_owned_audio_cpp_session",
 ]

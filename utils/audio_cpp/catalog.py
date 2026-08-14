@@ -1,4 +1,4 @@
-"""Pinned audio.cpp release-0.5.1 TTS model catalog.
+"""Pinned audio.cpp release-0.5.1 Suite-compatible model catalog.
 
 The bundled JSON files are exact copies of the selected upstream tag's model
 specifications.  The executable's compiled task IDs are kept separately because
@@ -19,53 +19,75 @@ AUDIO_CPP_RELEASE_TAG = "release-0.5.1"
 AUDIO_CPP_RELEASE_COMMIT = "238ab6a9e321c17de8e120559f57efeedaeb1345"
 
 MODEL_SPEC_FILENAMES: Tuple[str, ...] = (
+    "citrinet_asr.json",
     "chatterbox.json",
     "confucius4_tts.json",
     "dramabox.json",
     "fish_audio.json",
+    "fun_asr_nano.json",
     "glm_tts.json",
     "higgs_audio_tts.json",
+    "higgs_audio_stt.json",
+    "hviske_asr.json",
     "index_tts2.json",
     "inflect_v2.json",
     "irodori_tts.json",
+    "kroko_asr.json",
     "miotts.json",
     "moss_tts_local.json",
     "moss_tts_nano.json",
+    "nemotron_asr.json",
     "omnivoice.json",
     "outetts.json",
+    "parakeet_tdt.json",
     "pocket_tts.json",
     "qwen3_tts.json",
+    "qwen3_asr.json",
+    "seed_vc.json",
     "supertonic.json",
     "vevo2.json",
     "vibevoice.json",
+    "vibevoice_asr.json",
     "vietneu_tts.json",
     "voxcpm2.json",
+    "voxtral_realtime.json",
 )
 
 # These are the task IDs actually compiled into release-0.5.1.  Do not derive
 # them from the broader human-facing ``tasks`` arrays in the JSON specs.
 COMPILED_TASKS: Mapping[str, Tuple[str, ...]] = {
+    "citrinet_asr": ("asr",),
     "chatterbox": ("clon", "vc"),
     "confucius4_tts": ("clon",),
     "dramabox": ("tts", "clon"),
     "fish_audio": ("tts",),
+    "fun_asr_nano": ("asr",),
     "glm_tts": ("tts", "clon"),
     "higgs_audio_tts": ("tts",),
+    "higgs_audio_stt": ("asr",),
+    "hviske_asr": ("asr",),
     "index_tts2": ("tts", "clon"),
     "inflect_v2": ("tts",),
     "irodori_tts": ("tts", "clon", "vdes"),
+    "kroko_asr": ("asr",),
     "miotts": ("tts",),
     "moss_tts_local": ("tts", "clon"),
     "moss_tts_nano": ("tts", "clon"),
+    "nemotron_asr": ("asr",),
     "omnivoice": ("tts",),
     "outetts": ("tts", "clon"),
+    "parakeet_tdt": ("asr",),
     "pocket_tts": ("tts",),
     "qwen3_tts": ("tts", "vdes"),
+    "qwen3_asr": ("asr",),
+    "seed_vc": ("vc", "svc"),
     "supertonic": ("tts",),
     "vevo2": ("tts", "vc", "s2s", "svc"),
     "vibevoice": ("tts",),
+    "vibevoice_asr": ("asr",),
     "vietneu_tts": ("tts", "vdes"),
     "voxcpm2": ("tts",),
+    "voxtral_realtime": ("asr",),
 }
 
 _TASK_ALIASES = {
@@ -275,8 +297,8 @@ def _load_catalog(specs_dir: Path) -> AudioCppCatalog:
     if set(families) != set(COMPILED_TASKS):
         missing = sorted(set(COMPILED_TASKS) - set(families))
         raise CatalogError(f"Pinned audio.cpp catalog is incomplete; missing {missing}")
-    if len(packages) != 67:
-        raise CatalogError(f"Expected 67 release-0.5.1 packages, found {len(packages)}")
+    if len(packages) != 96:
+        raise CatalogError(f"Expected 96 Suite-compatible release-0.5.1 packages, found {len(packages)}")
     return AudioCppCatalog(families=families, packages=packages, specs_dir=specs_dir)
 
 

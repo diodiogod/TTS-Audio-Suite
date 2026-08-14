@@ -235,12 +235,28 @@ class AudioCppProcessor:
         # GLM-TTS requires the transcript paired with its reference voice.
         # Other pinned families accept audio-only discovery and still receive a
         # transcript whenever one exists beside the character audio file.
+        try:
+            from utils.audio_cpp.capabilities import get_capability
+
+            transcript_requirement = get_capability(
+                str(base_config.get("family", ""))
+            )["reference_transcript"]
+        except (ImportError, KeyError, ValueError):
+            transcript_requirement = "none"
         discovery_type = (
-            "audio_and_text"
-            if str(base_config.get("family", "")).lower() == "glm_tts"
-            else "audio_only"
+            "audio_and_text" if transcript_requirement == "required" else "audio_only"
         )
         discovered = get_character_mapping(characters, engine_type=discovery_type)
+        configured_speakers = list(base_config.get("speaker_references") or [])
+        ordered_characters = []
+        for segment in segments:
+            name = segment.character or "narrator"
+            if name not in ordered_characters:
+                ordered_characters.append(name)
+        for index, reference in enumerate(configured_speakers, start=1):
+            if index < len(ordered_characters):
+                selected = reference if isinstance(reference, Mapping) else {"audio": reference}
+                voice_mapping[ordered_characters[index]] = dict(selected)
         records: List[Dict[str, Any]] = []
 
         for segment in segments:
@@ -264,6 +280,19 @@ class AudioCppProcessor:
                 current_config["language"] = segment.language
             self.adapter.update_config(current_config)
             voice_ref = self._voice_for_character(character, voice_mapping, discovered)
+            try:
+                from utils.audio_cpp.capabilities import CapabilityError, validate_voice_reference
+            except ImportError:
+                validate_voice_reference = None
+            if validate_voice_reference is not None:
+                try:
+                    validate_voice_reference(
+                        str(base_config.get("family", "")), voice_ref, character
+                    )
+                except CapabilityError:
+                    # Preserve lightweight processor use before a concrete family
+                    # has been selected, while enforcing every known family.
+                    pass
 
             def generate_fragment(content: str, edit_tags: List[Any]) -> None:
                 chunks = self._chunks(content, enable_chunking, max_chars_per_chunk)

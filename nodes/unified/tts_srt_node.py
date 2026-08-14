@@ -260,7 +260,7 @@ Hello! This is unified SRT TTS with character switching.
                     'binary_path', 'model_path', 'model_roots', 'family',
                     'package_id', 'task', 'backend', 'device', 'device_index',
                     'threads', 'model_spec_override', 'load_options',
-                    'session_options',
+                    'session_options', 'show_server_console',
                 ):
                     stable_params[key] = config.get(key)
 
@@ -1188,6 +1188,11 @@ Hello! This is unified SRT TTS with character switching.
 
             if not engine_type:
                 raise ValueError("TTS engine missing engine_type")
+            capabilities = TTS_engine.get("capabilities", [])
+            if capabilities and "tts" not in capabilities:
+                raise ValueError(
+                    f"Engine '{engine_type}' does not support TTS/SRT. Connect it to its compatible unified node."
+                )
 
             if config.get("model_role") == "voice_design":
                 selected_model = config.get("model_variant") or config.get("model_name") or "selected model"
