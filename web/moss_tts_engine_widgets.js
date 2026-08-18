@@ -122,6 +122,8 @@ function supportsLora(value) {
         || text === "v1.5 8B"
         || text === "local:MOSS-TTS"
         || text === "local:MOSS-TTS-v1.5"
+        || text.includes("Voice Acting")
+        || text.includes("voice-acting")
         || isSoundEffectModel(text);
 }
 
