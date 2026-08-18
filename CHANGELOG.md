@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.2] - 2026-08-18
+
+### Added
+
+- Keep trained adapters visible and selectable with the matching community model
+
+### Fixed
+
+- Fix MOSS Voice Acting LoRA selection
+- Fix LoRA controls appearing unavailable when the LAION Voice Acting 8B model is selected
 ## [5.8.1] - 2026-08-11
 
 ### Added
