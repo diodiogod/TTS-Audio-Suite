@@ -60,6 +60,10 @@ class AlignmentStreamAnalyzer:
         # using it for all layers slows things down too much. We can apply it to just one layer
         # by intercepting the kwargs and adding a forward hook (credit: jrm)
         self.last_aligned_attns = []
+        # TTS Audio Suite patch: retain hook handles so each inference can remove its
+        # analyzer hooks instead of accumulating three more on the shared model.
+        self._hook_handles = []
+        self._original_output_attentions = getattr(getattr(tfmr, "config", None), "output_attentions", None)
         for i, (layer_idx, head_idx) in enumerate(LLAMA_ALIGNED_HEADS):
             self.last_aligned_attns += [None]
             self._add_attention_spy(tfmr, i, layer_idx, head_idx)
@@ -81,10 +85,17 @@ class AlignmentStreamAnalyzer:
 
         target_layer = tfmr.layers[layer_idx].self_attn
         # Register hook and store the handle
-        target_layer.register_forward_hook(attention_forward_hook)
+        self._hook_handles.append(target_layer.register_forward_hook(attention_forward_hook))
         if hasattr(tfmr, 'config') and hasattr(tfmr.config, 'output_attentions'):
-            self.original_output_attentions = tfmr.config.output_attentions
             tfmr.config.output_attentions = True
+
+    def close(self, tfmr):
+        """Remove inference-scoped hooks and restore the transformer setting."""
+        for hook_handle in self._hook_handles:
+            hook_handle.remove()
+        self._hook_handles.clear()
+        if self._original_output_attentions is not None:
+            tfmr.config.output_attentions = self._original_output_attentions
 
     def step(self, logits, next_token=None):
         """

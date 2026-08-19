@@ -16,7 +16,6 @@ from .modules.cond_enc import T3CondEnc, T3Cond
 from .modules.t3_config import T3Config
 from .llama_configs import LLAMA_CONFIGS
 from .inference.t3_hf_backend import T3HuggingfaceBackend
-from .inference.alignment_stream_analyzer import AlignmentStreamAnalyzer
 
 
 logger = logging.getLogger(__name__)
@@ -277,13 +276,9 @@ class T3(nn.Module):
             self.tfmr.use_cache = True
             self.tfmr.return_dict = True
             
-            alignment_stream_analyzer = AlignmentStreamAnalyzer(
-                self.tfmr,
-                None,
-                text_tokens_slice=(len_cond, len_cond + text_tokens.size(-1)),
-                alignment_layer_idx=9,
-                eos_idx=self.hp.stop_speech_token,
-            )
+            # TTS Audio Suite patch: alignment analysis is disabled in the backend, so do
+            # not install its persistent attention hook/forward wrapper on every inference.
+            alignment_stream_analyzer = None
             
             # Create backend with updated settings
             patched_model = T3HuggingfaceBackend(
