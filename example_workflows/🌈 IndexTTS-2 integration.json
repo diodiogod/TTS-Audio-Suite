@@ -973,7 +973,7 @@
         9.5,
         1500,
         true,
-        true,
+        false,
         "auto"
       ],
       "color": "#222",

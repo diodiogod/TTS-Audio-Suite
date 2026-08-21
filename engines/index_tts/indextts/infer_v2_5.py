@@ -172,12 +172,31 @@ class IndexTTS2:
 
         if use_deepspeed:
             try:
+                import transformers
+                transformers_major = int(transformers.__version__.split('.', 1)[0])
+            except (ImportError, ValueError, AttributeError):
+                transformers_major = None
+            if transformers_major is not None and transformers_major >= 5:
+                use_deepspeed = False
+                print("⚠️ DeepSpeed kernel injection is not supported by the bundled IndexTTS GPT2 path with Transformers 5.x")
+                print(">> Falling back to standard IndexTTS-2.5 inference (DeepSpeed disabled)")
+
+        if use_deepspeed:
+            try:
                 import deepspeed
             except (ImportError, OSError, CalledProcessError) as e:
                 use_deepspeed = False
                 print(f">> Failed to load DeepSpeed. Falling back to normal inference. Error: {e}")
 
-        self.gpt.post_init_gpt2_config(use_deepspeed=use_deepspeed, kv_cache=True, half=self.use_bf16)
+        try:
+            self.gpt.post_init_gpt2_config(use_deepspeed=use_deepspeed, kv_cache=True, half=self.use_bf16)
+        except Exception as e:
+            if not use_deepspeed:
+                raise
+            use_deepspeed = False
+            print(f"⚠️ DeepSpeed initialization failed: {e}")
+            print(">> Falling back to standard IndexTTS-2.5 inference (DeepSpeed disabled)")
+            self.gpt.post_init_gpt2_config(use_deepspeed=False, kv_cache=True, half=self.use_bf16)
 
         if self.use_cuda_kernel:
             # preload the CUDA kernel for BigVGAN
