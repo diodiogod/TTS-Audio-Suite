@@ -99,8 +99,8 @@ class LoadRVCModelNode(BaseTTSNode):
     
     Usage:
     • Connect output to narrator_target on Voice Changer node
-    • Models should be placed in ComfyUI/models/RVC/ folder  
-    • Index files should be in ComfyUI/models/RVC/.index/ folder
+    • Models can be organized in subfolders under ComfyUI/models/RVC/
+    • Index files can sit beside their model or in an .index/ folder
     
     Model Guide:
     • RVC models are speaker-specific (one model per voice)
@@ -184,6 +184,18 @@ class LoadRVCModelNode(BaseTTSNode):
     def _tokenize_name(value: str):
         return [token for token in re.split(r"[^a-z0-9]+", str(value or "").lower()) if token]
 
+    @staticmethod
+    def _iter_files_recursive(root_dir: str, suffix: str):
+        if not os.path.isdir(root_dir):
+            return
+        for current_dir, dirs, files in os.walk(root_dir):
+            dirs.sort()
+            for file in sorted(files):
+                if file.lower().endswith(suffix):
+                    full_path = os.path.join(current_dir, file)
+                    relative_path = os.path.relpath(full_path, root_dir).replace(os.sep, "/")
+                    yield relative_path, full_path
+
     @classmethod
     def _iter_local_rvc_index_paths(cls):
         seen = set()
@@ -214,9 +226,8 @@ class LoadRVCModelNode(BaseTTSNode):
             if normalized_dir in seen or not os.path.isdir(search_dir):
                 continue
             seen.add(normalized_dir)
-            for file in os.listdir(search_dir):
-                if file.endswith(".index"):
-                    yield os.path.join(search_dir, file)
+            for _, index_path in cls._iter_files_recursive(search_dir, ".index"):
+                yield index_path
 
     @classmethod
     def _score_index_candidate(cls, model_path: str, index_path: str):
@@ -345,12 +356,10 @@ class LoadRVCModelNode(BaseTTSNode):
             all_tts_paths = get_all_tts_model_paths('TTS')
             for base_path in all_tts_paths:
                 rvc_dir = os.path.join(base_path, "RVC")
-                if os.path.exists(rvc_dir):
-                    for file in os.listdir(rvc_dir):
-                        if file.endswith('.pth'):
-                            local_model = f"local:{file}"
-                            if local_model not in models:
-                                models.append(local_model)
+                for relative_path, _ in cls._iter_files_recursive(rvc_dir, ".pth"):
+                    local_model = f"local:{relative_path}"
+                    if local_model not in models:
+                        models.append(local_model)
         except Exception:
             pass
 
@@ -364,12 +373,10 @@ class LoadRVCModelNode(BaseTTSNode):
                 ]
 
                 for rvc_models_dir in rvc_search_paths:
-                    if os.path.exists(rvc_models_dir):
-                        for file in os.listdir(rvc_models_dir):
-                            if file.endswith('.pth'):
-                                local_model = f"local:{file}"
-                                if local_model not in models:
-                                    models.append(local_model)
+                    for relative_path, _ in cls._iter_files_recursive(rvc_models_dir, ".pth"):
+                        local_model = f"local:{relative_path}"
+                        if local_model not in models:
+                            models.append(local_model)
         except:
             pass
         
@@ -409,12 +416,12 @@ class LoadRVCModelNode(BaseTTSNode):
                     os.path.join(base_path, "RVC")
                 ]
                 for rvc_index_dir in index_search_paths:
-                    if os.path.exists(rvc_index_dir):
-                        for file in os.listdir(rvc_index_dir):
-                            if file.endswith('.index'):
-                                local_index = f"local:{file}"
-                                if local_index not in indexes:
-                                    indexes.append(local_index)
+                    for relative_path, _ in cls._iter_files_recursive(rvc_index_dir, ".index"):
+                        if os.path.basename(rvc_index_dir) != ".index" and relative_path.startswith(".index/"):
+                            continue
+                        local_index = f"local:{relative_path}"
+                        if local_index not in indexes:
+                            indexes.append(local_index)
         except Exception:
             pass
 
@@ -430,12 +437,12 @@ class LoadRVCModelNode(BaseTTSNode):
                 ]
 
                 for rvc_index_dir in index_search_paths:
-                    if os.path.exists(rvc_index_dir):
-                        for file in os.listdir(rvc_index_dir):
-                            if file.endswith('.index'):
-                                local_index = f"local:{file}"
-                                if local_index not in indexes:
-                                    indexes.append(local_index)
+                    for relative_path, _ in cls._iter_files_recursive(rvc_index_dir, ".index"):
+                        if os.path.basename(rvc_index_dir) != ".index" and relative_path.startswith(".index/"):
+                            continue
+                        local_index = f"local:{relative_path}"
+                        if local_index not in indexes:
+                            indexes.append(local_index)
         except:
             pass
         
