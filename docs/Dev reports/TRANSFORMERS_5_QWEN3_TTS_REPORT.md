@@ -109,7 +109,7 @@ Decision
 
 Operational Recommendation
 - Treat Qwen3-TTS as a legacy-stack engine for now.
-- Route it into the shared legacy Transformers 4 runtime used by compatible engines (same family already proven for VibeVoice/Qwen in prior testing).
+- Route it into the shared legacy Transformers 4 runtime used by compatible engines (the same runtime family already proven for Qwen in prior testing).
 - Keep the main environment on Transformers 5.
 - Revisit native Transformers 5 support only if Qwen3-TTS becomes strategically important enough to justify deeper behavior-level compatibility work.
 

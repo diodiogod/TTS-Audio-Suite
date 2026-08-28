@@ -1218,7 +1218,7 @@ class VibeVoiceEngine:
             dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
 
             model_kwargs = {
-                "torch_dtype": dtype,
+                "dtype": dtype,
                 "low_cpu_mem_usage": True,
                 "device_map": device if device != "auto" else "auto",
             }

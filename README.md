@@ -7,7 +7,7 @@
 [![Dynamic TOML Badge][version-shield]][version-url]
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/diogogo)
 
-# TTS Audio Suite v5.8.6
+# TTS Audio Suite v5.8.7
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/diogogo)
 
@@ -429,7 +429,7 @@ dataset formats, training workflow, adapter loading, and CPU-safe preflight.
 3. Choose between Custom Character Switching (recommended) or Native Multi-Speaker mode
 4. Generate long-form content with automatic voice cloning from your voices folder
 
-**Isolation note:** On current ComfyUI stacks, **Kugel/VibeVoice is usually meant to run with `⚠️ Runtime Isolation = Shared Runtime`**. If you force `Main Environment`, you are opting back into the dependency-conflict path.
+VibeVoice and KugelAudio run directly in the suite's Transformers 5 main environment.
 
 **Perfect for:**
 

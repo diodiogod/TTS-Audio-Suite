@@ -9,15 +9,8 @@ import importlib.util
 from typing import Dict, Any
 
 from utils.models.factory_config import (
-    RUNTIME_MODE_DEDICATED,
     RUNTIME_MODE_MAIN,
-    RUNTIME_MODE_SHARED,
-    normalize_runtime_mode,
 )
-
-RUNTIME_MODE_MAIN_LABEL = "Main Environment"
-RUNTIME_MODE_SHARED_LABEL = "⚠️ Shared Runtime"
-RUNTIME_MODE_DEDICATED_LABEL = "⚠️ Dedicated Runtime"
 
 # AnyType for flexible input types (accepts any data type)
 class AnyType(str):
@@ -138,10 +131,6 @@ class VibeVoiceEngineNode(BaseTTSNode):
                 "speaker4_voice": (any_typ, {
                     "tooltip": "🎤 Voice for Speaker 4 in Native Multi-Speaker mode. Connect audio input or Character Voices output.\n\n⚠️ Important: Each speaker must use a DIFFERENT voice file - duplicate voices cause confusion.\n\n💡 Note: Speaker 1 is the 'opt_narrator' input on the Unified TTS Text/SRT node."
                 }),
-                "runtime_mode": ([RUNTIME_MODE_MAIN_LABEL, RUNTIME_MODE_SHARED_LABEL, RUNTIME_MODE_DEDICATED_LABEL], {
-                    "default": RUNTIME_MODE_SHARED_LABEL,
-                    "tooltip": "IMPORTANT: VibeVoice/Kugel usually needs an isolation runtime now.\n\nRuntime Isolation:\n• Main Environment: Use the main ComfyUI Python environment\n• Shared Runtime: Use the shared secondary legacy runtime for compatible engines\n• Dedicated Runtime: Create a separate secondary runtime just for VibeVoice/Kugel\n\nWhy this matters:\n• The main ComfyUI env is on Transformers 5\n• VibeVoice/Kugel still depends on the older pinned stack\n• Runtime isolation keeps this engine working without downgrading the whole app\n\n⚠️ Shared/Dedicated runtimes currently reuse heavy base packages from the main env (like PyTorch) and install pinned VibeVoice-specific packages on top.\n⚠️ First run still creates the secondary runtime and may take a while."
-                })
             }
         }
     
@@ -194,27 +183,20 @@ class VibeVoiceEngineNode(BaseTTSNode):
                            use_sampling, attention_mode, inference_steps, quantize_llm_4bit, 
                            temperature, top_p, chunk_minutes, max_new_tokens,
                            speaker2_voice=None, speaker3_voice=None, speaker4_voice=None,
-                           runtime_mode=RUNTIME_MODE_SHARED):
+                           runtime_mode=None):
         """Create VibeVoice engine configuration"""
         
         # Convert chunk_minutes to characters (approximately 750 chars per minute)
         # Based on: 150 words/min * 5 chars/word = 750 chars/min
         chunk_chars = chunk_minutes * 750 if chunk_minutes > 0 else 0
         
-        runtime_mode = normalize_runtime_mode(runtime_mode)
-        runtime_profile = None
-        if runtime_mode == RUNTIME_MODE_SHARED:
-            runtime_profile = "vibevoice_transformers4_shared"
-        elif runtime_mode == RUNTIME_MODE_DEDICATED:
-            runtime_profile = "vibevoice_transformers4_dedicated"
-
         # Validate parameters
         config = {
             "engine_type": "vibevoice",
             "model": model,
             "device": device,
-            "runtime_mode": runtime_mode,
-            "runtime_profile": runtime_profile,
+            "runtime_mode": RUNTIME_MODE_MAIN,
+            "runtime_profile": None,
             "multi_speaker_mode": multi_speaker_mode,
             "cfg_scale": max(1.0, min(10.0, cfg_scale)),
             "use_sampling": bool(use_sampling),
@@ -235,12 +217,7 @@ class VibeVoiceEngineNode(BaseTTSNode):
         # Display configuration
         print(f"🎙️ VibeVoice Engine configured:")
         print(f"   Model: {model} on {device}")
-        runtime_label = {
-            RUNTIME_MODE_MAIN: "Main Environment",
-            RUNTIME_MODE_SHARED: "Shared Runtime",
-            RUNTIME_MODE_DEDICATED: "Dedicated Runtime",
-        }.get(runtime_mode, runtime_mode)
-        print(f"   Runtime: {runtime_label}")
+        print("   Runtime: Main Environment")
         print(f"   Mode: {multi_speaker_mode}")
         print(f"   CFG Scale: {cfg_scale}, Sampling: {use_sampling}")
         print(f"   Attention: {attention_mode}, Steps: {inference_steps}")
@@ -248,9 +225,6 @@ class VibeVoiceEngineNode(BaseTTSNode):
             print(f"   🗜️ 4-bit LLM quantization enabled")
         if chunk_minutes > 0:
             print(f"   Chunking: Every {chunk_minutes} minutes (~{chunk_chars} chars)")
-        if runtime_mode != RUNTIME_MODE_MAIN:
-            print("   ⚠️ Runtime isolation requested: first run may create a secondary VibeVoice runtime.")
-
         return (config,)
 
 

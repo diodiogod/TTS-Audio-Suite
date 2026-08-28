@@ -206,7 +206,7 @@ class HiggsAudioEngineNode(BaseTTSNode):
                 }),
                 "runtime_mode": ([runtime_mode_main_label, runtime_mode_shared_label], {
                     "default": runtime_mode_shared_label,
-                    "tooltip": "IMPORTANT: Higgs Audio 2 is not stable enough on the main Transformers 5 environment right now.\n\nRuntime Isolation:\n• Main Environment: Use the main ComfyUI Python environment\n• Shared Runtime: Use the existing shared legacy Transformers 4 runtime already used by VibeVoice/Qwen\n\nWhy this matters:\n• The main ComfyUI env is on Transformers 5\n• Higgs Audio 2 previously worked on the old T4 stack\n• Shared runtime reuses that older stack without downgrading the whole app\n\n⚠️ First run may create or refresh the shared secondary runtime and take a while."
+                    "tooltip": "IMPORTANT: Higgs Audio 2 is not stable enough on the main Transformers 5 environment right now.\n\nRuntime Isolation:\n• Main Environment: Use the main ComfyUI Python environment\n• Shared Runtime: Use the existing shared legacy Transformers 4 runtime\n\nWhy this matters:\n• The main ComfyUI env is on Transformers 5\n• Higgs Audio 2 previously worked on the old T4 stack\n• Shared runtime reuses that older stack without downgrading the whole app\n\n⚠️ First run may create or refresh the shared secondary runtime and take a while."
                 }),
             }
         }

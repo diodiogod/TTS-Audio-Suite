@@ -104,7 +104,7 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         multilingual_model_switching=False,  # One model handles multiple languages
         can_corrupt_on_reload=False,
         fallback_languages=["English"],
-        supports_runtime_isolation=True,
+        supports_runtime_isolation=False,
         default_runtime_profile=None,
     ),
 

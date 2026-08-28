@@ -17,7 +17,7 @@
 **Key architectural rules:**
 - Chunking happens in the **processor**, not the adapter (`generate_single()` on adapter = raw single call)
 - Runtime routing happens through `ModelLoadConfig.runtime_mode` + `runtime_profile`, not ad-hoc subprocess calls
-- Shared runtime workers are currently used for fragile engine families such as VibeVoice, Qwen3-TTS / ASR, Granite forced alignment, and Higgs Audio 2. Engines that support the modern stack run natively in the main Transformers 5 environment.
+- Shared runtime workers are currently used for fragile engine families such as Qwen3-TTS / ASR, Granite forced alignment, and Higgs Audio 2. VibeVoice/Kugel and other engines that support the modern stack run natively in the main Transformers 5 environment.
 - YAML (`docs/Dev reports/tts_audio_suite_engines.yaml`) is source of truth for engine doc tables → run `python3 scripts/generate_engine_tables.py --readme` to regenerate
 - Auxiliary YAML (`docs/Dev reports/tts_audio_suite_aux_models.yaml`) is source of truth for helper/post-process model docs → run `python3 scripts/generate_aux_model_docs.py`
 - All models download to `ComfyUI/models/TTS/<model-name>/`
@@ -141,14 +141,13 @@
 - `extra_paths.py` - extra_model_paths.yaml support
 
 ### Isolated Runtimes (`utils/runtimes/`)
-- `profiles.py` - named runtime profiles (`vibevoice_transformers4_shared`, dedicated variants, etc.)
+- `profiles.py` - named runtime profiles (shared/dedicated legacy Transformers 4 environments and engine-specific runtimes)
 - `launcher.py` - runtime bootstrap, venv creation, Windows toolchain env setup
 - `session.py`, `protocol.py` - JSONL worker transport and message protocol
 - `bootstrap.py` - shared runtime bootstrap helpers
 - `vibevoice_proxy.py`, `qwen3_tts_proxy.py`, `qwen3_asr_proxy.py`, `higgs_audio_proxy.py` - parent-process proxies
 - `workers/` - worker subprocess entrypoints for VibeVoice, Qwen3-TTS, Qwen3-ASR/aligner, Higgs Audio
 - Current shared legacy T4 runtime profile is reused by:
-  - VibeVoice / Kugel
   - Qwen3-TTS
   - Qwen3-ASR and Granite's optional Qwen forced aligner
   - Higgs Audio 2

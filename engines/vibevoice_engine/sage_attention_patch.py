@@ -221,4 +221,4 @@ def restore_original_attention(model):
     if restored_count > 0:
         logger.info(f"Restored original attention for {restored_count} patched layers")
     else:
-        logger.warning("No patched attention layers found to restore")
+        logger.debug("No patched attention layers found to restore")

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.7] - 2026-08-28
+
+### Added
+
+- Add native Transformers 5 support for VibeVoice and KugelAudio
+- Run VibeVoice and KugelAudio directly in the main ComfyUI environment
+
+### Fixed
+
+- Fix VibeVoice 1.5B and KugelAudio model loading and generation on current ComfyUI installations
+- Remove misleading compatibility warnings during VibeVoice loading and generation
+
+### Removed
+
+- Remove the VibeVoice runtime isolation setting
 ## [5.8.6] - 2026-08-28
 
 ### Changed

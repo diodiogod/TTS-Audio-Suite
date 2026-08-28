@@ -4,7 +4,7 @@ Transformers Compatibility Patches - DEPRECATED
 ⚠️ THIS MODULE IS NO LONGER USED ⚠️
 
 Originally created to fix compatibility issues with transformers 4.46.3, but after 
-upgrading to transformers 4.51.3+ (as required by VibeVoice), these patches are no 
+upgrading to transformers 4.51.3+, these patches are no
 longer needed and have been disabled.
 
 Historical context - patches that were needed for transformers 4.46.3:
