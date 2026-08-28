@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 
@@ -28,7 +29,7 @@ class AnyType(str):
     def __ne__(self, __value: object) -> bool:
         return False
 
-from rvc_audio import audio_to_bytes, save_input_audio, load_input_audio, get_audio
+from rvc_audio import save_input_audio, load_input_audio, get_audio
 import folder_paths
 from rvc_utils import get_filenames, get_hash, get_optimal_torch_device
 from lib import karafan
@@ -298,7 +299,18 @@ Selects the audio format for separated stems:
                     if download_file(params): print(f"✅ Successfully downloaded: {model_path}")
         
         input_audio = get_audio(audio)
-        hash_name = get_hash(model, aggressiveness, format, audio_to_bytes(*input_audio))
+        audio_samples, sample_rate = input_audio
+        audio_array = np.ascontiguousarray(audio_samples)
+        audio_digest = hashlib.md5(audio_array.tobytes()).hexdigest()
+        hash_name = get_hash(
+            model,
+            aggressiveness,
+            format,
+            sample_rate,
+            audio_array.dtype.str,
+            audio_array.shape,
+            audio_digest,
+        )
         audio_path = os.path.join(temp_path,"uvr",f"{hash_name}.wav")
         primary_path = os.path.join(cache_dir,hash_name,f"primary.{format}")
         secondary_path = os.path.join(cache_dir,hash_name,f"secondary.{format}")
