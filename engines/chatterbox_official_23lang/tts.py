@@ -791,6 +791,7 @@ class ChatterboxOfficial23LangTTS:
                 try:
                     individual_audio = self.generate(
                         text=text,
+                        language_id=language_id,
                         audio_prompt_path=None,
                         exaggeration=exaggeration,
                         cfg_weight=cfg_weight,
@@ -812,7 +813,7 @@ class ChatterboxOfficial23LangTTS:
             print(f"🚀 SINGLE BATCH: Processing all {len(texts)} texts simultaneously")
             try:
                 results = self._batch_inference_simultaneous(
-                    texts, temperature, cfg_weight, effective_max_workers
+                    texts, language_id, temperature, cfg_weight, effective_max_workers
                 )
                 print(f"✅ All texts completed successfully")
             except Exception as e:
@@ -823,6 +824,7 @@ class ChatterboxOfficial23LangTTS:
                     try:
                         individual_audio = self.generate(
                             text=text,
+                            language_id=language_id,
                             audio_prompt_path=None,
                             exaggeration=exaggeration,
                             cfg_weight=cfg_weight,
@@ -843,7 +845,7 @@ class ChatterboxOfficial23LangTTS:
         
         return results
     
-    def _batch_inference_simultaneous(self, texts, temperature=0.8, cfg_weight=0.5, max_workers=4):
+    def _batch_inference_simultaneous(self, texts, language_id, temperature=0.8, cfg_weight=0.5, max_workers=4):
         """
         TRUE PARALLEL PROCESSING: Like Chatterbox-TTS-Extended does it!
         
@@ -863,6 +865,7 @@ class ChatterboxOfficial23LangTTS:
                 # Use the existing, working generate method with FULL CFG support
                 audio = self.generate(
                     text=text,
+                    language_id=language_id,
                     audio_prompt_path=None,  # Use pre-loaded conditioning
                     exaggeration=self.conds.t3.emotion_adv[0, 0, 0].item(),
                     cfg_weight=cfg_weight,  # KEEP CFG for quality!
