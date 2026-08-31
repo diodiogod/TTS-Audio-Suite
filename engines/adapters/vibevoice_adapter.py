@@ -699,11 +699,13 @@ class VibeVoiceEngineAdapter:
                 # Try to find matching voice file
                 try:
                     from utils.voice.discovery import get_character_mapping
-                    char_mapping = get_character_mapping()
-                    if voice in char_mapping:
-                        voice_ref = char_mapping[voice]
+                    # get_character_mapping takes the characters to look up and returns
+                    # {name: (audio_path, reference_text)}; VibeVoice wants an audio_path dict.
+                    char_mapping = get_character_mapping([voice], engine_type="vibevoice")
+                    char_audio, _char_text = char_mapping.get(voice, (None, None))
+                    if char_audio:
                         print(f"🔄 Auto-converted '{voice}' to voice reference")
-                        normalized_voices.append(voice_ref)
+                        normalized_voices.append({"audio_path": char_audio})
                     else:
                         print(f"⚠️ Unknown character '{voice}', using None")
                         normalized_voices.append(None)
