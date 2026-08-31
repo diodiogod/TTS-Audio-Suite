@@ -24,7 +24,18 @@ class StreamingCoordinator:
     Replaces all node-specific routers with a single, engine-agnostic coordinator
     that works with universal StreamingSegment format.
     """
-    
+
+    @staticmethod
+    def normalize_legacy_batch_size(engine_type: str, batch_size: int) -> int:
+        """Allow legacy parallel workers only for ChatterBox Classic."""
+        if batch_size > 1 and engine_type != "chatterbox":
+            print(
+                f"WARNING: {engine_type}: Legacy parallel workers are only supported by "
+                "ChatterBox Classic. Falling back to sequential processing (batch_size=0)."
+            )
+            return 0
+        return batch_size
+
     @staticmethod
     def should_use_streaming(config: StreamingConfig, segment_count: int) -> bool:
         """

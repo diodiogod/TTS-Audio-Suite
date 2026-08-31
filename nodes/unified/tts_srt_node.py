@@ -133,7 +133,7 @@ Hello! This is unified SRT TTS with character switching.
                 }),
                 "batch_size": ("INT", {
                     "default": 0, "min": 0, "max": 32, "step": 1,
-                    "tooltip": "Parallel processing workers. 0 = sequential (recommended), 2+ = streaming mode. Note: Streaming often slower than sequential mode. F5-TTS doesn't support streaming yet."
+                    "tooltip": "Legacy parallel workers for ChatterBox Classic only. 0-1 = sequential (recommended). Values above 1 process separate subtitle segments concurrently; this is not true model batching, usually provides little or no speed benefit, and may use more VRAM. Unsupported for other TTS engines."
                 }),
                 "use_native_duration_targeting": ("BOOLEAN", {
                     "default": False,
@@ -1147,6 +1147,9 @@ Hello! This is unified SRT TTS with character switching.
             if not engine_type:
                 raise ValueError("TTS engine missing engine_type")
 
+            from utils.streaming.streaming_coordinator import StreamingCoordinator
+            batch_size = StreamingCoordinator.normalize_legacy_batch_size(engine_type, batch_size)
+
             if config.get("model_role") == "voice_design":
                 selected_model = config.get("model_variant") or config.get("model_name") or "selected model"
                 raise ValueError(
@@ -1249,11 +1252,6 @@ Hello! This is unified SRT TTS with character switching.
                 )
                 
             elif engine_type == "f5tts":
-                # F5-TTS streaming warning and fallback
-                if batch_size > 1:
-                    print(f"⚠️ F5-TTS doesn't support streaming mode yet. Falling back to sequential processing (batch_size=0)")
-                    batch_size = 0
-                
                 # F5-TTS SRT parameters
                 # Always use the resolved audio reference from _get_voice_reference priority logic
                 if audio_tensor:
