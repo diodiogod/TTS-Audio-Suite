@@ -210,12 +210,14 @@ class ChatterBoxOfficial23LangEngineAdapter:
                 exaggeration = params.get("exaggeration", 1.0)
                 temperature = params.get("temperature", 0.8)
                 cfg_weight = params.get("cfg_weight", 1.0)
+                language_id = params.get("language_id", "en")
                 
                 # Use the ChatterBox engine's generate_batch method for true batch processing
                 if hasattr(self.node, 'tts_model') and hasattr(self.node.tts_model, 'generate_batch'):
                     print(f"🔧 Using overlapping batch processing with max_workers={self.batch_size}")
                     batch_audio = self.node.tts_model.generate_batch(
                         texts=batch_texts,
+                        language_id=language_id,
                         audio_prompt_path=char_audio,
                         exaggeration=exaggeration,
                         cfg_weight=cfg_weight,
