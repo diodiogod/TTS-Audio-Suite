@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.9] - 2026-09-03
+
+### Fixed
+
+- Fix TTS model discovery when extra_model_paths.yaml defines a shared TTS directory
+- Fix local ComfyUI models/TTS installations being hidden by shared storage configuration.
+- Fix download path ordering so the configured default directory remains preferred.
 ## [5.8.8] - 2026-08-31
 
 ### Added

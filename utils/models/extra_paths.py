@@ -59,6 +59,24 @@ class TtsExtraPathsManager:
             if folder_type not in self.tts_folders:
                 folder_paths.add_model_folder_path(folder_type, config['paths'][0])
                 self.tts_folders[folder_type] = config['paths']
+
+        # A TTS category created by extra_model_paths.yaml does not automatically
+        # include ComfyUI's local models/TTS directory. Keep the configured default
+        # first for downloads while retaining the local directory for discovery.
+        local_tts_path = tts_model_types['TTS']['paths'][0]
+        registered_tts_paths = self.tts_folders['TTS']
+        normalized_paths = {
+            os.path.normcase(os.path.abspath(os.path.normpath(path)))
+            for path in registered_tts_paths
+        }
+        normalized_local_path = os.path.normcase(
+            os.path.abspath(os.path.normpath(local_tts_path))
+        )
+        if normalized_local_path not in normalized_paths:
+            folder_paths.add_model_folder_path('TTS', local_tts_path, is_default=False)
+
+        # Refresh from ComfyUI so our ordering matches its canonical registry.
+        self.tts_folders['TTS'] = folder_paths.folder_names_and_paths['TTS'][0]
     
     def get_tts_model_directory(self, model_type: str = 'TTS') -> str:
         """
