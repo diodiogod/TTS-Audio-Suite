@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.10] - 2026-09-04
+
+### Fixed
+
+- Fix Step Audio EditX failing when its speech recognition model is missing
+- Remove unused dependency constraints that could break installation on newer Python versions
+- Improve Echo-TTS and FAISS dependency handling through the extension installer
 ## [5.8.9] - 2026-09-03
 
 ### Fixed

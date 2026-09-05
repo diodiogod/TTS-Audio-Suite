@@ -38,7 +38,9 @@ class StepAudioEditXIsolatedProxy:
         self._comfy_model_management = None
         self._initialized = False
 
-        self.model_path = StepAudioEditXDownloader().resolve_model_path(config.model_path)
+        downloader = StepAudioEditXDownloader()
+        self.model_path = downloader.resolve_model_path(config.model_path)
+        downloader.ensure_companion_models(self.model_path)
         launcher = IsolatedRuntimeLauncher(runtime_root=str(PROJECT_ROOT))
         python_path = ensure_runtime(profile)
         worker_script = PROJECT_ROOT / "utils/runtimes/workers/step_audio_editx_worker.py"

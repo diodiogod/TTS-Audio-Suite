@@ -371,6 +371,21 @@ class StepAudioEditXDownloader:
         # Handle predefined models or auto-download
         return self.get_model_path(model_identifier)
 
+    def ensure_companion_models(self, model_path: str) -> str:
+        """Ensure models required alongside the main Step model are present."""
+        companion_base_path = os.path.dirname(os.path.abspath(model_path))
+        companion_downloader = self
+        if os.path.abspath(self.base_path) != companion_base_path:
+            companion_downloader = StepAudioEditXDownloader(base_path=companion_base_path)
+
+        model_name = "FunASR-Paraformer"
+        model_dir = os.path.join(companion_base_path, model_name)
+        required_files = self.MODELS[model_name]["files"]
+        if not self._is_model_complete(model_dir, required_files):
+            print("📥 FunASR model not found or incomplete, downloading (one-time setup)...")
+            model_dir = companion_downloader.download_model(model_name)
+        return model_dir
+
     def get_model_path(self, model_name: str = "Step-Audio-EditX") -> str:
         """
         Get the path to a model (auto-downloads if missing).

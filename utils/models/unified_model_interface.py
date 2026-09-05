@@ -1125,7 +1125,6 @@ def register_step_audio_editx_factory():
             # Auto-download all required models if not present
             from engines.step_audio_editx.step_audio_editx_downloader import StepAudioEditXDownloader
             downloader = StepAudioEditXDownloader()
-            base_path = os.path.dirname(model_path)
 
             # Check and download Step-Audio-EditX main model (includes tokenizer files)
             main_files = downloader.MODELS["Step-Audio-EditX"]["files"]
@@ -1146,12 +1145,8 @@ def register_step_audio_editx_factory():
                 print(f"📥 Step-Audio-EditX model incomplete, downloading...")
                 downloader.download_model("Step-Audio-EditX")
 
-            # Check and download FunASR model (required for tokenizer)
-            funasr_path = os.path.join(base_path, "FunASR-Paraformer")
-            funasr_files = downloader.MODELS["FunASR-Paraformer"]["files"]
-            if not downloader._is_model_complete(funasr_path, funasr_files):
-                print(f"📥 FunASR model not found or incomplete, downloading (one-time setup)...")
-                downloader.download_model("FunASR-Paraformer")
+            # Check and download the sibling FunASR model required by the tokenizer.
+            downloader.ensure_companion_models(model_path)
 
             # CRITICAL: Verify CosyVoice model exists (required for audio synthesis)
             # CosyVoice is a subfolder of the main model and must be complete
