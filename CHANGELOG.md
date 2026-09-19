@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.8.11] - 2026-09-19
+
+### Added
+
+- Add Multiline TTS Tag Editor globe language picker
+- Add an animated globe for choosing and swapping languages
+- Add realistic simplified continent outlines and smooth travel between language locations
+- Add square language buttons with a resizable layout that remembers its size
+
+### Changed
+
+- Improve language selection from the node's left panel
 ## [5.8.10] - 2026-09-04
 
 ### Fixed
