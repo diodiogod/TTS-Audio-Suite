@@ -1,5 +1,6 @@
 import { isLanguageCode } from "./language-constants.js";
 import { TagUtilities } from "./tag-utilities.js";
+import { createLanguageGlobe, languageMeta, languageTileCode } from "./language-swap-globe.js";
 
 const COLORS = { character: "#46d6b1", language: "#56a8ff", reference: "#ff8f70", parameter: "#f4c45e" };
 const EMOTIONS = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"];
@@ -100,7 +101,7 @@ function buildBracketSwap({ tag, cursorOffset, characterOptions, languageOptions
     const token = tokens[tokenIndex];
     return {
         title: kind === "reference" ? "Swap emotion reference" : `Swap ${kind}`,
-        current: token.text.trim(), color: COLORS[kind], items: choices,
+        current: token.text.trim(), color: COLORS[kind], items: choices, kind,
         replace(candidate) {
             if (candidate === "__remove__") return `[${content.slice(0, Math.max(0, token.start - 1)) + content.slice(token.end)}]`;
             return `[${replace(content, token.start, token.end, candidate)}]`;
@@ -137,21 +138,47 @@ function angleSwap(tag, engine) {
     return null;
 }
 
-export function openTagSwapPopup(args) {
-    const swap = args.tag.startsWith("<") ? angleSwap(args.tag, args.engine) : buildBracketSwap(args);
+function openSwapPopup(args, swap) {
     if (!swap?.items.length) return null;
+    if (swap.kind === "language") {
+        const available=new Set(swap.items.map(item=>String(item.value).toLowerCase()));
+        const hidden=new Set([
+            ...(available.has("pt") ? ["pt-pt"] : []),
+            ...(available.has("zh") ? ["zh-cn"] : []),
+        ]);
+        const seen=new Set();
+        swap.items=swap.items.filter(item=>{
+            const code=String(item.value).toLowerCase();
+            const tile=languageTileCode(code);
+            if (hidden.has(code)||seen.has(tile)) return false;
+            seen.add(tile); return true;
+        }).sort((left,right)=>languageTileCode(left.value).localeCompare(languageTileCode(right.value)));
+    }
     document.querySelectorAll(".tts-tag-quick-swap").forEach(element => element.remove());
     const popup = document.createElement("div");
     popup.className = "tts-tag-quick-swap";
-    popup.style.cssText = `position:fixed;z-index:100002;width:min(330px,calc(100vw - 16px));box-sizing:border-box;padding:10px;background:linear-gradient(145deg,#222630,#181b21);border:1px solid ${swap.color};border-radius:11px;box-shadow:0 14px 40px #0009,0 0 18px ${swap.color}30;color:#f4f6fb;font-family:system-ui,sans-serif;`;
+    const languageSwap = swap.kind === "language";
+    const popupWidth = languageSwap ? 620 : 330;
+    const popupHeight = languageSwap ? 620 : 280;
+    const sizeKey = "tts-language-globe-picker-size";
+    let savedSize = null;
+    if (languageSwap) {
+        try { savedSize = JSON.parse(localStorage.getItem(sizeKey)); } catch { /* use defaults */ }
+    }
+    const savedSquareSize = Math.min(Number(savedSize?.width) || popupWidth, Number(savedSize?.height) || popupHeight);
+    const initialSize = Math.min(innerWidth - 16, innerHeight - 16, Math.max(300, savedSquareSize));
+    popup.style.cssText = `position:fixed;z-index:2147483646;width:${languageSwap ? initialSize : popupWidth}px;${languageSwap ? `height:${initialSize}px;min-width:300px;min-height:300px;display:flex;flex-direction:column;` : ""}box-sizing:border-box;padding:10px;overflow:hidden;background:linear-gradient(145deg,rgba(26,31,40,.96),rgba(13,17,23,.97));border:1px solid ${swap.color};border-radius:11px;box-shadow:0 14px 40px #0009,0 0 18px ${swap.color}30;color:#f4f6fb;font-family:system-ui,sans-serif;`;
     const rect = args.anchorRect || { left: 8, bottom: 8 };
-    popup.style.left = `${Math.max(8, Math.min(innerWidth - 338, rect.left || 8))}px`;
-    popup.style.top = `${Math.max(8, Math.min(innerHeight - 280, (rect.bottom || 8) + 7))}px`;
+    popup.style.left = `${Math.max(8, Math.min(innerWidth - popupWidth - 8, rect.left || 8))}px`;
+    popup.style.top = `${Math.max(8, Math.min(innerHeight - popupHeight - 8, (rect.bottom || 8) + 7))}px`;
     const heading = document.createElement("div");
-    heading.textContent = `${swap.title} · ${swap.current || "none"}`;
-    heading.style.cssText = "font-size:12px;font-weight:750;margin-bottom:8px";
+    heading.textContent = languageSwap ? swap.title : `${swap.title} · ${swap.current || "none"}`;
+    heading.style.cssText = "position:relative;z-index:1;font-size:12px;font-weight:750;margin-bottom:8px";
     const grid = document.createElement("div");
-    grid.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto";
+    grid.style.cssText = languageSwap
+        ? "position:relative;z-index:1;flex:1;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:10px;overflow:auto"
+        : "position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto";
+    const globe = languageSwap ? createLanguageGlobe(popup, swap.current) : null;
     let outside;
     let parkedSelectionRange = null;
     let selectionClearFrame = null;
@@ -186,6 +213,7 @@ export function openTagSwapPopup(args) {
         if (selectionClearFrame !== null) cancelAnimationFrame(selectionClearFrame);
         selectionClearFrame = null;
         parkedSelectionRange = null;
+        globe?.destroy();
         popup.remove();
         args.onGestureEnd?.();
         if (cancelled) args.onCancel?.();
@@ -195,25 +223,33 @@ export function openTagSwapPopup(args) {
     let highlighted = null;
     const paint = (entry, hover) => {
         const color = entry.item.remove ? "#e05263" : swap.color;
-        entry.button.style.background = (entry.active || hover) ? color : `${color}18`;
+        entry.button.style.background = (entry.active || hover) ? color : (languageSwap ? "rgba(8,13,20,.20)" : `${color}18`);
         entry.button.style.color = (entry.active || hover) ? "#11151b" : "#edf0f6";
         entry.button.style.transform = hover ? "scale(1.07)" : "scale(1)";
         entry.button.style.boxShadow = hover ? `0 0 15px ${color}a0` : "none";
         entry.button.style.borderColor = color;
+        if (languageSwap) entry.button.style.backdropFilter = (entry.active || hover) ? "blur(3px)" : "none";
     };
     const choose = entry => { const result = swap.replace(entry.item.value); close(false); args.onSelect?.(result); };
     for (const item of swap.items) {
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = item.label || item.value;
+        button.textContent = languageSwap ? languageTileCode(item.value) : (item.label || item.value);
         const active = String(item.value).toLowerCase() === String(swap.current).toLowerCase();
+        const languageDescription = languageSwap ? languageMeta(item.value).slice(0,2).filter(Boolean).join(", ") : "";
         button.title = item.remove ? "Remove this tag component" : "";
-        button.setAttribute("aria-label", item.remove ? "Remove this tag component" : String(item.label || item.value));
+        button.setAttribute("aria-label", item.remove ? "Remove this tag component" : (languageDescription || String(item.label || item.value)));
         button.style.cssText = item.remove
             ? "width:25px;height:25px;padding:0;border-radius:50%;border:1px solid #e05263;font-size:15px;font-weight:800;line-height:1;cursor:pointer;transition:transform .1s,box-shadow .1s,background .1s;"
-            : `padding:7px 10px;border-radius:999px;border:1px solid ${swap.color};font-size:10px;cursor:pointer;transition:transform .1s,box-shadow .1s,background .1s;`;
+            : languageSwap
+                ? `width:100%;min-width:0;aspect-ratio:1;padding:0;border-radius:5px;border:1px solid ${swap.color}80;background:rgba(8,13,20,.20);font:14px ui-monospace,monospace;letter-spacing:.06em;cursor:pointer;backdrop-filter:none;transition:transform .1s,box-shadow .1s,background .1s,backdrop-filter .1s;`
+                : `padding:7px 10px;border-radius:999px;border:1px solid ${swap.color};font-size:10px;cursor:pointer;transition:transform .1s,box-shadow .1s,background .1s;`;
         const entry = { button, item, active };
         entries.push(entry); paint(entry, false);
+        if (languageSwap) {
+            button.onpointerenter = () => globe.focus(item.value, button);
+            button.onfocus = () => globe.focus(item.value, button);
+        }
         button.onpointerdown = event => {
             event.preventDefault(); event.stopPropagation();
             choose(entry);
@@ -235,6 +271,11 @@ export function openTagSwapPopup(args) {
         if (next !== highlighted) { if (highlighted) paint(highlighted, false); highlighted = next; if (highlighted) paint(highlighted, true); }
     };
     grid.onpointermove = updateHighlight;
+    if (languageSwap) grid.onpointerleave = () => {
+        if (highlighted) { paint(highlighted,false); highlighted=null; }
+        const selected=entries.find(entry=>entry.active);
+        if (selected) globe.focus(selected.item.value,selected.button);
+    };
     grid.onpointerdown = event => { if (event.target === grid && highlighted) { event.preventDefault(); choose(highlighted); } };
     const trackHeldPointer = event => {
         if (event.pointerId !== args.holdPointerId) return;
@@ -253,8 +294,44 @@ export function openTagSwapPopup(args) {
         window.removeEventListener("pointercancel", releaseHeldPointer, true);
         if (event.type === "pointerup" && highlighted) choose(highlighted);
     };
-    popup.append(heading, grid);
+    const resizeHandle = languageSwap ? document.createElement("div") : null;
+    if (resizeHandle) {
+        resizeHandle.setAttribute("aria-label", "Resize language picker");
+        resizeHandle.style.cssText = `position:absolute;z-index:4;right:2px;bottom:2px;width:22px;height:22px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 48%,${swap.color} 50%,${swap.color} 57%,transparent 59%,transparent 68%,${swap.color} 70%,${swap.color} 77%,transparent 79%);opacity:.8`;
+        let drag = null;
+        resizeHandle.onpointerdown = event => {
+            event.preventDefault(); event.stopPropagation();
+            const box = popup.getBoundingClientRect();
+            drag = { x:event.clientX, y:event.clientY, size:box.width };
+            resizeHandle.setPointerCapture(event.pointerId);
+        };
+        resizeHandle.onpointermove = event => {
+            if (!drag || !resizeHandle.hasPointerCapture(event.pointerId)) return;
+            event.preventDefault(); event.stopPropagation();
+            const dx=event.clientX-drag.x, dy=event.clientY-drag.y;
+            const delta=Math.abs(dx)>Math.abs(dy)?dx:dy;
+            const box=popup.getBoundingClientRect();
+            const maxSize=Math.max(300,Math.min(innerWidth-box.left-8,innerHeight-box.top-8));
+            const size=Math.max(300,Math.min(maxSize,drag.size+delta));
+            popup.style.width=`${size}px`; popup.style.height=`${size}px`;
+        };
+        const finishResize = event => {
+            if (!drag) return;
+            event.preventDefault(); event.stopPropagation();
+            const {width}=popup.getBoundingClientRect();
+            localStorage.setItem(sizeKey,JSON.stringify({width:Math.round(width),height:Math.round(width)}));
+            drag=null;
+            if(resizeHandle.hasPointerCapture(event.pointerId)) resizeHandle.releasePointerCapture(event.pointerId);
+        };
+        resizeHandle.onpointerup=finishResize;
+        resizeHandle.onpointercancel=finishResize;
+    }
+    popup.append(heading, grid, ...(resizeHandle ? [resizeHandle] : []));
     document.body.append(popup);
+    if (languageSwap) {
+        const activeEntry = entries.find(entry => entry.active) || entries[0];
+        requestAnimationFrame(() => globe.focus(activeEntry.item.value, activeEntry.button));
+    }
     if (args.holdPointerId !== null && args.holdPointerId !== undefined) {
         window.addEventListener("pointermove", trackHeldPointer, true);
         window.addEventListener("pointerup", releaseHeldPointer, true);
@@ -262,4 +339,17 @@ export function openTagSwapPopup(args) {
     }
     setTimeout(() => document.addEventListener("pointerdown", outside, true), 0);
     return popup;
+}
+
+export function openTagSwapPopup(args) {
+    const swap = args.tag.startsWith("<") ? angleSwap(args.tag,args.engine) : buildBracketSwap(args);
+    return openSwapPopup(args,swap);
+}
+
+export function openLanguagePicker({ languageOptions, current="", anchorRect, onSelect, onCancel }) {
+    const items=options(languageOptions);
+    return openSwapPopup({ anchorRect,onSelect,onCancel },{
+        title:"Select language", current, color:COLORS.language, kind:"language", items,
+        replace:value=>value,
+    });
 }

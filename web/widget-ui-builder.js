@@ -217,6 +217,19 @@ export function buildLanguageSection(state, storageKey) {
     langSelect.style.color = "#eee";
     langSelect.style.border = "1px solid #444";
     langSelect.innerHTML = "<option value=''>Select...</option>";
+    langSelect.style.display = "none";
+
+    const langPickerBtn = document.createElement("button");
+    langPickerBtn.type = "button";
+    langPickerBtn.className = "tts-language-picker-trigger";
+    langPickerBtn.setAttribute("aria-label", "Open language globe picker");
+    langPickerBtn.style.cssText = "width:100%;margin-bottom:4px;padding:5px 7px;display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;color:#eee;border:1px solid #444;border-radius:2px;font-size:10px;cursor:pointer";
+    const updatePickerLabel = () => {
+        langPickerBtn.innerHTML = langSelect.value
+            ? `<span>${langSelect.value.toUpperCase()}</span><span style="color:#56a8ff">🌐</span>`
+            : `<span>Select...</span><span style="color:#56a8ff">🌐</span>`;
+    };
+    updatePickerLabel();
 
     const populateLanguages = async () => {
         try {
@@ -233,6 +246,7 @@ export function buildLanguageSection(state, storageKey) {
                     });
                     // Restore saved language AFTER options are populated
                     langSelect.value = state.lastLanguage;
+                    updatePickerLabel();
                     console.log(`✅ Loaded ${data.languages.length} language codes`);
                 }
             }
@@ -249,6 +263,7 @@ export function buildLanguageSection(state, storageKey) {
             });
             // Restore saved language AFTER options are populated
             langSelect.value = state.lastLanguage;
+            updatePickerLabel();
         }
     };
 
@@ -257,6 +272,20 @@ export function buildLanguageSection(state, storageKey) {
     langSelect.addEventListener("change", () => {
         state.lastLanguage = langSelect.value;
         state.saveToLocalStorage(storageKey);
+        updatePickerLabel();
+    });
+
+    langPickerBtn.addEventListener("click", async () => {
+        const { openLanguagePicker } = await import("./tag_swap_popup.js");
+        openLanguagePicker({
+            languageOptions: Array.from(langSelect.options).filter(option=>option.value).map(option=>({value:option.value,label:option.textContent})),
+            current: langSelect.value,
+            anchorRect: langPickerBtn.getBoundingClientRect(),
+            onSelect: value => {
+                langSelect.value=value;
+                langSelect.dispatchEvent(new Event("change",{bubbles:true}));
+            },
+        });
     });
 
     const addLangBtn = document.createElement("button");
@@ -273,6 +302,7 @@ export function buildLanguageSection(state, storageKey) {
 
     langSection.appendChild(langLabel);
     langSection.appendChild(langSelect);
+    langSection.appendChild(langPickerBtn);
     langSection.appendChild(addLangBtn);
 
     return { langSection, langSelect, addLangBtn };

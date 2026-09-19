@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Language Globe Picker Prototype</title>
+    <link rel="stylesheet" href="./prototype.css">
+</head>
+<body>
+    <main>
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">TTS Audio Suite · standalone prototype</p>
+                <h1>Language globe picker</h1>
+                <p>Hover or keyboard-focus a language. The fixed globe rotates toward its representative location.</p>
+            </div>
+            <aside class="controls" aria-label="Prototype controls">
+                <label>Travel speed <input id="speed" type="range" min="0.5" max="2" value="1" step="0.1"><output id="speed-value">1.0×</output></label>
+                <label>Globe visibility <input id="opacity" type="range" min="0.35" max="1" value="0.82" step="0.05"><output id="opacity-value">82%</output></label>
+                <label class="toggle-label">Two-page view <input id="paged" type="checkbox"><output id="paged-value">Off</output></label>
+                <button id="tour" type="button">Play sample tour</button>
+            </aside>
+        </header>
+
+        <section id="picker" class="picker" aria-labelledby="picker-title">
+            <h2 id="picker-title">Select language</h2>
+            <div id="language-grid" class="language-grid"></div>
+            <nav id="pager" class="pager" aria-label="Language pages" hidden>
+                <button id="previous-page" type="button" aria-label="Previous language page">‹</button>
+                <span id="page-label">A–M · 1 / 2</span>
+                <button id="next-page" type="button" aria-label="Next language page">›</button>
+            </nav>
+        </section>
+
+        <footer>
+            <span id="status">Hover a language to begin.</span>
+            <a href="./README.md">Integration notes</a>
+        </footer>
+    </main>
+    <script type="module" src="./prototype.js"></script>
+</body>
+</html>
