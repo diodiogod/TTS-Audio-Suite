@@ -1,3 +1,5 @@
+import logging
+
 from .s3tokenizer import (
     S3_SR,
     S3_HOP,
@@ -27,4 +29,17 @@ def drop_invalid_tokens(x):
         e = None
 
     x = x[s: e]
+
+    # T3's speech head spans `speech_tokens_dict_size` (8194) while S3Gen's
+    # input embedding only has SPEECH_VOCAB_SIZE (6561) rows, so a sampled id
+    # above the vocab that is not exactly SoS/EoS reaches the embedding gather
+    # and trips a device-side "index out of bounds" assert (which surfaces
+    # later, at the next CUDA sync, with a misleading traceback).
+    invalid = x >= SPEECH_VOCAB_SIZE
+    if invalid.any():
+        logging.warning(
+            "Dropping %d out-of-vocabulary speech token(s) (max id %d, vocab %d)",
+            int(invalid.sum()), int(x.max()), SPEECH_VOCAB_SIZE,
+        )
+        x = x[~invalid]
     return x
