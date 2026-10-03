@@ -119,7 +119,7 @@
 - `nodes/subtitles/text_to_srt_builder_node.py` - Build SRT from transcript text plus timing data, or estimate timings from plain text
 - `nodes/subtitles/srt_advanced_options_node.py` - Subtitle readability / segmentation policy options
 - `nodes/text/tts_tag_editor_node.py` - 🏷️ Multiline TTS Tag Editor: rich text editor with character/language/parameter dropdowns, preset system, syntax highlighting, undo/redo — pairs with `web/string_multiline_tag_editor.js`
-- `nodes/step_audio_editx_special/step_audio_editx_audio_editor_node.py` - 🎨 Audio Editor: post-process ANY engine's audio with Step Audio EditX (14 emotions, 32 styles, paralinguistic effects like `<Laughter>`, speed control) — universal, not just for Step Audio EditX engine
+- `nodes/step_audio_editx_special/step_audio_editx_audio_editor_node.py` - 🎨 Audio Editor: post-process ANY engine's audio with Step Audio EditX (emotion/style, paralinguistic effects, speed); dated checkpoint choices and tags documented in `docs/STEP_AUDIO_EDITX_CHECKPOINTS.md`
 - `nodes/engines/index_tts_emotion_options_node.py` - IndexTTS-2 emotion radar chart
 
 ### Audio / Video Nodes
@@ -136,6 +136,7 @@
 - `unified_model_interface.py` - Universal factory pattern for all engines
 - `engine_registry.py` - Engine capability definitions
 - `factory_config.py` - standardized model load config, runtime mode/profile normalization
+- `step_audio_editx_checkpoints.py` - Dated Step Audio EditX choices and pinned Hugging Face revisions
 - `manager.py` - Model discovery and caching
 - `comfyui_model_wrapper/` - ComfyUI native model management integration
 - `extra_paths.py` - extra_model_paths.yaml support

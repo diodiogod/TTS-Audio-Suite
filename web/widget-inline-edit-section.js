@@ -5,6 +5,7 @@
  */
 
 import { api } from "/scripts/api.js";
+import { TagUtilities } from "./tag-utilities.js";
 import { INDEX_TTS_EMOTION_VISUALS } from "./emotion_radar_canvas_widget.js";
 
 const INDEX_TTS_EMOTIONS = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"];
@@ -139,18 +140,8 @@ function buildStepSection(state, storageKey) {
 
     const paraSection = document.createElement("div");
     stylePanelContainer(paraSection);
-    const paraSelect = createSelect([
-        { value: "Laughter", label: "Laughter" },
-        { value: "Breathing", label: "Breathing" },
-        { value: "Sigh", label: "Sigh" },
-        { value: "Uhm", label: "Uhm" },
-        { value: "Surprise-oh", label: "Surprise (oh)" },
-        { value: "Surprise-ah", label: "Surprise (ah)" },
-        { value: "Surprise-wa", label: "Surprise (wa)" },
-        { value: "Confirmation-en", label: "Confirmation (en)" },
-        { value: "Question-ei", label: "Question (ei)" },
-        { value: "Dissatisfaction-hnn", label: "Dissatisfaction (hnn)" },
-    ], "Select sound...", state.lastParalinguisticType || "");
+    const paraSelect = createSelect(TagUtilities.getStepParalinguisticOptions(),
+        "Select sound...", state.lastParalinguisticType || "");
     paraSelect.addEventListener("change", () => {
         state.lastParalinguisticType = paraSelect.value;
         state.saveToLocalStorage(storageKey);
@@ -159,7 +150,7 @@ function buildStepSection(state, storageKey) {
         stateValueKey: "lastParalinguisticIter",
         labelPrefix: "Iterations",
     });
-    const addParaBtn = createButton("Add Paralinguistic", "Insert paralinguistic tag at cursor");
+    const addParaBtn = createButton("Add Paralinguistic", "Insert sound at cursor. Expanded sounds require the 2026-01-23 Step Audio EditX checkpoint.");
     paraSection.append(
         createPanelLabel("Paralinguistic", "#00ffff"),
         paraSelect,
@@ -170,10 +161,8 @@ function buildStepSection(state, storageKey) {
 
     const emotionSection = document.createElement("div");
     stylePanelContainer(emotionSection);
-    const emotionSelect = createSelect([
-        "happy", "sad", "angry", "excited", "calm", "fearful", "surprised",
-        "disgusted", "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration"
-    ].map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })), "Select emotion...", state.lastEmotionType || "");
+    const emotionSelect = createSelect([...TagUtilities.STEP_EMOTIONS]
+        .map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })), "Select emotion...", state.lastEmotionType || "");
     emotionSelect.addEventListener("change", () => {
         state.lastEmotionType = emotionSelect.value;
         state.saveToLocalStorage(storageKey);

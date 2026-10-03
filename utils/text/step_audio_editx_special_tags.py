@@ -29,27 +29,9 @@ import re
 from typing import Set, Tuple, Optional, List
 from dataclasses import dataclass, field
 
-# Step Audio EditX paralinguistic tokens
-# Users should write these in <angle> brackets, we convert to [square] brackets
-STEP_AUDIO_EDITX_PARALINGUISTIC_TOKENS: Set[str] = {
-    # Breathing and vocalizations
-    'breathing',
-    'laughter',
-    'sigh',
-    'uhm',
-
-    # Surprise expressions
-    'surprise-oh',
-    'surprise-ah',
-    'surprise-wa',
-
-    # Other expressions
-    'confirmation-en',
-    'question-ei',
-    'dissatisfaction-hnn',
-}
-
 # Canonical format mapping (lowercase -> proper case for engine)
+# Preserve the original spellings for legacy workflows; the January checkpoint
+# documents the additional lowercase names below.
 PARALINGUISTIC_CANONICAL_FORMAT = {
     'breathing': 'Breathing',
     'laughter': 'Laughter',
@@ -61,7 +43,25 @@ PARALINGUISTIC_CANONICAL_FORMAT = {
     'confirmation-en': 'Confirmation-en',
     'question-ei': 'Question-ei',
     'dissatisfaction-hnn': 'Dissatisfaction-hnn',
+    'inhale': 'inhale',
+    'exhale': 'exhale',
+    'laugh': 'laugh',
+    'chuckle': 'chuckle',
+    'clears throat': 'clears throat',
+    'clears_throat': 'clears throat',
+    'snort': 'snort',
+    'giggle': 'giggle',
+    'cough': 'cough',
+    'breath': 'breath',
+    'surprise-yo': 'Surprise-yo',
+    'question-ah': 'Question-ah',
+    'question-en': 'Question-en',
+    'question-yi': 'Question-yi',
+    'question-oh': 'Question-oh',
 }
+
+STEP_AUDIO_EDITX_PARALINGUISTIC_TOKENS: Set[str] = set(PARALINGUISTIC_CANONICAL_FORMAT)
+PARALINGUISTIC_TAG_PATTERN = r'<([a-zA-Z_\-]+(?: [a-zA-Z_\-]+)*)>'
 
 
 def convert_step_audio_editx_tags(text: str) -> str:
@@ -95,15 +95,12 @@ def convert_step_audio_editx_tags(text: str) -> str:
             # Leave unknown tags as-is
             return match.group(0)
 
-    # Pattern matches <tag> where tag is alphanumeric + hyphen + underscore
-    pattern = r'<([a-zA-Z_-]+)>'
-    return re.sub(pattern, replace_tag, text)
+    return re.sub(PARALINGUISTIC_TAG_PATTERN, replace_tag, text)
 
 
 def has_step_audio_editx_tags(text: str) -> bool:
     """Check if text contains any Step Audio EditX paralinguistic tags in <> format."""
-    pattern = r'<([a-zA-Z_-]+)>'
-    matches = re.findall(pattern, text)
+    matches = re.findall(PARALINGUISTIC_TAG_PATTERN, text)
     return any(match.lower() in STEP_AUDIO_EDITX_PARALINGUISTIC_TOKENS for match in matches)
 
 
@@ -128,8 +125,7 @@ def extract_paralinguistic_tags(text: str) -> Tuple[str, list]:
             return ''  # Remove tag from text
         return match.group(0)  # Keep unknown tags
 
-    pattern = r'<([a-zA-Z_-]+)>'
-    clean_text = re.sub(pattern, extract_and_remove, text)
+    clean_text = re.sub(PARALINGUISTIC_TAG_PATTERN, extract_and_remove, text)
 
     return clean_text, tags_found
 
@@ -164,7 +160,7 @@ def get_supported_paralinguistic_tags() -> Set[str]:
 
 def get_paralinguistic_options_for_ui() -> list:
     """Get list of paralinguistic options for ComfyUI dropdown."""
-    return sorted(PARALINGUISTIC_CANONICAL_FORMAT.values())
+    return sorted(get_supported_paralinguistic_tags())
 
 
 # =============================================================================
@@ -190,7 +186,8 @@ class EditTag:
 VALID_EMOTIONS = {
     'happy', 'angry', 'sad', 'humour', 'confusion', 'disgusted',
     'empathy', 'embarrass', 'fear', 'surprised', 'excited',
-    'depressed', 'coldness', 'admiration', 'remove'
+    'depressed', 'coldness', 'admiration', 'remove',
+    'calm', 'fearful'  # Preserve options exposed by older suite nodes.
 }
 
 VALID_STYLES = {
@@ -199,7 +196,7 @@ VALID_STYLES = {
     'generous', 'act_coy', 'warm', 'shy', 'comfort', 'authority',
     'chat', 'radio', 'soulful', 'story', 'vivid', 'program',
     'news', 'advertising', 'roar', 'murmur', 'shout', 'deeply', 'loudly',
-    'remove', 'exaggerated'
+    'remove', 'exaggerated', 'friendly'
 }
 
 VALID_SPEEDS = {'faster', 'slower', 'more_faster', 'more_slower', 'more faster', 'more slower'}

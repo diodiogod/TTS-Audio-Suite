@@ -21,7 +21,10 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.text.segment_parameters import apply_segment_parameters
-from utils.text.step_audio_editx_special_tags import get_edit_tags_for_segment, parse_edit_tags_with_iterations
+from utils.text.step_audio_editx_special_tags import (
+    get_edit_tags_for_segment, parse_edit_tags_with_iterations,
+    STEP_AUDIO_EDITX_PARALINGUISTIC_TOKENS,
+)
 from utils.audio.edit_post_processor import process_segments as apply_edit_post_processing
 from utils.text.chatterbox_v2_special_tags import CHATTERBOX_V2_SPECIAL_TOKENS
 from utils.voice.character_logging import resolved_character_label
@@ -42,7 +45,7 @@ def extract_edit_tags_for_chatterbox(text: str):
     import re
 
     # Check for conflicts: tags that exist in both systems
-    conflict_tags = {'laughter', 'sigh'}  # Tags supported by both
+    conflict_tags = STEP_AUDIO_EDITX_PARALINGUISTIC_TOKENS & CHATTERBOX_V2_SPECIAL_TOKENS
 
     # Find all angle bracket tags
     all_tags = re.findall(r'<([^>]+)>', text)
@@ -62,23 +65,11 @@ def extract_edit_tags_for_chatterbox(text: str):
             if tag_name in conflict_tags and tag_name in CHATTERBOX_V2_SPECIAL_TOKENS:
                 has_native_conflict = True
 
-    # Warn whenever conflicting tags (laughter/sigh) are present in ChatterBox v2
+    # Include the January Step sounds that overlap native ChatterBox sounds.
     if has_native_conflict or has_editx_conflict:
-        print(f"\n⚠️  TAG CONFLICT: laughter/sigh have dual meanings in ChatterBox v2")
-
-        if has_native_conflict and has_editx_conflict:
-            print(f"🚨🚨🚨 Using BOTH formats in same text:")
-            print(f"  • <laughter> → ChatterBox native (may not work well)")
-            print(f"  • <Laughter:2> → Step EditX post-processing")
-            print(f"  ⚠️  Recommendation: use <Laughter:N> format for ALL laughter/sigh")
-        elif has_native_conflict:
-            print(f"  • Using native format: <laughter>, <sigh>")
-            print(f"  • This will NOT use Step EditX post-processing")
-            print(f"  • For better quality: use <Laughter:1>, <Sigh:1> instead")
-        else:  # has_editx_conflict
-            print(f"  • Using EditX format: <Laughter:N>, <Sigh:N>")
-            print(f"  • This will use Step EditX post-processing")
-        print()
+        print("\nℹ️ ChatterBox sound tags overlap Step Audio EditX:")
+        print(f"  • Shared sounds: {', '.join(sorted(conflict_tags))}")
+        print("  • Bare tags use ChatterBox; explicit iterations such as <giggle:1> use Step editing.\n")
 
     # For ChatterBox: ONLY extract tags with explicit iterations (e.g., <Laughter:2>)
     # Tags without iterations (e.g., <laughter>) are ChatterBox native tags
@@ -87,16 +78,15 @@ def extract_edit_tags_for_chatterbox(text: str):
 
     native_tag_placeholders = {}
     text_for_edit = text
-    placeholder_counter = 0
 
     for tag_content in all_tags:
         if ':' not in tag_content:
             # This is a native tag (no iteration) - replace with placeholder
             tag_full = f'<{tag_content}>'
-            placeholder = f'__NATIVE_TAG_{placeholder_counter}__'
+            # Equal-length markers preserve positions of subsequent Step tags.
+            placeholder = f'\ue000{tag_content}\ue001'
             native_tag_placeholders[placeholder] = tag_full
             text_for_edit = text_for_edit.replace(tag_full, placeholder, 1)
-            placeholder_counter += 1
 
     # Extract only tags with iterations (Step EditX post-processing)
     clean_text, edit_tags = parse_edit_tags_with_iterations(text_for_edit)

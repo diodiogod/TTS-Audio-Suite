@@ -105,7 +105,8 @@ Use this as the canonical list of model repositories/links for offline setup.
 
 | Component | Source | Size | Auto-Download | Notes |
 |---|---|---|---|---|
-| Step-Audio-EditX | [stepfun-ai/Step-Audio-EditX](https://huggingface.co/stepfun-ai/Step-Audio-EditX) | ~7GB | ✅ | Main 3B audio editing model |
+| Step-Audio-EditX-2026-01-23 | [stepfun-ai/Step-Audio-EditX](https://huggingface.co/stepfun-ai/Step-Audio-EditX) | ~7GB | ✅ | Default 3B checkpoint; pinned to 5fe2f8a05c2353301ad47d3c1747b262115da138 |
+| Step-Audio-EditX-2025-11-28 | [stepfun-ai/Step-Audio-EditX](https://huggingface.co/stepfun-ai/Step-Audio-EditX/tree/7f3de603ae46c96dff6f06f47b1d5a45aabd34fe) | ~7GB | ✅ | Legacy checkpoint; pinned November weights in a separate folder |
 | Step-Audio-Tokenizer | [stepfun-ai/Step-Audio-Tokenizer](https://huggingface.co/stepfun-ai/Step-Audio-Tokenizer) | Included | ✅ | Tokenizer bundle used by Step EditX |
 
 ## Echo-TTS

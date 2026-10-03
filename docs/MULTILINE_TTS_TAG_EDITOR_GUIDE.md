@@ -63,6 +63,9 @@ Step Audio EditX examples:
 
 ```text
 <Laughter>
+<giggle>
+<clears throat:2>
+<Question-oh>
 <emotion:happy>
 <style:whisper:2>
 <restore:1@2>
@@ -92,6 +95,12 @@ OmniVoice examples:
 ```
 
 Use the dedicated inline tag controls in the sidebar when you do not want to type these by hand.
+
+The Step sound menu includes the original sounds plus the expanded sounds for the `2026-01-23` checkpoint: `inhale`, `exhale`, `laugh`, `chuckle`, `clears throat`, `snort`, `giggle`, `cough`, `breath`, `Surprise-yo`, `Question-ah`, `Question-en`, `Question-yi`, and `Question-oh`. Select `Step-Audio-EditX-2026-01-23` in the engine node to use these sounds. The `2025-11-28` checkpoint supports the original vocabulary; see the [checkpoint guide](STEP_AUDIO_EDITX_CHECKPOINTS.md).
+
+Validation, highlighting, and the tag-swap menu recognize these sounds. Names are case-insensitive, and `<clears_throat>` is accepted as an alias for `<clears throat>`. The insertion controls preserve the existing iteration syntax, such as `<giggle:2>`, and pipe combinations, such as `<giggle:2|emotion:happy>`. The emotion menu also includes `fear` and `humour`.
+
+The editor checks syntax for the chosen tag engine but does not inspect the engine node's selected model checkpoint. A valid new sound still requires the January weights.
 
 Important differences:
 

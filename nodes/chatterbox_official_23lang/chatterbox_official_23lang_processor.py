@@ -679,7 +679,12 @@ Back to the main narrator voice for the conclusion.""",
                 text_content = content
 
                 # Extract edit tags BEFORE TTS generation
-                clean_text, edit_tags = parse_edit_tags_with_iterations(text_content)
+                if getattr(self.tts_model, 'model_version', None) in {'v2', 'v3'}:
+                    # Native <giggle>/<cough> stay in ChatterBox. An explicit
+                    # iteration, e.g. <giggle:1>, requests Step post-processing.
+                    clean_text, edit_tags, _ = extract_edit_tags_for_chatterbox(text_content)
+                else:
+                    clean_text, edit_tags = parse_edit_tags_with_iterations(text_content)
 
                 # Generate audio using CLEAN text (tags already extracted above)
                 if has_character_switching and ('[' in clean_text and ']' in clean_text):

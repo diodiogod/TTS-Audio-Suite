@@ -398,8 +398,11 @@ def process_segments(
     segments_to_edit = []
     for i, segment in enumerate(segments):
         # Check if segment already has edit_tags (pre-parsed)
-        if 'edit_tags' in segment and segment['edit_tags']:
-            segments_to_edit.append((i, segment, segment['edit_tags']))
+        if 'edit_tags' in segment:
+            # An explicit empty list means the engine already parsed this text.
+            # Re-parsing would steal native sounds such as CosyVoice's <cough>.
+            if segment['edit_tags']:
+                segments_to_edit.append((i, segment, segment['edit_tags']))
         else:
             # Try to extract edit tags from text (fallback)
             text = segment.get('text', '')

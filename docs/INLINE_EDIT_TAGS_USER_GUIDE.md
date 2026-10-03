@@ -11,6 +11,8 @@ The multiline TTS tag editor now has an engine-aware `Inline Tags` panel with se
 
 Use the Step mode when you want post-process editing tags. Use the Higgs or Cosy modes when you want those engines' native generation tags.
 
+The existing **model_path** dropdown now offers `Step-Audio-EditX-2026-01-23` and `Step-Audio-EditX-2025-11-28`. The January checkpoint is the default for new engine nodes and supports the expanded sound vocabulary below. Existing unversioned and local selections keep their files. See [checkpoint selection and compatibility](STEP_AUDIO_EDITX_CHECKPOINTS.md).
+
 ## 💡 Inline vs Manual Node Workflow
 
 **ComfyUI is modular** - you can manually chain **TTS → 🎨 Step Audio EditX - Audio Editor** nodes for full control.
@@ -59,6 +61,19 @@ Insert non-verbal sounds at specific positions in the audio:
 | `<Question-ei>` | Question sound | `<Question-ei> Really?` |
 | `<Dissatisfaction-hnn>` | Dissatisfied "hnn" | `<Dissatisfaction-hnn> Not good` |
 
+The **2026-01-23** checkpoint additionally supports:
+
+| Tag | Effect |
+|---|---|
+| `<inhale>`, `<exhale>`, `<breath>` | Breathing sounds |
+| `<laugh>`, `<chuckle>`, `<giggle>` | Laughter variants |
+| `<clears throat>` or `<clears_throat>` | Throat clearing |
+| `<snort>`, `<cough>` | Snorting and coughing |
+| `<Surprise-yo>` | Additional surprise vocalization |
+| `<Question-ah>`, `<Question-en>`, `<Question-yi>`, `<Question-oh>` | Additional questioning vocalizations |
+
+These support the same iteration and pipe syntax: `<giggle:2>` and `<clears_throat:1|style:serious>`. Tags are case-insensitive. For ChatterBox v2/v3, specify an iteration for Step effects (`<giggle:1>`); bare overlapping tags retain their native meaning.
+
 **Position matters:** The sound is inserted where you place the tag.
 
 **💡 Pro Tip - Stronger Effects:** For more reliable and pronounced effects, include relevant text alongside the tag:
@@ -78,7 +93,7 @@ Apply emotional tone to the entire audio segment:
 
 `<emotion:VALUE>` or `<emotion:VALUE:ITERATIONS>`
 
-**Available emotions:** happy, sad, angry, excited, calm, fearful, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration
+**Available emotions:** happy, sad, angry, excited, fear, humour, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration. Older suite options `calm` and `fearful` remain accepted.
 
 **Examples:**
 ```
@@ -623,8 +638,12 @@ Choose appropriate effects for the situation:
 ### All Paralinguistic Tags
 `<Breathing>`, `<Laughter>`, `<Sigh>`, `<Uhm>`, `<Surprise-oh>`, `<Surprise-ah>`, `<Surprise-wa>`, `<Confirmation-en>`, `<Question-ei>`, `<Dissatisfaction-hnn>`
 
+January checkpoint vocabulary: `<inhale>`, `<exhale>`, `<laugh>`, `<chuckle>`, `<clears throat>` (alias `<clears_throat>`), `<snort>`, `<giggle>`, `<cough>`, `<breath>`, `<Surprise-yo>`, `<Question-ah>`, `<Question-en>`, `<Question-yi>`, `<Question-oh>`.
+
 ### All Emotions
 `<emotion:happy>`, `<emotion:sad>`, `<emotion:angry>`, `<emotion:excited>`, `<emotion:calm>`, `<emotion:fearful>`, `<emotion:surprised>`, `<emotion:disgusted>`, `<emotion:confusion>`, `<emotion:empathy>`, `<emotion:embarrass>`, `<emotion:depressed>`, `<emotion:coldness>`, `<emotion:admiration>`
+
+Also available: `<emotion:fear>` and `<emotion:humour>`.
 
 ### All Styles
 `<style:whisper>`, `<style:serious>`, `<style:child>`, `<style:older>`, `<style:girl>`, `<style:pure>`, `<style:sister>`, `<style:sweet>`, `<style:exaggerated>`, `<style:ethereal>`, `<style:generous>`, `<style:recite>`, `<style:act_coy>`, `<style:warm>`, `<style:shy>`, `<style:comfort>`, `<style:authority>`, `<style:chat>`, `<style:radio>`, `<style:soulful>`, `<style:gentle>`, `<style:story>`, `<style:vivid>`, `<style:program>`, `<style:news>`, `<style:advertising>`, `<style:roar>`, `<style:murmur>`, `<style:shout>`, `<style:deeply>`, `<style:loudly>`, `<style:arrogant>`, `<style:friendly>`
@@ -649,7 +668,7 @@ A: Slightly. The TTS generates normally, then Step Audio EditX loads once and pr
 A: Yes! Batch processing is automatically applied - all subtitles are generated first, then all edits are applied at once.
 
 **Q: What if I make a typo in a tag?**
-A: Unknown tags are ignored and stripped from the text. Check console for warnings.
+A: The Step parser leaves unknown tags in the text and does not create an edit for them. Correct the spelling before generation; the TTS engine may interpret or speak the remaining text.
 
 **Q: Can I nest tags?**
 A: No. Use pipe syntax or separate tags: `<tag1|tag2>` or `<tag1><tag2>`

@@ -194,14 +194,20 @@ Notes:
 
 ```text
 ComfyUI/models/TTS/step_audio_editx/
-├── Step-Audio-EditX/
+├── Step-Audio-EditX-2026-01-23/
+│   └── CosyVoice-300M-25Hz/
+├── Step-Audio-EditX-2025-11-28/  # downloaded only when selected
+│   └── CosyVoice-300M-25Hz/
+├── Step-Audio-EditX/             # existing unversioned installations
 │   └── CosyVoice-300M-25Hz/
 └── FunASR-Paraformer/
 ```
 
 Notes:
 
-- Main model, tokenizer assets, and speech stack auto-download.
+- Selected checkpoints and tokenizer assets auto-download at pinned revisions.
+- Existing unversioned/local weights are retained and folders are not relabeled; known config compatibility fields may be normalized.
+- See [Step Audio EditX checkpoints](STEP_AUDIO_EDITX_CHECKPOINTS.md) for selection and expanded tags.
 
 ## Higgs Audio v3
 

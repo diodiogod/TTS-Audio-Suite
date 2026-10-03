@@ -40,6 +40,7 @@ BaseTTSNode = base_module.BaseTTSNode
 
 import folder_paths
 from utils.models.extra_paths import get_all_tts_model_paths
+from utils.models.step_audio_editx_checkpoints import DEFAULT_MODEL_NAME, LEGACY_MODEL_NAME, MODEL_CHECKPOINTS
 
 
 class StepAudioEditXEngineNode(BaseTTSNode):
@@ -61,8 +62,8 @@ class StepAudioEditXEngineNode(BaseTTSNode):
             "required": {
                 # Model Configuration
                 "model_path": (model_paths, {
-                    "default": model_paths[0] if model_paths else "Step-Audio-EditX",
-                    "tooltip": "Step Audio EditX model selection:\n• local:ModelName: Use locally installed model (respects extra_model_paths.yaml)\n• ModelName: Auto-download model if not found locally\n• Downloads respect extra_model_paths.yaml configuration"
+                    "default": DEFAULT_MODEL_NAME,
+                    "tooltip": "Step Audio EditX checkpoint:\n• 2026-01-23: Updated weights and expanded sound tags (default)\n• 2025-11-28: Legacy weights for existing workflows\n• local:ModelName: Use installed files without changing their version\n• Step-Audio-EditX: Preserve the existing unversioned folder; its checkpoint is unspecified\nDated downloads use pinned revisions and separate folders, respecting extra_model_paths.yaml."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
@@ -124,7 +125,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
     @classmethod
     def _get_model_paths(cls) -> List[str]:
         """Get available Step Audio EditX model paths."""
-        paths = ["Step-Audio-EditX"]  # Auto-download option
+        paths = [*MODEL_CHECKPOINTS, LEGACY_MODEL_NAME]
 
         try:
             # Check all configured TTS model paths
@@ -136,7 +137,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                 if cls._is_valid_step_audio_model(direct_path):
                     local_model = "local:Step-Audio-EditX"
                     if local_model not in paths:
-                        paths.insert(0, local_model)  # Insert at beginning
+                        paths.append(local_model)
 
                 # Check organized path (models/TTS/step_audio_editx/Step-Audio-EditX)
                 organized_base = os.path.join(base_path, "step_audio_editx")
@@ -147,7 +148,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                         if os.path.isdir(model_dir) and cls._is_valid_step_audio_model(model_dir):
                             local_model = f"local:{item}"
                             if local_model not in paths:
-                                paths.insert(-1, local_model)  # Insert before auto-download
+                                paths.append(local_model)
 
         except Exception:
             # Fallback to original behavior if extra_paths fails
@@ -159,7 +160,7 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                     if os.path.isdir(model_dir) and cls._is_valid_step_audio_model(model_dir):
                         local_model = f"local:{item}"
                         if local_model not in paths:
-                            paths.insert(-1, local_model)
+                            paths.append(local_model)
 
         return paths
 

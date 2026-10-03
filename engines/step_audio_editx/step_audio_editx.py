@@ -11,6 +11,7 @@ import warnings
 from utils.models.unified_model_interface import unified_model_interface
 from utils.models.factory_config import ModelLoadConfig
 from utils.models.extra_paths import find_model_in_paths, get_preferred_download_path, get_all_tts_model_paths
+from utils.text.step_audio_editx_special_tags import get_supported_paralinguistic_tags
 
 # Apply Step Audio EditX device compatibility patches (MPS/CPU support)
 from utils.compatibility.step_audio_editx_device_patch import StepAudioEditXDevicePatches
@@ -23,10 +24,10 @@ class StepAudioEditXEngine:
 
     Supports:
     - Zero-shot voice cloning (Mandarin, English, Sichuanese, Cantonese, Japanese, Korean)
-    - Emotion editing (14 emotions: happy, sad, angry, excited, etc.)
+    - Emotion editing (happy, sad, angry, fear, humour, etc.)
     - Style editing (32 styles: whisper, serious, child, etc.)
     - Speed control (faster, slower, more faster, more slower)
-    - Paralinguistic effects (10 types: Laughter, Breathing, Sigh, etc.)
+    - Paralinguistic effects, including the January 2026 sound tags
     - Denoising and VAD
     - Iterative editing (1-5 iterations for stronger effects)
     """
@@ -34,7 +35,7 @@ class StepAudioEditXEngine:
     # Edit type configurations from original
     EMOTION_OPTIONS = [
         "happy", "sad", "angry", "excited", "calm", "fearful", "surprised", "disgusted",
-        "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration"
+        "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration", "fear", "humour"
     ]
 
     STYLE_OPTIONS = [
@@ -47,11 +48,7 @@ class StepAudioEditXEngine:
 
     SPEED_OPTIONS = ["faster", "slower", "more faster", "more slower"]
 
-    PARALINGUISTIC_OPTIONS = [
-        "[Breathing]", "[Laughter]", "[Surprise-oh]", "[Confirmation-en]",
-        "[Uhm]", "[Surprise-ah]", "[Surprise-wa]", "[Sigh]",
-        "[Question-ei]", "[Dissatisfaction-hnn]"
-    ]
+    PARALINGUISTIC_OPTIONS = [f"[{tag}]" for tag in sorted(get_supported_paralinguistic_tags())]
 
     def __init__(self, model_dir: str = "Step-Audio-EditX", device: str = "auto",
                  torch_dtype: str = "auto", quantization: Optional[str] = None):

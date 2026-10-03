@@ -126,7 +126,7 @@ function angleSwap(tag, engine) {
             return { title: `Swap ${match[1]}`, current: match[2], color: "#a879ff", items: [...source].map(value => ({ value, label: value })), replace: value => `<${match[1]}:${value}${match[3] || ""}>` };
         }
         const plain = content.match(/^([^:>]+)(:\d+)?$/);
-        if (plain && TagUtilities.STEP_PARALINGUISTIC_TAGS.has(plain[1])) return { title: "Swap paralinguistic tag", current: plain[1], color: "#62d69d", items: [...TagUtilities.STEP_PARALINGUISTIC_TAGS].map(value => ({ value, label: value })), replace: value => `<${value}${plain[2] || ""}>` };
+        if (plain && TagUtilities.getStepParalinguisticName(plain[1])) return { title: "Swap paralinguistic tag", current: TagUtilities.getStepParalinguisticName(plain[1]), color: "#62d69d", items: TagUtilities.getStepParalinguisticOptions(), replace: value => `<${value}${plain[2] || ""}>` };
     }
     if (engine === "cosyvoice3") {
         const closing = content.startsWith("/");

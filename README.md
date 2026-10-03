@@ -811,9 +811,10 @@ Welcome to our show! [Alice:happy_sarah] I'm so excited to be here!
 **NEW in v4.15**: Revolutionary LLM-based audio post-processing with emotion, style, and paralinguistic control!
 
 * **🎨 Step Audio EditX - Audio Editor Node**: Post-process ANY TTS audio with advanced editing capabilities
-* **🗣️ Paralinguistic Effects**: Insert natural sounds - Laughter, Breathing, Sigh, Uhm, Surprise (oh/ah/wa), Confirmation, Question, Dissatisfaction
-* **😊 14 Emotion Controls**: happy, sad, angry, excited, calm, fearful, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration
-* **🎭 32 Speaking Styles**: whisper, serious, child, older, girl, pure, sister, sweet, exaggerated, ethereal, generous, recite, act_coy, warm, shy, comfort, authority, chat, radio, soulful, gentle, story, vivid, program, news, advertising, roar, murmur, shout, deeply, loudly, arrogant, friendly
+* **📅 Dated Checkpoints**: Choose `2026-01-23` (default for new engine nodes) or `2025-11-28` in the existing model dropdown. Downloads use pinned revisions and separate folders; existing unversioned/local selections keep their files. [Checkpoint guide](docs/STEP_AUDIO_EDITX_CHECKPOINTS.md).
+* **🗣️ Paralinguistic Effects**: Original tags plus January sounds such as `<giggle>`, `<chuckle>`, `<inhale>`, `<exhale>`, `<cough>`, and `<clears_throat>`; iteration syntax remains available, e.g. `<giggle:2>`.
+* **😊 Emotion Controls**: happy, sad, angry, excited, fear, humour, surprised, disgusted, confusion, empathy, embarrass, depressed, coldness, admiration; older `calm` and `fearful` options remain accepted
+* **🎭 Speaking Styles**: whisper, serious, child, older, girl, pure, sister, sweet, exaggerated, ethereal, generous, recite, act_coy, warm, shy, comfort, authority, chat, radio, soulful, gentle, story, vivid, program, news, advertising, roar, murmur, shout, deeply, loudly, arrogant, friendly
 * **⚡ Speed Control**: faster, slower, more_faster, more_slower with multi-iteration support
 * **🔊 Voice Restoration**: ChatterBox VC integration to restore original voice resemblance after editing
 * **🏷️ Inline Edit Tags**: Apply effects directly in text using `<Laughter:2>`, `<emotion:happy>`, `<style:whisper>` tags
@@ -1534,7 +1535,7 @@ For offline/manual setup:
 | VibeVoice | `ComfyUI/models/TTS/VibeVoice/` | ✅ | 1.5B and 7B variants |
 | RVC | `ComfyUI/models/TTS/RVC/` | ✅* | Base models auto; character `.pth` can be user-provided |
 | IndexTTS-2 | `ComfyUI/models/TTS/IndexTTS/` | ✅ | Emotion components included |
-| Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Main model + tokenizer stack |
+| Step Audio EditX | `ComfyUI/models/TTS/step_audio_editx/` | ✅ | Lazy dated checkpoints + tokenizer stack; unversioned installs retained |
 | CosyVoice3 | `ComfyUI/models/TTS/CosyVoice/` | ✅ | Variant-specific lazy downloads |
 | Qwen3-TTS / ASR | `ComfyUI/models/TTS/qwen3_tts/` | ✅ | Per-variant download + shared tokenizer |
 | MOSS-TTS | `ComfyUI/models/TTS/moss_tts/` | ✅ | Local/Delay/VoiceGenerator/SoundEffect v1/TTSD models plus shared MOSS-Audio-Tokenizer codec |

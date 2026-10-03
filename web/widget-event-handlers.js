@@ -1044,8 +1044,8 @@ export function attachAllEventHandlers(
             plainText,
             caretPos,
             new RegExp(
-                `<\\|(?:emotion|style|prosody|sfx):[^|>]+\\|>|<(?:emotion|style|prosody|sfx):[^>]+>|<(?:Laughter|Breathing|Sigh|Uhm|Surprise-oh|Surprise-ah|Surprise-wa|Confirmation-en|Question-ei|Dissatisfaction-hnn)(?::\\d+)?>`,
-                "g"
+                `<\\|(?:emotion|style|prosody|sfx):[^|>]+\\|>|<(?:emotion|style|prosody|sfx):[^>]+>|${TagUtilities.getStepParalinguisticPattern()}`,
+                "gi"
             ),
             replacement
         );

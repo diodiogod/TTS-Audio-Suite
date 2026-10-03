@@ -1053,16 +1053,23 @@ engines:
     special_features:
       - "Second Pass Speech Editing Node: 14 emotions"
       - "32 speaking styles"
-      - "Paralinguistic effects"
+      - "Dated checkpoints: 2026-01-23 / 2025-11-28"
+      - "Expanded January paralinguistic effects with legacy tag compatibility"
       - "Selectable main, shared, or dedicated Python runtime (shared Transformers 4 runtime recommended)"
 
     model_sources:
-      - component: "Step-Audio-EditX"
+      - component: "Step-Audio-EditX-2026-01-23"
         source_name: "stepfun-ai/Step-Audio-EditX"
         source_url: "https://huggingface.co/stepfun-ai/Step-Audio-EditX"
         size: "~7GB"
         auto_download: true
-        notes: "Main 3B audio editing model"
+        notes: "Default 3B checkpoint; pinned to 5fe2f8a05c2353301ad47d3c1747b262115da138"
+      - component: "Step-Audio-EditX-2025-11-28"
+        source_name: "stepfun-ai/Step-Audio-EditX"
+        source_url: "https://huggingface.co/stepfun-ai/Step-Audio-EditX/tree/7f3de603ae46c96dff6f06f47b1d5a45aabd34fe"
+        size: "~7GB"
+        auto_download: true
+        notes: "Legacy checkpoint; pinned November weights in a separate folder"
       - component: "Step-Audio-Tokenizer"
         source_name: "stepfun-ai/Step-Audio-Tokenizer"
         source_url: "https://huggingface.co/stepfun-ai/Step-Audio-Tokenizer"
@@ -1957,7 +1964,7 @@ readme_model_download_table:
   - engine: "Step Audio EditX"
     primary_model_path: "ComfyUI/models/TTS/step_audio_editx/"
     auto_download: "✅"
-    notes: "Main model + tokenizer stack"
+    notes: "Lazy dated checkpoints + tokenizer stack; unversioned installs retained"
   - engine: "CosyVoice3"
     primary_model_path: "ComfyUI/models/TTS/CosyVoice/"
     auto_download: "✅"
@@ -2196,14 +2203,20 @@ model_layouts_markdown: |
 
   ```text
   ComfyUI/models/TTS/step_audio_editx/
-  ├── Step-Audio-EditX/
+  ├── Step-Audio-EditX-2026-01-23/
+  │   └── CosyVoice-300M-25Hz/
+  ├── Step-Audio-EditX-2025-11-28/  # downloaded only when selected
+  │   └── CosyVoice-300M-25Hz/
+  ├── Step-Audio-EditX/             # existing unversioned installations
   │   └── CosyVoice-300M-25Hz/
   └── FunASR-Paraformer/
   ```
   
   Notes:
   
-  - Main model, tokenizer assets, and speech stack auto-download.
+  - Selected checkpoints and tokenizer assets auto-download at pinned revisions.
+  - Existing unversioned/local weights are retained and folders are not relabeled; known config compatibility fields may be normalized.
+  - See [Step Audio EditX checkpoints](STEP_AUDIO_EDITX_CHECKPOINTS.md) for selection and expanded tags.
 
   ## Higgs Audio v3
 

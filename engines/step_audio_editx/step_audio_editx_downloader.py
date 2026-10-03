@@ -18,7 +18,10 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.downloads.unified_downloader import unified_downloader
-from utils.models.extra_paths import get_preferred_download_path
+from utils.models.extra_paths import get_preferred_download_path, find_model_in_paths
+from utils.models.step_audio_editx_checkpoints import (
+    DEFAULT_MODEL_NAME, LEGACY_MODEL_NAME, MODEL_CHECKPOINTS, TOKENIZER_REVISION,
+)
 import folder_paths
 
 
@@ -53,6 +56,7 @@ class StepAudioEditXDownloader:
                 # Download tokenizer files from Step-Audio-Tokenizer repo into main directory
                 {
                     "repo_id": "stepfun-ai/Step-Audio-Tokenizer",
+                    "revision": TOKENIZER_REVISION,
                     "files": [
                         {"remote": "linguistic_tokenizer.npy", "local": "linguistic_tokenizer.npy"},
                         {"remote": "speech_tokenizer_v1.onnx", "local": "speech_tokenizer_v1.onnx"}
@@ -60,6 +64,7 @@ class StepAudioEditXDownloader:
                 }
             ],
             "repo_id": "stepfun-ai/Step-Audio-EditX",
+            "revision": MODEL_CHECKPOINTS[DEFAULT_MODEL_NAME]["revision"],
             "description": "Step Audio EditX - 3B LLM-based TTS with emotion/style editing (7GB)"
         },
         "Step-Audio-Tokenizer": {
@@ -82,6 +87,20 @@ class StepAudioEditXDownloader:
             "description": "FunASR Paraformer model for VQ02 encoding (881MB)"
         }
     }
+
+    # Keep the unversioned identifier for saved workflows. Never relabel its
+    # existing weights: that folder can contain either historical checkpoint.
+    for _name, _checkpoint in MODEL_CHECKPOINTS.items():
+        MODELS[_name] = {**MODELS[LEGACY_MODEL_NAME], **_checkpoint}
+
+    @classmethod
+    def required_files(cls, model_name: str = LEGACY_MODEL_NAME) -> list:
+        """Include the external tokenizer assets in every completeness check."""
+        info = cls.MODELS[model_name]
+        files = [item["local"] if isinstance(item, dict) else item for item in info["files"]]
+        for additional in info.get("additional_downloads", []):
+            files.extend(item["local"] for item in additional["files"])
+        return files
 
     def __init__(self, base_path: Optional[str] = None):
         """
@@ -135,20 +154,13 @@ class StepAudioEditXDownloader:
         print(f"Files: {len(files)} files")
         print(f"{'='*60}\n")
 
-        # Build complete file list including additional downloads
-        if files and isinstance(files[0], dict):
-            check_files = [f["local"] for f in files]
-        else:
-            check_files = list(files)
-
-        # Add additional downloads to completeness check
+        check_files = self.required_files(model_name)
         additional_downloads = model_info.get("additional_downloads", [])
-        for additional in additional_downloads:
-            for file_dict in additional["files"]:
-                check_files.append(file_dict["local"])
 
         # Check if already downloaded
         if not force and self._is_model_complete(model_dir, check_files):
+            if repo_id == "stepfun-ai/Step-Audio-EditX":
+                self._patch_config_json(model_dir)
             print(f"✅ Model already downloaded and complete: {model_dir}")
             return model_dir
 
@@ -175,7 +187,10 @@ class StepAudioEditXDownloader:
                     repo_id=repo_id,
                     model_name=model_name,
                     files=files_dicts,
-                    engine_type="step_audio_editx"
+                    engine_type="step_audio_editx",
+                    revision=model_info.get("revision"),
+                    force_download=force,
+                    target_dir=model_dir,
                 )
 
                 # Download additional files from other repos if specified
@@ -189,18 +204,15 @@ class StepAudioEditXDownloader:
                         repo_id=additional_repo,
                         model_name=model_name,  # Same target directory
                         files=additional_files,
-                        engine_type="step_audio_editx"
+                        engine_type="step_audio_editx",
+                        revision=additional.get("revision"),
+                        force_download=force,
+                        target_dir=model_dir,
                     )
-
-            # Verify download (check main files only, not additional)
-            if files and isinstance(files[0], dict):
-                check_files = [f["local"] for f in files]
-            else:
-                check_files = files
 
             if self._is_model_complete(model_dir, check_files):
                 # Normalize known omissions in older Step model snapshots.
-                if model_name == "Step-Audio-EditX":
+                if repo_id == "stepfun-ai/Step-Audio-EditX":
                     self._patch_config_json(model_dir)
 
                 print(f"\n✅ Download complete: {model_dir}")
@@ -316,7 +328,7 @@ class StepAudioEditXDownloader:
         if model_name not in self.MODELS:
             raise ValueError(f"Unknown model: {model_name}")
 
-        required_files = self.MODELS[model_name]["files"]
+        required_files = self.required_files(model_name)
 
         if not self._is_model_complete(model_dir, required_files):
             missing_files = []
@@ -357,7 +369,7 @@ class StepAudioEditXDownloader:
             # Search in all configured TTS paths
             from utils.models.extra_paths import get_all_tts_model_paths
             for base_tts_path in get_all_tts_model_paths('TTS'):
-                for folder_name in ["step_audio_editx", "Step-Audio-EditX", "step_audio"]:
+                for folder_name in ["", "step_audio_editx", "Step-Audio-EditX", "step_audio"]:
                     local_path = os.path.join(base_tts_path, folder_name, local_name)
                     if os.path.exists(local_path):
                         print(f"📁 Using local Step Audio EditX model: {local_path}")
@@ -404,15 +416,22 @@ class StepAudioEditXDownloader:
             return model_name
 
         model_dir = os.path.join(self.base_path, model_name)
+        if model_name in self.MODELS:
+            existing = find_model_in_paths(model_name, model_type="TTS", subdirs=["step_audio_editx"])
+            if existing:
+                model_dir = existing
 
         # Auto-download if missing
         if model_name in self.MODELS:
-            if not self._is_model_complete(model_dir, self.MODELS[model_name]["files"]):
+            if not self._is_model_complete(model_dir, self.required_files(model_name)):
                 print(f"📥 Model not found, downloading {model_name}...")
-                return self.download_model(model_name)
+                # Repair a known checkpoint where it was found, including paths
+                # configured through extra_model_paths.yaml.
+                downloader = self if os.path.dirname(model_dir) == self.base_path else type(self)(os.path.dirname(model_dir))
+                return downloader.download_model(model_name)
             else:
                 # Model exists - patch config.json if needed
-                if model_name == "Step-Audio-EditX":
+                if self.MODELS[model_name]["repo_id"] == "stepfun-ai/Step-Audio-EditX":
                     self._patch_config_json(model_dir)
         elif not os.path.exists(model_dir):
             raise FileNotFoundError(f"Model not found: {model_name}")

@@ -2278,6 +2278,7 @@ function addStringMultilineTagEditorWidget(node) {
                 intro: "This panel is engine-aware. Step Audio EditX uses post-process tags, while Higgs Audio v3, CosyVoice3, and OmniVoice use native generation tags.",
                 rows: [
                     { syntax: "Step: <Laughter> / <Laughter:2>", purpose: "Post-process paralinguistic insertion", notes: "Step Audio EditX runs after TTS. Position matters because the sound is inserted where the tag appears." },
+                    { syntax: "Step: <giggle> / <clears throat:2> / <Question-oh>", purpose: "Expanded paralinguistic sounds", notes: "These require the 2026-01-23 checkpoint. <clears_throat> is also accepted. The editor checks tag syntax but does not inspect the selected model checkpoint." },
                     { syntax: "Step: <emotion:happy> / <style:whisper> / <speed:faster>", purpose: "Whole-segment post-process controls", notes: "Use the Step mode in the inline panel when you want convenience editing without chaining a separate Audio Editor node." },
                     { syntax: "Step: <restore> / <restore:2> / <restore:1@2>", purpose: "Voice restoration after Step edits", notes: "Restore always runs last and can aim back at the original voice or at an earlier edit step." },
                     { syntax: "Higgs: <|emotion:amusement|>", purpose: "Native Higgs emotion control", notes: "Editor inserts canonical Higgs syntax. TTS Audio Suite also accepts alias input like <emotion:amusement>, but canonical output stays <|...|>." },
@@ -2288,6 +2289,7 @@ function addStringMultilineTagEditorWidget(node) {
                 ],
                 bullets: [
                     "Pick the tag engine inside the Inline Tags panel instead of mixing syntaxes blindly.",
+                    "The Step sound menu includes both checkpoint vocabularies. Choose Step-Audio-EditX-2026-01-23 in the engine node to use the expanded sounds; the 2025-11-28 checkpoint supports the original sounds.",
                     "Step Audio EditX tags are post-process controls. Higgs Audio v3, CosyVoice3, and OmniVoice tags are native generation controls.",
                     "Higgs editor insertion always uses canonical `<|...|>` syntax even though alias forms like `<emotion:amusement>` are accepted on input.",
                     "CosyVoice3 does not run Step Audio EditX post-processing here. Use native Cosy tags instead.",

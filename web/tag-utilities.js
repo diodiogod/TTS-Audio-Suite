@@ -6,12 +6,34 @@
 export class TagUtilities {
     static STEP_PARALINGUISTIC_TAGS = new Set([
         "Laughter", "Breathing", "Sigh", "Uhm", "Surprise-oh", "Surprise-ah",
-        "Surprise-wa", "Confirmation-en", "Question-ei", "Dissatisfaction-hnn"
+        "Surprise-wa", "Confirmation-en", "Question-ei", "Dissatisfaction-hnn",
+        "inhale", "exhale", "laugh", "chuckle", "clears throat", "snort",
+        "giggle", "cough", "breath", "Surprise-yo", "Question-ah", "Question-en",
+        "Question-yi", "Question-oh"
     ]);
+
+    static getStepParalinguisticName(value) {
+        const normalized = String(value).trim().toLowerCase().replace(/_/g, " ");
+        return [...this.STEP_PARALINGUISTIC_TAGS].find(name => name.toLowerCase() === normalized);
+    }
+
+    static getStepParalinguisticOptions() {
+        return [...this.STEP_PARALINGUISTIC_TAGS].map(value => ({
+            value,
+            label: (value[0].toUpperCase() + value.slice(1))
+                .replace(/^(Surprise|Confirmation|Question|Dissatisfaction)-(.+)$/, "$1 ($2)"),
+        }));
+    }
+
+    static getStepParalinguisticPattern() {
+        const names = [...this.STEP_PARALINGUISTIC_TAGS, "clears_throat"]
+            .map(name => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        return `<(?:${names.join("|")})(?::\\d+)?>`;
+    }
 
     static STEP_EMOTIONS = new Set([
         "happy", "sad", "angry", "excited", "calm", "fearful", "surprised",
-        "disgusted", "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration"
+        "disgusted", "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration", "fear", "humour"
     ]);
 
     static STEP_STYLES = new Set([
@@ -180,6 +202,14 @@ export class TagUtilities {
         const conversions = {};
         const content = tag.slice(1, -1);
 
+        // Some sound tags also belong to CosyVoice or OmniVoice. Preserve every
+        // valid engine instead of rejecting Step at the first native-tag match.
+        const stepSound = this.getStepParalinguisticName(content);
+        if (stepSound) {
+            engines.add("step_audio_editx");
+            Object.assign(conversions, this._getStepParalinguisticConversions(stepSound));
+        }
+
         const higgsCanonical = content.match(/^\|([a-z_]+):([^|>]+)\|$/);
         if (higgsCanonical) {
             const category = higgsCanonical[1];
@@ -304,29 +334,32 @@ export class TagUtilities {
             };
         }
 
-        const paraMatch = part.match(/^([A-Za-z][A-Za-z-]*)(?::(\d+))?$/);
-        if (paraMatch && this.STEP_PARALINGUISTIC_TAGS.has(paraMatch[1])) {
-            const name = paraMatch[1];
+        const paraMatch = part.match(/^([A-Za-z][A-Za-z_ -]*)(?::(\d+))?$/);
+        const name = paraMatch && this.getStepParalinguisticName(paraMatch[1]);
+        if (name) {
+            const conversions = this._getStepParalinguisticConversions(name);
+            conversions.step_audio_editx = `<${name}${paraMatch[2] ? `:${paraMatch[2]}` : ""}>`;
             return {
                 stepValid: true,
                 higgsAliasValid: false,
-                conversions: this._getStepParalinguisticConversions(name),
+                conversions,
             };
         }
 
-        const valueMatch = part.match(/^([a-z_]+):([^:>]+)(?::(\d+))?$/);
+        const valueMatch = part.match(/^([a-z_]+):([^:>]+)(?::(\d+))?$/i);
         if (!valueMatch) {
             return null;
         }
 
-        const category = valueMatch[1];
-        const value = valueMatch[2];
+        const category = valueMatch[1].toLowerCase();
+        const value = valueMatch[2].toLowerCase();
         const stepValid = this._isValidStepCategoryValue(category, value);
         const higgsAliasValid = !!this.HIGGS_TAGS[category]?.has(value);
         const conversions = {};
 
         if (stepValid) {
             Object.assign(conversions, this._getStepCategoryConversions(category, value));
+            conversions.step_audio_editx = `<${category}:${value}${valueMatch[3] ? `:${valueMatch[3]}` : ""}>`;
         }
         if (higgsAliasValid) {
             this._fillHiggsConversions(category, value, conversions);
@@ -372,6 +405,9 @@ export class TagUtilities {
             Laughter: { higgs: "<|sfx:laughter|>", cosy: "<laughter>", omnivoice: "<laughter>" },
             Sigh: { higgs: "<|sfx:sigh|>", cosy: "<sigh>", omnivoice: "<sigh>" },
             Breathing: { cosy: "<breath>" },
+            laugh: { higgs: "<|sfx:laughter|>", cosy: "<laughter>", omnivoice: "<laughter>" },
+            breath: { cosy: "<breath>" },
+            cough: { higgs: "<|sfx:cough|>", cosy: "<cough>" },
             "Surprise-oh": { omnivoice: "<surprise-oh>" },
             "Surprise-ah": { omnivoice: "<surprise-ah>" },
             "Surprise-wa": { omnivoice: "<surprise-wa>" },
@@ -383,6 +419,9 @@ export class TagUtilities {
         if (mapped?.higgs) conversions.higgs_audio_v3 = mapped.higgs;
         if (mapped?.cosy) conversions.cosyvoice3 = mapped.cosy;
         if (mapped?.omnivoice) conversions.omnivoice = mapped.omnivoice;
+        if (this.OMNIVOICE_NON_VERBAL_TAGS.has(name.toLowerCase())) {
+            conversions.omnivoice = `<${name.toLowerCase()}>`;
+        }
         return conversions;
     }
 
@@ -425,6 +464,7 @@ export class TagUtilities {
             const stepMap = {
                 laughter: "<Laughter>",
                 sigh: "<Sigh>",
+                cough: "<cough>",
             };
             const cosyMap = {
                 laughter: "<laughter>",
@@ -514,6 +554,8 @@ export class TagUtilities {
         if (stepMap[value]) conversions.step_audio_editx = stepMap[value];
         if (higgsMap[value]) conversions.higgs_audio_v3 = higgsMap[value];
         if (cosyMap[value]) conversions.cosyvoice3 = cosyMap[value];
+        const stepSound = this.getStepParalinguisticName(value);
+        if (stepSound) conversions.step_audio_editx = `<${stepSound}>`;
     }
 
     static insertTagAtPosition(text, tag, position, wrapSelection = false, selectionStart = -1, selectionEnd = -1) {

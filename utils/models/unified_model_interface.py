@@ -1122,28 +1122,12 @@ def register_step_audio_editx_factory():
             if quantization and quantization != "none":
                 quantization_config = quantization  # Will be 'int4', 'int8', etc.
 
-            # Auto-download all required models if not present
-            from engines.step_audio_editx.step_audio_editx_downloader import StepAudioEditXDownloader
-            downloader = StepAudioEditXDownloader()
-
-            # Check and download Step-Audio-EditX main model (includes tokenizer files)
-            main_files = downloader.MODELS["Step-Audio-EditX"]["files"]
-            if main_files and isinstance(main_files[0], dict):
-                check_files = [f["local"] for f in main_files]
-            else:
-                check_files = main_files
-
-            # Also add additional downloads to completeness check
-            additional_downloads = downloader.MODELS["Step-Audio-EditX"].get("additional_downloads", [])
-            for additional in additional_downloads:
-                for file_dict in additional["files"]:
-                    check_files.append(file_dict["local"])
-
-            is_complete = downloader._is_model_complete(model_path, check_files)
-
-            if not is_complete:
-                print(f"📥 Step-Audio-EditX model incomplete, downloading...")
-                downloader.download_model("Step-Audio-EditX")
+            # Named downloads are repaired by resolve_model_path above. An
+            # explicit local path must never be replaced with another version.
+            missing = [name for name in downloader.required_files()
+                       if not os.path.isfile(os.path.join(model_path, name))]
+            if missing:
+                raise RuntimeError(f"Local Step Audio EditX model incomplete at {model_path}: {', '.join(missing)}")
 
             # Check and download the sibling FunASR model required by the tokenizer.
             downloader.ensure_companion_models(model_path)

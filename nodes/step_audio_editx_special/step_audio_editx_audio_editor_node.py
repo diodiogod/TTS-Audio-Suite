@@ -2,10 +2,10 @@
 Step Audio EditX Audio Editor Node
 
 Specialized audio editing node for Step Audio EditX unique capabilities:
-- Emotion editing (14 emotions)
+- Emotion editing
 - Style editing (32 styles)
 - Speed control (4 levels)
-- Paralinguistic effects (10 types)
+- Paralinguistic effects, including the January 2026 sound tags
 - Denoising and VAD
 
 This is NOT voice conversion - it's specialized audio manipulation that modifies
@@ -19,6 +19,7 @@ import os
 import sys
 import torch
 import hashlib
+import json
 import tempfile
 import torchaudio
 import folder_paths
@@ -32,6 +33,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.audio.processing import AudioProcessingUtils
+from utils.models.step_audio_editx_checkpoints import DEFAULT_MODEL_NAME, LEGACY_MODEL_NAME
 from utils.text.step_audio_editx_special_tags import (
     convert_step_audio_editx_tags,
     strip_paralinguistic_tags,
@@ -55,11 +57,11 @@ class StepAudioEditXAudioEditorNode:
     # Edit type options
     EDIT_TYPES = ["emotion", "style", "speed", "paralinguistic", "denoise", "vad"]
 
-    # Emotion options (14 total)
+    # Official emotions plus options retained for existing workflows.
     EMOTION_OPTIONS = [
         "none",  # No emotion edit
         "happy", "sad", "angry", "excited", "calm", "fearful", "surprised", "disgusted",
-        "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration",
+        "confusion", "empathy", "embarrass", "depressed", "coldness", "admiration", "fear", "humour",
         "remove"  # Remove emotion
     ]
 
@@ -173,7 +175,8 @@ class StepAudioEditXAudioEditorNode:
             model_config = ModelLoadConfig(
                 engine_name="step_audio_editx",
                 model_type="tts",  # Use "tts" to match adapter's cache key
-                model_name=config.get("model_path", "Step-Audio-EditX"),
+                model_name=LEGACY_MODEL_NAME,  # Match the TTS adapter's model-cache identity.
+                model_path=config.get("model_path", "Step-Audio-EditX"),
                 device=resolve_torch_device(config.get("device", "auto")),
                 runtime_mode=config.get("runtime_mode", "shared_runtime"),
                 runtime_profile=config.get("runtime_profile", "vibevoice_transformers4_shared"),
@@ -282,12 +285,13 @@ class StepAudioEditXAudioEditorNode:
             import os
             from utils.models.extra_paths import find_model_in_paths
 
-            # Try to find Step Audio EditX model in any configured TTS path
-            model_path = find_model_in_paths("Step-Audio-EditX", model_type='TTS', subdirs=['step_audio_editx'])
-
-            # Fallback to default ComfyUI path if not found in extra paths
-            if not model_path:
-                model_path = os.path.join(folder_paths.models_dir, "TTS", "step_audio_editx", "Step-Audio-EditX")
+            # Prefer the dated default, while preserving an existing unversioned
+            # installation. A missing model uses the auto-download identifier.
+            model_path = (
+                find_model_in_paths(DEFAULT_MODEL_NAME, model_type='TTS', subdirs=['step_audio_editx'])
+                or find_model_in_paths(LEGACY_MODEL_NAME, model_type='TTS', subdirs=['step_audio_editx'])
+                or DEFAULT_MODEL_NAME
+            )
 
             config = ModelLoadConfig(
                 engine_name="step_audio_editx",
@@ -340,7 +344,8 @@ class StepAudioEditXAudioEditorNode:
             # paralinguistic, denoise, vad don't use edit_info from dropdowns
             return None
 
-    def _generate_cache_key(self, audio_tensor, audio_text, edit_type, edit_info, target_text):
+    def _generate_cache_key(self, audio_tensor, audio_text, edit_type, edit_info, target_text,
+                            model_path="", generation_params=None):
         """Generate a unique cache key for iteration caching."""
         # Use audio content hash + edit parameters
         audio_bytes = audio_tensor.cpu().numpy().tobytes()
@@ -351,7 +356,9 @@ class StepAudioEditXAudioEditorNode:
             audio_text,
             edit_type,
             str(edit_info),
-            str(target_text)
+            str(target_text),
+            str(model_path),
+            json.dumps(generation_params or {}, sort_keys=True, default=str),
         ]
         key_string = "|".join(key_parts)
         return hashlib.md5(key_string.encode()).hexdigest()
@@ -469,8 +476,20 @@ class StepAudioEditXAudioEditorNode:
                 raise ValueError(f"Please select a {edit_type} option (not 'none')")
 
         # Generate cache key for iteration caching
+        model_path = getattr(step_audio_engine, 'model_path', None) or getattr(step_audio_engine, 'model_dir', '')
+        generation_params = {
+            'max_new_tokens': getattr(step_audio_engine, '_max_new_tokens', 1024),
+            'temperature': getattr(step_audio_engine, '_temperature', 0.7),
+            'do_sample': getattr(step_audio_engine, '_do_sample', True),
+            'torch_dtype': getattr(step_audio_engine, 'torch_dtype', None),
+            'quantization': getattr(step_audio_engine, 'quantization', None),
+        }
+        engine_config = getattr(step_audio_engine, 'config', None)
+        if engine_config is not None:
+            generation_params.update(engine_config.additional_params or {})
         cache_key = self._generate_cache_key(
-            audio_tensor, clean_audio_text, edit_type, edit_info, target_text_with_tags
+            audio_tensor, clean_audio_text, edit_type, edit_info, target_text_with_tags,
+            model_path, generation_params,
         )
 
         # Check for cached iterations
