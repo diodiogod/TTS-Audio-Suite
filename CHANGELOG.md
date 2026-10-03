@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.9.0] - 2026-10-03
+
+### Added
+
+- Add Step Audio EditX checkpoint selection and expanded sound editing
+- Add dated 2026-01-23 and 2025-11-28 Step Audio EditX model choices with separate downloads
+- Add expanded Step Audio EditX sound tags, including giggle, chuckle, clears throat, and new vocal reactions
+- Add new Step Audio EditX sounds plus fear and humour emotions to the Multiline TTS Tag Editor
+
+### Changed
+
+- Improve Step Audio EditX model documentation and editor help while preserving existing workflow widget order and installed weights
+
+### Fixed
+
+- Fix Step Audio EditX Audio Editor ignoring the connected engine's selected model
+- Fix stale Step Audio EditX edits when changing models or generation settings
+- Fix ChatterBox v2/v3 native sound tags being treated as Step Audio EditX edits
 ## [5.8.11] - 2026-09-19
 
 ### Added
