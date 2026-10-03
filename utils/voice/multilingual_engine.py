@@ -459,6 +459,7 @@ class MultilingualEngine:
             
             # Create cache function to check if segment exists
             cache_fn = create_cache_function(
+                engine_type=self.engine_type,
                 text_content=text,
                 audio_component=str(audio_component),
                 ref_text_component=ref_text_component,
