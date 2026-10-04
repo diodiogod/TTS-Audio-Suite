@@ -56,7 +56,7 @@ class MultilingualEngine:
         """
         self.engine_type = engine_type
         self.sample_rate = 24000 if engine_type == "f5tts" else 44100
-        self.loaded_models = set()  # Track loaded models across calls
+
         
     def process_multilingual_text(self, text: str, engine_adapter, **params) -> MultilingualResult:
         """
@@ -144,54 +144,18 @@ class MultilingualEngine:
         
         # 6. Process each language group with smart model loading  
         all_audio_segments = []
-        base_model_loaded = False
-        
-        # Initialize loaded_models tracking with currently loaded model (if any)
-        current_model = getattr(engine_adapter.node, 'current_model_name', None)
-        if current_model and current_model not in self.loaded_models:
-            self.loaded_models.add(current_model)
-            print(f"💾 Multilingual engine: Detected already loaded model '{current_model}'")
-        
-        # Use persistent loaded_models tracking across calls
-        
         for lang_code, lang_segments in language_groups.items():
-            # Get required model for this language
-            required_model = engine_adapter.get_model_for_language(lang_code, params.get("model", "default"))
-            
-            # Check if all segments in this language group are cached
-            if cache_info.get(lang_code, {}).get("all_cached", False):
-                print(f"💾 Skipping model load for language '{lang_code}' - all {len(lang_segments)} segments cached")
+            required_model = engine_adapter.get_model_for_language(
+                lang_code, params.get("model", "default")
+            )
+            if cache_info[lang_code]["all_cached"]:
+                print(f"💾 Skipping model load for language '{lang_code}' - all speech cached")
             else:
-                # Load base model if this is the first time we need to generate anything
-                if not base_model_loaded:
-                    # CRITICAL FIX: Load the required model for this language, not the default model
-                    # This ensures the correct tokenizer is loaded
-                    print(f"🔄 Loading base {self.engine_type.title()} model for generation ({required_model})")
-                    engine_adapter.load_base_model(required_model, params.get("device", "auto"))
-                    base_model_loaded = True
-                
-                # Only load language model if we haven't loaded this specific model yet
-                if required_model not in self.loaded_models:
-                    print(f"🌍 Loading {self.engine_type.title()} model '{required_model}' for language '{lang_code}' ({len(lang_segments)} segments)")
-                    try:
-                        engine_adapter.load_language_model(required_model, params.get("device", "auto"))
-                        self.loaded_models.add(required_model)  # Track that this model is now loaded
-                        # Update node's current language state
-                        engine_adapter.node.current_language = required_model
-                        engine_adapter.node.current_model_name = required_model
-                        print(f"🔄 Updated current_language to '{required_model}'")
-                    except Exception as e:
-                        print(f"⚠️ Failed to load model '{required_model}' for language '{lang_code}': {e}")
-                        print(f"🔄 Falling back to English model")
-                        engine_adapter.load_base_model("English", params.get("device", "auto"))
-                else:
-                    print(f"💾 Model '{required_model}' already loaded - reusing for language '{lang_code}' ({len(lang_segments)} segments)")
-                    # CRITICAL FIX: Force model manager to switch to the correct cached model instance
-                    # The model is cached but self.tts_model needs to point to the right instance
-                    engine_adapter.node.load_tts_model(params.get("device", "auto"), required_model)
-                    engine_adapter.node.current_language = required_model
-                    engine_adapter.node.current_model_name = required_model
-                    print(f"🔄 Updated current_language to '{required_model}' (cached)")
+                # Let the adapter/model manager reuse or restore the requested model.
+                # A historical set of loaded names is not evidence it is still resident.
+                engine_adapter.load_base_model(required_model, params.get("device", "auto"))
+                engine_adapter.node.current_language = required_model
+                engine_adapter.node.current_model_name = required_model
             
             # Process each segment in this language group
             for segment_data in lang_segments:
@@ -219,112 +183,52 @@ class MultilingualEngine:
                     ))
                     continue  # Skip TTS generation for pause segments
                 
-                # Get character voice or fallback to main
-                if self.engine_type == "f5tts":
-                    char_audio, char_text = character_mapping.get(character, (None, None))
-                    if not char_audio or not char_text:
-                        char_audio = params.get("main_audio_reference")
-                        char_text = params.get("main_text_reference") 
-                else:  # chatterbox
-                    # CRITICAL FIX: Check if original character (before alias resolution) was "narrator"
-                    # to detect language-only tags like [de:] that should use main voice
-                    main_ref = params.get("main_audio_reference")
-                    
-                    # If the original tag was language-only (defaulted to "narrator") and we have main ref,
-                    # prioritize main reference over any character alias mapping
-                    should_use_main_ref = (original_character == "narrator" and main_ref)
-                    
-                    if should_use_main_ref:
-                        # Language-only tag like [de:] - use main narrator voice (user's selected voice)
-                        print(f"✅ Using main narrator voice (user-selected) for language-only tag in {segment_lang}")
-                        char_audio = main_ref
-                    else:
-                        # Explicit character tag like [de:Alice] - use character voice
-                        char_audio_tuple = character_mapping.get(character, (None, None))
-                        if char_audio_tuple[0]:
-                            char_audio = char_audio_tuple[0]  # Only get the audio path
+                char_audio, char_text, cache_character = self._resolve_segment_voice(
+                    character, original_character, character_mapping, params
+                )
+                
+                segment_audio = cache_info[lang_code]["audio"].get(original_idx)
+                if segment_audio is None:
+                    # Show generation message with character and language info
+                    # Check if we're using main voice for narrator (language-only tags)
+                    is_using_main_voice = (self.engine_type == "chatterbox" and
+                                         original_character == "narrator" and
+                                         params.get("main_audio_reference"))
+
+                    if is_using_main_voice:
+                        # Language-only tag using main voice
+                        if segment_lang != 'en':
+                            print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} using main voice in {segment_lang}...")
                         else:
-                            char_audio = main_ref
-                
-                # Show generation message with character and language info
-                # Check if we're using main voice for narrator (language-only tags)
-                is_using_main_voice = (self.engine_type == "chatterbox" and 
-                                     original_character == "narrator" and 
-                                     params.get("main_audio_reference"))
-                
-                if is_using_main_voice:
-                    # Language-only tag using main voice
-                    if segment_lang != 'en':
-                        print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} using main voice in {segment_lang}...")
+                            print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} using main voice...")
+                    elif character == "narrator":
+                        if segment_lang != 'en':
+                            print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} in {segment_lang}...")
+                        else:
+                            print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx}...")
                     else:
-                        print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} using main voice...")
-                elif character == "narrator":
-                    if segment_lang != 'en':
-                        print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx} in {segment_lang}...")
-                    else:
-                        print(f"🎤 Generating {self.engine_type.title()} segment {segment_display_idx}...")
-                else:
-                    if segment_lang != 'en':
-                        print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{resolved_character_label(character, char_audio)}' in {segment_lang}")
-                    else:
-                        print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{resolved_character_label(character, char_audio)}'")
-                
-                # Show what model is actually being used for generation (for verification)
-                current_model = getattr(engine_adapter.node, 'current_language', 'unknown')
-                print(f"🔧 ACTUAL MODEL: Generating segment {segment_display_idx} using '{current_model}' model")
-                
-                # Show the final text that will go to the TTS model
-                print(f"🔤 Final text to {self.engine_type.upper()} via multilingual engine ({resolved_character_label(character, char_audio)}): '{segment_text}'")
-                
-                # CRITICAL FIX: For language-only tags, use "narrator" as character for cache consistency
-                cache_character = character
-                if self.engine_type == "chatterbox" and original_character == "narrator":
-                    cache_character = "narrator"
-                
-                # CRITICAL FIX: Update current_language in params to match loaded model
-                # The multilingual engine loads models but the adapter needs the updated language
-                updated_params = params.copy()
-                updated_params['current_language'] = getattr(engine_adapter.node, 'current_language', segment_lang)
-                
-                # CRITICAL FIX: Handle pause tags within character segments
-                # This ensures pause changes don't invalidate cache for text content
-                # (PauseTagProcessor already imported at top of file)
-                if PauseTagProcessor.has_pause_tags(segment_text):
-                    # Process pause tags for this character segment
+                        if segment_lang != 'en':
+                            print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{resolved_character_label(character, char_audio)}' in {segment_lang}")
+                        else:
+                            print(f"🎭 Generating {self.engine_type.title()} segment {segment_display_idx} using '{resolved_character_label(character, char_audio)}'")
+
+                    # Show what model is actually being used for generation (for verification)
+                    current_model = getattr(engine_adapter.node, 'current_language', 'unknown')
+                    print(f"🔧 ACTUAL MODEL: Generating segment {segment_display_idx} using '{current_model}' model")
+
+                    # Show the final text that will go to the TTS model
+                    print(f"🔤 Final text to {self.engine_type.upper()} via multilingual engine ({resolved_character_label(character, char_audio)}): '{segment_text}'")
+                    updated_params = params.copy()
+                    updated_params["current_language"] = getattr(
+                        engine_adapter.node, "current_language", required_model
+                    )
+                    updated_params["enable_pause_tags"] = True
                     if self.engine_type == "f5tts":
-                        segment_audio = engine_adapter.generate_segment_audio(
-                            text=segment_text,  # Let adapter handle pause tags internally
-                            char_audio=char_audio,
-                            char_text=char_text,
-                            character=cache_character,
-                            enable_pause_tags=True,  # Enable pause processing in adapter
-                            **updated_params
-                        )
-                    else:  # chatterbox
-                        segment_audio = engine_adapter.generate_segment_audio(
-                            text=segment_text,  # Let adapter handle pause tags internally
-                            char_audio=char_audio,
-                            character=cache_character,
-                            enable_pause_tags=True,  # Enable pause processing in adapter
-                            **updated_params
-                        )
-                else:
-                    # No pause tags, standard generation
-                    if self.engine_type == "f5tts":
-                        segment_audio = engine_adapter.generate_segment_audio(
-                            text=segment_text,
-                            char_audio=char_audio,
-                            char_text=char_text,
-                            character=cache_character,
-                            **updated_params
-                        )
-                    else:  # chatterbox
-                        segment_audio = engine_adapter.generate_segment_audio(
-                            text=segment_text,
-                            char_audio=char_audio,
-                            character=cache_character,
-                            **updated_params
-                        )
+                        updated_params["char_text"] = char_text
+                    segment_audio = engine_adapter.generate_segment_audio(
+                        text=segment_text, char_audio=char_audio,
+                        character=cache_character, **updated_params
+                    )
                 
                 # Calculate duration
                 duration = self._get_audio_duration(segment_audio)
@@ -389,97 +293,71 @@ class MultilingualEngine:
             ))
         return language_groups
     
-    def _analyze_cache_coverage(self, language_groups: Dict, character_mapping: Dict, 
-                               engine_adapter, **params) -> Dict[str, Dict[str, Any]]:
-        """Analyze cache coverage for each language group to optimize model loading."""
-        cache_info = {}
-        
-        # Only check cache if caching is enabled
-        enable_cache = params.get("enable_audio_cache", True)
-        if not enable_cache:
-            for lang_code, lang_segments in language_groups.items():
-                cache_info[lang_code] = {
-                    "all_cached": False,
-                    "segments_count": len(lang_segments)
-                }
-            return cache_info
-        
-        for lang_code, lang_segments in language_groups.items():
-            cached_segments = 0
-            total_segments = len(lang_segments)
-            
-            for segment_data in lang_segments:
-                original_idx, character, segment_text, segment_lang = segment_data[:4]  # Take only first 4 elements
-                # Check if this specific segment is cached
-                if self._is_segment_cached(character, segment_text, segment_lang, character_mapping, **params):
-                    cached_segments += 1
-            
-            all_cached = cached_segments == total_segments
-            cache_info[lang_code] = {
-                "all_cached": all_cached,
-                "cached_segments": cached_segments,
-                "segments_count": total_segments
-            }
-            
-            if all_cached:
-                print(f"💾 Cache optimization: All {total_segments} segments in '{lang_code}' are cached")
-        
-        return cache_info
-    
-    def _is_segment_cached(self, character: str, text: str, language: str, character_mapping: Dict, **params) -> bool:
-        """Check if a specific segment is cached."""
-        try:
-            # Import cache function
-            from utils.audio.cache import create_cache_function
-            
-            # Get character voice information
-            if self.engine_type == "f5tts":
-                char_audio, char_text = character_mapping.get(character, (None, None))
-                if not char_audio or not char_text:
-                    char_audio = params.get("main_audio_reference")
-                    char_text = params.get("main_text_reference", "")
-                # CRITICAL FIX: Use main narrator's stable component instead of generic fallback
-                main_stable_component = params.get("stable_audio_component", "main_reference")
-                audio_component = char_audio or main_stable_component
-                ref_text_component = char_text or ""
-            else:  # chatterbox
-                char_audio_tuple = character_mapping.get(character, (None, None))
-                char_audio = char_audio_tuple[0] if char_audio_tuple[0] else params.get("main_audio_reference")
-                # CRITICAL FIX: Use main narrator's stable component instead of generic fallback
-                main_stable_component = params.get("stable_audio_component", "main_reference")
-                audio_component = char_audio or main_stable_component
-                ref_text_component = ""
-            
-            # CRITICAL FIX: For language-only tags using main narrator voice, cache as "narrator"
-            # This prevents cache pollution when narrator voice changes
-            cache_character = character
-            if audio_component == main_stable_component:
-                # This character is using main narrator voice (language-only tag)
+    def _resolve_segment_voice(self, character, original_character, character_mapping, params):
+        """Use identical voice selection for probing and generation."""
+        char_audio, char_text = character_mapping.get(character, (None, None))
+        cache_character = character
+        if self.engine_type == "f5tts":
+            if not char_audio or not char_text:
+                char_audio = params.get("main_audio_reference")
+                char_text = params.get("main_text_reference")
+        else:
+            main_ref = params.get("main_audio_reference")
+            if original_character == "narrator":
                 cache_character = "narrator"
-            
-            # Create cache function to check if segment exists
-            cache_fn = create_cache_function(
-                text_content=text,
-                audio_component=str(audio_component),
-                ref_text_component=ref_text_component,
-                character=cache_character,
-                language=language,
-                model_name=params.get("model", "default"),
-                temperature=params.get("temperature", 0.8),
-                speed=params.get("speed", 1.0) if self.engine_type == "f5tts" else None,
-                nfe_step=params.get("nfe_step", 32) if self.engine_type == "f5tts" else None,
-                cfg_strength=params.get("cfg_strength", 2.0) if self.engine_type == "f5tts" else None,
-                exaggeration=params.get("exaggeration", 0.5) if self.engine_type == "chatterbox" else None,
-                cfg_weight=params.get("cfg_weight", 0.5) if self.engine_type == "chatterbox" else None
+                if main_ref:
+                    char_audio = main_ref
+            char_audio = char_audio or main_ref
+        return char_audio, char_text, cache_character
+
+    def _analyze_cache_coverage(self, language_groups, character_mapping, engine_adapter, **params):
+        """Retain cached tensors so skipping a load never requires the old model."""
+        cache_info = {}
+        for language, segments in language_groups.items():
+            cached_audio = {}
+            model = engine_adapter.get_model_for_language(language, params.get("model", "default"))
+            for index, character, text, segment_lang, original_character in segments:
+                # These markers are assembled locally and never require a model.
+                if text.startswith("__PAUSE_") and text.endswith("__"):
+                    continue
+                audio = self._get_cached_segment(
+                    character, original_character, text, model, character_mapping,
+                    engine_adapter, **params
+                )
+                if audio is not None:
+                    cached_audio[index] = audio
+            speech_count = sum(
+                not (segment[2].startswith("__PAUSE_") and segment[2].endswith("__"))
+                for segment in segments
             )
-            
-            # Check cache - if it returns data, segment is cached
-            cached_data = cache_fn(text, audio_result=None)
-            return cached_data is not None
-            
-        except Exception as e:
-            # If cache checking fails, assume not cached
-            return False
+            all_cached = len(cached_audio) == speech_count
+            cache_info[language] = {
+                "all_cached": all_cached, "audio": cached_audio,
+                "cached_segments": len(cached_audio), "segments_count": len(segments),
+            }
+            if all_cached:
+                print(f"💾 Cache optimization: All {speech_count} speech segments in '{language}' are cached")
+        return cache_info
+
+    def _get_cached_segment(self, character, original_character, text, required_model,
+                            character_mapping, engine_adapter, **params):
+        if not params.get("enable_audio_cache", True):
+            return None
+        # Pause-aware generators cache individual text pieces, not this whole string.
+        # Keep their existing assembly path rather than treating a partial hit as complete.
+        if PauseTagProcessor.has_pause_tags(text):
+            return None
+        create_cache = getattr(engine_adapter, "create_segment_cache", None)
+        if create_cache is None:
+            return None
+        _, char_text, cache_character = self._resolve_segment_voice(
+            character, original_character, character_mapping, params
+        )
+        cache_params = dict(params, cache_model_name=required_model, cache_probe=True)
+        if self.engine_type == "f5tts":
+            cache_params["char_text"] = char_text
+        cache_fn = create_cache(character=cache_character, **cache_params)
+        return cache_fn(text) if cache_fn is not None else None
     
     def _get_audio_duration(self, audio_tensor: torch.Tensor) -> float:
         """Calculate audio duration in seconds."""

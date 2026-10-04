@@ -73,7 +73,30 @@ class F5TTSEngineAdapter:
         
         self.node.load_f5tts_model(model_name, device)
     
-    def generate_segment_audio(self, text: str, char_audio: str, char_text: str, 
+    def create_segment_cache(self, character="narrator", char_text=None, *,
+                             cache_model_name=None, cache_probe=False, **params):
+        """Share cache identity between generation and pre-load probes."""
+        if not params.get("enable_audio_cache", True):
+            return None
+        from utils.audio.cache import create_cache_function
+
+        audio_component = params.get("stable_audio_component", "main_reference")
+        if character != "narrator":
+            audio_component = f"char_file_{character}"
+        model_name = cache_model_name or getattr(
+            self.node, "current_model_name", params.get("model", "F5TTS_Base")
+        )
+        return create_cache_function(
+            engine_type="f5tts", character=character, model_name=model_name,
+            device=params.get("device", "auto"), audio_component=audio_component,
+            ref_text=char_text, temperature=params.get("temperature", 0.8),
+            speed=params.get("speed", 1.0), target_rms=params.get("target_rms", 0.1),
+            cross_fade_duration=params.get("cross_fade_duration", 0.15),
+            nfe_step=max(1, min(params.get("nfe_step", 32), 71)),
+            cfg_strength=params.get("cfg_strength", 2.0), seed=params.get("seed", 0),
+        )
+
+    def generate_segment_audio(self, text: str, char_audio: str, char_text: str,
                              character: str = "narrator", **params) -> torch.Tensor:
         """
         Generate F5-TTS audio for a text segment.
@@ -103,34 +126,7 @@ class F5TTSEngineAdapter:
         if safe_nfe_step != nfe_step:
             print(f"⚠️ F5-TTS: Clamped nfe_step from {nfe_step} to {safe_nfe_step} to prevent ODE solver issues")
         
-        # Create cache function if caching is enabled
-        cache_fn = None
-        if enable_cache:
-            from utils.audio.cache import create_cache_function
-            
-            # Get audio component for cache key
-            audio_component = params.get("stable_audio_component", "main_reference")
-            if character != "narrator":
-                audio_component = f"char_file_{character}"
-            
-            # Get current model name for cache key
-            current_model = getattr(self.node, 'current_model_name', params.get("model", "F5TTS_Base"))
-            
-            cache_fn = create_cache_function(
-                engine_type="f5tts",
-                character=character,
-                model_name=current_model,
-                device=params.get("device", "auto"),
-                audio_component=audio_component,
-                ref_text=char_text,
-                temperature=temperature,
-                speed=speed,
-                target_rms=target_rms,
-                cross_fade_duration=cross_fade_duration,
-                nfe_step=safe_nfe_step,
-                cfg_strength=cfg_strength,
-                seed=seed
-            )
+        cache_fn = self.create_segment_cache(character=character, char_text=char_text, **params)
         
         # Generate audio using F5-TTS with pause tag support
         return self.node.generate_f5tts_with_pause_tags(

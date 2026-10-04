@@ -67,7 +67,43 @@ class ChatterBoxEngineAdapter:
         """
         self.node.load_tts_model(device, language)
     
-    def generate_segment_audio(self, text: str, char_audio: str, 
+    def create_segment_cache(self, character="narrator", *, cache_model_name=None,
+                             cache_probe=False, **params):
+        """Share cache identity between generation and pre-load probes."""
+        if not params.get("enable_audio_cache", True):
+            return None
+        from utils.audio.cache import create_cache_function
+
+        language = cache_model_name or params.get("current_language", params.get("model", "English"))
+        device = params.get("device", "auto")
+        model_source = params.get("model_source")
+        if not model_source:
+            # Do not borrow the source of a different currently loaded language.
+            sources = getattr(self, "_cache_model_sources", {})
+            if cache_probe:
+                model_source = sources.get((language, device))
+                if model_source is None:
+                    return None
+            else:
+                if hasattr(self.node, "model_manager"):
+                    model_source = self.node.model_manager.get_model_source("tts")
+                model_source = model_source or "unknown"
+                sources[(language, device)] = model_source
+                self._cache_model_sources = sources
+
+        audio_component = params.get("stable_audio_component", "main_reference")
+        if character != "narrator":
+            audio_component = f"char_file_{character}"
+        return create_cache_function(
+            engine_type="chatterbox", character=character,
+            exaggeration=params.get("exaggeration", 1.0),
+            temperature=params.get("temperature", 0.8),
+            cfg_weight=params.get("cfg_weight", 1.0),
+            seed=params.get("seed", 0), audio_component=audio_component,
+            model_source=model_source, device=device, language=language,
+        )
+
+    def generate_segment_audio(self, text: str, char_audio: str,
                              character: str = "narrator", **params) -> torch.Tensor:
         """
         Generate ChatterBox audio for a text segment.
@@ -88,34 +124,7 @@ class ChatterBoxEngineAdapter:
         seed = params.get("seed", 0)
         enable_cache = params.get("enable_audio_cache", True)
         
-        # Create cache function if caching is enabled
-        cache_fn = None
-        if enable_cache:
-            from utils.audio.cache import create_cache_function
-            
-            # Get current language/model for cache key
-            current_language = params.get("current_language", params.get("model", "English"))
-            audio_component = params.get("stable_audio_component", "main_reference")
-            if character != "narrator":
-                audio_component = f"char_file_{character}"
-            
-            # Get model source
-            model_source = params.get("model_source")
-            if not model_source and hasattr(self.node, 'model_manager'):
-                model_source = self.node.model_manager.get_model_source("tts")
-            
-            cache_fn = create_cache_function(
-                engine_type="chatterbox",
-                character=character,
-                exaggeration=exaggeration,
-                temperature=temperature,
-                cfg_weight=cfg_weight,
-                seed=seed,
-                audio_component=audio_component,
-                model_source=model_source or "unknown",
-                device=params.get("device", "auto"),
-                language=current_language
-            )
+        cache_fn = self.create_segment_cache(character=character, **params)
         
         # Handle caching externally for consistency with F5-TTS
         if cache_fn:
@@ -142,7 +151,7 @@ class ChatterBoxEngineAdapter:
                 enable_pause_tags=True,
                 character=character,
                 seed=seed,
-                enable_cache=True,  # Enable internal caching for pause tag processing
+                enable_cache=enable_cache,
                 crash_protection_template=params.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=params.get("stable_audio_component", "main_reference")
             )
