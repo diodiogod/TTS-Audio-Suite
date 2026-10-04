@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.9.2] - 2026-10-04
+
+### Fixed
+
+- Fix Classic ChatterBox crashing during short or consecutive speech segments (PR #368, thanks @melayyoub)
+- Fix Classic ChatterBox short segments being replaced with silence by the old workaround
+- Fix ChatterBox Classic and Official 23-Lang unclear failures when generation produces no usable speech; report a clear error instead
+
+### Removed
+
+- Remove Classic ChatterBox's old protection template and automatic short-text padding from Text and SRT; existing workflows remain compatible
 ## [5.9.1] - 2026-10-04
 
 ### Fixed
