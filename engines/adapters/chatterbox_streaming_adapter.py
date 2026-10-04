@@ -110,7 +110,6 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
                     "seed": kwargs.get("seed", 42),
                     "enable_chunking": False,  # Don't chunk in streaming - already handled
                     "enable_audio_cache": kwargs.get("enable_audio_cache", True),
-                    "crash_protection_template": kwargs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                     "device": kwargs.get("device", "auto"),
                     "reference_audio": kwargs.get("reference_audio", None)
                 }
@@ -300,7 +299,6 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
         cfg_weight = kwargs.get('cfg_weight', 0.5)
         seed = kwargs.get('seed', 42)
         enable_cache = kwargs.get('enable_audio_cache', True)
-        crash_protection = kwargs.get('crash_protection_template', 'hmm ,, {seg} hmm ,,')
         
         # Check if node has generation method
         if hasattr(self.node, '_generate_tts_with_pause_tags'):
@@ -321,7 +319,6 @@ class ChatterBoxStreamingAdapter(StreamingEngineAdapter):
                 text, voice_path, exaggeration, temperature, cfg_weight,
                 language, True, character=character, seed=seed,
                 enable_cache=enable_cache,
-                crash_protection_template=crash_protection,
                 stable_audio_component=stable_audio_component
             )
         elif hasattr(self.node, 'tts_model') and self.node.tts_model:

@@ -48,7 +48,6 @@ from utils.audio.edit_post_processor import process_segments as apply_edit_post_
 import comfy.model_management as model_management
 
 
-
 class ChatterboxTTSNode(BaseTTSNode):
     """
     Enhanced Text-to-Speech node using ChatterboxTTS - Voice Edition
@@ -112,10 +111,6 @@ Back to the main narrator voice for the conclusion.""",
                 "max_chars_per_chunk": ("INT", {"default": 400, "min": 100, "max": 1000, "step": 50}),
                 "chunk_combination_method": (["auto", "concatenate", "silence_padding", "crossfade"], {"default": "auto"}),
                 "silence_between_chunks_ms": ("INT", {"default": 100, "min": 0, "max": 500, "step": 25}),
-                "crash_protection_template": ("STRING", {
-                    "default": "hmm ,, {seg} hmm ,,",
-                    "tooltip": "Custom padding template for short text segments to prevent ChatterBox crashes. ChatterBox has a bug where text shorter than ~21 characters causes CUDA tensor errors in sequential generation. Use {seg} as placeholder for the original text. Examples: '...ummmmm {seg}' (default hesitation), '{seg}... yes... {seg}' (repetition), 'Well, {seg}' (natural prefix), or empty string to disable padding. This only affects ChatterBox nodes, not F5-TTS nodes."
-                }),
                 "enable_audio_cache": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "If enabled, generated audio segments will be cached in memory to speed up subsequent runs with identical parameters."
@@ -147,210 +142,6 @@ Back to the main narrator voice for the conclusion.""",
         clean_text, edit_tags = parse_edit_tags_with_iterations(text)
         return clean_text, edit_tags
 
-    def _pad_short_text_for_chatterbox(self, text: str, crash_protection_template: str = "hmm ,, {seg} hmm ,,", min_length: int = 15) -> str:
-        """
-        Add custom padding to short text to prevent ChatterBox crashes.
-        
-        ChatterBox has a bug where short text segments cause CUDA tensor indexing errors
-        in sequential generation scenarios. Adding meaningful tokens with custom templates
-        prevents these crashes while allowing user customization.
-        
-        Based on testing:
-        - "w" + spaces/periods crashes even with 150 char padding
-        - "word is a word is a world" works for 4+ runs
-        - "...ummmmm w" provides natural hesitation + preserves original text
-        
-        Args:
-            text: Input text to check and pad if needed
-            crash_protection_template: Custom template with {seg} placeholder for original text
-            min_length: Minimum text length threshold (default: 21 characters)
-            
-        Returns:
-            Original text or text with custom padding template if too short
-        """
-        stripped_text = text.strip()
-        
-        # BUGFIX: Don't pad text that contains only pause tags - they should be processed by PauseTagProcessor
-        import re
-        pause_pattern = r'\[(?:pause|wait|stop|Pause|Wait|Stop|PAUSE|WAIT|STOP):(\d+(?:\.\d+)?)(s|ms)?\]'
-        if re.search(pause_pattern, stripped_text):
-            # Check if text contains ONLY pause tags and whitespace
-            text_without_pauses = re.sub(pause_pattern, '', stripped_text).strip()
-            if not text_without_pauses:
-                # print(f"🚫 Skipping crash protection padding for pause-only content: '{stripped_text}'")
-                return text
-        
-        if len(stripped_text) < min_length:
-            # If template is empty, disable padding
-            if not crash_protection_template.strip():
-                return text
-            # Replace {seg} placeholder with original text
-            protected_text = crash_protection_template.replace("{seg}", stripped_text)
-            print(f"🛡️ Crash protection applied: '{text}' -> '{protected_text}'")
-            return protected_text
-        return text
-
-    def _is_problematic_text(self, text: str, is_already_padded: bool = False) -> tuple[bool, str]:
-        """
-        Predict if text is likely to cause ChatterBox CUDA crashes.
-        Based on analysis of crash patterns.
-        
-        Args:
-            text: The text to check (may be original or already padded)
-            is_already_padded: True if text is already padded, False if it needs padding check
-        
-        Returns:
-            tuple: (is_problematic, reason)
-        """
-        # Don't strip - leading/trailing spaces might help prevent the bug
-        original_text = text
-        
-        # If text is already padded, check its length directly
-        # If not padded, check what the length would be after padding
-        if is_already_padded:
-            final_length = len(original_text)
-            display_text = repr(original_text)  # repr shows spaces clearly
-        else:
-            padded_text = self._pad_short_text_for_chatterbox(text)
-            final_length = len(padded_text)
-            display_text = f"{repr(original_text)} → padded: {repr(padded_text)}"
-        
-        # Text shorter than 21 characters (after padding if needed) is high risk
-        if final_length < 15:
-            return True, f"text too short ({final_length} chars < 21) - {display_text}"
-        
-        # Repetitive patterns like "Yes!Yes!Yes!" are high risk
-        # if len(stripped) <= 20 and stripped.count(stripped[:4]) > 1:
-        #     return True, f"repetitive pattern detected ('{stripped[:4]}' appears {stripped.count(stripped[:4])} times)"
-        
-        # Single words with exclamations (check the actual text, not stripped)
-        text_without_spaces = original_text.replace(' ', '')
-        if len(original_text.split()) == 1 and ('!' in original_text or '?' in original_text):
-            return True, f"single word with punctuation ({repr(original_text)})"
-        
-        # Short phrases with repetitive character patterns
-        if len(original_text) <= 25 and len(set(text_without_spaces)) <= 4:
-            return True, f"limited character variety ({len(set(text_without_spaces))} unique chars in {len(original_text)} chars) - {repr(original_text)}"
-        
-        return False, ""
-
-
-
-    def _safe_generate_tts_audio(self, text, audio_prompt, exaggeration, temperature, cfg_weight, enable_crash_protection=True):
-        """
-        Wrapper around generate_tts_audio with crash protection.
-        If enable_crash_protection=False, behaves like original generate_tts_audio.
-        """
-        if not enable_crash_protection:
-            # No protection - original behavior (may crash ComfyUI)
-            return self.generate_tts_audio(text, audio_prompt, exaggeration, temperature, cfg_weight)
-        
-        # Predict and skip problematic text before it crashes
-        # The text passed here is already processed/padded, so check it directly
-        is_problematic, reason = self._is_problematic_text(text, is_already_padded=True)
-        if is_problematic:
-            print(f"🚨 SKIPPING PROBLEMATIC SEGMENT: '{text[:50]}...' - Reason: {reason}")
-            print(f"🛡️ Generating silence to prevent ChatterBox CUDA crash and avoid ComfyUI reboot")
-            # Return silence instead of attempting generation
-            silence_duration = max(1.0, len(text) * 0.05)  # Rough estimate
-            silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000))
-            return torch.zeros(1, silence_samples)
-        
-        # If prediction says it's safe, try generation with fallback
-        try:
-            return self.generate_tts_audio(text, audio_prompt, exaggeration, temperature, cfg_weight)
-        except Exception as e:
-            error_msg = str(e)
-            is_cuda_crash = ("srcIndex < srcSelectDimSize" in error_msg or 
-                           "CUDA" in error_msg or 
-                           "device-side assert" in error_msg or
-                           "an illegal memory access" in error_msg)
-            if is_cuda_crash:
-                print(f"🚨 UNEXPECTED CUDA CRASH occurred during generation: '{text[:50]}...'")
-                print(f"🛡️ Crash detection missed this pattern - returning silence to prevent ComfyUI reboot")
-                # Return silence instead of crashing
-                silence_duration = max(1.0, len(text) * 0.05)  # Rough estimate
-                silence_samples = int(silence_duration * (self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000))
-                return torch.zeros(1, silence_samples)
-            else:
-                raise
-
-    def _generate_with_pause_tags(self, pause_segments: List, inputs: Dict, main_audio_prompt) -> torch.Tensor:
-        """
-        Generate audio with pause tag support, handling character switching within segments.
-        
-        Args:
-            pause_segments: List of ('text', content) or ('pause', duration) segments
-            inputs: Input parameters dictionary
-            main_audio_prompt: Default audio prompt
-            
-        Returns:
-            Combined audio tensor with pauses
-        """
-        def generate_segment_audio(segment_text: str, audio_prompt) -> torch.Tensor:
-            """Generate audio for a text segment with crash protection"""
-            # Apply padding for crash protection
-            processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs["crash_protection_template"])
-            
-            # Determine crash protection based on template
-            enable_protection = bool(inputs["crash_protection_template"].strip())
-            
-            return self._safe_generate_tts_audio(
-                processed_text, audio_prompt, inputs["exaggeration"], 
-                inputs["temperature"], inputs["cfg_weight"], enable_protection
-            )
-        
-        # Check if we need character switching within pause segments
-        has_character_switching = any(
-            segment_type == 'text' and '[' in content and ']' in content 
-            for segment_type, content in pause_segments
-        )
-        
-        if has_character_switching:
-            # Set up character voice mapping
-            from utils.voice.discovery import get_character_mapping
-            
-            # Process each segment and extract characters
-            all_characters = set()
-            for segment_type, content in pause_segments:
-                if segment_type == 'text':
-                    char_segments = parse_character_text(content)
-                    chars = set(char for char, _ in char_segments)
-                    all_characters.update(chars)
-            
-            character_mapping = get_character_mapping(list(all_characters), engine_type="chatterbox")
-            
-            # Build voice references
-            voice_refs = {}
-            for character in all_characters:
-                audio_path, _ = character_mapping.get(character, (None, None))
-                voice_refs[character] = audio_path if audio_path else main_audio_prompt
-        
-        # Generate audio using pause tag processor
-        def tts_generate_func(text_content: str) -> torch.Tensor:
-            """TTS generation function for pause tag processor"""
-            if has_character_switching and ('[' in text_content and ']' in text_content):
-                # Handle character switching within this segment
-                char_segments = parse_character_text(text_content)
-                segment_audio_parts = []
-                
-                for character, segment_text in char_segments:
-                    audio_prompt = voice_refs.get(character, main_audio_prompt)
-                    audio_part = generate_segment_audio(segment_text, audio_prompt)
-                    segment_audio_parts.append(audio_part)
-                
-                # Combine character segments
-                if segment_audio_parts:
-                    return torch.cat(segment_audio_parts, dim=-1)
-                else:
-                    return torch.zeros(1, 0)
-            else:
-                # Simple text segment without character switching
-                return generate_segment_audio(text_content, main_audio_prompt)
-        
-        return PauseTagProcessor.generate_audio_with_pauses(
-            pause_segments, tts_generate_func, self.tts_model.sr
-        )
 
     def validate_inputs(self, **inputs) -> Dict[str, Any]:
         """Validate and normalize inputs."""
@@ -365,8 +156,6 @@ Back to the main narrator voice for the conclusion.""",
             validated["chunk_combination_method"] = "auto"
         if validated.get("silence_between_chunks_ms") is None:
             validated["silence_between_chunks_ms"] = 100
-        if validated.get("crash_protection_template") is None:
-            validated["crash_protection_template"] = "hmm ,, {seg} hmm ,,"
         
         return validated
 
@@ -423,7 +212,7 @@ Back to the main narrator voice for the conclusion.""",
                                     temperature: float, cfg_weight: float, language: str = "English",
                                     enable_pause_tags: bool = True, character: str = "narrator", 
                                     seed: int = 0, enable_cache: bool = True,
-                                    crash_protection_template: str = "hmm ,, {seg} hmm ,,", 
+                                    crash_protection_template: str = "",
                                     stable_audio_component: str = None) -> torch.Tensor:
         """
         Generate ChatterBox TTS audio with pause tag support.
@@ -438,7 +227,7 @@ Back to the main narrator voice for the conclusion.""",
             character: Character name for cache key
             seed: Seed for reproducibility and cache key
             enable_cache: Whether to use caching
-            crash_protection_template: Template for crash protection
+            crash_protection_template: Obsolete argument, accepted and ignored
             stable_audio_component: Stable audio identifier for cache
             
         Returns:
@@ -459,11 +248,10 @@ Back to the main narrator voice for the conclusion.""",
                 # Use stable audio component for cache key
                 audio_component = stable_audio_component if stable_audio_component else ""
                 
-                # Apply crash protection first for consistency
-                protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
+                generation_text = processed_text
                 
                 # Show final text going into the TTS model
-                print(f"🔤 Final text to ChatterBox TTS model ({character}): '{protected_text}'")
+                print(f"🔤 Final text to ChatterBox TTS model ({character}): '{generation_text}'")
                 
                 # Use centralized cache system
                 from utils.audio.cache import create_cache_function
@@ -481,22 +269,22 @@ Back to the main narrator voice for the conclusion.""",
                 )
                 
                 # Try cache first
-                cached_audio = cache_fn(protected_text)
+                cached_audio = cache_fn(generation_text)
                 if cached_audio is not None:
                     print(f"💾 CACHE HIT for {character}: '{processed_text[:30]}...'")
                     return cached_audio
                 
                 # Generate and cache
-                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                audio = self.generate_tts_audio(generation_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
                 audio_clone = audio.detach().clone() if audio.requires_grad else audio
-                cache_fn(protected_text, audio_result=audio_clone)
+                cache_fn(generation_text, audio_result=audio_clone)
                 return audio_clone
             else:
-                protected_text = self._pad_short_text_for_chatterbox(processed_text, crash_protection_template)
+                generation_text = processed_text
                 # Show final text going into the TTS model
-                print(f"🔤 Final text to ChatterBox TTS model ({character}): '{protected_text}'")
-                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                print(f"🔤 Final text to ChatterBox TTS model ({character}): '{generation_text}'")
+                audio = self.generate_tts_audio(generation_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
                 return audio.detach().clone() if audio.requires_grad else audio
         
@@ -507,13 +295,10 @@ Back to the main narrator voice for the conclusion.""",
                 # Use stable audio component for cache key
                 audio_component = stable_audio_component if stable_audio_component else ""
                 
-                # Apply crash protection first for consistency
-                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
-                if len(text_content.strip()) < 21:
-                    print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                generation_text = text_content
                 
                 # Show final text going into the TTS model
-                print(f"🔤 Final text to ChatterBox TTS model ({character}, pause segment): '{protected_text}'")
+                print(f"🔤 Final text to ChatterBox TTS model ({character}, pause segment): '{generation_text}'")
                 
                 # Use centralized cache system
                 from utils.audio.cache import create_cache_function
@@ -531,27 +316,24 @@ Back to the main narrator voice for the conclusion.""",
                 )
                 
                 # Try cache first
-                cached_audio = cache_fn(protected_text)
+                cached_audio = cache_fn(generation_text)
                 if cached_audio is not None:
                     print(f"💾 CACHE HIT for {character}: '{text_content[:30]}...'")
                     return cached_audio
                 
                 # Generate and cache
-                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                audio = self.generate_tts_audio(generation_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
                 audio_clone = audio.detach().clone() if audio.requires_grad else audio
-                cache_fn(protected_text, audio_result=audio_clone)
+                cache_fn(generation_text, audio_result=audio_clone)
                 return audio_clone
             else:
-                # Apply crash protection
-                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
-                if len(text_content.strip()) < 21:
-                    print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                generation_text = text_content
                 
                 # Show final text going into the TTS model
-                print(f"🔤 Final text to ChatterBox TTS model ({character}, pause segment, no cache): '{protected_text}'")
+                print(f"🔤 Final text to ChatterBox TTS model ({character}, pause segment, no cache): '{generation_text}'")
                 
-                audio = self.generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                audio = self.generate_tts_audio(generation_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 # Clone tensor to avoid autograd issues in streaming mode
                 return audio.detach().clone() if audio.requires_grad else audio
         
@@ -574,7 +356,6 @@ Back to the main narrator voice for the conclusion.""",
             inputs["temperature"], inputs["cfg_weight"], inputs["language"],
             True, character="narrator", seed=inputs["seed"], 
             enable_cache=inputs.get("enable_audio_cache", True),
-            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
             stable_audio_component=stable_audio_component
         )
 
@@ -582,9 +363,10 @@ Back to the main narrator voice for the conclusion.""",
                        reference_audio=None, audio_prompt_path="",
                        enable_chunking=True, max_chars_per_chunk=400,
                        chunk_combination_method="auto", silence_between_chunks_ms=100,
-                       crash_protection_template="hmm ,, {seg} hmm ,,", enable_audio_cache=True,
+                       crash_protection_template="", enable_audio_cache=True,
                        batch_size=4):
         
+        # crash_protection_template is accepted only for legacy callers.
         def _process():
             # Import PauseTagProcessor at the top to avoid scoping issues
             from utils.text.pause_processor import PauseTagProcessor
@@ -600,7 +382,6 @@ Back to the main narrator voice for the conclusion.""",
                 enable_chunking=enable_chunking, max_chars_per_chunk=max_chars_per_chunk,
                 chunk_combination_method=chunk_combination_method,
                 silence_between_chunks_ms=silence_between_chunks_ms,
-                crash_protection_template=crash_protection_template,
                 enable_audio_cache=enable_audio_cache,
                 batch_size=current_batch_size
             )
@@ -992,7 +773,6 @@ Back to the main narrator voice for the conclusion.""",
                         inputs["temperature"], inputs["cfg_weight"], inputs["language"],
                         True, character="narrator", seed=inputs["seed"],
                         enable_cache=inputs.get("enable_audio_cache", True),
-                        crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=stable_audio_component
                     )
 
@@ -1059,7 +839,6 @@ Back to the main narrator voice for the conclusion.""",
                             inputs["temperature"], inputs["cfg_weight"], inputs["language"],
                             True, character="narrator", seed=inputs["seed"],
                             enable_cache=inputs.get("enable_audio_cache", True),
-                            crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                             stable_audio_component=stable_audio_component
                         )
                         audio_segments.append(chunk_audio)
@@ -1184,7 +963,6 @@ Back to the main narrator voice for the conclusion.""",
                 inputs["temperature"], inputs["cfg_weight"], required_language,
                 True, character=character, seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
-                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=stable_audio_component
             )
             segment_audio_chunks.append(chunk_audio)
@@ -1374,7 +1152,6 @@ Back to the main narrator voice for the conclusion.""",
                 current_config.get("temperature", inputs["temperature"]), current_config.get("cfg_weight", inputs["cfg_weight"]), lang,
                 True, character=char, seed=current_config.get("seed", inputs["seed"]),
                 enable_cache=current_config.get("enable_audio_cache", inputs.get("enable_audio_cache", True)),
-                crash_protection_template=current_config.get("crash_protection_template", inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,")),
                 stable_audio_component=stable_audio_component
             )
 
@@ -1398,7 +1175,7 @@ Back to the main narrator voice for the conclusion.""",
                 stateless_model = self._streaming_model_manager.get_stateless_model_for_language(language)
                 if stateless_model:
                     # Process text for generation
-                    processed_text = self._pad_short_text_for_chatterbox(segment_text, inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"))
+                    processed_text = segment_text
                     
                     # Add caching logic like SRT streaming does
                     enable_cache = inputs.get("enable_audio_cache", True)
@@ -1456,7 +1233,6 @@ Back to the main narrator voice for the conclusion.""",
                 inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
                 True, character=character, seed=inputs.get("seed", 42),
                 enable_cache=inputs.get("enable_audio_cache", True),
-                crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=stable_audio_component
             )
             return segment_audio

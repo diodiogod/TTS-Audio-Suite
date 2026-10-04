@@ -185,10 +185,6 @@ The audio will match these exact timings.""",
                     "step": 0.5,
                     "tooltip": "Maximum allowed deviation (in seconds) for timing adjustments in 'smart_natural' mode. Higher values allow more flexibility."
                 }),
-                "crash_protection_template": ("STRING", {
-                    "default": "hmm ,, {seg} hmm ,,",
-                    "tooltip": "Custom padding template for short text segments to prevent ChatterBox crashes. ChatterBox has a bug where text shorter than ~21 characters causes CUDA tensor errors in sequential generation. Use {seg} as placeholder for the original text. Examples: '...ummmmm {seg}' (default hesitation), '{seg}... yes... {seg}' (repetition), 'Well, {seg}' (natural prefix), or empty string to disable padding. This only affects ChatterBox nodes, not F5-TTS nodes."
-                }),
                 "batch_size": ("INT", {
                     "default": 0, "min": 0, "max": 32, "step": 1,
                     "tooltip": "Parallel processing: 0=traditional mode (sequential), 1+=streaming parallel workers. Higher values = faster generation but more memory usage."
@@ -201,30 +197,6 @@ The audio will match these exact timings.""",
     FUNCTION = "generate_srt_speech"
     CATEGORY = "ChatterBox Voice"
 
-    def _pad_short_text_for_chatterbox(self, text: str, padding_template: str = "...ummmmm {seg}", min_length: int = 21) -> str:
-        """
-        Add custom padding to short text to prevent ChatterBox crashes.
-        
-        ChatterBox has a bug where short text segments cause CUDA tensor indexing errors
-        in sequential generation scenarios. Adding meaningful tokens with custom templates
-        prevents these crashes while allowing user customization.
-        
-        Args:
-            text: Input text to check and pad if needed
-            padding_template: Custom template with {seg} placeholder for original text
-            min_length: Minimum text length threshold (default: 21 characters)
-            
-        Returns:
-            Original text or text with custom padding template if too short
-        """
-        stripped_text = text.strip()
-        if len(stripped_text) < min_length:
-            # If template is empty, disable padding
-            if not padding_template.strip():
-                return text
-            # Replace {seg} placeholder with original text
-            return padding_template.replace("{seg}", stripped_text)
-        return text
     
     def _get_stable_audio_component(self, voice_path, reference_audio=None):
         """Generate stable audio component identifier for cache consistency."""
@@ -234,32 +206,12 @@ The audio will match these exact timings.""",
         generate_stable_audio_component = attrs['generate_stable_audio_component']
         return generate_stable_audio_component(reference_audio, voice_path)
 
-    def _safe_generate_tts_audio(self, text, audio_prompt, exaggeration, temperature, cfg_weight):
-        """
-        Wrapper around generate_tts_audio - simplified to just call the base method.
-        CUDA crash recovery was removed as it didn't work reliably.
-        """
-        try:
-            return self.generate_tts_audio(text, audio_prompt, exaggeration, temperature, cfg_weight)
-        except Exception as e:
-            error_msg = str(e)
-            is_cuda_crash = ("srcIndex < srcSelectDimSize" in error_msg or 
-                           "CUDA" in error_msg or 
-                           "device-side assert" in error_msg or
-                           "an illegal memory access" in error_msg)
-            
-            if is_cuda_crash:
-                print(f"🚨 ChatterBox CUDA crash detected: '{text[:50]}...'")
-                print(f"🛡️ This is a known ChatterBox bug with certain text patterns.")
-                raise RuntimeError(f"ChatterBox CUDA crash occurred. Text: '{text[:50]}...' - Try using padding template or longer text, or restart ComfyUI.")
-            else:
-                raise
 
     def _generate_tts_with_pause_tags(self, text: str, audio_prompt, exaggeration: float, 
                                     temperature: float, cfg_weight: float, language: str = "English",
                                     enable_pause_tags: bool = True, character: str = "narrator", 
                                     seed: int = 0, enable_cache: bool = True,
-                                    crash_protection_template: str = "hmm ,, {seg} hmm ,,", 
+                                    crash_protection_template: str = "",
                                     stable_audio_component: str = None) -> torch.Tensor:
         """
         Generate ChatterBox TTS audio with pause tag support for SRT node.
@@ -312,13 +264,13 @@ The audio will match these exact timings.""",
                     return cached_audio
                 
                 # Generate and cache
-                audio = self._safe_generate_tts_audio(processed_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                audio = self.generate_tts_audio(processed_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 
                 # Cache the result using the unified cache system
                 cache_fn(processed_text, audio_result=audio)
                 return audio
             else:
-                return self._safe_generate_tts_audio(processed_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                return self.generate_tts_audio(processed_text, audio_prompt, exaggeration, temperature, cfg_weight)
         
         # Generate audio with pause tags, caching individual text segments
         def tts_generate_func(text_content: str) -> torch.Tensor:
@@ -327,10 +279,7 @@ The audio will match these exact timings.""",
                 # CRITICAL FIX: Use unified cache system for pause segments too
                 from utils.audio.cache import create_cache_function
                 
-                # Apply crash protection to individual text segment FIRST
-                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
-                if len(text_content.strip()) < 21:
-                    print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                generation_text = text_content
                 
                 # Use stable audio component if provided, otherwise use audio prompt path
                 audio_component = stable_audio_component if stable_audio_component else str(audio_prompt or "main_reference")
@@ -349,25 +298,22 @@ The audio will match these exact timings.""",
                     language=language
                 )
                 
-                # Try cache first with protected text
-                cached_audio = cache_fn(protected_text)
+                # Try cache first with the original text
+                cached_audio = cache_fn(generation_text)
                 if cached_audio is not None:
                     print(f"💾 CACHE HIT for pause segment: '{text_content[:30]}...'")
                     return cached_audio
                 
                 # Generate and cache
-                audio = self._safe_generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                audio = self.generate_tts_audio(generation_text, audio_prompt, exaggeration, temperature, cfg_weight)
                 
                 # Cache the result using the unified cache system
-                cache_fn(protected_text, audio_result=audio)
+                cache_fn(generation_text, audio_result=audio)
                 return audio
             else:
-                # Apply crash protection to individual text segment
-                protected_text = self._pad_short_text_for_chatterbox(text_content, crash_protection_template)
-                if len(text_content.strip()) < 21:
-                    print(f"🔍 DEBUG: Pause segment original: '{text_content}' → Protected: '{protected_text}' (len: {len(protected_text)})")
+                generation_text = text_content
                 
-                return self._safe_generate_tts_audio(protected_text, audio_prompt, exaggeration, temperature, cfg_weight)
+                return self.generate_tts_audio(generation_text, audio_prompt, exaggeration, temperature, cfg_weight)
         
         return PauseTagProcessor.generate_audio_with_pauses(
             pause_segments, tts_generate_func, self.tts_model.sr if hasattr(self, 'tts_model') and self.tts_model else 24000
@@ -405,7 +351,7 @@ The audio will match these exact timings.""",
     def _generate_with_preloaded_model(self, model, text: str, voice_path: str, language: str, 
                                      character: str, exaggeration: float, temperature: float, 
                                      cfg_weight: float, seed: int, enable_cache: bool, 
-                                     crash_protection_template: str, stable_audio_component: str) -> torch.Tensor:
+                                     stable_audio_component: str) -> torch.Tensor:
         """
         Generate audio using a specific pre-loaded model without affecting shared node state.
         Thread-safe method for streaming workers.
@@ -421,7 +367,6 @@ The audio will match these exact timings.""",
             cfg_weight: ChatterBox CFG weight parameter
             seed: Seed for reproducibility
             enable_cache: Whether to use caching
-            crash_protection_template: Crash protection template
             stable_audio_component: Stable audio component identifier
             
         Returns:
@@ -433,11 +378,6 @@ The audio will match these exact timings.""",
         # Generate audio using the pre-loaded model directly with caching
         print(f"🔄 Generating {language} audio with preloaded model (ID: {id(model)})")
         
-        # Apply crash protection to text if needed
-        if len(text.strip()) < 21:
-            protected_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
-            print(f"🛡️ Applied crash protection: '{text}' → '{protected_text}'")
-            text = protected_text
         
         # Handle caching for streaming generation - use same unified cache system as traditional
         if enable_cache:
@@ -509,13 +449,7 @@ The audio will match these exact timings.""",
                         
                         for segment_type, content in pause_segments:
                             if segment_type == 'text' and content.strip():
-                                # Apply crash protection to short segments
                                 text_for_generation = content
-                                if len(content.strip()) < 21:
-                                    text_for_generation = self._pad_short_text_for_chatterbox(
-                                        content, 
-                                        inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,")
-                                    )
                                 
                                 # Generate audio for text segment with individual caching
                                 enable_cache = inputs.get("enable_audio_cache", True)
@@ -573,13 +507,7 @@ The audio will match these exact timings.""",
                             segment_audio = torch.zeros(1, 1000)
                     else:
                         # No pause tags, use stateless generation directly
-                        # Apply crash protection to short segments
                         text_for_generation = segment_text
-                        if len(segment_text.strip()) < 21:
-                            text_for_generation = self._pad_short_text_for_chatterbox(
-                                segment_text, 
-                                inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,")
-                            )
                         
                         # No pause tags, use stateless generation with caching
                         enable_cache = inputs.get("enable_audio_cache", True)
@@ -631,7 +559,6 @@ The audio will match these exact timings.""",
                         inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
                         True, character=character, seed=inputs.get("seed", 42),
                         enable_cache=inputs.get("enable_audio_cache", True),
-                        crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                         stable_audio_component=stable_audio_component
                     )
             else:
@@ -645,7 +572,6 @@ The audio will match these exact timings.""",
                     inputs.get("temperature", 0.8), inputs.get("cfg_weight", 0.5), language,
                     True, character=character, seed=inputs.get("seed", 42),
                     enable_cache=inputs.get("enable_audio_cache", True),
-                    crash_protection_template=inputs.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                     stable_audio_component=stable_audio_component
                 )
             
@@ -659,7 +585,8 @@ The audio will match these exact timings.""",
                             timing_mode, reference_audio=None, audio_prompt_path="",
                             enable_audio_cache=True, fade_for_StretchToFit=0.01, 
                             max_stretch_ratio=2.0, min_stretch_ratio=0.5, timing_tolerance=2.0,
-                            crash_protection_template="hmm ,, {seg} hmm ,,", batch_size=0):
+                            crash_protection_template="", batch_size=0):
+        # crash_protection_template is accepted only for legacy callers.
         
         def _process():
             # Check if SRT support is available
@@ -849,7 +776,6 @@ The audio will match these exact timings.""",
                     cfg_weight=cfg_weight,
                     seed=seed,
                     enable_audio_cache=enable_audio_cache,
-                    crash_protection_template=crash_protection_template
                 )
                 
                 # Convert results to SRT format
@@ -882,7 +808,7 @@ The audio will match these exact timings.""",
                 audio_segments, natural_durations, any_segment_cached = self._process_traditional_srt_logic(
                     subtitles, subtitle_language_groups, language, device, exaggeration, temperature,
                     cfg_weight, seed, reference_audio, audio_prompt_path, enable_audio_cache,
-                    crash_protection_template, stable_audio_prompt_component, all_subtitle_segments, audio_prompt
+                    stable_audio_prompt_component, all_subtitle_segments, audio_prompt
                 )
             
             # Handle empty subtitles separately
@@ -1101,7 +1027,7 @@ The audio will match these exact timings.""",
     
     def _process_traditional_srt_logic(self, subtitles, subtitle_language_groups, language, device, exaggeration,
                                      temperature, cfg_weight, seed, reference_audio, audio_prompt_path,
-                                     enable_audio_cache, crash_protection_template, stable_audio_prompt_component,
+                                     enable_audio_cache, stable_audio_prompt_component,
                                      all_subtitle_segments, audio_prompt):
         """Traditional sequential SRT processing logic - preserves ALL original functionality."""
         from utils.models.language_mapper import get_model_for_language
@@ -1197,14 +1123,12 @@ The audio will match these exact timings.""",
                                         current_cfg = segment_config.get('cfg_weight', cfg_weight)
                                         current_seed = segment_config.get('seed', seed)
 
-                                    # Pad short text with crash protection
-                                    processed_text = self._pad_short_text_for_chatterbox(char_text, crash_protection_template)
+                                    processed_text = char_text
 
                                     # Generate audio (no pause tags!)
                                     segment_wav = self._generate_tts_with_pause_tags(
                                         processed_text, char_voice, current_exag, current_temp, current_cfg, char_lang,
                                         False, character=char, seed=current_seed, enable_cache=enable_audio_cache,
-                                        crash_protection_template=crash_protection_template,
                                         stable_audio_component=stable_audio_prompt_component
                                     )
 
@@ -1261,14 +1185,12 @@ The audio will match these exact timings.""",
                                 current_cfg = segment_config.get('cfg_weight', cfg_weight)
                                 current_seed = segment_config.get('seed', seed)
 
-                            # Pad short text with crash protection
-                            processed_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
+                            processed_text = text
 
                             # Generate audio
                             segment_wav = self._generate_tts_with_pause_tags(
                                 processed_text, char_voice, current_exag, current_temp, current_cfg, lang,
                                 False, character=char, seed=current_seed, enable_cache=enable_audio_cache,
-                                crash_protection_template=crash_protection_template,
                                 stable_audio_component=stable_audio_prompt_component
                             )
 
@@ -1319,14 +1241,12 @@ The audio will match these exact timings.""",
                                 current_seed = segment_config.get('seed', seed)
                                 print(f"  📊 Segment {seg_idx+1}: Applying parameters {seg_params}")
 
-                            # Pad short text with crash protection
-                            processed_text = self._pad_short_text_for_chatterbox(text, crash_protection_template)
+                            processed_text = text
 
                             # Generate audio for this segment with its parameters and character voice
                             segment_wav = self._generate_tts_with_pause_tags(
                                 processed_text, char_voice, current_exag, current_temp, current_cfg, lang,
                                 True, character=char, seed=current_seed, enable_cache=enable_audio_cache,
-                                crash_protection_template=crash_protection_template,
                                 stable_audio_component=stable_audio_prompt_component
                             )
                             segment_audio_parts.append(segment_wav)
@@ -1407,7 +1327,6 @@ The audio will match these exact timings.""",
                         cfg_weight=current_cfg,
                         seed=current_seed,
                         enable_audio_cache=enable_audio_cache,
-                        crash_protection_template=crash_protection_template,
                         extract_edit_tags=True  # Enable edit tag extraction per segment
                     )
 
@@ -1510,14 +1429,12 @@ The audio will match these exact timings.""",
                         segment_audio_parts = []
                         for pause_seg_type, pause_content in pause_segments:
                             if pause_seg_type == 'text':
-                                # Pad short text with crash protection
-                                processed_text = self._pad_short_text_for_chatterbox(pause_content, crash_protection_template)
+                                processed_text = pause_content
 
                                 # Generate audio for this text segment (no pause tags!)
                                 segment_wav = self._generate_tts_with_pause_tags(
                                     processed_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
                                     False, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
-                                    crash_protection_template=crash_protection_template,
                                     stable_audio_component=stable_audio_prompt_component
                                 )
 
@@ -1553,14 +1470,12 @@ The audio will match these exact timings.""",
                         # Has edit tags but NO pause tags - generate normally and store for batch editing
                         print(f"🎨 ChatterBox SRT Segment {i+1} (Seq {subtitle.sequence}): Has edit tags (no pause tags)")
 
-                        # Pad short text with crash protection
-                        processed_text = self._pad_short_text_for_chatterbox(text_clean, crash_protection_template)
+                        processed_text = text_clean
 
                         # Generate audio
                         wav = self._generate_tts_with_pause_tags(
                             processed_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
                             False, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
-                            crash_protection_template=crash_protection_template,
                             stable_audio_component=stable_audio_prompt_component
                         )
 
@@ -1586,16 +1501,12 @@ The audio will match these exact timings.""",
 
                     else:
                         # No edit tags - use existing pause processing
-                        processed_subtitle_text = self._pad_short_text_for_chatterbox(text_clean, crash_protection_template)
-
-                        if len(text_clean.strip()) < 21:
-                            print(f"🔍 DEBUG: Original text: '{text_clean}' → Processed: '{processed_subtitle_text}' (len: {len(processed_subtitle_text)})")
+                        processed_subtitle_text = text_clean
 
                         # Generate new audio with pause tag support (includes internal caching)
                         wav = self._generate_tts_with_pause_tags(
                             processed_subtitle_text, audio_prompt, current_exag, current_temp, current_cfg, self.current_language,
                             True, character="narrator", seed=current_seed, enable_cache=enable_audio_cache,
-                            crash_protection_template=crash_protection_template,
                             stable_audio_component=stable_audio_prompt_component
                         )
                         natural_duration = self.AudioTimingUtils.get_audio_duration(wav, self.tts_model.sr)

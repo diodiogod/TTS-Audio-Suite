@@ -1076,9 +1076,6 @@ Back to the main narrator voice for the conclusion.""",
             if not engine_instance:
                 raise RuntimeError("Failed to create engine node instance")
             
-            # IMPORTANT: Add crash protection template to config if missing (for ChatterBox)
-            if engine_type == "chatterbox" and "crash_protection_template" not in config:
-                config["crash_protection_template"] = "hmm ,, {seg} hmm ,,"
             
             # ChatterBox will automatically determine streaming vs sequential based on batch_size
             
@@ -1099,7 +1096,6 @@ Back to the main narrator voice for the conclusion.""",
                     max_chars_per_chunk=max_chars_per_chunk,
                     chunk_combination_method=chunk_combination_method,
                     silence_between_chunks_ms=silence_between_chunks_ms,
-                    crash_protection_template=config.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                     enable_audio_cache=enable_audio_cache,
                     batch_size=batch_size
                 )

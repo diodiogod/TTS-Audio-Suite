@@ -1221,7 +1221,6 @@ Hello! This is unified SRT TTS with character switching.
                     max_stretch_ratio=max_stretch_ratio,
                     min_stretch_ratio=min_stretch_ratio,
                     timing_tolerance=timing_tolerance,
-                    crash_protection_template=config.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                     batch_size=batch_size
                 )
                 

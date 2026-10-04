@@ -42,4 +42,7 @@ def drop_invalid_tokens(x):
             int(invalid.sum()), int(x.max()), SPEECH_VOCAB_SIZE,
         )
         x = x[~invalid]
+    # TTS Audio Suite patch: do not pass an empty speech stream to S3Gen.
+    if x.numel() == 0:
+        raise RuntimeError("ChatterBox generated no valid speech tokens. Try another seed or text.")
     return x

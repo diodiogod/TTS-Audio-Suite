@@ -74,6 +74,7 @@ class MaskedDiffWithXvec(torch.nn.Module):
 
         # concat text and prompt_text
         mask = (~make_pad_mask(token_len)).float().unsqueeze(-1).to(device)
+        # TTS Audio Suite patch: bound speech-token indices to prevent CUDA embedding asserts.
         token = self.input_embedding(
             torch.clamp(token, min=0, max=self.input_embedding.num_embeddings - 1)
         ) * mask
@@ -126,6 +127,7 @@ class MaskedDiffWithXvec(torch.nn.Module):
         token_len1, token_len2 = prompt_token.shape[1], token.shape[1]
         token, token_len = torch.concat([prompt_token, token], dim=1), prompt_token_len + token_len
         mask = (~make_pad_mask(token_len)).unsqueeze(-1).to(embedding)
+        # TTS Audio Suite patch: bound speech-token indices to prevent CUDA embedding asserts.
         token = self.input_embedding(
             torch.clamp(token, min=0, max=self.input_embedding.num_embeddings - 1)
         ) * mask
@@ -219,6 +221,7 @@ class CausalMaskedDiffWithXvec(torch.nn.Module):
         # concat text and prompt_text
         token, token_len = torch.concat([prompt_token, token], dim=1), prompt_token_len + token_len
         mask = (~make_pad_mask(token_len)).unsqueeze(-1).to(embedding)
+        # TTS Audio Suite patch: bound speech-token indices to prevent CUDA embedding asserts.
         token = self.input_embedding(
             torch.clamp(token, min=0, max=self.input_embedding.num_embeddings - 1)
         ) * mask

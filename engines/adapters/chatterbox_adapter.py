@@ -152,7 +152,6 @@ class ChatterBoxEngineAdapter:
                 character=character,
                 seed=seed,
                 enable_cache=enable_cache,
-                crash_protection_template=params.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=params.get("stable_audio_component", "main_reference")
             )
             # Don't use external cache for pause tag segments
@@ -169,7 +168,6 @@ class ChatterBoxEngineAdapter:
                 character=character,
                 seed=seed,
                 enable_cache=False,  # Disable internal caching since we handle it externally
-                crash_protection_template=params.get("crash_protection_template", "hmm ,, {seg} hmm ,,"),
                 stable_audio_component=params.get("stable_audio_component", "main_reference")
             )
             
