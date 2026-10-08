@@ -11,7 +11,7 @@ Affected file:
   Lines: 270, 272, 274, 306, 308, 310
 
 Solution: Monkey-patch the _init_cuda_graph method to use the actual device
-from self.linear_out (which is correctly set during model initialization).
+from the encoder parameters.
 """
 
 import warnings
@@ -63,7 +63,7 @@ class StepAudioEditXDevicePatches:
 
             # Try to import the module
             try:
-                from stepvocoder.cosyvoice2.transformer.upsample_encoder_v2 import UpsampleEncoderV2
+                from stepvocoder.cosyvoice2.transformer.upsample_encoder_v2 import UpsampleConformerEncoderV2
             except ImportError:
                 # Module not loaded yet, patch will be applied when it loads
                 if verbose:
@@ -71,14 +71,14 @@ class StepAudioEditXDevicePatches:
                 return
 
             # Check if already patched
-            if hasattr(UpsampleEncoderV2._init_cuda_graph, '_device_patched'):
+            if hasattr(UpsampleConformerEncoderV2._init_cuda_graph, '_device_patched'):
                 if verbose:
                     print("✓ [Step Audio EditX Device Patch] Already applied")
                 cls._patches_applied.add("cuda_graph_device")
                 return
 
             # Save original method
-            original_init_cuda_graph = UpsampleEncoderV2._init_cuda_graph
+            original_init_cuda_graph = UpsampleConformerEncoderV2._init_cuda_graph
 
             # Track if we've already logged for non-CUDA devices (to avoid spam)
             _logged_non_cuda = {'logged': False}
@@ -88,18 +88,14 @@ class StepAudioEditXDevicePatches:
                 """
                 Patched version that uses dynamic device instead of hardcoded 'cuda'.
 
-                Detects device from model's parameters (self.linear_out) and uses that
+                Detects the device from the encoder's parameters and uses that
                 for CUDA Graph initialization. Falls back to disabling CUDA graphs if
                 not on CUDA device.
                 """
                 import torch
 
-                # Detect actual device from model
-                if hasattr(self, 'linear_out') and hasattr(self.linear_out, 'weight'):
-                    device = self.linear_out.weight.device
-                else:
-                    # Fallback: assume cuda if cuda is available
-                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                # The bundled conformer has no linear_out; use its parameters.
+                device = next(self.parameters()).device
 
                 # CUDA Graphs only work on CUDA devices
                 if device.type != 'cuda':
@@ -117,7 +113,7 @@ class StepAudioEditXDevicePatches:
             patched_init_cuda_graph._device_patched = True
 
             # Apply patch
-            UpsampleEncoderV2._init_cuda_graph = patched_init_cuda_graph
+            UpsampleConformerEncoderV2._init_cuda_graph = patched_init_cuda_graph
 
             if verbose:
                 print("✓ [Step Audio EditX Device Patch] Applied CUDA Graph device compatibility patch")

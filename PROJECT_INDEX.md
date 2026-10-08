@@ -143,11 +143,11 @@
 
 ### Isolated Runtimes (`utils/runtimes/`)
 - `profiles.py` - named runtime profiles (shared/dedicated legacy Transformers 4 environments and engine-specific runtimes)
-- `launcher.py` - runtime bootstrap, venv creation, Windows toolchain env setup
+- `launcher.py` - worker environment construction, suite-first import paths, Windows toolchain env setup
 - `session.py`, `protocol.py` - JSONL worker transport and message protocol
 - `bootstrap.py` - shared runtime bootstrap helpers
 - `vibevoice_proxy.py`, `qwen3_tts_proxy.py`, `qwen3_asr_proxy.py`, `higgs_audio_proxy.py` - parent-process proxies
-- `workers/` - worker subprocess entrypoints for VibeVoice, Qwen3-TTS, Qwen3-ASR/aligner, Higgs Audio
+- `workers/` - worker subprocess entrypoints for VibeVoice, Qwen3-TTS, Qwen3-ASR/aligner, Higgs Audio, Fish Audio S2, and Step Audio EditX; each prioritizes suite imports before third-party dependencies
 - Current shared legacy T4 runtime profile is reused by:
   - Qwen3-TTS
   - Qwen3-ASR and Granite's optional Qwen forced aligner

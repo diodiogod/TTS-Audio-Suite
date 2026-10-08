@@ -6,14 +6,15 @@ import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Prioritize suite packages even when already present later in PYTHONPATH.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(PROJECT_ROOT))
+
 import torch
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 QWEN3_ASR_IMPL = PROJECT_ROOT / "engines" / "qwen3_asr" / "impl"
 if str(QWEN3_ASR_IMPL) not in sys.path:
-    sys.path.insert(0, str(QWEN3_ASR_IMPL))
+    sys.path.insert(1, str(QWEN3_ASR_IMPL))
 
 from utils.runtimes.protocol import RuntimeJobResponse
 

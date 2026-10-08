@@ -6,8 +6,7 @@ import traceback
 import warnings
 from pathlib import Path
 
-import torch
-
+# Prioritize suite packages before importing any third-party dependencies.
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 project_root_str = str(PROJECT_ROOT)
 sys.path = [
@@ -15,6 +14,8 @@ sys.path = [
     if str(Path(entry).resolve()) != project_root_str
 ]
 sys.path.insert(0, project_root_str)
+
+import torch
 
 # These warnings originate in inherited third-party packages. Keep the filters
 # exact and local to this worker so unrelated warnings remain visible.

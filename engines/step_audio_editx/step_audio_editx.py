@@ -13,10 +13,6 @@ from utils.models.factory_config import ModelLoadConfig
 from utils.models.extra_paths import find_model_in_paths, get_preferred_download_path, get_all_tts_model_paths
 from utils.text.step_audio_editx_special_tags import get_supported_paralinguistic_tags
 
-# Apply Step Audio EditX device compatibility patches (MPS/CPU support)
-from utils.compatibility.step_audio_editx_device_patch import StepAudioEditXDevicePatches
-StepAudioEditXDevicePatches.apply_all_patches(verbose=False)
-
 
 class StepAudioEditXEngine:
     """

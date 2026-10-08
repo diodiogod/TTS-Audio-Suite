@@ -40,30 +40,35 @@ class IsolatedRuntimeLauncher:
     def build_env(self, profile: RuntimeProfile) -> Dict[str, str]:
         env = dict(os.environ)
         self._sanitize_pythonhashseed(env)
-        current_pythonpath = env.get("PYTHONPATH", "")
-        inherited_paths = [
+        current_pythonpath = profile.env_vars.get("PYTHONPATH", env.get("PYTHONPATH", ""))
+        # Bundled engine directories can contain utils.py or other names that
+        # shadow suite packages. Always resolve suite imports before those paths.
+        inherited_paths = [str(Path(__file__).resolve().parents[2])]
+        inherited_paths.extend(
             path for path in sys.path
-            if path and self._should_inherit_pythonpath_entry(path)
-        ]
+            if self._should_inherit_pythonpath_entry(os.path.abspath(path))
+        )
         if current_pythonpath:
             inherited_paths.extend(
                 path
                 for path in current_pythonpath.split(os.pathsep)
-                if path and self._should_inherit_pythonpath_entry(path)
+                if path and self._should_inherit_pythonpath_entry(os.path.abspath(path))
             )
         deduped_paths = []
         seen = set()
         for path in inherited_paths:
-            normalized = os.path.normcase(os.path.normpath(path))
+            # Workers change cwd to the suite. Resolve relative host entries
+            # before deduplication so '.' cannot replace the ComfyUI root.
+            absolute_path = os.path.abspath(path)
+            normalized = os.path.normcase(os.path.realpath(absolute_path))
             if normalized in seen:
                 continue
             seen.add(normalized)
-            deduped_paths.append(path)
-        if deduped_paths:
-            env["PYTHONPATH"] = os.pathsep.join(deduped_paths)
+            deduped_paths.append(absolute_path)
         env["PYTHONUNBUFFERED"] = "1"
         env = self._augment_windows_toolchain_env(env)
         env.update(profile.env_vars)
+        env["PYTHONPATH"] = os.pathsep.join(deduped_paths)
         return env
 
     @staticmethod

@@ -30,6 +30,11 @@ from stepvocoder.cosyvoice2.cli.cosyvoice import CosyVoice
 from transformers.generation.logits_process import LogitsProcessor, LogitsProcessorList
 from transformers.generation.stopping_criteria import StoppingCriteria
 
+# TTS Audio Suite patch: apply the device fix only when loading the synthesis
+# implementation, so importing the engine/downloader does not alter host paths.
+from utils.compatibility.step_audio_editx_device_patch import StepAudioEditXDevicePatches
+StepAudioEditXDevicePatches.apply_all_patches(verbose=False)
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
