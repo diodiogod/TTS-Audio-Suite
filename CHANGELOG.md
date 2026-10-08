@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.9.3] - 2026-10-08
+
+### Fixed
+
+- Fix isolated TTS worker startup failures from conflicting Python modules
+- Fix Qwen3-TTS and Voice Design failing on first use or after Step Audio EditX with utils is not a package
+- Fix conflicting module paths affecting all isolated TTS and ASR workers
+- Fix isolated workers losing ComfyUI imports when their working directory changes
+- Fix Step Audio EditX importing bundled modules during model discovery
+- Fix Step Audio EditX CPU and MPS device patch not targeting the bundled encoder
 ## [5.9.2] - 2026-10-04
 
 ### Fixed
