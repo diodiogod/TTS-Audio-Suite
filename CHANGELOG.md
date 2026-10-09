@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.10.0] - 2026-10-09
+
+### Added
+
+- Shared Runtime installation controls and suite security improvements
+- Add automatic Shared Runtime setup during TTS Audio Suite installation and updates, with a ComfyUI setting and file option to skip it.
+
+### Changed
+
+- Improve runtime behavior so workflows use prepared environments without installing Python packages.
+- Improve file access and model loading across TTS, voice conversion, audio tools, and training to reject unsafe paths and executable checkpoint objects while keeping supported weight formats.
+
+### Fixed
+
+- Fix Registry packages missing guides and workflows with Unicode filenames, and exclude development-only files from published packages.
+
+### Removed
+
+- Remove Dedicated Runtime choices from Qwen3-TTS and Step Audio EditX; existing workflows migrate to Shared Runtime without moving other settings.
 ## [5.9.3] - 2026-10-08
 
 ### Fixed
