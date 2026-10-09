@@ -136,7 +136,7 @@ class FishAudioS2Proxy:
             output = Path(temp_dir) / "result.pt"
             payload["output_path"] = str(output)
             self._request("generate", payload)
-            result = torch.load(output, map_location="cpu")
+            result = torch.load(output, map_location="cpu", weights_only=True)
             if result.get("peak_memory_gb"):
                 label = (
                     self.model_variant

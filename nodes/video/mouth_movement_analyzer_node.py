@@ -3,6 +3,7 @@ Silent Speech Analyzer Node
 Detects and analyzes mouth movement in silent video frames to extract precise mouth movement timing for TTS SRT synchronization.
 """
 
+from utils.security.path_access import allowed_path
 import os
 import json
 import logging
@@ -191,6 +192,8 @@ class MouthMovementAnalyzerNode(BaseNode):
         else:
             video_path = str(video_input)
         
+        if isinstance(video_path, str):
+            video_path = allowed_path(video_path, models=False)
         # Get video file stats for cache invalidation
         try:
             import os

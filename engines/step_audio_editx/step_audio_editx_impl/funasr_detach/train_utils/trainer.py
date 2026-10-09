@@ -129,7 +129,7 @@ class Trainer:
         """
         ckpt = os.path.join(resume_path, "model.pt")
         if os.path.isfile(ckpt):
-            checkpoint = torch.load(ckpt)
+            checkpoint = torch.load(ckpt, weights_only=True)
             self.start_epoch = checkpoint["epoch"] + 1
             # self.model.load_state_dict(checkpoint['state_dict'])
             src_state = checkpoint["state_dict"]
@@ -333,7 +333,8 @@ class Trainer:
                     for key, var in speed_stats.items():
                         self.writer.add_scalar(
                             f"rank{self.local_rank}_{key}/train",
-                            eval(var),
+                            # TTS Audio Suite patch: parse numeric timing data.
+                            float(var),
                             self.batch_total,
                         )
 
@@ -412,6 +413,7 @@ class Trainer:
                         for key, var in speed_stats.items():
                             self.writer.add_scalar(
                                 f"rank{self.local_rank}_{key}/val",
-                                eval(var),
+                                # TTS Audio Suite patch: parse numeric timing data.
+                            float(var),
                                 epoch * len(self.dataloader_val) + batch_idx,
                             )

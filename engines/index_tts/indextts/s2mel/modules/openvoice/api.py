@@ -33,7 +33,8 @@ class OpenVoiceBaseClass(object):
         self.device = device
 
     def load_ckpt(self, ckpt_path):
-        checkpoint_dict = torch.load(ckpt_path, map_location=torch.device(self.device))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        checkpoint_dict = torch.load(ckpt_path, map_location=torch.device(self.device), weights_only=True)
         a, b = self.model.load_state_dict(checkpoint_dict['model'], strict=False)
         print("Loaded checkpoint '{}'".format(ckpt_path))
         print('missing/unexpected keys:', a, b)

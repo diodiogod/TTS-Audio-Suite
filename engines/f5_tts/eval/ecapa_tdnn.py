@@ -184,9 +184,11 @@ class ECAPA_TDNN(nn.Module):
         torch.hub._validate_not_a_forked_repo = lambda a, b, c: True
         try:
             local_s3prl_path = os.path.expanduser("~/.cache/torch/hub/s3prl_s3prl_main")
-            self.feature_extract = torch.hub.load(local_s3prl_path, feat_type, source="local", config_path=config_path)
+            # TTS Audio Suite patch: restrict checkpoint deserialization.
+            self.feature_extract = torch.hub.load(local_s3prl_path, feat_type, source="local", config_path=config_path, weights_only=True)
         except:  # noqa: E722
-            self.feature_extract = torch.hub.load("s3prl/s3prl", feat_type)
+            # TTS Audio Suite patch: restrict checkpoint deserialization.
+            self.feature_extract = torch.hub.load("s3prl/s3prl", feat_type, weights_only=True)
 
         if len(self.feature_extract.model.encoder.layers) == 24 and hasattr(
             self.feature_extract.model.encoder.layers[23].self_attn, "fp32_attention"

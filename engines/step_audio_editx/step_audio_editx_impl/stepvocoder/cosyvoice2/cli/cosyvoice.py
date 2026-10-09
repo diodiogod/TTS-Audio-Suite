@@ -373,9 +373,9 @@ class CosyVoice:
             configs = load_hyperpyyaml(f, overrides={})
             flow, hift = configs['flow'], configs['hift']
             mel_conf = configs['mel_conf']
-        flow.load_state_dict(torch.load(f"{model_dir}/flow.pt", map_location='cpu'))
+        flow.load_state_dict(torch.load(f"{model_dir}/flow.pt", map_location='cpu', weights_only=True))
         flow = flow.eval()
-        hift.load_state_dict(torch.load(f"{model_dir}/hift.pt", map_location='cpu'))
+        hift.load_state_dict(torch.load(f"{model_dir}/hift.pt", map_location='cpu', weights_only=True))
         hift = hift.eval()
         cosy_impl = CosyVoice_stream_impl_(flow, hift, chunk_size_list, mel_cache_len, n_timesteps)
         self.cosy_impl = cosy_impl.to(self.device, self.dtype)

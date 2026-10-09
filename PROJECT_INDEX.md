@@ -78,6 +78,7 @@
 - `ENGINE_COMPARISON.md`, `LANGUAGE_SUPPORT.md`, `FEATURE_COMPARISON.md` - Auto-generated tables
 
 ### Dev Docs (`docs/Dev reports/`)
+- `REGISTRY_COMPATIBILITY_PLAN.md` - File access, safe loading, config parsing, runtime installation/preferences, archive fixes, verification and Registry approval evidence
 - `tts_audio_suite_engines.yaml` - **Source of truth** for all engine metadata
 - `tts_audio_suite_aux_models.yaml` - **Source of truth** for helper/post-process model metadata
 - `SRT_IMPLEMENTATION.md` - SRT timing technical details
@@ -203,6 +204,20 @@
 - `web/asr_srt_preset_widgets.js` - ASR SRT preset locking
 
 ## Scripts & Config
+- `.comfyignore` - Registry archive exclusions for development tools and reports; keeps runtime metadata YAML, user documentation, and engine/training code
 - `scripts/bump_version_enhanced.py` - Version bump with changelog (use `patch`/`minor`/`major`)
 - `scripts/generate_engine_tables.py` - Regenerate all docs from YAML (`--readme` flag for README too)
 - `requirements.txt`, `pyproject.toml` - Dependencies and project metadata
+
+## Registry compatibility helpers
+
+- `utils/security/path_access.py` - Configured data-folder containment, link checks and safe output paths
+- `utils/security/data_loading.py` - Restricted checkpoint/dictionary/NumPy loading and scoped dependency adapters
+- `utils/security/demucs_loading.py`, `audio_separator_loading.py` - Preserve legacy separator metadata with restricted dependency loaders
+- `utils/downloads/unified_downloader.py` - Model download destinations contained in registered data folders
+- `utils/security/config_values.py` - Data-only config expressions with bounded list arithmetic
+- `utils/runtimes/bootstrap.py` - Runtime lookup/readiness only; generation never installs packages
+- `utils/runtimes/installation.py` - Installation-time preparation invoked by `install.py`
+- `utils/runtimes/settings.py`, `settings_api.py` - One persisted installation preference and same-origin UI writes
+- `web/runtime_installation_settings.js` - Shared runtime installation setting and status/cleanup details
+- `web/runtime_mode_compatibility.js` - Dedicated-to-shared migration for older workflows

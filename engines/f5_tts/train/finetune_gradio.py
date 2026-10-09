@@ -968,7 +968,8 @@ def expand_model_embeddings(ckpt_path, new_ckpt_path, num_new_tokens=42):
         ckpt = load_file(ckpt_path, device="cpu")
         ckpt = {"ema_model_state_dict": ckpt}
     elif ckpt_path.endswith(".pt"):
-        ckpt = torch.load(ckpt_path, map_location="cpu")
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=True)
 
     ema_sd = ckpt.get("ema_model_state_dict", {})
     embed_key_ema = "ema_model.transformer.text_embed.text_embed.weight"

@@ -207,7 +207,8 @@ def _extract_initial_state_dict(checkpoint):
 
 
 def _load_initial_checkpoint(model, checkpoint_path, logger=None, label="model"):
-    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     state_dict, strict = _extract_initial_state_dict(checkpoint)
     target_model = model.module if hasattr(model, "module") else model
     # TTS Audio Suite patch: allow both standard and warm-start RVC

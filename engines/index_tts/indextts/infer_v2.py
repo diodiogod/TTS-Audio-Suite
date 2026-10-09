@@ -338,7 +338,8 @@ class IndexTTS2:
         campplus_ckpt_path = os.path.join(campplus_path, "campplus_cn_common.bin")
 
         campplus_model = CAMPPlus(feat_dim=80, embedding_size=192)
-        campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu"))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu", weights_only=True))
         self.campplus_model = campplus_model.to(self.load_device)
         self.campplus_model.eval()
         print(">> campplus_model weights restored from:", campplus_ckpt_path)
@@ -364,11 +365,13 @@ class IndexTTS2:
         self.tokenizer = TextTokenizer(self.bpe_path, self.normalizer)
         print(">> bpe model loaded from:", self.bpe_path)
 
-        emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix), weights_only=True)
         self.emo_matrix = emo_matrix.to(self.load_device)
         self.emo_num = list(self.cfg.emo_num)
 
-        spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix), weights_only=True)
         self.spk_matrix = spk_matrix.to(self.load_device)
 
         self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)

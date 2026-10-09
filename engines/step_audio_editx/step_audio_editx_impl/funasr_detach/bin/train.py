@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
+from utils.security.config_values import parse_config_value  # TTS Audio Suite patch: parse data without executing configuration code.
 import os
 import sys
 import torch
@@ -125,7 +126,7 @@ def main(**kwargs):
     # freeze_param
     freeze_param = kwargs.get("freeze_param", None)
     if freeze_param is not None:
-        freeze_param = eval(freeze_param)
+        freeze_param = parse_config_value(freeze_param)
         if isinstance(freeze_param, Sequence):
             freeze_param = (freeze_param,)
         logging.info("freeze_param is not None: %s", freeze_param)

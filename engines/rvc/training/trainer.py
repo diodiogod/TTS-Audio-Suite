@@ -4,6 +4,7 @@ Training runner for RVC voice models.
 
 from __future__ import annotations
 
+from utils.security.path_access import allowed_path
 import hashlib
 import json
 import os
@@ -368,16 +369,16 @@ def _resolve_continue_from_model_path(continue_from: Any) -> str:
             if isinstance(artifact_model, dict):
                 model_path = str(artifact_model.get("model_path", "") or "").strip()
                 if model_path and os.path.exists(model_path):
-                    return model_path
+                    return allowed_path(model_path)
             model_path = str(continue_from.get("model_path", "") or "").strip()
             if model_path and os.path.exists(model_path):
-                return model_path
+                return allowed_path(model_path)
             raise FileNotFoundError("continue_from TRAINING_ARTIFACTS does not contain a valid RVC model_path")
 
         if data_type == "rvc_model":
             model_path = str(continue_from.get("model_path", "") or "").strip()
             if model_path and os.path.exists(model_path):
-                return model_path
+                return allowed_path(model_path)
             raise FileNotFoundError("continue_from RVC_MODEL does not contain a valid model_path")
 
     raise ValueError(

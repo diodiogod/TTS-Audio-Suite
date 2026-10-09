@@ -1,5 +1,6 @@
 """Engine-neutral audio clip staging for training workflows."""
 
+from utils.security.path_access import child_path
 import os
 import re
 import sys
@@ -164,8 +165,8 @@ class MossClipStagingNode(BaseTTSNode):
         dataset_slug = _slugify(dataset_name)
         input_root = folder_paths.get_input_directory()
         subdir = str(output_subdir or "").strip().strip("/\\")
-        output_root = os.path.join(input_root, subdir) if subdir else input_root
-        dataset_dir = os.path.join(output_root, dataset_slug)
+        output_root = child_path(input_root, subdir) if subdir else input_root
+        dataset_dir = child_path(input_root, subdir, dataset_slug)
 
         if os.path.isdir(dataset_dir):
             if overwrite:
@@ -189,7 +190,7 @@ class MossClipStagingNode(BaseTTSNode):
                 clip_index += 1
                 clip_id = f"clip{clip_index:03d}"
                 filename = f"{clip_index:05d}_{input_name}_{source_clip_index}.wav"
-                clip_path = os.path.join(dataset_dir, filename)
+                clip_path = child_path(dataset_dir, filename)
                 _write_audio_clip(clip, sample_rate, clip_path)
                 clips.append({
                     "clip_id": clip_id,

@@ -73,7 +73,8 @@ def main():
     assert num == len(path_list)
     for path in path_list:
         print('Processing {}'.format(path))
-        states = torch.load(path, map_location=torch.device('cpu'))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        states = torch.load(path, map_location=torch.device('cpu'), weights_only=True)
         for k in states.keys():
             if k not in ['step', 'epoch']:
                 if k not in avg.keys():

@@ -15,7 +15,8 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "xpu" if torch.xpu.is_available() else "cpu"
 
-    predictor = torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True)
+    # TTS Audio Suite patch: restrict checkpoint deserialization.
+    predictor = torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True, weights_only=True)
     predictor = predictor.to(device)
 
     audio_paths = list(Path(args.audio_dir).rglob(f"*.{args.ext}"))

@@ -234,7 +234,8 @@ class EnhancedCodec(nn.Module):
     def load_checkpoint(self, checkpoint_path):
         """Load model weights from a checkpoint file."""
         assert os.path.isfile(checkpoint_path), f"Checkpoint not found: {checkpoint_path}"
-        checkpoint_dict = torch.load(checkpoint_path, map_location='cpu')
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        checkpoint_dict = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
         saved_state_dict = checkpoint_dict['model']
         state_dict = self.state_dict()
         new_state_dict = {}

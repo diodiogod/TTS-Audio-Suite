@@ -1,3 +1,4 @@
+from utils.security.data_loading import load_data_pickle  # TTS Audio Suite patch: refuse executable pickle globals.
 import json
 import pickle
 
@@ -40,5 +41,5 @@ def save_pickle(obj, fname):
 def load_pickle(fname):
     # print("Load pickle at "+fname)
     with open(fname, "rb") as f:
-        res = pickle.load(f)
+        res = load_data_pickle(f)
     return res

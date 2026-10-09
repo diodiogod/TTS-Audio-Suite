@@ -4,6 +4,7 @@ Enhanced voice file discovery with dual folder support, smart text file priority
 Includes persistent caching for faster startup times.
 """
 
+from utils.security.path_access import allowed_path
 import os
 import json
 from pathlib import Path
@@ -305,7 +306,10 @@ class VoiceDiscovery:
         if not voice_info:
             return None, None
 
-        return voice_info['audio_path'], voice_info['text_content']
+        audio_path = allowed_path(voice_info['audio_path'])
+        if voice_info.get('text_path'):
+            allowed_path(voice_info['text_path'])
+        return audio_path, voice_info['text_content']
     
     def _refresh_cache(self):
         """Refresh the voice cache by scanning all supported directories."""
@@ -461,6 +465,10 @@ class VoiceDiscovery:
         Returns:
             Tuple of (text_file_path, text_content) or (None, None)
         """
+        try:
+            audio_path = allowed_path(audio_path)
+        except ValueError:
+            return None, None
         audio_stem = Path(audio_path).stem
         audio_dir = os.path.dirname(audio_path)
         
@@ -468,7 +476,7 @@ class VoiceDiscovery:
         reference_txt = os.path.join(audio_dir, f"{audio_stem}.reference.txt")
         if os.path.isfile(reference_txt):
             try:
-                with open(reference_txt, 'r', encoding='utf-8') as f:
+                with open(allowed_path(reference_txt), 'r', encoding='utf-8') as f:
                     content = f.read().strip()
                     if content:  # Only use if not empty
                         return reference_txt, content
@@ -479,7 +487,7 @@ class VoiceDiscovery:
         regular_txt = os.path.join(audio_dir, f"{audio_stem}.txt")
         if os.path.isfile(regular_txt):
             try:
-                with open(regular_txt, 'r', encoding='utf-8') as f:
+                with open(allowed_path(regular_txt), 'r', encoding='utf-8') as f:
                     content = f.read().strip()
                     if content:  # Only use if not empty
                         return regular_txt, content

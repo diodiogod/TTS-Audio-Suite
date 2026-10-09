@@ -217,7 +217,8 @@ class IndexTTS2:
         self.semantic_model = Wav2Vec2BertModel.from_pretrained(w2v_bert_dir, local_files_only=True)
         self.semantic_model = self.semantic_model.to(self.device)
         self.semantic_model.eval()
-        stat_mean_var = torch.load(os.path.join(self.model_dir, self.cfg.w2v_stat))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        stat_mean_var = torch.load(os.path.join(self.model_dir, self.cfg.w2v_stat), weights_only=True)
         self.semantic_mean = stat_mean_var["mean"].to(self.device)
         self.semantic_std = torch.sqrt(stat_mean_var["var"]).to(self.device)
 
@@ -261,7 +262,8 @@ class IndexTTS2:
         campplus_dir = index_tts_downloader.download_model("campplus")
         campplus_ckpt_path = os.path.join(campplus_dir, "campplus_cn_common.bin")
         campplus_model = CAMPPlus(feat_dim=80, embedding_size=192)
-        campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu"))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu", weights_only=True))
         self.campplus_model = campplus_model.to(self.device)
         self.campplus_model.eval()
         print(">> campplus_model weights restored from:", campplus_ckpt_path)
@@ -284,11 +286,13 @@ class IndexTTS2:
             self.text_process.load_glossary_from_yaml(self.glossary_path)
             print(">> Glossary loaded from:", self.glossary_path)
 
-        emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix), weights_only=True)
         self.emo_matrix = emo_matrix.to(self.device)
         self.emo_num = list(self.cfg.emo_num)
 
-        spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix))
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix), weights_only=True)
         self.spk_matrix = spk_matrix.to(self.device)
 
         self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)

@@ -3,6 +3,7 @@ RVC Engine - Core RVC voice conversion implementation for TTS Audio Suite
 Consolidates functionality from reference RVC nodes into unified engine
 """
 
+from utils.security.data_loading import load_numpy_data  # TTS Audio Suite patch: NumPy dictionaries must not execute pickle globals.
 import os
 import sys
 import torch
@@ -530,7 +531,7 @@ class RVCEngine:
         try:
             cache_file = os.path.join(self.cache_dir, f"{cache_key}.npy")
             if os.path.exists(cache_file):
-                cached_data = np.load(cache_file, allow_pickle=True).item()
+                cached_data = load_numpy_data(cache_file).item()
                 return cached_data['audio'], cached_data['sample_rate']
             return None
         except Exception:

@@ -641,7 +641,8 @@ class RMVPE:
             self.model = ort_session
         else:
             model = E2E(4, 1, (2, 2))
-            ckpt = torch.load(model_path, map_location="cpu")
+            # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+            ckpt = torch.load(model_path, map_location="cpu", weights_only=True)
             model.load_state_dict(ckpt)
             model.eval()
             if is_half == True:

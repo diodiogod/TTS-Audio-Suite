@@ -1,3 +1,4 @@
+from utils.security.config_values import parse_config_value  # TTS Audio Suite patch: parse data without executing configuration code.
 import os
 import json
 import torch
@@ -95,7 +96,7 @@ def main_hydra(cfg: DictConfig):
         ),
     )
     if isinstance(scp_file_list, str):
-        scp_file_list = eval(scp_file_list)
+        scp_file_list = parse_config_value(scp_file_list)
     data_type_list = kwargs.get("data_type_list", ("source", "target"))
     jsonl_file_out = kwargs.get(
         "jsonl_file_out", "/Users/zhifu/funasr1.0/test_local/audio_datasets.jsonl"

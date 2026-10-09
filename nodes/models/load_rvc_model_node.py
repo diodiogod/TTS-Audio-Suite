@@ -3,6 +3,7 @@ Load RVC Model Node - Loads RVC voice models for voice conversion
 Adapted from reference implementation for TTS Suite integration
 """
 
+from utils.security.path_access import allowed_path
 import os
 import re
 import sys
@@ -148,6 +149,9 @@ class LoadRVCModelNode(BaseTTSNode):
                 auto_download=auto_download,
             )
 
+            model_path = allowed_path(model_path)
+            if index_path:
+                index_path = allowed_path(index_path)
             model_name = os.path.basename(model_path)
             rvc_model = {
                 "model_path": model_path,
@@ -463,7 +467,7 @@ class LoadRVCModelNode(BaseTTSNode):
                     for base_path in all_tts_paths:
                         model_path = os.path.join(base_path, "RVC", actual_model_name)
                         if os.path.exists(model_path):
-                            return model_path
+                            return allowed_path(model_path)
                 except Exception:
                     pass
 
@@ -477,7 +481,7 @@ class LoadRVCModelNode(BaseTTSNode):
 
                     for model_path in search_paths:
                         if os.path.exists(model_path):
-                            return model_path
+                            return allowed_path(model_path)
                 return None
             
             # Regular downloadable model
@@ -488,15 +492,15 @@ class LoadRVCModelNode(BaseTTSNode):
                 legacy_path = os.path.join(models_dir, "RVC", model_name)
                 
                 if os.path.exists(tts_path):
-                    return tts_path
+                    return allowed_path(tts_path)
                 elif os.path.exists(legacy_path):
-                    return legacy_path
+                    return allowed_path(legacy_path)
                     
                 # Auto-download if enabled - download to TTS path
                 if auto_download:
-                    downloaded_path = self._download_rvc_model(model_name, tts_path)
+                    downloaded_path = self._download_rvc_model(model_name, allowed_path(tts_path))
                     if downloaded_path:
-                        return downloaded_path
+                        return allowed_path(downloaded_path)
             
             return None
         except Exception as e:
@@ -523,7 +527,7 @@ class LoadRVCModelNode(BaseTTSNode):
                         ]
                         for index_path in index_paths:
                             if os.path.exists(index_path):
-                                return index_path
+                                return allowed_path(index_path)
                 except Exception:
                     pass
 
@@ -537,7 +541,7 @@ class LoadRVCModelNode(BaseTTSNode):
 
                     for index_path in search_paths:
                         if os.path.exists(index_path):
-                            return index_path
+                            return allowed_path(index_path)
                 return None
             
             # Regular downloadable index
@@ -548,15 +552,15 @@ class LoadRVCModelNode(BaseTTSNode):
                 legacy_path = os.path.join(models_dir, "RVC", ".index", index_name)
                 
                 if os.path.exists(tts_path):
-                    return tts_path
+                    return allowed_path(tts_path)
                 elif os.path.exists(legacy_path):
-                    return legacy_path
+                    return allowed_path(legacy_path)
                     
                 # Auto-download if enabled - download to TTS path
                 if auto_download:
-                    downloaded_path = self._download_rvc_index(index_name, tts_path)
+                    downloaded_path = self._download_rvc_index(index_name, allowed_path(tts_path))
                     if downloaded_path:
-                        return downloaded_path
+                        return allowed_path(downloaded_path)
             
             return None
         except Exception as e:
@@ -572,7 +576,7 @@ class LoadRVCModelNode(BaseTTSNode):
             downloaded_path = download_rvc_model(model_name)
             
             if downloaded_path and os.path.exists(downloaded_path):
-                return downloaded_path
+                return allowed_path(downloaded_path)
             else:
                 print(f"❌ Auto-download failed for {model_name}")
                 return None
@@ -590,7 +594,7 @@ class LoadRVCModelNode(BaseTTSNode):
             downloaded_path = download_rvc_index(index_name)
             
             if downloaded_path and os.path.exists(downloaded_path):
-                return downloaded_path
+                return allowed_path(downloaded_path)
             else:
                 print(f"❌ Auto-download failed for {index_name}")
                 return None

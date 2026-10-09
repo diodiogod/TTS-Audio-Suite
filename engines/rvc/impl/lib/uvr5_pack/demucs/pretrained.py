@@ -17,12 +17,13 @@ import logging
 from diffq import DiffQuantizer
 import torch.hub
 
-from model import Demucs
-from tasnet_v2 import ConvTasNet
-from utils import set_state
+# TTS Audio Suite patch: resolve trusted checkpoint architectures within this bundled package.
+from .model import Demucs
+from .tasnet_v2 import ConvTasNet
+from .utils import set_state
 
-from hdemucs import HDemucs
-from repo import RemoteRepo, LocalRepo, ModelOnlyRepo, BagOnlyRepo, AnyModelRepo, ModelLoadingError  # noqa
+from .hdemucs import HDemucs
+from .repo import RemoteRepo, LocalRepo, ModelOnlyRepo, BagOnlyRepo, AnyModelRepo, ModelLoadingError  # noqa
 
 logger = logging.getLogger(__name__)
 ROOT_URL = "https://dl.fbaipublicfiles.com/demucs/mdx_final/"
@@ -133,7 +134,8 @@ def load_pretrained(name):
 
 def _load_state(name, model, quantizer=None):
     url = get_url(name)
-    state = torch.hub.load_state_dict_from_url(url, map_location='cpu', check_hash=True)
+    # TTS Audio Suite patch: restrict checkpoint deserialization.
+    state = torch.hub.load_state_dict_from_url(url, map_location='cpu', check_hash=True, weights_only=True)
     set_state(model, quantizer, state)
     if quantizer:
         quantizer.detach()

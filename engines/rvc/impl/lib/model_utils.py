@@ -68,7 +68,8 @@ def load_hubert(model_path: str, config):
             print(f"🔧 Attempting direct .pt loading: {model_path}")
             try:
                 import torch
-                checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
+                # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+                checkpoint = torch.load(model_path, map_location='cpu', weights_only=True)
 
                 # Try to create HuBERT model directly from .pt checkpoint
                 # This will work if the checkpoint contains the full model with config
@@ -185,7 +186,8 @@ def load_hubert(model_path: str, config):
 
                         with open(model_path, 'rb') as f:
                             # Load raw data and try to extract model state_dict only
-                            checkpoint = torch.load(f, map_location='cpu', weights_only=False)
+                            # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+                            checkpoint = torch.load(f, map_location='cpu', weights_only=True)
 
                         # Extract state_dict from various possible formats
                         if hasattr(checkpoint, 'state_dict'):

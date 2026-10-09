@@ -3,6 +3,7 @@ Audio Analyzer Node - Interactive waveform visualization and timing extraction
 Provides precise word timing extraction for F5TTSEditNode through interactive waveform visualization
 """
 
+from utils.security.path_access import resolve_input_path, child_path, filename_component
 import torch
 import numpy as np
 import os
@@ -45,7 +46,7 @@ class AudioAnalyzerNode:
                 "audio_file": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "Path to audio file or drag audio file here.\n\nMouse Controls:\n• Left click + drag: Select audio region\n• Left click on region: Highlight region (green, persistent)\n• Shift + left click: Extend selection\n• Alt + click region: Multi-select for deletion (orange, toggle)\n• Alt + click empty: Clear all multi-selections\n• CTRL + left/right click + drag: Pan waveform\n• Middle mouse + drag: Pan waveform\n• Right click: Clear selection\n• Double click: Seek to position\n• Mouse wheel: Zoom in/out\n• CTRL key: Shows grab cursor for panning\n• Drag amplitude labels (±0.8): Scale waveform vertically\n• Drag loop markers: Move startloop/endloop points\n\nKeyboard Shortcuts:\n• Space: Play/pause\n• Escape: Clear selection\n• Enter: Add selected region\n• Delete: Delete highlighted/selected regions (Shift+Del: clear all)\n• L: Set loop from selection (Shift+L: toggle looping)\n• Shift+C: Clear loop markers\n• Arrow keys: Move playhead (+ Shift for 10s jumps)\n• +/-: Zoom in/out\n• 0: Reset zoom and amplitude scale\n• Home/End: Go to start/end\n\nRegion Management:\n• Click region → highlights green (single, persistent)\n• Alt+click region → selects orange (multiple, toggle)\n• Delete works on both green highlighted and orange selected\n• Regions auto-sort chronologically\n• Manual regions text box: bidirectional sync with interface\n\nLoop Functionality:\n• Select region, then press L or click 'Set Loop'\n• Drag purple loop markers to adjust start/end points\n• Use Shift+L or 'Loop ON/OFF' to enable/disable looping\n• When looping is on, playback repeats between markers\n\nUI Buttons:\n• Upload Audio: Browse and upload audio files\n• Analyze: Process audio with current settings\n• Delete Region: Remove highlighted or selected regions\n• Add Region: Add current selection as new region\n• Clear All: Remove all regions\n• Set Loop: Set loop markers from selection\n• Loop ON/OFF: Toggle loop playback mode\n• Clear Loop: Remove loop markers\n\nNote: Click on the waveform to focus it for keyboard shortcuts",
+                    "tooltip": "Upload or drag an audio file here. Typed paths must stay inside ComfyUI input/output/temp or registered model/voice folders.\n\nMouse Controls:\n• Left click + drag: Select audio region\n• Left click on region: Highlight region (green, persistent)\n• Shift + left click: Extend selection\n• Alt + click region: Multi-select for deletion (orange, toggle)\n• Alt + click empty: Clear all multi-selections\n• CTRL + left/right click + drag: Pan waveform\n• Middle mouse + drag: Pan waveform\n• Right click: Clear selection\n• Double click: Seek to position\n• Mouse wheel: Zoom in/out\n• CTRL key: Shows grab cursor for panning\n• Drag amplitude labels (±0.8): Scale waveform vertically\n• Drag loop markers: Move startloop/endloop points\n\nKeyboard Shortcuts:\n• Space: Play/pause\n• Escape: Clear selection\n• Enter: Add selected region\n• Delete: Delete highlighted/selected regions (Shift+Del: clear all)\n• L: Set loop from selection (Shift+L: toggle looping)\n• Shift+C: Clear loop markers\n• Arrow keys: Move playhead (+ Shift for 10s jumps)\n• +/-: Zoom in/out\n• 0: Reset zoom and amplitude scale\n• Home/End: Go to start/end\n\nRegion Management:\n• Click region → highlights green (single, persistent)\n• Alt+click region → selects orange (multiple, toggle)\n• Delete works on both green highlighted and orange selected\n• Regions auto-sort chronologically\n• Manual regions text box: bidirectional sync with interface\n\nLoop Functionality:\n• Select region, then press L or click 'Set Loop'\n• Drag purple loop markers to adjust start/end points\n• Use Shift+L or 'Loop ON/OFF' to enable/disable looping\n• When looping is on, playback repeats between markers\n\nUI Buttons:\n• Upload Audio: Browse and upload audio files\n• Analyze: Process audio with current settings\n• Delete Region: Remove highlighted or selected regions\n• Add Region: Add current selection as new region\n• Clear All: Remove all regions\n• Set Loop: Set loop markers from selection\n• Loop ON/OFF: Toggle loop playback mode\n• Clear Loop: Remove loop markers\n\nNote: Click on the waveform to focus it for keyboard shortcuts",
                     "dynamicPrompts": False
                 }),
                 "analysis_method": (["silence", "energy", "peaks", "manual"], {
@@ -142,24 +143,10 @@ class AudioAnalyzerNode:
 
     @staticmethod
     def _resolve_audio_file_path(audio_file: str) -> str:
-        """Resolve ComfyUI input-relative paths without forcing execution."""
-        file_path = (audio_file or "").strip()
-        if not file_path:
+        """Resolve uploaded and permitted data paths; reject traversal and link escapes."""
+        if not (audio_file or "").strip():
             return ""
-
-        if os.path.isabs(file_path):
-            return file_path
-
-        try:
-            import folder_paths
-            input_dir = folder_paths.get_input_directory()
-            full_path = os.path.join(input_dir, file_path)
-            if os.path.exists(full_path):
-                return full_path
-        except Exception:
-            pass
-
-        return file_path
+        return resolve_input_path(audio_file)
 
     @classmethod
     def _hash_audio_file(cls, audio_file: str) -> str:
@@ -529,6 +516,7 @@ class AudioAnalyzerNode:
         """
 
         try:
+            node_id = filename_component(node_id)
             # Set up default values for technical parameters
             # These are sensible defaults that work well for most use cases
             silence_threshold = 0.01
@@ -694,9 +682,9 @@ class AudioAnalyzerNode:
 
                 # Save visualization data
                 temp_dir = folder_paths.get_temp_directory()
-                temp_file = os.path.join(temp_dir, f"audio_data_{node_id}.json")
+                temp_file = child_path(temp_dir, f"audio_data_{node_id}.json")
                 output_dir = folder_paths.get_output_directory()
-                output_cache_file = os.path.join(output_dir, f"audio_analyzer_cache_{node_id}.json")
+                output_cache_file = child_path(output_dir, f"audio_analyzer_cache_{node_id}.json")
 
                 # Add audio file path to visualization data for JavaScript
                 web_audio_filename = None
@@ -710,7 +698,7 @@ class AudioAnalyzerNode:
                         # Include tensor hash to invalidate cache when audio input changes
                         audio_hash = mono_hash[:8]
                         temp_audio_filename = f"connected_audio_{node_id}_{audio_hash}.wav"
-                        temp_audio_path = os.path.join(input_dir, temp_audio_filename)
+                        temp_audio_path = child_path(input_dir, temp_audio_filename)
 
                         # Convert original tensor to numpy array for soundfile (preserves stereo/channels)
                         audio_numpy = original_audio.cpu().numpy()
@@ -745,7 +733,7 @@ class AudioAnalyzerNode:
                     # File-based audio: copy to ComfyUI input directory for web access
                     input_dir = folder_paths.get_input_directory()
                     audio_filename = os.path.basename(source_audio_file_path)
-                    web_audio_path = os.path.join(input_dir, audio_filename)
+                    web_audio_path = child_path(input_dir, audio_filename)
 
                     # Copy if not already there or if source is newer
                     if not os.path.exists(web_audio_path) or os.path.getmtime(source_audio_file_path) > os.path.getmtime(web_audio_path):

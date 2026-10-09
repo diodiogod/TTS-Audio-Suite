@@ -104,8 +104,7 @@ def build_isolation_note(data):
 
     return (
         "*Isolation column: `Main` runs in the main ComfyUI environment. "
-        "`Shared` uses a shared secondary runtime reused by multiple engines. "
-        "`Dedicated` uses an engine-specific secondary runtime.*"
+        "`Shared` uses a shared secondary runtime reused by multiple engines.*"
     )
 
 

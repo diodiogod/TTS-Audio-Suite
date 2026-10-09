@@ -15,8 +15,9 @@ import typing as tp
 import torch
 import yaml
 
-from apply import BagOfModels, Model
-from states import load_model
+# TTS Audio Suite patch: resolve trusted checkpoint architectures within this bundled package.
+from .apply import BagOfModels, Model
+from .states import load_model
 
 
 AnyModel = tp.Union[Model, BagOfModels]
@@ -61,8 +62,16 @@ class RemoteRepo(ModelOnlyRepo):
             url = self._models[sig]
         except KeyError:
             raise ModelLoadingError(f'Could not find a pre-trained model with signature {sig}.')
-        pkg = torch.hub.load_state_dict_from_url(url, map_location='cpu', check_hash=True)
-        return load_model(pkg)
+        # TTS Audio Suite patch: restrict checkpoint deserialization.
+        # TTS Audio Suite patch: download normally, then restrict legacy metadata loading.
+        from urllib.parse import urlsplit
+        filename = Path(urlsplit(url).path).name
+        cached = Path(torch.hub.get_dir()) / "checkpoints" / filename
+        if not cached.is_file():
+            cached.parent.mkdir(parents=True, exist_ok=True)
+            checksum = torch.hub.HASH_REGEX.search(filename)
+            torch.hub.download_url_to_file(url, str(cached), hash_prefix=checksum.group(1) if checksum else None)
+        return load_model(cached)
 
 
 class LocalRepo(ModelOnlyRepo):

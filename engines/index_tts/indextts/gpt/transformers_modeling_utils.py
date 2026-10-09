@@ -662,12 +662,8 @@ def load_state_dict(
         ):
             extra_args = {"mmap": True}
         weights_only_kwarg = {"weights_only": weights_only} if is_torch_greater_or_equal_than_1_13 else {}
-        return torch.load(
-            checkpoint_file,
-            map_location=map_location,
-            **weights_only_kwarg,
-            **extra_args,
-        )
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        return torch.load(checkpoint_file, map_location=map_location, **{**weights_only_kwarg, **extra_args, "weights_only": True})
     except Exception as e:
         try:
             with open(checkpoint_file) as f:

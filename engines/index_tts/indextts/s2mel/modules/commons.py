@@ -220,7 +220,8 @@ def load_F0_models(path):
     from .JDC.model import JDCNet
 
     F0_model = JDCNet(num_class=1, seq_len=192)
-    params = torch.load(path, map_location="cpu")["net"]
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    params = torch.load(path, map_location="cpu", weights_only=True)["net"]
     F0_model.load_state_dict(params)
     _ = F0_model.train()
 
@@ -528,7 +529,8 @@ def load_checkpoint(
     is_distributed=False,
     load_ema=False,
 ):
-    state = torch.load(path, map_location="cpu")
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    state = torch.load(path, map_location="cpu", weights_only=True)
     params = state["net"]
     if load_ema and "ema" in state:
         print("Loading EMA")
@@ -585,7 +587,8 @@ def load_checkpoint2(
     is_distributed=False,
     load_ema=False,
 ):
-    state = torch.load(path, map_location="cpu")
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    state = torch.load(path, map_location="cpu", weights_only=True)
     params = state["net"]
     if load_ema and "ema" in state:
         print("Loading EMA")

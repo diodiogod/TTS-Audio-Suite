@@ -8,6 +8,8 @@ import folder_paths
 from utils.downloads.unified_downloader import unified_downloader
 
 
+from utils.security.path_access import validate_model_paths, allowed_path
+
 class FishAudioS2Downloader:
     VARIANTS = {
         "s2-pro": {
@@ -91,6 +93,7 @@ class FishAudioS2Downloader:
         return "s2-pro"
 
     @classmethod
+    @validate_model_paths
     def resolve_model_path(cls, selection: str) -> str:
         """Resolve local selections or download the selected official variant."""
         if str(selection).startswith("local:"):

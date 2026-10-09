@@ -61,7 +61,7 @@ def _load_audio_payload(payload: Dict[str, Any]) -> List[Any]:
             items.append(item.get("audio_path"))
             continue
         if kind == "tensor_path":
-            tensor_payload = torch.load(item["tensor_path"], map_location="cpu")
+            tensor_payload = torch.load(item["tensor_path"], map_location="cpu", weights_only=True)
             waveform = tensor_payload["waveform"]
             if isinstance(waveform, torch.Tensor):
                 waveform = waveform.squeeze().cpu().numpy()

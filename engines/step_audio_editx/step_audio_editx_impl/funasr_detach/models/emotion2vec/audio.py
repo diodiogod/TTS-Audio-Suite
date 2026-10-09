@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from utils.security.config_values import parse_config_value  # TTS Audio Suite patch: parse data without executing configuration code.
 import torch
 import numpy as np
 import torch.nn as nn
@@ -35,7 +36,7 @@ class AudioEncoder(ModalitySpecificEncoder):
         alibi_biases: Dict,
     ):
 
-        self.feature_enc_layers = eval(modality_cfg.feature_encoder_spec)
+        self.feature_enc_layers = parse_config_value(modality_cfg.feature_encoder_spec)
         feature_embed_dim = self.feature_enc_layers[-1][0]
 
         local_encoder = ConvFeatureExtractionModel(

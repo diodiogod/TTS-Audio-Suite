@@ -301,6 +301,7 @@ class VocoderInference(object):
                 "melgan",
                 "nsfhifigan",
             ]:
+                # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
                 ckpt = torch.load(
                     checkpoint_dir,
                     map_location=(
@@ -308,7 +309,7 @@ class VocoderInference(object):
                         if torch.cuda.is_available()
                         else torch.device("cpu")
                     ),
-                )
+                 weights_only=True)
                 if from_multi_gpu:
                     pretrained_generator_dict = ckpt["generator_state_dict"]
                     generator_dict = self.model.state_dict()
@@ -328,7 +329,8 @@ class VocoderInference(object):
                 else:
                     self.model.load_state_dict(ckpt["generator_state_dict"])
             else:
-                self.model.load_state_dict(torch.load(checkpoint_dir)["state_dict"])
+                # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+                self.model.load_state_dict(torch.load(checkpoint_dir, weights_only=True)["state_dict"])
             return str(checkpoint_dir)
 
     def inference(self):
@@ -412,6 +414,7 @@ def load_nnvocoder(
     if not os.path.isdir(weights_file):
         # Load from .pt file
         if vocoder_name in ["bigvgan", "hifigan", "melgan", "nsfhifigan"]:
+            # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
             ckpt = torch.load(
                 weights_file,
                 map_location=(
@@ -419,7 +422,7 @@ def load_nnvocoder(
                     if torch.cuda.is_available()
                     else torch.device("cpu")
                 ),
-            )
+             weights_only=True)
             if from_multi_gpu:
                 pretrained_generator_dict = ckpt["generator_state_dict"]
                 generator_dict = model.state_dict()
@@ -439,7 +442,8 @@ def load_nnvocoder(
             else:
                 model.load_state_dict(ckpt["generator_state_dict"])
         else:
-            model.load_state_dict(torch.load(weights_file)["state_dict"])
+            # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+            model.load_state_dict(torch.load(weights_file, weights_only=True)["state_dict"])
     else:
         # Load from accelerator state dict
         weights_file = os.path.join(weights_file, "checkpoint")

@@ -4,6 +4,8 @@ Shared helpers for MOSS-TTS training.
 
 from __future__ import annotations
 
+from utils.security.path_access import allowed_path
+from utils.security.path_access import resolve_input_path, allowed_path, child_path
 import hashlib
 import json
 import os
@@ -42,8 +44,22 @@ def slugify(value: str) -> str:
 
 
 def load_jsonl(path: str | Path) -> List[Dict[str, Any]]:
+    path = Path(allowed_path(path, models=False))
     with open(path, "r", encoding="utf-8") as handle:
-        return [json.loads(line) for line in handle if line.strip()]
+        records = [json.loads(line) for line in handle if line.strip()]
+    for record in records:
+        for field in ("audio", "ref_audio", "reference_audio", "reference"):
+            value = record.get(field)
+            def resolve(value):
+                if value is None:
+                    return None
+                raw = Path(value)
+                return allowed_path(raw if raw.is_absolute() else path.parent / raw, models=False)
+            if isinstance(value, str):
+                record[field] = resolve(value)
+            elif isinstance(value, list) and all(item is None or isinstance(item, str) for item in value):
+                record[field] = [resolve(item) for item in value]
+    return records
 
 
 def dump_jsonl(records: Iterable[Dict[str, Any]], path: str | Path) -> None:
@@ -54,34 +70,18 @@ def dump_jsonl(records: Iterable[Dict[str, Any]], path: str | Path) -> None:
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def resolve_manifest_path(dataset_source: str) -> str:
-    raw = os.path.expanduser(str(dataset_source or "").strip())
-    if not raw:
-        raise ValueError("dataset_source is required")
-
-    candidates = [
-        raw,
-        os.path.join(folder_paths.get_input_directory(), raw),
-        os.path.join(folder_paths.get_input_directory(), "datasets", raw),
-    ]
-    for candidate in candidates:
-        if os.path.isfile(candidate):
-            return os.path.abspath(candidate)
-
-    raise FileNotFoundError(f"MOSS training manifest not found: {dataset_source}")
+def resolve_manifest_path(dataset_source: str) -> Path:
+    path = Path(resolve_input_path(dataset_source, datasets=True, models=False))
+    if not (path.is_file()):
+        raise FileNotFoundError(f"Dataset source not found: {dataset_source}")
+    return path
 
 
 def _resolve_dataset_source_path(dataset_source: str) -> Path:
-    raw = os.path.expanduser(str(dataset_source or "").strip())
-    if not raw:
-        raise ValueError("dataset_source is required")
-
-    input_dir = folder_paths.get_input_directory()
-    candidates = [Path(raw), Path(input_dir, raw), Path(input_dir, "datasets", raw)]
-    for candidate in candidates:
-        if candidate.is_file() or candidate.is_dir():
-            return candidate.resolve()
-    raise FileNotFoundError(f"MOSS dataset source not found: {dataset_source}")
+    path = Path(resolve_input_path(dataset_source, datasets=True, models=False))
+    if not (path.is_file() or path.is_dir()):
+        raise FileNotFoundError(f"Dataset source not found: {dataset_source}")
+    return path
 
 
 def _build_manifest_from_audio_folder(dataset_dir: Path, recursive: bool) -> str:
@@ -102,6 +102,8 @@ def _build_manifest_from_audio_folder(dataset_dir: Path, recursive: bool) -> str
         if not transcript_path.is_file():
             missing_transcripts.append(str(audio_path.relative_to(dataset_dir)))
             continue
+        audio_path = Path(allowed_path(audio_path, models=False))
+        transcript_path = Path(allowed_path(transcript_path, models=False))
         transcript = transcript_path.read_text(encoding="utf-8-sig").strip()
         if not transcript:
             missing_transcripts.append(str(audio_path.relative_to(dataset_dir)))
@@ -241,7 +243,7 @@ def resolve_continue_from_adapter_path(continue_from: Any) -> str:
         if not value:
             return ""
         if os.path.isdir(value):
-            return value
+            return allowed_path(value)
         raise FileNotFoundError(f"MOSS continue_from adapter path not found: {value}")
 
     if isinstance(continue_from, dict):
@@ -251,12 +253,12 @@ def resolve_continue_from_adapter_path(continue_from: Any) -> str:
                 raise ValueError("continue_from TRAINING_ARTIFACTS must come from a MOSS training run")
             adapter_path = str(continue_from.get("model_path", "") or "").strip()
             if adapter_path and os.path.isdir(adapter_path):
-                return adapter_path
+                return allowed_path(adapter_path)
             lora_info = continue_from.get("lora_adapter")
             if isinstance(lora_info, dict):
                 adapter_path = str(lora_info.get("adapter_path", "") or "").strip()
                 if adapter_path and os.path.isdir(adapter_path):
-                    return adapter_path
+                    return allowed_path(adapter_path)
             raise FileNotFoundError("continue_from TRAINING_ARTIFACTS does not contain a valid MOSS adapter path")
 
     raise ValueError(

@@ -111,7 +111,8 @@ class IndexTTS:
                 self.use_cuda_kernel = False
         self.bigvgan = Generator(self.cfg.bigvgan, use_cuda_kernel=self.use_cuda_kernel)
         self.bigvgan_path = os.path.join(self.model_dir, self.cfg.bigvgan_checkpoint)
-        vocoder_dict = torch.load(self.bigvgan_path, map_location="cpu")
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        vocoder_dict = torch.load(self.bigvgan_path, map_location="cpu", weights_only=True)
         self.bigvgan.load_state_dict(vocoder_dict["generator"])
         self.bigvgan = self.bigvgan.to(self.device)
         # remove weight norm on eval mode

@@ -163,13 +163,15 @@ class IDLoRADataset(Dataset):
 
     def _load_sample(self, data_dir, idx):
         base = Path(data_dir)
-        audio = torch.load(base / "audio_latents" / f"sample_{idx:06d}.pt", weights_only=False)
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        audio = torch.load(base / "audio_latents" / f"sample_{idx:06d}.pt", weights_only=True)
         # Prefer prefix-stripped text embeddings if they exist (re-encoded with
         # just the quoted dialogue, dropping the "A woman says, " / "A man
         # speaks with X accent, " scene-description prefix).
         stripped = base / "conditions_stripped" / f"sample_{idx:06d}.pt"
         cond_path = stripped if stripped.exists() else base / "conditions" / f"sample_{idx:06d}.pt"
-        cond = torch.load(cond_path, weights_only=False)
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        cond = torch.load(cond_path, weights_only=True)
         if isinstance(audio, dict):
             audio = audio.get("audio_latent", audio.get("latent", list(audio.values())[0]))
         if audio.dim() == 2:

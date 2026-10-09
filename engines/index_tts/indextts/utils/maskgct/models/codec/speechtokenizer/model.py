@@ -81,7 +81,8 @@ class SpeechTokenizer(nn.Module):
         with open(config_path) as f:
             cfg = json.load(f)
         model = cls(cfg)
-        params = torch.load(ckpt_path, map_location="cpu")
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        params = torch.load(ckpt_path, map_location="cpu", weights_only=True)
         model.load_state_dict(params)
         return model
 

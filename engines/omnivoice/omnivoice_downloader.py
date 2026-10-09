@@ -14,6 +14,8 @@ from utils.hf_download_logging import quiet_hf_download_logs
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
 
 
+from utils.security.path_access import allowed_path, validate_model_paths, allowed_path
+
 class OmniVoiceDownloader:
     """Resolve and download official OmniVoice model folders."""
 
@@ -44,6 +46,7 @@ class OmniVoiceDownloader:
             self.base_path = base_path
         os.makedirs(self.base_path, exist_ok=True)
 
+    @validate_model_paths
     def resolve_model_path(self, model_identifier: str) -> str:
         """Resolve absolute paths, local: names, or known official identifiers."""
         if not model_identifier:
@@ -100,7 +103,7 @@ class OmniVoiceDownloader:
             with quiet_hf_download_logs():
                 snapshot_download(
                     repo_id=repo_id,
-                    local_dir=model_dir,
+                    local_dir=allowed_path(model_dir),
                     local_dir_use_symlinks=False,
                     resume_download=True,
                     force_download=force,

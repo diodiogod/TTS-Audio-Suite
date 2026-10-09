@@ -25,7 +25,8 @@ class VoiceFixer(nn.Module):
             raise RuntimeError("Error 0: The checkpoint for analysis module (vf.ckpt) is not found in ~/.cache/voicefixer/analysis_module/checkpoints. \
                                 By default the checkpoint should be download automatically by this program. Something bad may happened.\
                                 But don't worry! Alternatively you can download it directly from Zenodo: https://zenodo.org/record/5600188/files/vf.ckpt?download=1.")
-        saved_state_dict = torch.load(self.analysis_module_ckpt)
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        saved_state_dict = torch.load(self.analysis_module_ckpt, weights_only=True)
         model_state_dict = self._model.state_dict()
 
         new_state_dict = {k: v for k, v in saved_state_dict.items() if k in model_state_dict}

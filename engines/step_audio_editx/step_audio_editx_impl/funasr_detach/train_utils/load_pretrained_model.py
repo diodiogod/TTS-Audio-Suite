@@ -108,10 +108,10 @@ def load_pretrained_model(
     # pdb.set_trace()
     # Checkpoint path (silent loading)
     if oss_bucket is None:
-        src_state = torch.load(path, map_location=map_location)
+        src_state = torch.load(path, map_location=map_location, weights_only=True)
     else:
         buffer = BytesIO(oss_bucket.get_object(path).read())
-        src_state = torch.load(buffer, map_location=map_location)
+        src_state = torch.load(buffer, map_location=map_location, weights_only=True)
     if "state_dict" in src_state:
         src_state = src_state["state_dict"]
 

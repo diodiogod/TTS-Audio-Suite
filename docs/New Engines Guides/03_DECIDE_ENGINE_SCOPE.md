@@ -93,7 +93,7 @@ Manual tests:
 
 Runtime plan:
 - Main Environment only
-- or Shared Runtime / Dedicated Runtime if dependency conflicts are expected
+- or Shared Runtime if dependency conflicts are expected
 ```
 
 If the scope is vague, do not code yet.

@@ -9,19 +9,20 @@ This code contains the spectrogram and Hybrid version of Demucs.
 """
 import math
 
-from filtering import wiener
+# TTS Audio Suite patch: resolve trusted checkpoint architectures within this bundled package.
+from .filtering import wiener
 import torch
 from torch import nn
 from torch.nn import functional as F
 from fractions import Fraction
 from einops import rearrange
 
-from transformer import CrossTransformerEncoder
+from .transformer import CrossTransformerEncoder
 
-from demucs import rescale_module
-from states import capture_init
-from spec import spectro, ispectro
-from hdemucs import pad1d, ScaledEmbedding, HEncLayer, MultiWrap, HDecLayer
+from .demucs import rescale_module
+from .states import capture_init
+from .spec import spectro, ispectro
+from .hdemucs import pad1d, ScaledEmbedding, HEncLayer, MultiWrap, HDecLayer
 
 
 class HTDemucs(nn.Module):

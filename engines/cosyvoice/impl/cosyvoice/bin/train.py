@@ -134,7 +134,8 @@ def main():
     start_step, start_epoch = 0, -1
     if args.checkpoint is not None:
         if os.path.exists(args.checkpoint):
-            state_dict = torch.load(args.checkpoint, map_location='cpu')
+            # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+            state_dict = torch.load(args.checkpoint, map_location='cpu', weights_only=True)
             model.load_state_dict(state_dict, strict=False)
             if 'step' in state_dict:
                 start_step = state_dict['step']
@@ -161,7 +162,8 @@ def main():
     # DPO related
     if args.dpo is True:
         ref_model = deepcopy(configs[args.model])
-        state_dict = torch.load(args.ref_model, map_location='cpu')
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        state_dict = torch.load(args.ref_model, map_location='cpu', weights_only=True)
         ref_model.load_state_dict(state_dict, strict=False)
         dpo_loss = DPOLoss(beta=0.01, label_smoothing=0.0, ipo=False)
         # NOTE maybe it is not needed to wrap ref_model as ddp because its parameter is not updated

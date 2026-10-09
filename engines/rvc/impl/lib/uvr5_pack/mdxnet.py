@@ -130,8 +130,9 @@ class Mixer(nn.Module):
         
         self.linear = nn.Linear((dim_s+1)*2, dim_s*2, bias=False)
         
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
         self.load_state_dict(
-            torch.load(mixer_path, map_location=device)
+            torch.load(mixer_path, map_location=device, weights_only=True)
         )
 
     def forward(self, x):

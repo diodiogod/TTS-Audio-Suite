@@ -115,7 +115,8 @@ def main():
     optimizer = th.optim.Adam(model.parameters(), lr=args.lr)
 
     try:
-        saved = th.load(checkpoint, map_location='cpu')
+        # TTS Audio Suite patch: restrict checkpoint deserialization.
+        saved = th.load(checkpoint, map_location='cpu', weights_only=True)
     except IOError:
         saved = SavedState()
     else:

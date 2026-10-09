@@ -5,6 +5,7 @@ This keeps the heavy Russian dictionary assets out of the global installer and
 downloads them on demand into the organized TTS model cache.
 """
 
+from utils.security.data_loading import RestrictedLoadModule, load_data_pickle
 import importlib
 import logging
 import os
@@ -115,6 +116,9 @@ def get_russian_text_stresser():
         try:
             from russian_text_stresser.text_stresser import RussianTextStresser
 
+            dictionary_module = importlib.import_module("russian_text_stresser.russian_dictionary")
+            if not isinstance(dictionary_module.pickle, RestrictedLoadModule):
+                dictionary_module.pickle = RestrictedLoadModule(dictionary_module.pickle, load_data_pickle)
             _russian_stresser = RussianTextStresser()
             print("✅ Russian stress support ready")
             return _russian_stresser

@@ -203,7 +203,7 @@ class Qwen3TTSIsolatedProxy:
             if not output_path.exists():
                 raise RuntimeError("Isolated Qwen3-TTS worker returned no output payload")
 
-            result = torch.load(output_path, map_location="cpu")
+            result = torch.load(output_path, map_location="cpu", weights_only=True)
             wavs = result.get("wavs", [])
             sr = int(result.get("sample_rate", 24000))
             wavs_np = []

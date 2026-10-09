@@ -3,6 +3,7 @@ Base Node - Common functionality for all ChatterBox Voice nodes
 Provides shared methods and standardized interfaces
 """
 
+from utils.security.path_access import resolve_input_path
 import torch
 import numpy as np
 import tempfile
@@ -255,7 +256,10 @@ class BaseChatterBoxNode:
             audio_prompt = temp_file.name
             self._temp_files.append(temp_file.name)
             
-        elif audio_prompt_path and os.path.exists(audio_prompt_path):
+        elif audio_prompt_path:
+            audio_prompt_path = resolve_input_path(audio_prompt_path)
+            if not os.path.isfile(audio_prompt_path):
+                raise FileNotFoundError(f"Reference audio file not found: {audio_prompt_path}")
             audio_prompt = audio_prompt_path
         
         return audio_prompt

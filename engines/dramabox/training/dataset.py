@@ -8,6 +8,7 @@ also valid for training.
 
 from __future__ import annotations
 
+from utils.security.path_access import resolve_input_path, allowed_path, child_path
 import csv
 import hashlib
 import json
@@ -42,17 +43,10 @@ def get_dramabox_training_root() -> str:
 
 
 def _resolve_source_path(value: str) -> Path:
-    raw = os.path.expanduser(str(value or "").strip())
-    if not raw:
-        raise ValueError("dataset_source is required")
-
-    candidates = [Path(raw)]
-    input_root = Path(folder_paths.get_input_directory())
-    candidates.extend((input_root / raw, input_root / "datasets" / raw))
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate.resolve()
-    raise FileNotFoundError(f"DramaBox dataset source not found: {value}")
+    path = Path(resolve_input_path(value, datasets=True, models=False))
+    if not (path.is_file()):
+        raise FileNotFoundError(f"Dataset source not found: {value}")
+    return path
 
 
 def _resolve_audio_path(raw_path: Any, *, source_path: Path, audio_dir: str) -> Path:
@@ -71,7 +65,7 @@ def _resolve_audio_path(raw_path: Any, *, source_path: Path, audio_dir: str) -> 
 
     for candidate in candidates:
         if candidate.is_file():
-            return candidate.resolve()
+            return Path(allowed_path(candidate, models=False))
     raise FileNotFoundError(f"DramaBox audio file not found: {raw_path}")
 
 

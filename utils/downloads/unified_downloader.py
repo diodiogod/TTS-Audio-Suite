@@ -13,6 +13,7 @@ import folder_paths
 
 # Import extra paths support
 from utils.models.extra_paths import get_preferred_download_path, find_model_in_paths
+from utils.security.path_access import allowed_path, child_path
 
 class UnifiedDownloader:
     """
@@ -55,7 +56,8 @@ class UnifiedDownloader:
         Returns:
             True if successful, False otherwise
         """
-        target_path = os.path.join(target_dir, filename)
+        target_dir = allowed_path(target_dir)
+        target_path = child_path(target_dir, filename)
 
         # Check if already exists
         if os.path.exists(target_path) and not force_download:
@@ -142,6 +144,7 @@ class UnifiedDownloader:
         Returns:
             True if successful, False otherwise
         """
+        target_path = allowed_path(target_path)
         if os.path.exists(target_path) and not force_download:
             print(f"📁 File already exists: {os.path.basename(target_path)}")
             return True
@@ -227,6 +230,7 @@ class UnifiedDownloader:
             model_dir = os.path.join(self.tts_dir, engine_type, model_name, subfolder)
         else:
             model_dir = os.path.join(self.tts_dir, engine_type, model_name)
+        model_dir = allowed_path(model_dir)
         
         success = True
         critical_files = ['config.json']  # These files are absolutely required
@@ -240,7 +244,7 @@ class UnifiedDownloader:
             source_revision = file_info.get('revision', revision)
             source_force_download = file_info.get('force_download', force_download)
             
-            target_path = os.path.join(model_dir, local_filename)
+            target_path = child_path(model_dir, local_filename)
             
             # Skip if already exists in TTS folder
             if os.path.exists(target_path) and not source_force_download:
@@ -298,6 +302,7 @@ class UnifiedDownloader:
 
         This is intended for folder-shaped artifacts such as PEFT/LoRA adapters.
         """
+        target_dir = allowed_path(target_dir)
         try:
             from huggingface_hub import HfApi
         except Exception as e:

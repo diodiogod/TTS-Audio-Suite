@@ -91,7 +91,8 @@ class Extract_wav2vectbert:
         self.semantic_model = Wav2Vec2BertModel.from_pretrained("./MaskGCT_model/w2v_bert/")
         self.semantic_model.eval()
         self.semantic_model.to(device)
-        self.stat_mean_var = torch.load("./MaskGCT_model/wav2vec2bert_stats.pt")
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        self.stat_mean_var = torch.load("./MaskGCT_model/wav2vec2bert_stats.pt", weights_only=True)
         self.semantic_mean = self.stat_mean_var["mean"]
         self.semantic_std = torch.sqrt(self.stat_mean_var["var"])
         self.semantic_mean = self.semantic_mean.to(device)

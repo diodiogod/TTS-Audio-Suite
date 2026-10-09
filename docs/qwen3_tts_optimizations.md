@@ -56,7 +56,7 @@ python -c "import triton; print(triton.__version__)"
 
 **Main environment**: no special configuration beyond a working compiler toolchain.
 
-**Shared / Dedicated Runtime isolation**:
+**Shared Runtime isolation**:
 - TTS Audio Suite now tries to detect Visual Studio automatically and inject a proper MSVC build environment into the isolated worker
 - This is meant to preserve `torch.compile` parity with old direct Transformers 4 environments
 - It still depends on the Build Tools actually being installed
@@ -112,7 +112,7 @@ pip install --upgrade torchvision --index-url https://download.pytorch.org/whl/c
 **Solution**:
 1. Install or repair Visual Studio Build Tools with the C++ workload
 2. Restart ComfyUI so the new environment is visible
-3. If using Shared/Dedicated Runtime, let TTS Audio Suite auto-detect the toolchain
+3. If using Shared Runtime, let TTS Audio Suite auto-detect the toolchain
 
 If detection still fails, your machine state is broken, not just the Python package stack.
 

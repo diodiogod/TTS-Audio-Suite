@@ -18,9 +18,10 @@ from torch.nn import functional as F
 import tqdm
 import tkinter as tk
 
-from demucs import Demucs
-from hdemucs import HDemucs
-from utils import center_trim, DummyPoolExecutor
+# TTS Audio Suite patch: resolve trusted checkpoint architectures within this bundled package.
+from .demucs import Demucs
+from .hdemucs import HDemucs
+from .utils import center_trim, DummyPoolExecutor
 
 Model = tp.Union[Demucs, HDemucs]
 

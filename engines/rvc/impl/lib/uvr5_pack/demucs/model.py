@@ -9,7 +9,8 @@ import math
 import torch as th
 from torch import nn
 
-from utils import capture_init, center_trim
+# TTS Audio Suite patch: resolve trusted checkpoint architectures within this bundled package.
+from .utils import capture_init, center_trim
 
 
 class BLSTM(nn.Module):

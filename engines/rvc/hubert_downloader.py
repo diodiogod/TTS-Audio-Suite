@@ -305,7 +305,7 @@ def _convert_bin_to_safetensors(bin_path: str, safetensors_path: str) -> bool:
         
         # Load the .bin file
         print(f"📂 Loading {os.path.basename(bin_path)}...")
-        state_dict = torch.load(bin_path, map_location="cpu")
+        state_dict = torch.load(bin_path, map_location="cpu", weights_only=True)
         
         # Save as .safetensors
         print(f"💾 Saving as {os.path.basename(safetensors_path)}...")

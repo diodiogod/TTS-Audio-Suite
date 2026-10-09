@@ -246,8 +246,8 @@ For comprehensive technical information, refer to the [SRT_IMPLEMENTATION.md](do
 This is the new architectural baseline for the suite.
 
 * **Main environment moved forward**: the primary ComfyUI environment is now meant to run on **Transformers 5**
-* **Isolation for fragile engines**: engines that still behave better on the older stack can use **shared** or **dedicated** legacy runtimes instead of forcing the whole suite backward
-* **Cleaner engine strategy**: modern engines such as **Higgs Audio v3**, **Step Audio EditX**, **MOSS-TTS**, and other compatible stacks can stay native in the main environment
+* **Isolation for fragile engines**: engines that still behave better on the older stack can use **a shared** legacy runtime instead of forcing the whole suite backward
+* **Cleaner engine strategy**: modern engines such as **Higgs Audio v3**, **MOSS-TTS**, and other compatible stacks can stay native in the main environment
 * **Less dependency deadlock**: adding new engines no longer has to mean globally freezing the entire project to one old Transformers version
 
 This matters because the suite now has a clearer split:
@@ -1218,6 +1218,31 @@ Perfect for:
 - 🟢 **OpenSeeFace mouth movement**: ✅ Working (experimental)
 - 🔴 **MediaPipe mouth movement**: ❌ Incompatible (use OpenSeeFace)
 
+### Shared Runtime installation
+
+**Most users can keep the defaults.** Manager prepares one Shared Runtime during installation or updates. Qwen3-TTS/ASR, Step Audio EditX, Higgs Audio 2, and forced alignment reuse it. Model weights download only when needed. Running a workflow or restarting ComfyUI does not install Python packages.
+
+If an engine reports that Shared Runtime is missing or needs repair, enable **Install shared runtime automatically** under **Settings > TTS Audio Suite > Runtime installation**, then repair/reinstall TTS Audio Suite through Manager. Restart when Manager requests it.
+
+<details>
+<summary>Advanced: skip installation or remove an unused shared runtime</summary>
+
+Turn off **Install shared runtime automatically** in the setting above to skip preparation during future installs and updates. Engines still set to Shared Runtime can use an existing environment; the setting does not switch engines to Main Environment.
+
+Open **TTS Audio Suite > Runtime installation details** from ComfyUI's menu to see the configuration file, runtime folder, and installation status. To reclaim the runtime's space, turn off automatic installation, close ComfyUI, and manually delete the displayed **shared_legacy_t4** folder. Model weights and voice files are separate. Engines set to Shared Runtime need that environment restored before they can run again.
+
+To skip the first installation, create this file before installing the suite:
+
+**ComfyUI/user/__tts_audio_suite/runtime_settings.json**
+
+```json
+{"install_shared_runtime": false}
+```
+
+The UI and installer read the same file. With a custom ComfyUI user directory, use its **__tts_audio_suite** folder. After the suite has loaded, it remembers that location for Manager updates and reinstalls. Before the first installation with a custom user directory, set **TTS_AUDIO_SUITE_USER_DIRECTORY** to that directory in the installer's environment.
+
+</details>
+
 ### Option 2: Manual Installation
 
 **Same intelligent installer, manual setup:**
@@ -1417,7 +1442,12 @@ Core TTS installation will continue; only the listed features may be unavailable
 
 A common problem is installing dependencies in the wrong Python environment. Always ensure you are installing dependencies within your ComfyUI's Python environment.
 
-If the engine comparison table shows **`Shared`** or **`Dedicated`** in the **Isolation** column, that engine has its own secondary-environment path for dependency conflicts. Configure that on the engine node with `⚠️ Runtime Isolation` instead of trying to downgrade your main ComfyUI environment.
+Where an engine offers **⚠️ Runtime Isolation**, there are two choices:
+
+- **Main Environment** uses ComfyUI's installed Python packages.
+- **⚠️ Shared Runtime** uses one support environment shared by compatible engines, helping avoid dependency conflicts. Keep the engine's default unless you need to change it.
+
+Older workflows that selected Dedicated Runtime now use Shared Runtime. Their other settings stay in place. Existing dedicated folders are kept; after closing ComfyUI, you can delete an unused dedicated folder to reclaim its space. Keep the **shared_legacy_t4** folder if you use Shared Runtime.
 
 * **Verify your Python environment:** After activating your venv or navigating to your portable ComfyUI installation, check the Python executable being used:
   

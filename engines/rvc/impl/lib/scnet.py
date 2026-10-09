@@ -562,7 +562,8 @@ class SCNetSeparator:
         model = SCNet(**model_config)
         
         # Load weights
-        checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        checkpoint = torch.load(model_path, map_location=self.device, weights_only=True)
         
         # Handle different checkpoint formats
         if 'state_dict' in checkpoint:

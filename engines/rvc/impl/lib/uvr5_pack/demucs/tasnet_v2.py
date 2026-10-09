@@ -36,7 +36,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils import capture_init
+# TTS Audio Suite patch: resolve trusted checkpoint architectures within this bundled package.
+from .utils import capture_init
 
 EPS = 1e-8
 

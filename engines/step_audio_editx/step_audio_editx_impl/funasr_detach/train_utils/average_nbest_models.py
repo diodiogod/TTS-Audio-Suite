@@ -157,7 +157,7 @@ def average_checkpoints(output_dir: str, last_n: int = 5):
     # Load state_dicts from checkpoints
     for path in checkpoint_paths:
         if os.path.isfile(path):
-            state_dicts.append(torch.load(path, map_location="cpu")["state_dict"])
+            state_dicts.append(torch.load(path, map_location="cpu", weights_only=True)["state_dict"])
         else:
             print(f"Checkpoint file {path} not found.")
             continue

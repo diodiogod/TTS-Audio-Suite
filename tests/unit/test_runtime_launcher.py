@@ -11,6 +11,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from utils.runtimes.launcher import IsolatedRuntimeLauncher
 from utils.runtimes.profiles import RuntimeProfile
+from utils.models.factory_config import RUNTIME_MODE_SHARED, normalize_runtime_mode, validate_runtime_mode
+from utils.runtimes.profiles import RUNTIME_PROFILES, get_runtime_profile
 
 
 @pytest.mark.unit
@@ -157,3 +159,26 @@ assert UpsampleConformerEncoderV2._init_cuda_graph is patched
         capture_output=True, text=True, encoding="utf-8", timeout=90,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("legacy_mode", ["dedicated_runtime", "Dedicated Runtime", "⚠️ Dedicated Runtime"])
+def test_saved_dedicated_runtime_selections_use_shared(legacy_mode):
+    assert validate_runtime_mode(legacy_mode) is True
+    assert normalize_runtime_mode(legacy_mode) == RUNTIME_MODE_SHARED
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("legacy_profile", [
+    "vibevoice_transformers4_dedicated",
+    "qwen3_tts_transformers4_dedicated",
+    "step_audio_editx_transformers4",
+])
+def test_old_profile_names_resolve_to_shared_without_separate_installation(legacy_profile):
+    assert legacy_profile not in RUNTIME_PROFILES
+    assert get_runtime_profile(legacy_profile) is get_runtime_profile("vibevoice_transformers4_shared")
+
+
+@pytest.mark.unit
+def test_runtime_validation_rejects_unknown_mode():
+    assert validate_runtime_mode("unknown-runtime") is not True

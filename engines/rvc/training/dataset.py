@@ -4,6 +4,7 @@ Dataset preparation for RVC voice model training.
 
 from __future__ import annotations
 
+from utils.security.path_access import resolve_input_path, allowed_path, child_path
 import hashlib
 import os
 import shutil
@@ -68,20 +69,10 @@ def _slugify(value: str) -> str:
 
 
 def _resolve_source_path(dataset_source: str) -> str:
-    if not dataset_source or not str(dataset_source).strip():
-        raise ValueError("dataset_source is required")
-
-    raw_path = os.path.expanduser(dataset_source)
-    candidates = [raw_path]
-    input_dir = folder_paths.get_input_directory()
-    candidates.append(os.path.join(input_dir, raw_path))
-    candidates.append(os.path.join(input_dir, "datasets", raw_path))
-
-    for candidate in candidates:
-        if os.path.exists(candidate):
-            return os.path.abspath(candidate)
-
-    raise FileNotFoundError(f"Dataset source not found: {dataset_source}")
+    path = Path(resolve_input_path(dataset_source, datasets=True, models=False))
+    if not (path.is_file() or path.is_dir()):
+        raise FileNotFoundError(f"Dataset source not found: {dataset_source}")
+    return str(path)
 
 
 
@@ -110,7 +101,7 @@ def _iter_audio_files(root: str) -> Iterable[str]:
     for current_root, _, files in os.walk(root):
         for filename in sorted(files):
             if os.path.splitext(filename)[1].lower() in allowed:
-                yield os.path.join(current_root, filename)
+                yield allowed_path(os.path.join(current_root, filename), models=False)
 
 
 def _flatten_audio_source(source_path: str, destination_dir: str) -> int:

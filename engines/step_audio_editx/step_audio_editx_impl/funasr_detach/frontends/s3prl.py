@@ -64,6 +64,7 @@ class S3prlFrontend(nn.Module):
                 break
         assert s3prl_path is not None
 
+        # TTS Audio Suite patch: restrict checkpoint deserialization.
         s3prl_upstream = torch.hub.load(
             s3prl_path,
             s3prl_args.upstream,
@@ -71,7 +72,7 @@ class S3prlFrontend(nn.Module):
             model_config=s3prl_args.upstream_model_config,
             refresh=s3prl_args.upstream_refresh,
             source="local",
-        ).to("cpu")
+         weights_only=True).to("cpu")
 
         if getattr(
             s3prl_upstream, "model", None

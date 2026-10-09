@@ -25,6 +25,8 @@ from utils.models.step_audio_editx_checkpoints import (
 import folder_paths
 
 
+from utils.security.path_access import validate_model_paths, allowed_path
+
 class StepAudioEditXDownloader:
     """Downloader for Step Audio EditX models using unified download system."""
 
@@ -256,7 +258,7 @@ class StepAudioEditXDownloader:
         """
         import json
 
-        config_path = os.path.join(model_dir, "config.json")
+        config_path = allowed_path(os.path.join(model_dir, "config.json"))
         if not os.path.exists(config_path):
             print(f"⚠️ config.json not found at {config_path}, skipping patch")
             return
@@ -342,6 +344,7 @@ class StepAudioEditXDownloader:
                 f"Missing {len(missing_files)} files: {missing_files[:5]}..."
             )
 
+    @validate_model_paths
     def resolve_model_path(self, model_identifier: str) -> str:
         """
         Resolve model path handling "local:" prefix and auto-download.

@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from utils.security.config_values import parse_config_value  # TTS Audio Suite patch: parse data without executing configuration code.
 import logging
 import math
 
@@ -99,7 +100,7 @@ class Data2VecEncoder(nn.Module):
 
         # ConvFeatureExtractionModel
         self.conv_feature_layers = conv_feature_layers
-        feature_enc_layers = eval(conv_feature_layers)
+        feature_enc_layers = parse_config_value(conv_feature_layers)
         self.extractor_embed = feature_enc_layers[-1][0]
         self.feature_extractor = ConvFeatureExtractionModel(
             conv_layers=feature_enc_layers,
@@ -322,7 +323,7 @@ class Data2VecEncoder(nn.Module):
                 (input_length - kernel_size).to(torch.float32) / stride + 1
             )
 
-        conv_cfg_list = eval(self.conv_feature_layers)
+        conv_cfg_list = parse_config_value(self.conv_feature_layers)
 
         for i in range(len(conv_cfg_list)):
             input_lengths = _conv_out_length(

@@ -9,6 +9,8 @@ from utils.downloads.unified_downloader import unified_downloader
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
 
 
+from utils.security.path_access import validate_model_paths, allowed_path
+
 class DramaBoxDownloader:
     """Resolve DramaBox checkpoints without using Hugging Face cache storage."""
 
@@ -65,6 +67,7 @@ class DramaBoxDownloader:
                             models.insert(0, local_name)
         return models
 
+    @validate_model_paths
     def resolve_model_path(self, model_identifier: str = MODEL_NAME) -> Dict[str, str]:
         model_identifier = model_identifier or self.MODEL_NAME
         if os.path.isabs(model_identifier) and os.path.isdir(model_identifier):

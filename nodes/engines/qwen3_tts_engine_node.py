@@ -32,16 +32,15 @@ from engines.qwen3_asr.prompting import DEFAULT_TRANSLATE_INSTRUCTION_TEMPLATE
 from engines.qwen3_tts.qwen3_tts_downloader import Qwen3TTSDownloader
 from utils.models.extra_paths import get_all_tts_model_paths
 from utils.models.factory_config import (
-    RUNTIME_MODE_DEDICATED,
     RUNTIME_MODE_MAIN,
     RUNTIME_MODE_SHARED,
     normalize_runtime_mode,
+    validate_runtime_mode,
 )
 
 
 RUNTIME_MODE_MAIN_LABEL = "Main Environment"
 RUNTIME_MODE_SHARED_LABEL = "⚠️ Shared Runtime"
-RUNTIME_MODE_DEDICATED_LABEL = "⚠️ Dedicated Runtime"
 
 
 class Qwen3TTSEngineNode(BaseTTSNode):
@@ -243,7 +242,7 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                 }),
                 "use_torch_compile": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable torch.compile for decoder (~1.5-2x speedup):\n• False: Standard inference (RECOMMENDED - works with all PyTorch versions)\n• True: Compiled decoder (REQUIRES PyTorch 2.10+ and triton-windows 3.6+)\n⚠️ REQUIREMENTS: PyTorch 2.10.0+cu130, triton-windows 3.6.0+, and Visual Studio C++ Build Tools on Windows\n⚠️ Shared/Dedicated Runtime will try to detect the toolchain automatically, but it still must be installed\n⚠️ See docs/qwen3_tts_optimizations.md for installation\nFirst generation slower due to compilation, then ~1.5-2x faster"
+                    "tooltip": "Enable torch.compile for decoder (~1.5-2x speedup):\n• False: Standard inference (RECOMMENDED - works with all PyTorch versions)\n• True: Compiled decoder (REQUIRES PyTorch 2.10+ and triton-windows 3.6+)\n⚠️ REQUIREMENTS: PyTorch 2.10.0+cu130, triton-windows 3.6.0+, and Visual Studio C++ Build Tools on Windows\n⚠️ Shared Runtime will try to detect the toolchain automatically, but it still must be installed\n⚠️ See docs/qwen3_tts_optimizations.md for installation\nFirst generation slower due to compilation, then ~1.5-2x faster"
                 }),
                 "use_cuda_graphs": ("BOOLEAN", {
                     "default": False,
@@ -266,12 +265,16 @@ class Qwen3TTSEngineNode(BaseTTSNode):
                     "multiline": True,
                     "tooltip": "Qwen ASR-only experimental translation instruction template for ✏️ ASR Transcribe when task=translate.\n\nThis field shows the actual default instruction used by this integration. Edit it if you want to experiment.\n\nAvailable placeholders:\n• {source_language}: Replaced with the unified ASR source language, or 'the spoken source language' when ASR language is Auto\n• {target_language}: Replaced with this engine node's ASR translation target\n\nImportant:\n• This does NOT affect Qwen TTS generation or the TTS 'instruct' field\n• Qwen translation here is prompt-driven through the ASR wrapper context\n• Results can vary a lot by language pair, and some pairs may not behave reliably at all\n• Weak or malformed custom instructions can produce worse translations or unexpected output"
                 }),
-                "runtime_mode": ([RUNTIME_MODE_MAIN_LABEL, RUNTIME_MODE_SHARED_LABEL, RUNTIME_MODE_DEDICATED_LABEL], {
+                "runtime_mode": ([RUNTIME_MODE_MAIN_LABEL, RUNTIME_MODE_SHARED_LABEL], {
                     "default": RUNTIME_MODE_SHARED_LABEL,
-                    "tooltip": "IMPORTANT: Qwen3-TTS is fragile on Transformers 5 in the main environment.\n\nRuntime Isolation:\n• Main Environment: Use the main ComfyUI Python environment\n• Shared Runtime: Use the shared secondary legacy runtime already used by compatible engines\n• Dedicated Runtime: Create a separate secondary runtime just for Qwen3-TTS\n\nWhy this matters:\n• The main ComfyUI env is on Transformers 5\n• Qwen3-TTS is more stable on the legacy Transformers 4 stack\n• Runtime isolation keeps Qwen3-TTS working without downgrading the whole app\n\n⚠️ Shared/Dedicated runtimes currently reuse heavy base packages from the main env (like PyTorch) and install pinned Qwen3-TTS-specific packages on top.\n⚠️ First run may create the secondary runtime and take a while."
+                    "tooltip": "IMPORTANT: Qwen3-TTS is fragile on Transformers 5 in the main environment.\n\nRuntime Isolation:\n• Main Environment: Use the main ComfyUI Python environment\n• Shared Runtime: Use the shared secondary legacy runtime already used by compatible engines\n\nWhy this matters:\n• The main ComfyUI env is on Transformers 5\n• Qwen3-TTS is more stable on the legacy Transformers 4 stack\n• Runtime isolation keeps Qwen3-TTS working without downgrading the whole app\n\n⚠️ Shared Runtime reuses heavy base packages such as PyTorch and adds its pinned legacy dependencies during suite installation.\n⚠️ If it is missing, enable automatic shared runtime installation in Settings and repair/reinstall the suite through Manager."
                 }),
             }
         }
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, runtime_mode):
+        return validate_runtime_mode(runtime_mode)
 
     RETURN_TYPES = ("TTS_ENGINE",)
     RETURN_NAMES = ("TTS_engine",)
@@ -310,8 +313,6 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         runtime_mode = normalize_runtime_mode(runtime_mode)
         if runtime_mode == RUNTIME_MODE_SHARED:
             runtime_profile = "vibevoice_transformers4_shared"
-        elif runtime_mode == RUNTIME_MODE_DEDICATED:
-            runtime_profile = "qwen3_tts_transformers4_dedicated"
         else:
             runtime_profile = None
 
@@ -365,7 +366,6 @@ class Qwen3TTSEngineNode(BaseTTSNode):
         runtime_label = {
             RUNTIME_MODE_MAIN: "Main Environment",
             RUNTIME_MODE_SHARED: "Shared Runtime",
-            RUNTIME_MODE_DEDICATED: "Dedicated Runtime",
         }.get(runtime_mode, runtime_mode)
         print(f"   Runtime: {runtime_label}")
         print(f"   Settings: voice_preset={effective_voice_preset}, temperature={temperature}, top_k={top_k}, top_p={top_p}")

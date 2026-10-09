@@ -34,6 +34,16 @@ def get_quantizer(model, args, optimizer=None):
     return quantizer
 
 
+# TTS Audio Suite patch: preserve legacy architecture metadata without allowing
+# pickle to construct or import executable model objects.
+def _load_model_package(path):
+    from utils.security.demucs_loading import load_demucs_package
+
+    return load_demucs_package(path, map_location="cpu",
+                               architecture_package=__package__ or "",
+                               architecture_directory=Path(__file__).parent)
+
+
 def load_model(path_or_package, strict=False):
     """Load a model from the given serialized model, either given as a dict (already loaded)
     or a path to a file on disk."""
@@ -43,7 +53,8 @@ def load_model(path_or_package, strict=False):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             path = path_or_package
-            package = torch.load(path, 'cpu')
+            # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+            package = _load_model_package(path)
     else:
         raise ValueError(f"Invalid type for {path_or_package}.")
 

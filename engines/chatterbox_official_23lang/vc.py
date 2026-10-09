@@ -114,7 +114,7 @@ class ChatterboxVC:
             if safetensors_path.exists():
                 return load_file(safetensors_path, device=device)
             elif pt_path.exists():
-                return torch.load(pt_path, map_location=device)
+                return torch.load(pt_path, map_location=device, weights_only=True)
             else:
                 raise FileNotFoundError(f"Neither {base_name}.safetensors nor {base_name}.pt found in {ckpt_dir}")
         
@@ -123,7 +123,7 @@ class ChatterboxVC:
             
             ref_dict = None
             if (builtin_voice := ckpt_dir / "conds.pt").exists():
-                states = torch.load(builtin_voice)
+                states = torch.load(builtin_voice, weights_only=True)
                 ref_dict = states['gen']
 
             s3gen = S3Gen()

@@ -1,3 +1,4 @@
+from utils.security.data_loading import load_numpy_data  # TTS Audio Suite patch: NumPy dictionaries must not execute pickle globals.
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,7 +46,7 @@ class DACFile:
 
     @classmethod
     def load(cls, path):
-        artifacts = np.load(path, allow_pickle=True)[()]
+        artifacts = load_numpy_data(path)[()]
         codes = torch.from_numpy(artifacts["codes"].astype(int))
         if artifacts["metadata"].get("dac_version", None) not in SUPPORTED_VERSIONS:
             raise RuntimeError(f"Given file {path} can't be loaded with this version of descript-audio-codec.")

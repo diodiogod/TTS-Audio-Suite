@@ -1,5 +1,9 @@
 # Isolated Runtimes Plan
 
+Historical design. The current implementation uses Main Environment or one Shared Runtime,
+prepared by install.py. Dedicated profiles and first-use package installation were removed;
+see [Registry compatibility work](REGISTRY_COMPATIBILITY_PLAN.md).
+
 ## Goal
 
 Keep ComfyUI in one modern main runtime while routing fragile engines into

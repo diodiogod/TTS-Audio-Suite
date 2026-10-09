@@ -14,6 +14,8 @@ from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_down
 from engines.moss_tts.model_specs import MOSS_CODEC_SPECS, MOSS_MODEL_SPECS
 
 
+from utils.security.path_access import allowed_path, validate_model_paths, allowed_path
+
 class MossTTSDownloader:
     """Resolve and download official MOSS-TTS model folders."""
 
@@ -33,6 +35,7 @@ class MossTTSDownloader:
             self.base_path = base_path
         os.makedirs(self.base_path, exist_ok=True)
 
+    @validate_model_paths
     def resolve_model_path(self, model_identifier: str) -> str:
         """Resolve local: names, absolute paths, or known MOSS model identifiers."""
         if not model_identifier:
@@ -92,7 +95,7 @@ class MossTTSDownloader:
             with quiet_hf_download_logs():
                 snapshot_download(
                     repo_id=repo_id,
-                    local_dir=model_dir,
+                    local_dir=allowed_path(model_dir),
                     force_download=force,
                 )
         except Exception as e:

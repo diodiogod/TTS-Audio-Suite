@@ -344,6 +344,7 @@ def setup_api_routes():
         import folder_paths
         from server import PromptServer
         from aiohttp import web
+        from utils.security.path_access import resolve_input_path, filename_component, child_path
 
         def _get_ui_data_dir():
             base_dir = os.path.join(folder_paths.get_system_user_directory("tts_audio_suite"), "ui")
@@ -355,6 +356,8 @@ def setup_api_routes():
 
         from utils.voice.alias_api import register_character_alias_routes
         register_character_alias_routes(PromptServer.instance.routes, web)
+        from utils.runtimes.settings_api import register_runtime_settings_routes
+        register_runtime_settings_routes(PromptServer.instance.routes, web)
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/index-tts-emotion-presets")
         async def get_index_tts_emotion_presets_endpoint(request):
@@ -641,7 +644,8 @@ print(json.dumps({"devices": devices}))
                 if not audio_file:
                     return web.json_response({"error": "audio_file is required for preview analysis"}, status=400)
 
-                node_id = str(data.get("node_id") or "preview")
+                audio_file = resolve_input_path(audio_file)
+                node_id = filename_component(data.get("node_id") or "preview")
 
                 analyzer_node_path = os.path.join(os.path.dirname(__file__), "nodes", "audio", "analyzer_node.py")
                 spec = importlib.util.spec_from_file_location("tts_audio_suite_audio_analyzer_node", analyzer_node_path)
@@ -649,7 +653,7 @@ print(json.dumps({"devices": devices}))
                 spec.loader.exec_module(analyzer_node_module)
 
                 analyzer_node = analyzer_node_module.AudioAnalyzerNode()
-                analyzer_node.analyze_audio(
+                analysis_result = analyzer_node.analyze_audio(
                     audio_file=audio_file,
                     analysis_method=data.get("analysis_method", "silence"),
                     precision_level=data.get("precision_level", "milliseconds"),
@@ -663,7 +667,9 @@ print(json.dumps({"devices": devices}))
                 )
 
                 import folder_paths
-                cache_file = os.path.join(folder_paths.get_output_directory(), f"audio_analyzer_cache_{node_id}.json")
+                if analysis_result[1].startswith("Error:"):
+                    return web.json_response({"error": analysis_result[1]}, status=400)
+                cache_file = child_path(folder_paths.get_output_directory(), f"audio_analyzer_cache_{node_id}.json")
                 with open(cache_file, "r", encoding="utf-8") as f:
                     payload = json.load(f)
 
@@ -672,7 +678,7 @@ print(json.dumps({"devices": devices}))
                 return response
             except Exception as e:
                 print(f"⚠️ Audio analyzer preview failed: {e}")
-                return web.json_response({"error": str(e)}, status=500)
+                return web.json_response({"error": str(e)}, status=400 if isinstance(e, (ValueError, FileNotFoundError)) else 500)
 
         @PromptServer.instance.routes.get("/api/tts-audio-suite/training-progress")
         async def get_training_progress_endpoint(request):

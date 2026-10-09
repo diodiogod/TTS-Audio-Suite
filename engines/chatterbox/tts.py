@@ -268,7 +268,7 @@ class ChatterboxTTS:
                         if custom_path.suffix == ".safetensors":
                             return load_file(custom_path, device=device)
                         if custom_path.suffix == ".pt":
-                            return torch.load(custom_path, map_location=device)
+                            return torch.load(custom_path, map_location=device, weights_only=True)
 
             safetensors_path = ckpt_dir / f"{base_name}.safetensors"
             pt_path = ckpt_dir / f"{base_name}.pt"
@@ -276,7 +276,7 @@ class ChatterboxTTS:
             if safetensors_path.exists():
                 return load_file(safetensors_path, device=device)
             elif pt_path.exists():
-                return torch.load(pt_path, map_location=device)
+                return torch.load(pt_path, map_location=device, weights_only=True)
             elif not required:
                 return None
             else:
@@ -299,7 +299,7 @@ class ChatterboxTTS:
                     return load_file(safetensors_path, device=device)
                 elif pt_path.exists():
                     print(f"📁 Loading {base_name} from local English model: {pt_path}")
-                    return torch.load(pt_path, map_location=device)
+                    return torch.load(pt_path, map_location=device, weights_only=True)
             
             # Download English model if not available locally
             print(f"📦 Downloading English model components for incomplete language model...")
@@ -315,7 +315,7 @@ class ChatterboxTTS:
                     return load_file(safetensors_path, device=device)
                 elif pt_path.exists():
                     print(f"📁 Loading {base_name} from downloaded English model: {pt_path}")
-                    return torch.load(pt_path, map_location=device)
+                    return torch.load(pt_path, map_location=device, weights_only=True)
             
             raise FileNotFoundError(f"Could not load {base_name} from English fallback")
         
@@ -452,7 +452,7 @@ class ChatterboxTTS:
             warnings.simplefilter("ignore")
             
             print(f"📦 Loading checkpoint: {unified_model_path.name}")
-            checkpoint = torch.load(unified_model_path, map_location=device)
+            checkpoint = torch.load(unified_model_path, map_location=device, weights_only=True)
             
             # Extract model configuration
             model_config = checkpoint.get('model_config', {})

@@ -12,10 +12,11 @@ import typing as tp
 import torch
 from torch import nn
 from torch.nn import functional as F
-from filtering import wiener
-from demucs import DConv, rescale_module
-from states import capture_init
-from spec import spectro, ispectro
+# TTS Audio Suite patch: resolve trusted checkpoint architectures within this bundled package.
+from .filtering import wiener
+from .demucs import DConv, rescale_module
+from .states import capture_init
+from .spec import spectro, ispectro
 
 def pad1d(x: torch.Tensor, paddings: tp.Tuple[int, int], mode: str = 'constant', value: float = 0.):
     """Tiny wrapper around F.pad, just to allow for reflect padding on small input.

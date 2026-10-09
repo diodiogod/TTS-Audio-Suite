@@ -11,15 +11,14 @@ import importlib.util
 from typing import Dict, Any, List
 
 from utils.models.factory_config import (
-    RUNTIME_MODE_DEDICATED,
     RUNTIME_MODE_MAIN,
     RUNTIME_MODE_SHARED,
     normalize_runtime_mode,
+    validate_runtime_mode,
 )
 
 RUNTIME_MODE_MAIN_LABEL = "Main Environment"
 RUNTIME_MODE_SHARED_LABEL = "⚠️ Shared Runtime"
-RUNTIME_MODE_DEDICATED_LABEL = "⚠️ Dedicated Runtime"
 
 # Add project root directory to path for imports
 current_dir = os.path.dirname(__file__)
@@ -94,17 +93,19 @@ class StepAudioEditXEngineNode(BaseTTSNode):
                 # the positional values of every older Step EditX setting.
                 "runtime_mode": ([
                     RUNTIME_MODE_SHARED_LABEL,
-                    RUNTIME_MODE_DEDICATED_LABEL,
                     RUNTIME_MODE_MAIN_LABEL,
                 ], {
                     "default": RUNTIME_MODE_SHARED_LABEL,
                     "tooltip": "Python runtime used by Step Audio EditX:\n"
                     "• Shared Runtime: Recommended. Uses the shared Transformers 4 runtime and was verified with Step EditX.\n"
-                    "• Dedicated Runtime: Uses a separate Step EditX Transformers 4 environment. Choose this only to isolate dependency conflicts.\n"
                     "• Main Environment: Uses ComfyUI's packages. Transformers 5 currently produces invalid Step audio tokens and is not recommended."
                 }),
             }
         }
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, runtime_mode):
+        return validate_runtime_mode(runtime_mode)
 
     RETURN_TYPES = ("TTS_ENGINE",)
     RETURN_NAMES = ("TTS_engine",)
@@ -185,7 +186,6 @@ class StepAudioEditXEngineNode(BaseTTSNode):
             normalized_runtime_mode = normalize_runtime_mode(runtime_mode)
             runtime_profiles = {
                 RUNTIME_MODE_SHARED: "vibevoice_transformers4_shared",
-                RUNTIME_MODE_DEDICATED: "step_audio_editx_transformers4",
                 RUNTIME_MODE_MAIN: None,
             }
 

@@ -36,7 +36,7 @@ def _load_voice_ref(payload: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any
         tensor_path = payload.get("tensor_path")
         if not tensor_path:
             raise RuntimeError("tensor_path payload missing file path")
-        tensor_payload = torch.load(tensor_path, map_location="cpu")
+        tensor_payload = torch.load(tensor_path, map_location="cpu", weights_only=True)
         return {
             "waveform": tensor_payload["waveform"],
             "sample_rate": tensor_payload.get("sample_rate", 24000),

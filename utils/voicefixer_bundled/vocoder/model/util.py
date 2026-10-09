@@ -108,7 +108,8 @@ def load_try(state, model):
 
 
 def load_checkpoint(checkpoint_path, device):
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     return checkpoint
 
 

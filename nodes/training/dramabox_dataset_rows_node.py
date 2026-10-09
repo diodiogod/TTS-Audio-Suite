@@ -1,5 +1,6 @@
 """Build a DramaBox training manifest from engine-neutral staged clips."""
 
+from utils.security.path_access import child_path
 import importlib.util
 import json
 import os
@@ -171,9 +172,9 @@ class DramaBoxDatasetRowsNode(BaseTTSNode):
             filename += ".jsonl"
         input_root = folder_paths.get_input_directory()
         subdir = str(output_subdir or "").strip().strip("/\\")
-        output_dir = os.path.join(input_root, subdir) if subdir else input_root
+        output_dir = child_path(input_root, subdir) if subdir else input_root
         os.makedirs(output_dir, exist_ok=True)
-        manifest_path = os.path.join(output_dir, filename)
+        manifest_path = child_path(output_dir, filename)
         if os.path.exists(manifest_path) and not overwrite:
             raise FileExistsError(f"DramaBox manifest already exists: {manifest_path}")
 

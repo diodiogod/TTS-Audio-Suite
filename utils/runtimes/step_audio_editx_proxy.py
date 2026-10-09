@@ -82,7 +82,7 @@ class StepAudioEditXIsolatedProxy:
             self._request(action, payload)
             if not output_path.exists():
                 raise RuntimeError("Step Audio EditX isolated worker returned no output")
-            result = torch.load(output_path, map_location="cpu")
+            result = torch.load(output_path, map_location="cpu", weights_only=True)
             return result["audio"], int(result["sample_rate"])
 
     def clone(self, prompt_wav_path, prompt_text, target_text, temperature=0.7,

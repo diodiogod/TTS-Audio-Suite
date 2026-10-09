@@ -203,7 +203,8 @@ def convert_timm_dit(args, mapping, dtype="float32"):
     torch_dtype = str_dtype_to_torch(dtype)
     tensor_parallel = mapping.tp_size
 
-    model_params = dict(torch.load(args.timm_ckpt))
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    model_params = dict(torch.load(args.timm_ckpt, weights_only=True))
     model_params = {
         k: v for k, v in model_params["ema_model_state_dict"].items() if k.startswith("ema_model.transformer")
     }

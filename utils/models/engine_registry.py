@@ -129,8 +129,8 @@ ENGINE_REGISTRY: Dict[str, EngineCapabilities] = {
         fallback_languages=["English"],
         supports_training=True,
         training_modes=["lora_adapter"],
-        supports_runtime_isolation=True,
-        default_runtime_profile="moss_tts_transformers5",
+        supports_runtime_isolation=False,
+        default_runtime_profile=None,
     ),
 
     "moss_soundeffect_v2": EngineCapabilities(

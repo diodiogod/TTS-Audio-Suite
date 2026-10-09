@@ -399,7 +399,9 @@ def load_model(path, strict=False):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         load_from = path
-        package = th.load(load_from, 'cpu')
+        # TTS Audio Suite patch: restrict checkpoint deserialization.
+        from .states import _load_model_package
+        package = _load_model_package(load_from)
 
     klass = package["klass"]
     args = package["args"]
@@ -439,7 +441,8 @@ def set_state(model, quantizer, state):
         model.load_state_dict(state)
     else:
         buf = io.BytesIO(zlib.decompress(state["compressed"]))
-        state = th.load(buf, "cpu")
+        # TTS Audio Suite patch: restrict checkpoint deserialization.
+        state = th.load(buf, "cpu", weights_only=True)
         quantizer.restore_quantized_state(state)
 
     return state

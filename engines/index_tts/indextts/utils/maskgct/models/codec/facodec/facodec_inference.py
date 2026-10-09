@@ -34,7 +34,8 @@ class FAcodecInference(object):
         return model
 
     def _load_checkpoint(self):
-        sd = torch.load(self.args.checkpoint_path, map_location="cpu")
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        sd = torch.load(self.args.checkpoint_path, map_location="cpu", weights_only=True)
         sd = sd["net"] if "net" in sd else sd
         new_params = dict()
         for key, state_dict in sd.items():

@@ -9,6 +9,8 @@ from utils.hf_download_logging import quiet_hf_download_logs
 from utils.models.extra_paths import get_all_tts_model_paths, get_preferred_download_path
 
 
+from utils.security.path_access import allowed_path, validate_model_paths, allowed_path
+
 class MossSoundEffectV2Downloader:
     MODEL_NAME = "MOSS-SoundEffect-v2.0"
     REPO_ID = "OpenMOSS-Team/MOSS-SoundEffect-v2.0"
@@ -45,6 +47,7 @@ class MossSoundEffectV2Downloader:
             os.path.isfile(os.path.join(model_dir, rel_path)) for rel_path in cls.REQUIRED_FILES
         )
 
+    @validate_model_paths
     def resolve_model_path(self, identifier: str = MODEL_NAME) -> str:
         identifier = identifier or self.MODEL_NAME
         if os.path.isabs(identifier):
@@ -79,7 +82,7 @@ class MossSoundEffectV2Downloader:
             with quiet_hf_download_logs():
                 snapshot_download(
                     repo_id=self.REPO_ID,
-                    local_dir=model_dir,
+                    local_dir=allowed_path(model_dir),
                     force_download=force,
                 )
         except Exception as exc:

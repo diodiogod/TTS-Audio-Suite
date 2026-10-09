@@ -12,10 +12,6 @@ runtime_isolation_modes:
       label: "Shared Runtime"
       short_label: "Shared"
       description: "Use a secondary shared runtime for engines with dependency conflicts. This runtime reuses heavy base packages like PyTorch from the main environment when configured."
-    dedicated_runtime:
-      label: "Dedicated Runtime"
-      short_label: "Dedicated"
-      description: "Use a dedicated secondary runtime only for one engine when the shared runtime is not enough."
 
 engines:
   - id: f5-tts
@@ -854,10 +850,8 @@ engines:
       supported_modes:
         - "main_environment"
         - "shared_runtime"
-        - "dedicated_runtime"
       status: "implemented"
       runtime_profile: "vibevoice_transformers4_shared"
-      dedicated_profile: "qwen3_tts_transformers4_dedicated"
       notes: "Recommended on modern ComfyUI stacks because Qwen3-TTS, Qwen3-ASR, and the reused Qwen forced aligner currently rely on the shared legacy T4 runtime for stable operation."
 
     model_sources:
@@ -1050,12 +1044,21 @@ engines:
       asr: false
       training: false
 
+    runtime_isolation:
+      default_mode: "shared_runtime"
+      supported_modes:
+        - "main_environment"
+        - "shared_runtime"
+      status: "implemented"
+      runtime_profile: "vibevoice_transformers4_shared"
+      notes: "Shared Transformers 4 is recommended; the main Transformers 5 stack can produce invalid audio tokens."
+
     special_features:
       - "Second Pass Speech Editing Node: 14 emotions"
       - "32 speaking styles"
       - "Dated checkpoints: 2026-01-23 / 2025-11-28"
       - "Expanded January paralinguistic effects with legacy tag compatibility"
-      - "Selectable main, shared, or dedicated Python runtime (shared Transformers 4 runtime recommended)"
+      - "Selectable main or shared Python runtime (shared Transformers 4 runtime recommended)"
 
     model_sources:
       - component: "Step-Audio-EditX-2026-01-23"
@@ -1213,7 +1216,6 @@ engines:
       default_mode: "main_environment"
       main_environment: true
       shared_runtime: false
-      dedicated_runtime: false
 
     special_features:
       - "Free-form sub-word emotion/prosody tags"

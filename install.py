@@ -1850,6 +1850,16 @@ class TTSAudioInstaller:
         except (PackageNotFoundError, ImportError, ValueError):
             self.log("NumPy not found - this will cause issues", "ERROR")
 
+    def prepare_shared_runtime(self):
+        from utils.runtimes.settings import read_settings, settings_path
+        from utils.runtimes.installation import install_runtime
+        from utils.runtimes.profiles import get_runtime_profile
+        if read_settings()["install_shared_runtime"]:
+            self.log("Preparing Shared Runtime (existing compatible installations are reused)", "INFO")
+            install_runtime(get_runtime_profile("vibevoice_transformers4_shared"))
+        else:
+            self.log(f"Shared Runtime installation skipped by {settings_path()}; existing files are kept", "INFO")
+
     def print_installation_summary(self, installation_valid: bool):
         """Print installation summary and next steps"""
         print("\n" + "="*70)
@@ -1963,6 +1973,9 @@ def main():
             installer.handle_wandb_issues()  # Fix wandb circular import
             installer.handle_python_313_specific()
         
+        # Check the shared profile even when main dependencies took the fast path.
+        installer.prepare_shared_runtime()
+
         # Validation and summary
         installer.check_version_conflicts()
         success = installer.validate_installation()

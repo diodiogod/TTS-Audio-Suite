@@ -47,7 +47,8 @@ class CosyVoiceFrontEnd:
                                                                      providers=["CUDAExecutionProvider" if torch.cuda.is_available() else
                                                                                 "CPUExecutionProvider"])
         if os.path.exists(spk2info):
-            self.spk2info = torch.load(spk2info, map_location=self.device)
+            # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+            self.spk2info = torch.load(spk2info, map_location=self.device, weights_only=True)
         else:
             self.spk2info = {}
         self.allowed_special = allowed_special

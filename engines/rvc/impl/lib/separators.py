@@ -42,7 +42,8 @@ class UVR5Base:
         }
         mp = ModelParameters(os.path.join(dir_path,"uvr5_pack","vr_network","modelparams","4band_v2.json"))
         model = CascadedASPPNet(mp.param["bins"] * 2)
-        cpk = torch.load(model_path, map_location=self.device, weights_only=False)
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        cpk = torch.load(model_path, map_location=self.device, weights_only=True)
         try:
             model.load_state_dict(cpk)
         except RuntimeError as e:
@@ -299,7 +300,8 @@ class UVR5New(UVR5Base):
         mp = ModelParameters(os.path.join(dir_path,"uvr5_pack","vr_network","modelparams","4band_v3.json"))
         nout = 64 if dereverb else 48
         model = CascadedNet(mp.param["bins"] * 2, nout)
-        cpk = torch.load(model_path, map_location=self.device, weights_only=False)
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        cpk = torch.load(model_path, map_location=self.device, weights_only=True)
         try:
             model.load_state_dict(cpk)
         except RuntimeError as e:

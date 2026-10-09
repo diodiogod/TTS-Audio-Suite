@@ -35,7 +35,7 @@ def _load_ref_audio(payload: Optional[Dict[str, Any]]) -> Any:
         tensor_path = payload.get("tensor_path")
         if not tensor_path:
             raise RuntimeError("tensor_path payload missing file path")
-        tensor_payload = torch.load(tensor_path, map_location="cpu")
+        tensor_payload = torch.load(tensor_path, map_location="cpu", weights_only=True)
         waveform = tensor_payload["waveform"]
         if isinstance(waveform, torch.Tensor):
             waveform = waveform.squeeze().cpu().numpy()

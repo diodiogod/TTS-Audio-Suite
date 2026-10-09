@@ -276,7 +276,7 @@ class VibeVoiceIsolatedProxy:
             if not output_path.exists():
                 raise RuntimeError("Isolated VibeVoice worker returned no output payload")
 
-            result = torch.load(output_path, map_location="cpu")
+            result = torch.load(output_path, map_location="cpu", weights_only=True)
             waveform = result.get("waveform")
             if isinstance(waveform, torch.Tensor):
                 result["waveform"] = waveform.cpu()

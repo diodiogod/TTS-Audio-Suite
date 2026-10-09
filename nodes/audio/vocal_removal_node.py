@@ -549,6 +549,8 @@ Selects the audio format for separated stems:
                     
                 else: # try python-audio-separator implementation
                     print(f"🔧 Using Audio-Separator engine")
+                    from utils.security.audio_separator_loading import restrict_audio_separator_loaders
+                    restrict_audio_separator_loaders()
                     model_dir = os.path.dirname(model_path)
                     model_name = os.path.basename(model_path)
                     vr_params={"batch_size": 4, "window_size": 512, "aggression": aggressiveness, "enable_tta": False, "enable_post_process": False, "post_process_threshold": 0.2, "high_end_process": "mirroring"}

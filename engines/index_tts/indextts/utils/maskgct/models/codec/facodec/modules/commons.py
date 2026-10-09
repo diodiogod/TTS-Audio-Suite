@@ -208,7 +208,8 @@ def load_F0_models(path):
     F0_model = JDCNet(num_class=1, seq_len=192)
     if not os.path.exists(path):
         path = hf_hub_download(repo_id="Plachta/JDCnet", filename="bst.t7")
-    params = torch.load(path, map_location="cpu")["net"]
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    params = torch.load(path, map_location="cpu", weights_only=True)["net"]
     F0_model.load_state_dict(params)
     _ = F0_model.train()
 
@@ -295,7 +296,8 @@ def load_checkpoint(
     ignore_modules=[],
     is_distributed=False,
 ):
-    state = torch.load(path, map_location="cpu")
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    state = torch.load(path, map_location="cpu", weights_only=True)
     params = state["net"]
     for key in model:
         if key in params and key not in ignore_modules:

@@ -2,6 +2,7 @@
 MOSS dataset rows node for turning staged clips into a training manifest.
 """
 
+from utils.security.path_access import child_path
 import json
 import os
 import sys
@@ -298,9 +299,9 @@ class MossDatasetRowsNode(BaseTTSNode):
 
         input_root = folder_paths.get_input_directory()
         subdir = str(output_subdir or "").strip().strip("/\\")
-        output_dir = os.path.join(input_root, subdir) if subdir else input_root
+        output_dir = child_path(input_root, subdir) if subdir else input_root
         os.makedirs(output_dir, exist_ok=True)
-        manifest_path = os.path.join(output_dir, filename)
+        manifest_path = child_path(output_dir, filename)
 
         if os.path.exists(manifest_path) and not overwrite:
             raise FileExistsError(f"MOSS manifest already exists: {manifest_path}")

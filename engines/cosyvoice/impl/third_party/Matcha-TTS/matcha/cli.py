@@ -84,7 +84,8 @@ def assert_required_models_available(args):
 def load_hifigan(checkpoint_path, device):
     h = AttrDict(v1)
     hifigan = HiFiGAN(h).to(device)
-    hifigan.load_state_dict(torch.load(checkpoint_path, map_location=device)["generator"])
+    # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+    hifigan.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True)["generator"])
     _ = hifigan.eval()
     hifigan.remove_weight_norm()
     return hifigan

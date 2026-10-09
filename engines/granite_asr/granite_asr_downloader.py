@@ -20,6 +20,8 @@ from utils.models.extra_paths import get_preferred_download_path
 import folder_paths
 
 
+from utils.security.path_access import validate_model_paths, allowed_path
+
 class GraniteASRDownloader:
     """Downloader for Granite ASR models using unified download system."""
 
@@ -146,6 +148,7 @@ class GraniteASRDownloader:
         if verbose:
             print("✅ Granite model verification passed")
 
+    @validate_model_paths
     def resolve_model_path(self, model_identifier: str) -> str:
         if not model_identifier:
             model_identifier = "granite-speech-4.1-2b"

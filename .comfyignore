@@ -1,0 +1,14 @@
+# Registry archives contain runtime files and user documentation.
+# These exclusions do not remove anything from the Git repository.
+/.github/
+/tests/
+/scripts/
+/PROJECT_INDEX.md
+/AGENTS.md
+/CLAUDE.md
+/docs/BUMP_SCRIPT_INSTRUCTIONS.md
+
+# Keep the metadata YAML files: the auxiliary registry reads its YAML at runtime.
+/docs/Dev reports/*
+!/docs/Dev reports/tts_audio_suite_engines.yaml
+!/docs/Dev reports/tts_audio_suite_aux_models.yaml

@@ -132,7 +132,8 @@ def build_semantic_model(path_='./models/tts/maskgct/ckpt/wav2vec2bert_stats.pt'
             raise RuntimeError(f"Failed to load w2v-bert-2.0 model: {e}")
 
         semantic_model.eval()
-        stat_mean_var = torch.load(path_)
+        # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+        stat_mean_var = torch.load(path_, weights_only=True)
         semantic_mean = stat_mean_var["mean"]
         semantic_std = torch.sqrt(stat_mean_var["var"])
         return semantic_model, semantic_mean, semantic_std

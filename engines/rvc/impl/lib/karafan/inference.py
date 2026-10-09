@@ -567,7 +567,8 @@ class MusicSeparationModel:
 		if model['Stem'] == "BOTH":
 			device = torch.device(self.GPU_device)
 			mdx23 = tfc_tdf.TFC_TDF_net(self.MDX23_config)
-			mdx23.load_state_dict( torch.load(model['PATH'], map_location = device) )
+   # TTS Audio Suite patch: checkpoint data must not execute pickle globals.
+			mdx23.load_state_dict( torch.load(model['PATH'], map_location = device, weights_only=True) )
 			mdx23 = mdx23.to(device)
 			mdx23.eval()
 

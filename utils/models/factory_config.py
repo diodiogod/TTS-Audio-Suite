@@ -6,6 +6,8 @@ Used by both the unified interface and all model factory functions.
 Ensures all TTS engines use consistent parameters for model loading.
 """
 
+from utils.security.path_access import allowed_path, validate_model_identifier
+import os
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 from utils.device import resolve_torch_device
@@ -13,6 +15,7 @@ from utils.device import resolve_torch_device
 
 RUNTIME_MODE_MAIN = "main_environment"
 RUNTIME_MODE_SHARED = "shared_runtime"
+# Kept as a legacy identifier for stored configurations and older integrations.
 RUNTIME_MODE_DEDICATED = "dedicated_runtime"
 
 _LEGACY_RUNTIME_MODE_MAP = {
@@ -20,9 +23,10 @@ _LEGACY_RUNTIME_MODE_MAP = {
     "isolated": RUNTIME_MODE_SHARED,
     "Main Environment": RUNTIME_MODE_MAIN,
     "⚠️ Shared Runtime": RUNTIME_MODE_SHARED,
-    "⚠️ Dedicated Runtime": RUNTIME_MODE_DEDICATED,
+    RUNTIME_MODE_DEDICATED: RUNTIME_MODE_SHARED,
+    "⚠️ Dedicated Runtime": RUNTIME_MODE_SHARED,
     "Shared Runtime": RUNTIME_MODE_SHARED,
-    "Dedicated Runtime": RUNTIME_MODE_DEDICATED,
+    "Dedicated Runtime": RUNTIME_MODE_SHARED,
 }
 
 
@@ -33,7 +37,14 @@ def normalize_runtime_mode(runtime_mode: Optional[str]) -> str:
 
 
 def runtime_uses_isolation(runtime_mode: Optional[str]) -> bool:
-    return normalize_runtime_mode(runtime_mode) in (RUNTIME_MODE_SHARED, RUNTIME_MODE_DEDICATED)
+    return normalize_runtime_mode(runtime_mode) == RUNTIME_MODE_SHARED
+
+
+def validate_runtime_mode(runtime_mode: str):
+    """Accept the two supported modes and migrate legacy workflow/API values."""
+    if normalize_runtime_mode(runtime_mode) in (RUNTIME_MODE_MAIN, RUNTIME_MODE_SHARED):
+        return True
+    return f"Unsupported runtime mode: {runtime_mode}"
 
 
 @dataclass
@@ -94,6 +105,10 @@ class ModelLoadConfig:
         if self.additional_params is None:
             self.additional_params = {}
 
+        if self.model_path:
+            validate_model_identifier(self.model_path)
+            if os.path.isabs(self.model_path) or os.path.exists(self.model_path):
+                self.model_path = allowed_path(self.model_path)
         self.runtime_mode = normalize_runtime_mode(self.runtime_mode)
 
     def get_cache_key_parts(self) -> Dict[str, Any]:

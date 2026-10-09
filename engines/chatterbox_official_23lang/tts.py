@@ -432,7 +432,7 @@ class ChatterboxOfficial23LangTTS:
             warnings.simplefilter("ignore")
             
             print(f"📦 Loading checkpoint: {unified_model_path.name}")
-            checkpoint = torch.load(unified_model_path, map_location=actual_device)
+            checkpoint = torch.load(unified_model_path, map_location=actual_device, weights_only=True)
             
             # Extract model configuration
             model_config = checkpoint.get('model_config', {})

@@ -193,7 +193,7 @@ class HiggsAudioIsolatedProxy:
             if not output_path.exists():
                 raise RuntimeError("Isolated Higgs Audio worker returned no output payload")
 
-            result = torch.load(output_path, map_location="cpu")
+            result = torch.load(output_path, map_location="cpu", weights_only=True)
             return result["audio_result"], result["generation_info"]
 
     def generate_stateless(self, **kwargs) -> Tuple[Dict[str, Any], str]:

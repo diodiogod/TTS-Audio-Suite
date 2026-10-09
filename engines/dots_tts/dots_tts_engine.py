@@ -4,6 +4,7 @@ Dots TTS engine wrapper.
 Wraps the official dots.tts runtime with ComfyUI-friendly model lifecycle hooks.
 """
 
+from utils.security.data_loading import RestrictedLoadModule, load_dependency_checkpoint
 import os
 import sys
 import types
@@ -108,6 +109,9 @@ class DotsTTSEngine:
         try:
             with self._text_normalizer_compat():
                 from dots_tts.runtime import DotsTtsRuntime
+                from dots_tts.models.dots_tts import core
+                if not isinstance(core.torch, RestrictedLoadModule):
+                    core.torch = RestrictedLoadModule(core.torch, load_dependency_checkpoint)
         except Exception as e:
             for module_name, module in stale_modules:
                 sys.modules.setdefault(module_name, module)
