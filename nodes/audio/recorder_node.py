@@ -167,6 +167,14 @@ class ChatterBoxVoiceCapture:
     FUNCTION = "capture_voice_audio"
     CATEGORY = "TTS Audio Suite/🎵 Audio Processing"
 
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        # Voice Capture records live audio from an input device, so its output
+        # is never reproducible from its inputs. Returning NaN (NaN != NaN)
+        # makes ComfyUI's cache always miss and forces a fresh recording on
+        # every queue. voice_trigger stays for existing-workflow compatibility.
+        return float("nan")
+
     def capture_voice_audio(self, **kwargs):
         sd, sounddevice_error = _load_sounddevice()
         if sd is None:
