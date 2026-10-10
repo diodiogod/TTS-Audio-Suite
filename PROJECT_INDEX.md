@@ -126,7 +126,7 @@
 ### Audio / Video Nodes
 - `nodes/audio/analyzer_node.py` - Audio Wave Analyzer
 - `nodes/audio/vocal_removal_node.py` - Vocal/instrumental separation
-- `nodes/audio/recorder_node.py` - Microphone recording
+- `nodes/audio/recorder_node.py` - Saved microphone clip output with independent recording, preview, and trimming controls
 - `nodes/audio/merge_audio_node.py` - Audio mixing
 - `nodes/video/mouth_movement_analyzer_node.py` - Silent speech timing extractor
 - `nodes/models/load_rvc_model_node.py` - RVC model loader
@@ -155,6 +155,8 @@
   - Higgs Audio 2
 
 ### Audio (`utils/audio/`)
+- `voice_capture.py`, `voice_capture_api.py` - Background microphone recording and standalone capture controls; saved clips in ComfyUI input/voice_capture/
+- `trim.py` - Shared audio-range selection for Character Voices and Voice Capture
 - `processing.py` - Tensor manipulation, normalization, format conversion
 - `cache.py` - Unified TTS caching system
 - `chunk_combiner.py` - Smart chunk combination (auto/concatenate/crossfade/silence_padding)

@@ -109,35 +109,9 @@ Selecting a library voice loads its transcription here automatically. Edits are 
 
     @staticmethod
     def _trim_audio(audio_tensor, trim_start: float, trim_end: float):
-        """Return the effective audio and whether a non-full trim was applied."""
-        if not isinstance(audio_tensor, dict):
-            return audio_tensor, False
+        from utils.audio.trim import trim_audio
 
-        waveform = audio_tensor.get("waveform")
-        sample_rate = int(audio_tensor.get("sample_rate", 0) or 0)
-        if waveform is None or sample_rate <= 0:
-            return audio_tensor, False
-
-        total_samples = int(waveform.shape[-1])
-        duration = total_samples / sample_rate
-        start = max(0.0, min(float(trim_start or 0.0), duration))
-        requested_end = float(trim_end or 0.0)
-        end = duration if requested_end <= 0.0 else max(0.0, min(requested_end, duration))
-
-        trim_applied = start > 1e-6 or end < duration - 1e-6
-        if not trim_applied:
-            return audio_tensor, False
-        if end <= start:
-            raise ValueError(
-                f"Invalid Character Voices trim range: start {start:.2f}s must be before end {end:.2f}s"
-            )
-
-        start_sample = min(total_samples, max(0, round(start * sample_rate)))
-        end_sample = min(total_samples, max(start_sample + 1, round(end * sample_rate)))
-        return {
-            "waveform": waveform[..., start_sample:end_sample].contiguous(),
-            "sample_rate": sample_rate,
-        }, True
+        return trim_audio(audio_tensor, trim_start, trim_end, component="Character Voices")
 
     @staticmethod
     def _format_audio_output(audio_tensor):

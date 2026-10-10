@@ -1,6 +1,7 @@
 // ChatterBox Voice Capture Extension
 
 import { app } from "../../scripts/app.js";
+import { setupVoiceCaptureControls } from "./voice_capture_controls.js";
 
 const VOICE_CAPTURE_CLASSES = new Set(["ChatterBoxVoiceCaptureDiogod", "ChatterBoxVoiceCapture"]);
 const DEFAULT_DEVICE_LABEL = "System Default Input Device";
@@ -149,89 +150,9 @@ async function refreshInputDevices(node, { auto = false } = {}) {
 
 app.registerExtension({
     name: "ChatterBoxVoiceCapture.UI",
-    async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (!isVoiceCaptureNode(nodeData)) {
-            return;
-        }
-
-        const onNodeCreated = nodeType.prototype.onNodeCreated;
-        nodeType.prototype.onNodeCreated = function() {
-            const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-
-            this.setSize([420, 340]);
-            this.isRecording = false;
-            this.recordingTimeout = null;
-
-            setTimeout(() => {
-                hideWidget(findWidgetByName(this, "voice_trigger"));
-                ensureDeviceWidgets(this);
-                app.graph.setDirtyCanvas(true);
-            }, 100);
-
-            return result;
-        };
-
-        nodeType.prototype.onDrawForeground = function(ctx) {
-            const size = this.size;
-            const w = size[0];
-            const h = size[1];
-
-            const buttonX = 20;
-            const buttonY = h - 70;
-            const buttonW = w - 40;
-            const buttonH = 40;
-
-            ctx.fillStyle = this.isRecording ? "#ff4444" : "#44aa44";
-            ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
-
-            ctx.strokeStyle = this.isRecording ? "#ff0000" : "#00aa00";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(buttonX, buttonY, buttonW, buttonH);
-
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 14px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-
-            const text = this.isRecording ? "🔴 RECORDING..." : "🎙️ START RECORDING";
-            ctx.fillText(text, w / 2, buttonY + buttonH / 2);
-
-            this.buttonArea = [buttonX, buttonY, buttonW, buttonH];
-        };
-
-        nodeType.prototype.onMouseDown = function(event, localPos) {
-            if (!this.buttonArea) return false;
-
-            const [x, y, w, h] = this.buttonArea;
-            if (localPos[0] < x || localPos[0] > x + w || localPos[1] < y || localPos[1] > y + h) {
-                return false;
-            }
-
-            if (!this.isRecording) {
-                this.isRecording = true;
-
-                this.recordingTimeout = setTimeout(() => {
-                    this.isRecording = false;
-                    app.graph.setDirtyCanvas(true);
-                }, 10000);
-
-                const triggerWidget = findWidgetByName(this, "voice_trigger");
-                if (triggerWidget) {
-                    triggerWidget.value = (triggerWidget.value || 0) + 1;
-                }
-
-                app.queuePrompt();
-            } else {
-                this.isRecording = false;
-                if (this.recordingTimeout) {
-                    clearTimeout(this.recordingTimeout);
-                }
-            }
-
-            app.graph.setDirtyCanvas(true);
-            return true;
-        };
-    }
+    nodeCreated(node) {
+        if (!isVoiceCaptureNode(node)) return;
+        ensureDeviceWidgets(node);
+        setupVoiceCaptureControls(node);
+    },
 });
-
-console.log("🎙️ ChatterBox: Extension loaded");

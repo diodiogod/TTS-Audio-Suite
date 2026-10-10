@@ -60,6 +60,15 @@ function createNumberInput(labelText) {
 }
 
 export function createCharacterVoiceTrimUI(onRangeChange, onManageAliases) {
+    return createAudioTrimUI(onRangeChange, { onHeaderClick: onManageAliases });
+}
+
+export function createAudioTrimUI(onRangeChange, {
+    onHeaderClick,
+    emptyTitle = "No library voice selected",
+    emptyBadge = "NO VOICE",
+    trimWarningText = "Trimmed reference: make sure the transcription matches the selected speech.",
+} = {}) {
     const root = document.createElement("div");
     Object.assign(root.style, {
         position: "relative",
@@ -87,29 +96,32 @@ export function createCharacterVoiceTrimUI(onRangeChange, onManageAliases) {
         margin: "-3px -4px",
         borderRadius: "4px",
         outline: "none",
-        cursor: "pointer",
+        cursor: onHeaderClick ? "pointer" : "default",
         transition: "background 120ms ease, box-shadow 120ms ease",
     });
-    header.tabIndex = 0;
-    header.setAttribute("role", "button");
-    header.setAttribute("aria-label", "Manage character aliases");
-    header.title = "Manage character aliases";
-    const setHeaderHighlight = (active) => {
-        header.style.background = active ? "rgba(56, 189, 248, 0.08)" : "transparent";
-        header.style.boxShadow = active ? "inset 0 0 0 1px rgba(56, 189, 248, 0.22)" : "none";
-    };
-    header.addEventListener("mouseenter", () => setHeaderHighlight(true));
-    header.addEventListener("mouseleave", () => {
-        if (document.activeElement !== header) setHeaderHighlight(false);
-    });
-    header.addEventListener("focus", () => setHeaderHighlight(true));
-    header.addEventListener("blur", () => setHeaderHighlight(false));
-    header.addEventListener("click", () => onManageAliases?.());
-    header.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        onManageAliases?.();
-    });
+    if (onHeaderClick) {
+        header.tabIndex = 0;
+        header.setAttribute("role", "button");
+        header.setAttribute("aria-label", "Manage character aliases");
+        header.title = "Manage character aliases";
+        const setHeaderHighlight = (active) => {
+            header.style.background = active ? "rgba(56, 189, 248, 0.08)" : "transparent";
+            header.style.boxShadow = active ? "inset 0 0 0 1px rgba(56, 189, 248, 0.22)" : "none";
+        };
+        header.addEventListener("mouseenter", () => setHeaderHighlight(true));
+        header.addEventListener("mouseleave", () => {
+            if (document.activeElement !== header) setHeaderHighlight(false);
+        });
+        header.addEventListener("focus", () => setHeaderHighlight(true));
+        header.addEventListener("blur", () => setHeaderHighlight(false));
+        header.addEventListener("click", () => onHeaderClick());
+        header.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            onHeaderClick();
+        });
+
+    }
     const title = document.createElement("span");
     Object.assign(title.style, {
         flex: "1 1 auto",
@@ -120,7 +132,7 @@ export function createCharacterVoiceTrimUI(onRangeChange, onManageAliases) {
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
     });
-    title.textContent = "No library voice selected";
+    title.textContent = emptyTitle;
     const badge = document.createElement("span");
     Object.assign(badge.style, {
         flexShrink: "0",
@@ -131,7 +143,7 @@ export function createCharacterVoiceTrimUI(onRangeChange, onManageAliases) {
         fontSize: "10px",
         fontWeight: "600",
     });
-    badge.textContent = "NO VOICE";
+    badge.textContent = emptyBadge;
     header.append(title, badge);
 
     const audio = document.createElement("audio");
@@ -267,7 +279,7 @@ export function createCharacterVoiceTrimUI(onRangeChange, onManageAliases) {
         visibility: "hidden",
         whiteSpace: "nowrap",
     });
-    trimWarning.textContent = "Trimmed reference: make sure the transcription matches the selected speech.";
+    trimWarning.textContent = trimWarningText;
     trimWarning.title = "Review the transcription so it matches only the selected speech.";
     const expandHint = document.createElement("div");
     expandHint.setAttribute("aria-hidden", "true");
@@ -444,7 +456,12 @@ export function createCharacterVoiceTrimUI(onRangeChange, onManageAliases) {
         getDuration: () => duration,
         getRange: () => ({ start, end }),
         setTitle(value) {
-            title.textContent = value || "No library voice selected";
+            title.textContent = value || emptyTitle;
+        },
+        setStatus(value, color = "#38bdf8") {
+            badge.textContent = value || emptyBadge;
+            badge.style.color = color;
+            badge.style.background = "rgba(56, 189, 248, 0.12)";
         },
         setCustomState(isCustom, sourceName = "") {
             title.textContent = isCustom && sourceName
