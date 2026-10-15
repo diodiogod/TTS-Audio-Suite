@@ -25,6 +25,7 @@ base_spec.loader.exec_module(base_module)
 BaseTTSNode = base_module.BaseTTSNode
 
 from engines.moss_tts.moss_tts import MossTTSEngine
+from engines.moss_tts.quantization import QUANTIZATION_MODES, normalize_quantization
 from utils.models.extra_paths import get_all_tts_model_paths
 from utils.downloads.unified_downloader import UnifiedDownloader
 
@@ -325,6 +326,18 @@ class MossTTSEngineNode(BaseTTSNode):
                         "If this field is filled, it overrides the local LoRA dropdown."
                     )
                 }),
+                # Append widgets to preserve positional values in saved workflows.
+                "quantization": (list(QUANTIZATION_MODES), {
+                    "default": "none",
+                    "tooltip": (
+                        "Quantize the language backbone once when loading the original checkpoint.\n"
+                        "none: existing floating-point loading.\n"
+                        "bnb_int8: 8-bit weights. bnb_nf4: 4-bit NF4 weights with greater memory savings.\n"
+                        "Requires an NVIDIA CUDA GPU, bitsandbytes, and accelerate.\n"
+                        "Audio prediction heads stay at the selected dtype; the audio tokenizer stays on CPU.\n"
+                        "Generation speed and quality may change. Unloading releases quantized weights; the next run reloads them."
+                    )
+                }),
             },
         }
 
@@ -549,7 +562,9 @@ class MossTTSEngineNode(BaseTTSNode):
         speaker5_voice=None,
         local_lora_adapter: str = "None",
         lora_adapter_override: str = "",
+        quantization: str = "none",
     ):
+        quantization = normalize_quantization(quantization)
         resolved_model_variant = self._resolve_model_variant(model_variant, multi_speaker_mode)
         if resolved_model_variant != model_variant:
             print(f"🔄 MOSS-TTS: Resolved model selection '{model_variant}' -> '{resolved_model_variant}'")
@@ -606,10 +621,13 @@ class MossTTSEngineNode(BaseTTSNode):
             "speaker4_voice": speaker4_voice,
             "speaker5_voice": speaker5_voice,
             "lora_adapter": resolved_lora_adapter or None,
+            "quantization": quantization,
         }
 
         print(f"⚙️ MOSS-TTS: Configured {resolved_model_variant} ({model_role}) on {device}")
         print(f"   Mode: {multi_speaker_mode}")
+        if quantization != "none":
+            print(f"   Load-time quantization: {quantization}")
         print(
             "   Language={language}, temp={temperature}, top_p={top_p}, top_k={top_k}, rep_penalty={rep}, max_new_tokens={max_new_tokens}".format(
                 language=language,

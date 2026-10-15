@@ -1506,6 +1506,7 @@ def register_moss_tts_factory():
             dtype=dtype,
             attn_implementation=attn_implementation,
             lora_adapter=lora_adapter,
+            quantization=additional_params.get("quantization", "none"),
         )
         engine._ensure_model_loaded()
         print(f"✅ MOSS-TTS model '{model_name}' loaded successfully")

@@ -461,6 +461,11 @@ class MossTTSCacheKeyGenerator(CacheKeyGenerator):
             'engine': 'moss_tts',
         }
 
+        # Preserve existing full-precision cache keys for old workflows.
+        quantization = params.get('quantization', 'none')
+        if quantization != 'none':
+            cache_data['quantization'] = quantization
+
         cache_string = str(sorted(cache_data.items()))
         return hashlib.md5(cache_string.encode()).hexdigest()
 

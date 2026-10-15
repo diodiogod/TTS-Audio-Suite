@@ -14,6 +14,14 @@ if TYPE_CHECKING:
 class MossTTSHandler(GenericHandler):
     """Keep normal offloading, with direct release for permanent removal."""
 
+    def partially_load(self, wrapper: "ComfyUIModelWrapper", device: str) -> bool:
+        """Let MOSS reload quantized weights and keep its audio tokenizer on CPU."""
+        model = wrapper._model_ref() if wrapper._model_ref else wrapper.model
+        if model is None:
+            return False
+        model.to(device)
+        return True
+
     @staticmethod
     def release(wrapper: "ComfyUIModelWrapper") -> int:
         model = wrapper._model_ref() if wrapper._model_ref else wrapper.model

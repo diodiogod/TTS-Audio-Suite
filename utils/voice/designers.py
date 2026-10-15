@@ -232,6 +232,7 @@ class MossVoiceDesignerProvider:
             dtype=config.get("dtype", "auto"),
             attn_implementation=config.get("attn_implementation", "auto"),
             codec_model=spec["codec_model"],
+            quantization=config.get("quantization", "none"),
         )
         params = {
             "model_variant": selected_model,
@@ -246,6 +247,7 @@ class MossVoiceDesignerProvider:
             "audio_top_k": spec["audio_top_k"],
             "audio_repetition_penalty": spec["audio_repetition_penalty"],
             "max_new_tokens": spec["max_new_tokens"],
+            "quantization": config.get("quantization", "none"),
         }
         waveform = adapter.generate_with_pause_tags(
             reference_text, voice_ref=None, params=params,

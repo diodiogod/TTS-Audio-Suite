@@ -1037,6 +1037,8 @@ Per-segment overrides are supported with `[]` parameter syntax for whole-segment
 * [📖 MOSS Training Guide](docs/MOSS_TRAINING_GUIDE.md)
 * [📖 Parameter Switching Guide](docs/PARAMETER_SWITCHING_GUIDE.md)
 
+**Load-time quantization:** The engine's optional `quantization` selector offers `none` (default), `bnb_int8`, and `bnb_nf4`. INT8/NF4 quantize the language backbone when loading the original checkpoint and keep it quantized between runs. They require an NVIDIA CUDA GPU, BitsAndBytes, and Accelerate. Audio prediction heads remain at the selected floating dtype, and the shared audio tokenizer stays on CPU. Quantization reduces weight memory, but generation still needs additional VRAM and speed/quality can change. Clear VRAM releases quantized weights; the next generation reloads them. The selector is appended after existing widgets so older workflows retain their saved values and default to `none`.
+
 **Training status:**
 
 * **Initial MOSS LoRA training support is now integrated** through the unified `🎓 Model Training` flow.

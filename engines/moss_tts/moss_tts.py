@@ -21,6 +21,7 @@ import torch
 import torch.nn.functional as F
 
 from engines.moss_tts.model_specs import MOSS_MODEL_SPECS
+from engines.moss_tts.quantization import normalize_quantization, quantized_load_kwargs
 
 
 @contextmanager
@@ -99,6 +100,7 @@ class MossTTSEngine:
         dtype: str = "auto",
         attn_implementation: str = "auto",
         lora_adapter: Optional[str] = None,
+        quantization: str = "none",
     ):
         self.model_path = model_path
         self.codec_path = codec_path
@@ -107,6 +109,7 @@ class MossTTSEngine:
         self.dtype = self._resolve_dtype(dtype)
         self.attn_implementation = self._resolve_attn_implementation(attn_implementation)
         self.lora_adapter = str(lora_adapter or "").strip() or None
+        self.quantization = normalize_quantization(quantization)
         self._model = None
         self._processor = None
         self._audio_tokenizer_device = "cpu"
@@ -279,6 +282,8 @@ class MossTTSEngine:
 
         self._check_transformers_version()
         self._validate_lora_compatibility()
+        with _suppress_bitsandbytes_windows_gaudi_probe():
+            quantization_kwargs = quantized_load_kwargs(self.quantization, self.device, self.dtype)
         from transformers import AutoTokenizer
         from engines.moss_tts.impl.audio_tokenizer.modeling_moss_audio_tokenizer import (
             MossAudioTokenizerModel,
@@ -346,11 +351,15 @@ class MossTTSEngine:
             if hasattr(processor.audio_tokenizer, "eval"):
                 processor.audio_tokenizer.eval()
 
-        model = MossModel.from_pretrained(
-            self.model_path,
-            attn_implementation=self.attn_implementation,
-            dtype=self.dtype,
-        )
+        if quantization_kwargs:
+            print(f"   Load-time quantization: {self.quantization} (language backbone only)")
+        with _suppress_bitsandbytes_windows_gaudi_probe():
+            model = MossModel.from_pretrained(
+                self.model_path,
+                attn_implementation=self.attn_implementation,
+                dtype=self.dtype,
+                **quantization_kwargs,
+            )
         if self.lora_adapter:
             try:
                 with _suppress_bitsandbytes_windows_gaudi_probe():
@@ -361,7 +370,8 @@ class MossTTSEngine:
                 ) from e
             # TTS Audio Suite Patch: allow loading MOSS PEFT/LoRA adapters for inference.
             model = PeftModel.from_pretrained(model, self.lora_adapter)
-        model = model.to(self.device)
+        if not quantization_kwargs:
+            model = model.to(self.device)
         model_cfg_runtime = getattr(model, "config", None)
         resolved_pad_token_id = tokenizer_pad_id
         if resolved_pad_token_id is None:
@@ -401,7 +411,19 @@ class MossTTSEngine:
     def to(self, device):
         """Move loaded MOSS components for ComfyUI Clear VRAM integration."""
         self.device = str(device)
-        if self._model is not None and hasattr(self._model, "to"):
+        if self.quantization != "none":
+            target = torch.device(device)
+            current = next(self._model.parameters()).device if self._model is not None else None
+            if target.type == "cuda" and target.index is None:
+                target = torch.device("cuda", torch.cuda.current_device())
+            if target.type == "cpu" or current != target:
+                # BNB weights cannot safely follow normal CPU/GPU migration.
+                # Keep the engine shell cached and reload quantized weights on demand.
+                self._model = None
+                self._processor = None
+                if target.type != "cpu":
+                    self._ensure_model_loaded()
+        elif self._model is not None and hasattr(self._model, "to"):
             self._model = self._model.to(device)
         audio_tokenizer = getattr(self._processor, "audio_tokenizer", None)
         if audio_tokenizer is not None and hasattr(audio_tokenizer, "to"):

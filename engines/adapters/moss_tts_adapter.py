@@ -42,6 +42,7 @@ class MossTTSEngineAdapter:
         codec_model: str = "MOSS-Audio-Tokenizer",
         lora_adapter: Optional[str] = None,
         defer_load: bool = False,
+        quantization: str = "none",
     ):
         from utils.models.unified_model_interface import unified_model_interface
 
@@ -56,6 +57,7 @@ class MossTTSEngineAdapter:
                 "attn_implementation": attn_implementation,
                 "codec_model": codec_model,
                 "lora_adapter": lora_adapter,
+                "quantization": quantization,
             },
         )
         self._last_config = config
@@ -70,8 +72,12 @@ class MossTTSEngineAdapter:
         attn_implementation: str = "auto",
         codec_model: str = "MOSS-Audio-Tokenizer",
         lora_adapter: Optional[str] = None,
+        quantization: str = "none",
     ):
-        self.load_model(model_variant, device, dtype, attn_implementation, codec_model, lora_adapter)
+        self.load_model(
+            model_variant, device, dtype, attn_implementation, codec_model, lora_adapter,
+            quantization=quantization,
+        )
 
     def _get_engine(self):
         if self._last_config is None:
@@ -142,6 +148,7 @@ class MossTTSEngineAdapter:
             dtype=params.get("dtype", "auto"),
             attn_implementation=params.get("attn_implementation", "auto"),
             lora_adapter=lora_adapter,
+            quantization=params.get("quantization", "none"),
             character=character_name or "narrator",
         )
 
@@ -336,6 +343,7 @@ class MossTTSEngineAdapter:
             dtype=params.get("dtype", "auto"),
             attn_implementation=params.get("attn_implementation", "auto"),
             character="native_multispeaker",
+            quantization=params.get("quantization", "none"),
         )
 
         cached_audio = self.audio_cache.get_cached_audio(cache_key)

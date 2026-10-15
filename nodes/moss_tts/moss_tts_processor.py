@@ -105,6 +105,7 @@ class MossTTSProcessor:
             attn_implementation=config.get("attn_implementation", "auto"),
             codec_model=config.get("codec_model", "MOSS-Audio-Tokenizer"),
             lora_adapter=config.get("lora_adapter"),
+            quantization=config.get("quantization", "none"),
         )
 
     def update_config(self, new_config: Dict[str, Any]) -> None:
@@ -123,6 +124,7 @@ class MossTTSProcessor:
             config.get("attn_implementation", "auto"),
             config.get("codec_model", "MOSS-Audio-Tokenizer"),
             config.get("lora_adapter"),
+            config.get("quantization", "none"),
         )
 
     def _language_name_to_code(self, language_input: Optional[str]) -> str:

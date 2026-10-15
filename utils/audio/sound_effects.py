@@ -107,6 +107,7 @@ class MossSoundEffectV1Provider:
             codec_model=spec["codec_model"],
             lora_adapter=config.get("lora_adapter"),
             defer_load=True,
+            quantization=config.get("quantization", "none"),
         )
         params = {
             "model_variant": selected_model,
@@ -122,6 +123,7 @@ class MossSoundEffectV1Provider:
             "audio_repetition_penalty": config.get("repetition_penalty", spec["audio_repetition_penalty"]),
             "max_new_tokens": config.get("max_new_tokens", spec["max_new_tokens"]),
             "lora_adapter": config.get("lora_adapter"),
+            "quantization": config.get("quantization", "none"),
             "enable_audio_cache": bool(enable_audio_cache),
         }
         started = time.perf_counter()
