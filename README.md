@@ -305,6 +305,7 @@ dataset formats, training workflow, adapter loading, and CPU-safe preflight.
 * **Audio Wave Analyzer**: Interactive waveform visualization for precise timing extraction
 * **Multi-language Support**: English, German, Spanish, French, Japanese models
 * **Speech Editing Workflows**: Advanced F5-TTS editing capabilities
+* **Reference preparation**: [F5-TTS Reference and Inference Guidelines](docs/F5_TTS_REFERENCE_GUIDE.md)
 
 </details>
 
@@ -443,15 +444,14 @@ VibeVoice and KugelAudio run directly in the suite's Transformers 5 main environ
 <details>
 <summary><h3>Character and Narrator Switching</h3></summary>
 
-**NEW in v3.1.0**: Seamless character switching for both F5TTS and ChatterBox engines!
+Use shared `[CharacterName]` tags in TTS Text and TTS SRT to switch between saved voices. Engine and mode determine reference requirements and supported languages.
 
 * **Multi-Character Support**: Use `[CharacterName]` tags to switch between different voices
 * **Voice Folder Integration**: Organized character voice management system
-* **🏷️ Character Aliases**: User-friendly alias system - use `[Alice]` instead of `[female_01]` with `#character_alias_map.txt`
-* **Robust Fallback**: Graceful handling when characters not found (no errors!)
-* **Universal Compatibility**: Works with both F5TTS and ChatterBox TTS engines
+* **🏷️ Character Alias Manager**: Visually assign voices and languages to names such as `[Alice]` → [demo and setup](docs/CHARACTER_SWITCHING_GUIDE.md#aliases-optional)
+* **Narrator Fallback**: Unknown character names use the narrator voice with a warning
+* **Language Tags**: Request a supported language with `[de:Alice]`
 * **SRT Integration**: Character switching within subtitle timing
-* **Backward Compatible**: Existing workflows work unchanged
 
 **📖 [Complete Character Switching Guide](docs/CHARACTER_SWITCHING_GUIDE.md)**
 

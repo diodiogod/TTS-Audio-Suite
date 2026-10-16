@@ -104,17 +104,11 @@ ComfyUI/models/voices/
 
 Requirements:
 
-- WAV, clean speech, 5-30s (24kHz recommended).
+- Clean speech, shorter than 12 seconds, with a little trailing silence.
 - Text must match spoken audio.
 - Naming: `name.wav` + `name.reference.txt` (preferred) or `name.txt`.
 
-Inference guidelines:
-
-1. Keep reference audio under ~12s with a little trailing silence.
-2. Use uppercase letter-by-letter only when desired.
-3. Use spaces/punctuation for explicit pauses.
-4. Keep a space after sentence-ending punctuation.
-5. For Chinese output, preprocess numbers if needed.
+See [F5-TTS Reference and Inference Guidelines](F5_TTS_REFERENCE_GUIDE.md) for sample rates, reference clipping, pacing, and text preparation.
 
 ## Higgs Audio 2
 
