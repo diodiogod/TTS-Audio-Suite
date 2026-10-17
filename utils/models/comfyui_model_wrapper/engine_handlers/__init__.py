@@ -6,6 +6,7 @@ from .base_handler import BaseEngineHandler
 from .vibevoice_handler import VibeVoiceHandler
 from .higgs_audio_handler import HiggsAudioHandler
 from .generic_handler import GenericHandler
+from .index_tts_handler import IndexTTSHandler
 from .step_audio_editx_handler import StepAudioEditXHandler
 from .cosyvoice_handler import CosyVoiceHandler
 from .qwen3_tts_handler import Qwen3TTSHandler
@@ -37,6 +38,8 @@ def get_engine_handler(engine: str) -> BaseEngineHandler:
     elif engine == "qwen3_tts":
         # Qwen3-TTS handler for CUDA graph cleanup
         return Qwen3TTSHandler()
+    elif engine == "index_tts":
+        return IndexTTSHandler()
     elif engine == "moss_tts":
         # Large MOSS checkpoints must be released, not copied into system RAM.
         return MossTTSHandler()
@@ -53,6 +56,7 @@ __all__ = [
     'VibeVoiceHandler',
     'HiggsAudioHandler',
     'GenericHandler',
+    'IndexTTSHandler',
     'StepAudioEditXHandler',
     'CosyVoiceHandler',
     'Qwen3TTSHandler',

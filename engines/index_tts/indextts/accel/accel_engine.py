@@ -28,6 +28,10 @@ class Sampler(nn.Module):
 
 
 class AccelInferenceEngine:
+    # TTS Audio Suite patch: Reuse one capture stream per GPU so reloads do not
+    # accumulate PyTorch's per-stream cuBLAS workspaces.
+    _capture_streams = {}
+
     def __init__(
         self,
         model,
@@ -76,6 +80,23 @@ class AccelInferenceEngine:
         self.graph_vars = None
         self.graph_pool = None
         self.graph_captured = False
+
+    def release(self):
+        # TTS Audio Suite patch: Captured graphs and the separate accelerated
+        # model/KV cache retain CUDA allocations outside the parent nn.Module.
+        # Discard them before moving the parent; generation rebuilds this engine.
+        if self.graphs:
+            torch.cuda.synchronize(next(self.model.parameters()).device)
+        self.graphs.clear()
+        self.graph_vars = None
+        self.graph_pool = None
+        self.graph_captured = False
+        self.current_sequences.clear()
+        reset_forward_context()
+        self.kv_manager = None
+        self.model = None
+        self.lm_head = None
+        self.sampler = None
 
     def _prepare_prefill(self, requests: List[Seq]):
         input_ids = []
@@ -217,6 +238,12 @@ class AccelInferenceEngine:
     @torch.inference_mode()
     def _capture_cuda_graphs(self, tts_mel_embedding=None, tts_text_pos_embedding=None):
         print("Capturing CUDA graphs for decode optimization...")
+        # TTS Audio Suite patch: PyTorch's default capture stream can belong to
+        # another GPU after reload; capture on the accelerated model's device.
+        device = next(self.model.parameters()).device
+        capture_stream = self._capture_streams.get(device)
+        if capture_stream is None:
+            capture_stream = self._capture_streams[device] = torch.cuda.Stream(device=device)
         max_bs = 8  # Support up to batch size 8
         max_num_blocks = (2048 + self.block_size - 1) // self.block_size
         model_dtype = next(self.model.parameters()).dtype
@@ -270,7 +297,7 @@ class AccelInferenceEngine:
                 ).last_hidden_state
             outputs[:bs] = out.squeeze(1) if out.dim() == 3 else out
 
-            with torch.cuda.graph(graph, self.graph_pool):
+            with torch.cuda.graph(graph, self.graph_pool, stream=capture_stream):
                 if use_tts:
                     assert tts_mel_embedding is not None
                     assert tts_text_pos_embedding is not None

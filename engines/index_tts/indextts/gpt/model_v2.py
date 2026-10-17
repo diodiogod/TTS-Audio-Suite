@@ -428,6 +428,40 @@ class UnifiedVoice(nn.Module):
         self.use_accel = use_accel
         self.accel_engine = None  # Will be initialized in post_init_gpt2_config
 
+    def _apply(self, fn, recurse=True):
+        # TTS Audio Suite patch: The non-Module acceleration engine owns a second
+        # GPT, KV cache and CUDA graphs. Release it before any device/dtype move,
+        # including low-VRAM stage offloads, and rebuild it for the next render.
+        if getattr(self, "accel_engine", None) is not None:
+            self.accel_engine.release()
+            self.accel_engine = None
+        return super()._apply(fn, recurse=recurse)
+
+    def _init_accel_engine(self):
+        # TTS Audio Suite patch: Rebuild acceleration from the retained GPT
+        # weights on its actual device, without reloading a checkpoint.
+        parameter = next(self.gpt.parameters())
+        if parameter.device.type != "cuda":
+            return
+
+        from indextts.accel import GPT2AccelModel, AccelInferenceEngine
+
+        with torch.cuda.device(parameter.device):
+            accel_gpt = GPT2AccelModel(self.inference_model.config)
+            accel_gpt.load_state_dict(self.gpt.state_dict(), strict=False)
+            accel_gpt = accel_gpt.to(device=parameter.device, dtype=parameter.dtype).eval()
+            self.accel_engine = AccelInferenceEngine(
+                model=accel_gpt,
+                lm_head=nn.Sequential(self.final_norm, self.mel_head),
+                num_layers=self.layers,
+                num_heads=self.heads,
+                head_dim=self.model_dim // self.heads,
+                block_size=256,
+                num_blocks=16,
+                use_cuda_graph=True,
+            )
+        print("acceleration engine initialized")
+
     def post_init_gpt2_config(self, use_deepspeed=False, kv_cache=False, half=False):
         seq_length = self.max_mel_tokens + self.max_text_tokens + 2
         gpt_config = GPT2Config(
@@ -458,33 +492,6 @@ class UnifiedVoice(nn.Module):
                     print("   Falling back to standard inference")
                     self.use_accel = False
 
-        if self.use_accel and torch.cuda.is_available():
-
-            from indextts.accel import GPT2AccelModel, AccelInferenceEngine
-
-            # Create accel model
-            accel_gpt = GPT2AccelModel(gpt_config)
-            accel_gpt.load_state_dict(self.gpt.state_dict(), strict=False)
-
-            if half:
-                accel_gpt = accel_gpt.half().cuda()
-            else:
-                accel_gpt = accel_gpt.cuda()
-            accel_gpt.eval()
-
-            lm_head_with_norm = nn.Sequential(self.final_norm, self.mel_head)
-            self.accel_engine = AccelInferenceEngine(
-                model=accel_gpt,
-                lm_head=lm_head_with_norm,
-                num_layers=self.layers,
-                num_heads=self.heads,
-                head_dim=self.model_dim // self.heads,
-                block_size=256,
-                num_blocks=16,  # Reduce to save memory (16*256 = 4096 tokens capacity)
-                use_cuda_graph=True,
-            )
-            print("acceleration engine initialized")
-
         self.inference_model = GPT2InferenceModel(
             gpt_config,
             self.gpt,
@@ -513,6 +520,8 @@ class UnifiedVoice(nn.Module):
 
         # self.inference_model = PrunedGPT2InferenceModel(gpt_config, self.gpt, self.mel_pos_embedding, self.mel_embedding, self.final_norm, self.mel_head)
         self.gpt.wte = self.mel_embedding
+        if self.use_accel:
+            self._init_accel_engine()
 
     def build_aligned_inputs_and_targets(self, input, start_token, stop_token):
         inp = F.pad(input, (1, 0), value=start_token)
@@ -832,17 +841,22 @@ class UnifiedVoice(nn.Module):
         max_length = (trunc_index + self.max_mel_tokens - 1) if max_generate_length is None else trunc_index + max_generate_length
 
         # Use accel engine if available (single sequence only)
+        # TTS Audio Suite patch: Device movement discards GPU-only acceleration
+        # state; recreate it lazily after reload or a low-VRAM stage load.
+        if self.use_accel and self.accel_engine is None and inputs.is_cuda and num_return_sequences == 1:
+            self._init_accel_engine()
         if self.accel_engine is not None and num_return_sequences == 1:
-            output = self.accel_engine.generate(
-                inputs,  # fake input_ids (all 1s + start_mel_token)
-                max_new_tokens=max_length - trunc_index,
-                attention_mask=attention_mask,
-                temperature=hf_generate_kwargs.get('temperature', 1),
-                stop_tokens=[self.stop_mel_token],
-                tts_embeddings=inputs_embeds,  # [pad][cond][text] embeddings (87 tokens, NO start_mel_token)
-                tts_mel_embedding=self.inference_model.embeddings,  # mel_embedding layer
-                tts_text_pos_embedding=self.inference_model.text_pos_embedding,  # text_pos_embedding layer
-            )
+            with torch.cuda.device(inputs.device):
+                output = self.accel_engine.generate(
+                    inputs,  # fake input_ids (all 1s + start_mel_token)
+                    max_new_tokens=max_length - trunc_index,
+                    attention_mask=attention_mask,
+                    temperature=hf_generate_kwargs.get('temperature', 1),
+                    stop_tokens=[self.stop_mel_token],
+                    tts_embeddings=inputs_embeds,  # [pad][cond][text] embeddings (87 tokens, NO start_mel_token)
+                    tts_mel_embedding=self.inference_model.embeddings,  # mel_embedding layer
+                    tts_text_pos_embedding=self.inference_model.text_pos_embedding,  # text_pos_embedding layer
+                )
         else:
             output = self.inference_model.generate(inputs,
                                                 bos_token_id=self.start_mel_token, pad_token_id=self.stop_mel_token,
