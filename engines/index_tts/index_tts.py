@@ -509,9 +509,9 @@ class IndexTTSEngine:
                         if hasattr(component, 'to'):
                             setattr(self._tts_engine, attr_name, component.to(device))
 
-            # Update device attribute on engine
-            if hasattr(self._tts_engine, 'device'):
-                self._tts_engine.device = torch.device(device) if isinstance(device, str) else device
+                # Update device attribute on engine (its own to() keeps it as a string)
+                if hasattr(self._tts_engine, 'device'):
+                    self._tts_engine.device = torch.device(device) if isinstance(device, str) else device
 
         return self
 

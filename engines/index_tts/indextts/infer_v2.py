@@ -21,6 +21,7 @@ from indextts.gpt.model_v2 import UnifiedVoice
 from indextts.utils.maskgct_utils import build_semantic_model, build_semantic_codec
 from indextts.utils.checkpoint import load_checkpoint
 from indextts.utils.front import TextNormalizer, TextTokenizer
+from indextts.utils.module_device import move_module
 
 from indextts.s2mel.modules.commons import load_checkpoint2, MyModel
 from indextts.s2mel.modules.bigvgan import bigvgan
@@ -425,6 +426,33 @@ class IndexTTS2:
                 "IndexTTS-2 `use_torch_compile=True` requires a working Triton install on CUDA. "
                 "Install `triton` on Linux or `triton-windows` on Windows, or disable `use_torch_compile`."
             ) from e
+
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ComfyUI unloads the engine with
+        model.to("cpu"). Without this method only the nn.Module attributes moved,
+        leaving QwenEmotion, the emotion/speaker matrices, plain tensors inside
+        modules and the cached conditioning on the GPU.
+
+        In low VRAM mode the models rest on CPU and inference moves them to
+        self.device on demand, so only QwenEmotion follows a GPU target.
+        """
+        device = str(device)
+        self.load_device = "cpu" if self.low_vram else device
+        for name in ["gpt", "semantic_model", "semantic_codec", "s2mel", "campplus_model", "bigvgan"]:
+            move_module(getattr(self, name), self.load_device)
+        if self.qwen_emo is not None:
+            self.qwen_emo.to(device)
+        self.semantic_mean = self.semantic_mean.to(self.load_device)
+        self.semantic_std = self.semantic_std.to(self.load_device)
+        self._move_matrices(self.load_device)
+        # Reference-voice conditioning is recomputed on the next render
+        self.cache_spk_cond = self.cache_s2mel_style = self.cache_s2mel_prompt = self.cache_spk_audio_prompt = None
+        self.cache_emo_cond = self.cache_emo_audio_prompt = self.cache_mel = None
+        self.device = device
+        return self
 
     def _move_matrices(self, device):
         """Move emotion and speaker matrices to target device."""
@@ -1150,6 +1178,16 @@ class QwenEmotion:
             return f"cuda:{max(range(len(free_memory)), key=free_memory.__getitem__)}"
         except Exception:
             return preferred if preferred and preferred.startswith("cuda") else "cuda:0"
+
+    def to(self, device):
+        """Move the whole model to one device, picking the GPU the same way as at load."""
+        device = str(device)
+        if device.startswith("cuda"):
+            device = self._select_device(device)
+        self.model.to(device)
+        if hasattr(self.model, "hf_device_map"):
+            self.model.hf_device_map = {"": device}
+        return self
 
     def clamp_score(self, value):
         try:

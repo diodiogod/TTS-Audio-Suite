@@ -25,6 +25,7 @@ from indextts.utils.checkpoint import load_checkpoint
 from indextts.utils.front import TextNormalizer
 from indextts.utils.tokenizer import get_tokenizer, lang_to_token
 from indextts.utils.ja_g2p import JapaneseG2PProcessor
+from indextts.utils.module_device import move_module
 from indextts.utils.nemo_tn import normalize_text as nemo_text_normalize
 
 from indextts.s2mel.modules.commons import load_checkpoint2, MyModel
@@ -150,7 +151,7 @@ class IndexTTS2:
 
         if use_qwen_emo:
             try:
-                self.qwen_emo = QwenEmotion(os.path.join(self.model_dir, self.cfg.qwen_emo_path))
+                self.qwen_emo = QwenEmotion(os.path.join(self.model_dir, self.cfg.qwen_emo_path), preferred_device=self.device)
             except Exception as exc:
                 # TTS Audio Suite patch: Qwen emotion is optional and must not
                 # prevent audio/vector-controlled speech from loading.
@@ -322,6 +323,30 @@ class IndexTTS2:
         # 进度引用显示（可选）
         self.gr_progress = None
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
+
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ComfyUI unloads the engine with
+        model.to("cpu"). Without this method only the nn.Module attributes moved,
+        leaving QwenEmotion, the emotion/speaker matrices, plain tensors inside
+        modules and the cached conditioning on the GPU (~2 GB).
+        """
+        device = str(device)
+        for name in ["gpt", "semantic_model", "semantic_codec", "s2mel", "campplus_model", "bigvgan"]:
+            move_module(getattr(self, name), device)
+        if self.qwen_emo is not None:
+            self.qwen_emo.to(device)
+        self.semantic_mean = self.semantic_mean.to(device)
+        self.semantic_std = self.semantic_std.to(device)
+        self.emo_matrix = tuple(t.to(device) for t in self.emo_matrix)
+        self.spk_matrix = tuple(t.to(device) for t in self.spk_matrix)
+        # Reference-voice conditioning is recomputed on the next render
+        self.cache_spk_cond = self.cache_s2mel_style = self.cache_s2mel_prompt = self.cache_spk_audio_prompt = None
+        self.cache_emo_cond = self.cache_emo_audio_prompt = self.cache_mel = None
+        self.device = device
+        return self
 
     @torch.no_grad()
     def get_emb(self, input_features, attention_mask):
@@ -993,13 +1018,19 @@ def find_most_similar_cosine(query_vector, matrix):
     return most_similar_index
 
 class QwenEmotion:
-    def __init__(self, model_dir):
+    def __init__(self, model_dir, preferred_device=None):
         self.model_dir = model_dir
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
+        # TTS Audio Suite patch: device_map="auto" dispatches the model with
+        # Accelerate hooks (and CPU offload when VRAM is short), which breaks
+        # moving it with .to() on unload/reload. Keep it on one device, as the
+        # IndexTTS-2 backend does.
+        qwen_device = self._select_device(preferred_device)
+        print(f"🤖 QwenEmotion loading on {qwen_device} (single device)")
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_dir,
             torch_dtype="float16",  # "auto"
-            device_map="auto"
+            device_map={"": qwen_device}
         )
         self.prompt = "文本情感分类"
         self.cn_key_to_en = {
@@ -1029,6 +1060,30 @@ class QwenEmotion:
         }
         self.max_score = 1.2
         self.min_score = 0.0
+
+    @staticmethod
+    def _select_device(preferred_device=None):
+        preferred = str(preferred_device) if preferred_device is not None else None
+        if not torch.cuda.is_available():
+            return preferred or "cpu"
+
+        # QwenEmotion is small enough for one GPU.  Selecting the roomiest GPU
+        # avoids forcing it onto a nearly-full IndexTTS device.
+        try:
+            free_memory = [torch.cuda.mem_get_info(index)[0] for index in range(torch.cuda.device_count())]
+            return f"cuda:{max(range(len(free_memory)), key=free_memory.__getitem__)}"
+        except Exception:
+            return preferred if preferred and preferred.startswith("cuda") else "cuda:0"
+
+    def to(self, device):
+        """Move the whole model to one device, picking the GPU the same way as at load."""
+        device = str(device)
+        if device.startswith("cuda"):
+            device = self._select_device(device)
+        self.model.to(device)
+        if hasattr(self.model, "hf_device_map"):
+            self.model.hf_device_map = {"": device}
+        return self
 
     def clamp_score(self, value):
         return max(self.min_score, min(self.max_score, value))
