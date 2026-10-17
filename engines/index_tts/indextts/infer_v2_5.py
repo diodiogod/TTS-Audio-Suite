@@ -323,6 +323,35 @@ class IndexTTS2:
         self.gr_progress = None
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
 
+    def to(self, device):
+        """
+        Move all model components to the specified device.
+
+        Critical for ComfyUI model management - ComfyUI unloads the engine with
+        model.to("cpu"). Without this method only the nn.Module attributes moved,
+        leaving QwenEmotion, the emotion/speaker matrices, plain tensors inside
+        modules and the cached conditioning on the GPU (~2 GB).
+        """
+        for name in ["gpt", "semantic_model", "semantic_codec", "s2mel", "campplus_model", "bigvgan"]:
+            module = getattr(self, name)
+            module.to(device)
+            # Module.to() skips plain tensor attributes (s2mel causal_mask/freqs_cis, old-style weight_norm weights)
+            for sub in module.modules():
+                for key, value in list(vars(sub).items()):
+                    if torch.is_tensor(value) and not isinstance(value, torch.nn.Parameter):
+                        setattr(sub, key, value.to(device))
+        if self.qwen_emo is not None:
+            self.qwen_emo.model.to(device)
+        self.semantic_mean = self.semantic_mean.to(device)
+        self.semantic_std = self.semantic_std.to(device)
+        self.emo_matrix = tuple(t.to(device) for t in self.emo_matrix)
+        self.spk_matrix = tuple(t.to(device) for t in self.spk_matrix)
+        # Reference-voice conditioning is recomputed on the next render
+        self.cache_spk_cond = self.cache_s2mel_style = self.cache_s2mel_prompt = self.cache_spk_audio_prompt = None
+        self.cache_emo_cond = self.cache_emo_audio_prompt = self.cache_mel = None
+        self.device = str(device)
+        return self
+
     @torch.no_grad()
     def get_emb(self, input_features, attention_mask):
         vq_emb = self.semantic_model(
