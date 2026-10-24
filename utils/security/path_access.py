@@ -13,10 +13,17 @@ def data_roots(*, models=True):
     roots = [folder_paths.get_input_directory(), folder_paths.get_output_directory(), folder_paths.get_temp_directory()]
     if models:
         roots.append(folder_paths.models_dir)
-        for name, (paths, _extensions) in getattr(folder_paths, "folder_names_and_paths", {}).items():
+        for name in getattr(folder_paths, "folder_names_and_paths", {}):
             if name == "custom_nodes":
                 continue
-            roots.extend(paths)
+            # Custom nodes may add metadata beyond the standard (paths, extensions).
+            # Read through ComfyUI's accessor so unrelated entries cannot break all access.
+            try:
+                paths = folder_paths.get_folder_paths(name)
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+            if isinstance(paths, (list, tuple)):
+                roots.extend(path for path in paths if isinstance(path, (str, os.PathLike)))
         roots.append(Path(__file__).resolve().parents[2] / "voices_examples")
     return [Path(root).resolve() for root in roots if root]
 
