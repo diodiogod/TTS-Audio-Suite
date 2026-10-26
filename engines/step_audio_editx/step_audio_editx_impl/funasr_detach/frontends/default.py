@@ -342,6 +342,6 @@ class MultiChannelFrontend(nn.Module):
                     rescale_line = line_item[3 : (len(line_item) - 1)]
                     vars_list = list(rescale_line)
                     continue
-        means = np.array(means_list).astype(np.float)
-        vars = np.array(vars_list).astype(np.float)
+        means = np.array(means_list).astype(float)
+        vars = np.array(vars_list).astype(float)
         return means, vars

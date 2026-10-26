@@ -830,7 +830,7 @@ class TTSAudioInstaller:
         
         for package in mac_audio_packages:
             self.run_pip_command(
-                ["install", "--force-reinstall", "--no-cache-dir", package], 
+                ["install", "--force-reinstall", "--no-cache-dir", "--no-deps", package], 
                 f"Reinstalling {package} for macOS compatibility"
             )
 
@@ -1012,10 +1012,10 @@ class TTSAudioInstaller:
         
         # Python 3.13+ requires numpy 2.1.0 or newer (no wheels for 1.26.x)
         if self.python_version >= (3, 13):
-            minimum_numpy = "numpy>=2.1.0,<2.3.0"
+            minimum_numpy = "numpy>=2.1.0"
             self.log("Python 3.13+ detected - requires NumPy 2.1.0 or newer", "INFO")
         else:
-            minimum_numpy = "numpy>=1.26.4,<2.3.0"
+            minimum_numpy = "numpy>=1.26.4"
         
         # Check if numpy is already installed and what version
         try:
@@ -1034,17 +1034,13 @@ class TTSAudioInstaller:
                     self.log(f"NumPy {numpy_version} is incompatible with Python 3.13+", "ERROR")
                     self.log("Python 3.13 requires NumPy 2.1.0 or newer (no wheels for 1.26.x)", "WARNING")
                     numpy_constraint = minimum_numpy
-                # Accept both numpy 1.26.x and 2.x.x (but not 2.3.x) for older Python
+                # Accept numpy 1.26.x and any 2.x release for older Python
                 elif major == 1 and minor >= 26 and self.python_version < (3, 13):
                     self.log(f"NumPy {numpy_version} is compatible - keeping current version", "INFO")
                     return  # NumPy 1.26.x is fine for Python < 3.13
-                elif major == 2 and minor < 3:
+                elif major >= 2:
                     self.log(f"NumPy {numpy_version} is compatible - keeping current version", "INFO")
-                    return  # NumPy 2.0.x, 2.1.x, 2.2.x are fine
-                elif major >= 2 and minor >= 3:
-                    # Only numpy 2.3+ needs downgrading
-                    self.log(f"NumPy {numpy_version} may cause issues - constraining to <2.3.0", "WARNING")
-                    numpy_constraint = minimum_numpy
+                    return  # NumPy 2.x (including 2.3+) is kept as installed
                 else:
                     # Very old numpy needs updating
                     self.log(f"NumPy {numpy_version} is too old", "WARNING")
@@ -1727,7 +1723,7 @@ class TTSAudioInstaller:
             
             # Clear any cached/partial installations
             self.run_pip_command(
-                ["install", "--no-cache-dir", "--force-reinstall", "wandb>=0.17.0"], 
+                ["install", "--no-cache-dir", "--force-reinstall", "--no-deps", "wandb>=0.17.0"], 
                 "Reinstalling wandb cleanly"
             )
             
@@ -1841,9 +1837,8 @@ class TTSAudioInstaller:
             numpy_version_text = version("numpy")
             numpy_version = tuple(map(int, numpy_version_text.split('.')[:2]))
 
-            if numpy_version >= (2, 3):
-                self.log(f"WARNING: NumPy {numpy_version_text} detected - may cause numba conflicts", "WARNING")
-                self.log("Consider downgrading: pip install 'numpy>=2.2.0,<2.3.0'", "WARNING")
+            if numpy_version < (1, 26):
+                self.log(f"NumPy {numpy_version_text} is older than 1.26.4", "WARNING")
             else:
                 self.log(f"NumPy {numpy_version_text}: Version OK for compatibility", "SUCCESS")
 

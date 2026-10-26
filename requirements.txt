@@ -5,7 +5,7 @@
 # This custom node uses install.py for intelligent dependency management.
 # ComfyUI Manager automatically runs install.py which handles:
 # - Python 3.13 compatibility issues (MediaPipe → OpenSeeFace fallback)
-# - NumPy version conflicts (constraints to avoid Numba issues)
+# - NumPy version floor only (no upper bound; NumPy 2.3+ is supported)
 # - Package dependency conflicts (selective --no-deps installation)
 # - All bundled engines: ChatterBox, F5-TTS, Higgs Audio
 # - Optional features: RVC voice conversion, mouth movement analysis
@@ -16,7 +16,7 @@
 # Foundation ML packages
 torch>=2.0.0
 torchaudio>=2.0.0
-numpy>=1.26.4,<2.3.0  # Compatible with both numpy 1.26.4 and 2.x series
+numpy>=1.26.4  # Compatible with numpy 1.26.4 and the 2.x series (including 2.3+)
 setuptools>=65.0.0    # Provides distutils compatibility for Python 3.12+ (required by FunASR bundled code)
 
 # Audio processing (safe)
@@ -101,7 +101,7 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # - omnivoice (--no-deps): We install official OmniVoice separately to avoid letting pip reshape shared deps
 # - torchcrepe (--no-deps): Conflicts via librosa dependency
 # - onnxruntime (--no-deps): Forces numpy 2.3.x, needed for OpenSeeFace
-# - opencv-python (--no-deps): Forces numpy downgrade via numpy<2.3.0 constraint
+# - opencv-python (--no-deps): Avoids letting its metadata change the installed numpy
 # - gradio (--no-deps): Forces pydantic, pillow, pydantic-core downgrades
 # - echo-tts (--no-deps): External engine package with fallback to its GitHub source
 # - faiss-cpu (--no-deps): Installed only after removing conflicting or broken FAISS packages
