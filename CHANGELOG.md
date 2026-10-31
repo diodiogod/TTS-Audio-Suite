@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.10.7] - 2026-10-31
+
+### Changed
+
+- Improve Silent Speech Analyzer phrase grouping across brief mouth closures
+- Update MediaPipe installation to preserve existing NumPy and OpenCV packages
+- Update viseme and word-prediction descriptions to clarify experimental limitations
+
+### Fixed
+
+- Fix Silent Speech Analyzer compatibility with current MediaPipe releases
+- Fix OpenSeeFace video previews and crashes when word prediction is enabled
+- Fix Silent Speech Analyzer cached timing and movement outputs when filter settings change
 ## [5.10.6] - 2026-10-31
 
 ### Fixed
