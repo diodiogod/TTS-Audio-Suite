@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.10.6] - 2026-10-31
+
+### Fixed
+
+- Fix TTS Audio Suite installation unnecessarily downgrading compatible NumPy 2.3+ environments
+- Fix TTS Audio Suite audio dependency checks while retaining the NumPy major-version compatibility boundary
+- Fix Step Audio EditX and OpenSeeFace use of removed NumPy aliases
+- Fix VoiceFixer startup and model downloads when ComfyUI launches without activating its Python environment
+- Fix ChatterBox, F5-TTS, Higgs Audio 2, RVC and VibeVoice bundled imports and preserve ComfyUI utility modules
 ## [5.10.5] - 2026-10-24
 
 ### Fixed
