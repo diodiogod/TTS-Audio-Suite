@@ -1207,7 +1207,7 @@ Perfect for:
 
 1. Use ComfyUI Manager to install **"TTS Audio Suite"**
 2. **That's it!** ComfyUI Manager automatically runs our install.py script which handles:
-   - ✅ **Python 3.13 compatibility** (MediaPipe → OpenSeeFace fallback)
+   - ✅ **Python 3.13 compatibility** (MediaPipe Tasks / OpenSeeFace)
    - ✅ **Dependency conflicts** (NumPy, librosa, etc.)
    - ✅ **All bundled engines** (ChatterBox, F5-TTS, Higgs Audio)
    - ✅ **RVC voice conversion** dependencies
@@ -1218,7 +1218,7 @@ Perfect for:
 - 🟢 **All TTS engines**: ChatterBox, F5-TTS, Higgs Audio ✅ Working
 - 🟢 **RVC voice conversion**: ✅ Working  
 - 🟢 **OpenSeeFace mouth movement**: ✅ Working (experimental)
-- 🔴 **MediaPipe mouth movement**: ❌ Incompatible (use OpenSeeFace)
+- **MediaPipe mouth movement**: Current SDK supports Python 3.13+ through Face Landmarker Tasks. Older installations retain legacy FaceMesh support.
 
 ### Shared Runtime installation
 
@@ -1292,7 +1292,7 @@ The UI and installer read the same file. With a custom ComfyUI user directory, u
 
 5. **Restart ComfyUI** and look for 🎤 TTS Audio Suite nodes
 
-> **🧪 Python 3.13 Users**: Installation is fully supported! The system automatically uses OpenSeeFace for mouth movement analysis when MediaPipe is unavailable.
+> **🧪 Python 3.13 Users**: Installation is fully supported! New nodes default to MediaPipe when its face tracking API is available, otherwise OpenSeeFace. Existing workflow selections are preserved.
 
 > **Need offline/manual setup?** Use [docs/MODEL_DOWNLOAD_SOURCES.md](docs/MODEL_DOWNLOAD_SOURCES.md) and [docs/MODEL_LAYOUTS.md](docs/MODEL_LAYOUTS.md)
 
@@ -1691,3 +1691,9 @@ The **TTS Audio Suite project code** is licensed under **MIT**.
 
 [version-shield]: https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdiodiogod%2FTTS-Audio-Suite%2Fmain%2Fpyproject.toml&query=%24.project.version&label=Version&color=red&style=for-the-badge
 [version-url]: pyproject.toml
+
+### MediaPipe mouth analysis
+
+`install.py` installs MediaPipe Tasks when MediaPipe is missing and preserves existing legacy installations. Its controlled dependency installation keeps the installed NumPy and OpenCV provider; it does not install a second OpenCV-contrib distribution over an existing `cv2`. Consequently, `pip check` may report MediaPipe's declared OpenCV-contrib dependency as missing even though face tracking uses the installed standard OpenCV API.
+
+The Tasks backend downloads Google's `face_landmarker.task` on first use into `ComfyUI/models/TTS/mediapipe/`, respecting extra model paths. Each video starts a new tracking session. Select **MediaPipe** in Mouth Movement Analyzer; preview, sensitivity and viseme options are unchanged. OpenSeeFace remains available.

@@ -55,6 +55,20 @@ categories:
         languages:
           - "47 languages"
         notes: "Heavier multilingual fallback with the widest language coverage supported by the punctuators package."
+  - id: mediapipe_face_landmarker
+    name: MediaPipe Face Landmarker
+    node_targets:
+      - "Mouth Movement Analyzer"
+    description: "Face tracking for current MediaPipe Tasks. Legacy FaceMesh uses its bundled models."
+    models:
+      - id: face_landmarker
+        name: "Google Face Landmarker (float16, version 1)"
+        source_url: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+        model_dir: "mediapipe"
+        model_filename: "face_landmarker.task"
+        size: "~3.6MB"
+        auto_download: true
+        notes: "Downloaded on first Tasks use; extra model paths are supported."
 model_layouts_markdown: |
   # Auxiliary Model Layouts
 
@@ -78,3 +92,11 @@ model_layouts_markdown: |
   - These are helper models for text cleanup, not TTS/ASR engines.
   - The English model is the lightest and is mainly intended for raw English ASR text.
   - The 47-language model is much heavier and should be treated as the multilingual fallback.
+
+  ## MediaPipe Face Landmarker
+
+  ```text
+  ComfyUI/models/TTS/mediapipe/face_landmarker.task
+  ```
+
+  Downloaded lazily from Google for the Tasks backend; not needed for legacy FaceMesh.

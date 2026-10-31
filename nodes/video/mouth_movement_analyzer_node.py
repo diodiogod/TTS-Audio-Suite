@@ -86,15 +86,16 @@ class MouthMovementAnalyzerNode(BaseNode):
     def INPUT_TYPES(cls):
         import sys
         
-        # Smart default provider selection based on Python version
-        default_provider = AnalysisProvider.OPENSEEFACE.value if sys.version_info >= (3, 13) else AnalysisProvider.MEDIAPIPE.value
+        # Select by installed API capability. Existing workflows retain their selection.
+        from engines.video.providers.mediapipe_tracker import mediapipe_available
+        default_provider = AnalysisProvider.MEDIAPIPE.value if mediapipe_available() else AnalysisProvider.OPENSEEFACE.value
         
         return {
             "required": {
                 "video": ("VIDEO",),
                 "provider": ([p.value for p in AnalysisProvider], {
                     "default": default_provider,
-                    "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework (preferred, incompatible with Python 3.13)\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n\n• OpenSeeFace: Real-time face tracking (experimental, Python 3.13 compatible)\n  - Alternative for newer Python versions\n  - Results may be less accurate than MediaPipe\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies"
+                    "tooltip": "Computer vision provider for mouth movement detection:\n\n• MediaPipe: Google's ML framework (preferred, supports current Python versions)\n  - Fast, accurate, works on most hardware\n  - Best for general use and consistent results\n\n• OpenSeeFace: Real-time face tracking (experimental)\n  - Alternative face tracking provider\n  - Results may be less accurate than MediaPipe\n\n• dlib: Traditional computer vision (coming soon)\n  - Lightweight, no ML dependencies"
                 }),
                 "sensitivity": ("FLOAT", {
                     "default": 1.0,
@@ -110,7 +111,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                     "max": 2.0,
                     "step": 0.01,
                     "display": "number",
-                    "tooltip": "Minimum duration for valid speech segments (in seconds):\n\nLower values: Include quick sounds and short words, more segments\nHigher values: Only longer phrases, cleaner but may miss short words\n\nRecommended: 0.1s for balanced filtering, 0.05s for detailed analysis"
+                    "tooltip": "Minimum duration for a mouth-activity phrase after nearby segments are merged (in seconds):\n\nLower values: Include quick sounds and short words, more segments\nHigher values: Only longer phrases, cleaner but may miss short words\n\nRecommended: 0.1s for balanced filtering, 0.05s for detailed analysis"
                 }),
                 "output_format": ([f.value for f in OutputFormat], {
                     "default": OutputFormat.SRT.value,
@@ -118,12 +119,12 @@ class MouthMovementAnalyzerNode(BaseNode):
                 }),
                 "srt_placeholder_format": ([f.value for f in SRTPlaceholderFormat], {
                     "default": SRTPlaceholderFormat.WORDS.value,
-                    "tooltip": "SRT placeholder format - adapts to viseme detection:\n\n🔌 WITHOUT Viseme Options:\n• Words: [word word word] - estimated word placeholders\n• Syllables: [syl-la-ble syl-la-ble] - estimated syllable patterns\n• Characters: [••••••••••••••••••••] - character count\n\n🔗 WITH Viseme Options connected:\n• Words: [A EI OU] - vowels grouped as words\n• Syllables: [AE-I-OU] - vowels grouped as syllables\n• Characters: [AEIOU] - raw vowel sequence\n\nFormat = presentation style, visemes = actual vowel content!"
+                    "tooltip": "SRT placeholder format - adapts to viseme detection:\n\n🔌 WITHOUT Viseme Options:\n• Words: [word word word] - estimated word placeholders\n• Syllables: [syl-la-ble syl-la-ble] - estimated syllable patterns\n• Characters: [••••••••••••••••••••] - character count\n\n🔗 WITH Viseme Options connected:\n• Words: [A EI OU] - vowels grouped as words\n• Syllables: [AE-I-OU] - vowels grouped as syllables\n• Characters: [AEIOU] - raw vowel sequence\n\nViseme labels are experimental mouth-shape guesses, not recognized speech."
                 }),
             },
             "optional": {
                 "viseme_options": ("VISEME_OPTIONS", {
-                    "tooltip": "Connect Viseme Mouth Shape Options node for vowel detection (A, E, I, O, U):\n\n• When connected: Enables precise vowel classification\n• When not connected: Basic speech/no-speech detection only\n\nViseme detection adds ~20% processing time but provides detailed mouth shape analysis for lip-sync."
+                    "tooltip": "Connect Viseme Mouth Shape Options node for vowel detection (A, E, I, O, U):\n\n• When connected: Enables experimental mouth-shape classification\n• When not connected: Visual mouth-activity timing only\n\nViseme detection adds ~20% processing time but provides detailed mouth shape analysis for lip-sync."
                 }),
                 "preview_mode": ("BOOLEAN", {
                     "default": True,
@@ -174,7 +175,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                            enable_viseme: bool = False, viseme_sensitivity: float = 1.0,
                            viseme_confidence_threshold: float = 0.04, 
                            viseme_smoothing: float = 0.3,
-                           enable_consonant_detection: bool = False) -> str:
+                           enable_consonant_detection: bool = False, viseme_options=None) -> str:
         """Generate cache key for mouth movement analysis (excludes post-processing parameters)"""
         # Get video source path for cache key
         if hasattr(video_input, 'get_stream_source'):
@@ -216,10 +217,11 @@ class MouthMovementAnalyzerNode(BaseNode):
             'viseme_sensitivity': viseme_sensitivity,
             'viseme_confidence_threshold': viseme_confidence_threshold,
             'viseme_smoothing': viseme_smoothing,
-            'enable_consonant_detection': enable_consonant_detection
+            'enable_consonant_detection': enable_consonant_detection,
+            'viseme_options': {k: v for k, v in (viseme_options or {}).items() if k != 'enable_word_prediction'}
         }
         
-        cache_string = str(sorted(cache_data.items()))
+        cache_string = json.dumps(cache_data, sort_keys=True, default=str)
         return hashlib.md5(cache_string.encode()).hexdigest()
     
     def _get_cached_analysis(self, cache_key: str) -> Optional[Any]:
@@ -242,7 +244,13 @@ class MouthMovementAnalyzerNode(BaseNode):
         """Create preview video showing only filtered segments using cached frame data"""
         frame_data = cached_timing_data.metadata.get('frame_data')
         if not frame_data:
-            logger.warning("No frame data available for preview generation")
+            # OpenSeeFace renders its own annotations rather than MediaPipe frame data.
+            preview_path = cached_timing_data.metadata.get('preview_path')
+            if not preview_path and hasattr(analyzer, 'get_preview_video'):
+                preview_path = analyzer.get_preview_video()
+            if preview_path:
+                return preview_path
+            logger.warning("Preview could not be generated. Analysis results are still available; check the video encoder messages above.")
             return None
         
         fps = cached_timing_data.fps
@@ -366,7 +374,7 @@ class MouthMovementAnalyzerNode(BaseNode):
             video, provider, sensitivity, 0, 0, 0, preview_mode,
             enable_viseme_detection, viseme_sensitivity,
             viseme_confidence_threshold, viseme_smoothing,
-            enable_consonant_detection
+            enable_consonant_detection, viseme_options
         )
         
         # First check analysis cache (without post-processing parameters)
@@ -390,7 +398,7 @@ class MouthMovementAnalyzerNode(BaseNode):
                 cached_timing_data = analysis_cached_result['timing_data']
                 unfiltered_segments = cached_timing_data.metadata.get('unfiltered_segments', [])
                 
-                if unfiltered_segments:
+                if 'unfiltered_segments' in cached_timing_data.metadata:
                     # Re-apply filtering with current parameters
                     provider_class = self.provider_registry[provider]
                     temp_analyzer = provider_class(
@@ -401,15 +409,14 @@ class MouthMovementAnalyzerNode(BaseNode):
                     filtered_segments = temp_analyzer.filter_segments(unfiltered_segments)
                     
                     # Create new timing data with filtered segments
-                    timing_data = cached_timing_data
-                    timing_data.segments = filtered_segments
-                    timing_data.metadata.update({
-                        "total_segments_after_filter": len(filtered_segments)
-                    })
+                    from dataclasses import replace
+                    timing_data = replace(cached_timing_data, segments=filtered_segments,
+                                          metadata={**cached_timing_data.metadata,
+                                                    "total_segments_after_filter": len(filtered_segments)})
                     
-                    # Reuse cached movement frames and confidence scores
-                    movement_frames = analysis_cached_result['movement_frames']
-                    confidence_scores = analysis_cached_result['confidence_scores'] 
+                    movement_frames = [frame for segment in filtered_segments
+                                       for frame in range(segment.start_frame, segment.end_frame + 1)]
+                    confidence_scores = [segment.confidence for segment in filtered_segments]
                     
                     # Generate new preview with filtered segments if preview mode enabled
                     preview_path = None

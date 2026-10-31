@@ -154,7 +154,7 @@ else:
 
 | Package | Issue | Solution | Status |
 |---------|-------|----------|--------|
-| `MediaPipe` | Binary incompatible | OpenSeeFace fallback | ✅ Working |
+| `MediaPipe` | Legacy Solutions removed in current SDK | Tasks Face Landmarker; legacy installs retained | Manual validation required |
 | `numba` | JIT compilation issues | Disable JIT in Python 3.13 | ✅ Working |
 | `audioop` packages | Not available | Remove from dependencies | ✅ Fixed |
 | `resampy` | Numba compilation fails in Audio-Separator | RVC fallback works for compatible models | ⚠️ Partial |

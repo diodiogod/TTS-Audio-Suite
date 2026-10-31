@@ -134,39 +134,37 @@ class AbstractProvider(ABC):
         """
         Apply filtering to movement segments
         
-        - Remove segments shorter than min_duration
-        - Merge segments closer than merge_threshold
+        - Merge segments closer than merge_threshold without mutating input
+        - Remove merged phrases shorter than min_duration
         - Remove low confidence segments
         """
-        if not segments:
-            return segments
-        
-        # Filter by minimum duration
-        filtered = [s for s in segments if (s.end_time - s.start_time) >= self.min_duration]
-        
-        # Filter by confidence
-        filtered = [s for s in filtered if s.confidence >= self.confidence_threshold]
-        
-        # Merge nearby segments
+        from copy import deepcopy
+        # Merge short mouth closures before duration filtering: individual
+        # syllables may be shorter than the requested minimum phrase duration.
+        # Work on copies so re-filtering never alters cached detections.
         merged = []
-        for segment in filtered:
-            if not merged:
-                merged.append(segment)
-            else:
+        active_frames = 0
+        for segment in sorted(deepcopy(segments), key=lambda item: item.start_time):
+            if merged and segment.start_time - merged[-1].end_time <= self.merge_threshold:
                 last = merged[-1]
-                gap = segment.start_time - last.end_time
-                
-                if gap <= self.merge_threshold:
-                    # Merge segments
-                    last.end_time = segment.end_time
-                    last.end_frame = segment.end_frame
-                    last.confidence = max(last.confidence, segment.confidence)
-                    last.peak_mar = max(last.peak_mar, segment.peak_mar)
-                else:
-                    merged.append(segment)
-        
-        return merged
-    
+                old_frames = active_frames
+                new_frames = max(1, segment.end_frame - segment.start_frame + 1)
+                last.confidence = (last.confidence * old_frames + segment.confidence * new_frames) / (old_frames + new_frames)
+                active_frames += new_frames
+                if last.viseme_sequence is not None or segment.viseme_sequence is not None:
+                    gap = max(0, segment.start_frame - last.end_frame - 1)
+                    last.viseme_sequence = (last.viseme_sequence or '') + '_' * gap + (segment.viseme_sequence or '')
+                    last.viseme_confidences = (last.viseme_confidences or []) + [0.0] * gap + (segment.viseme_confidences or [])
+                last.end_time = max(last.end_time, segment.end_time)
+                last.end_frame = max(last.end_frame, segment.end_frame)
+                last.peak_mar = max(last.peak_mar, segment.peak_mar)
+            else:
+                merged.append(segment)
+                active_frames = max(1, segment.end_frame - segment.start_frame + 1)
+        return [segment for segment in merged
+                if segment.end_time - segment.start_time >= self.min_duration
+                and segment.confidence >= self.confidence_threshold]
+
     def smooth_confidence_scores(
         self,
         confidence_scores: List[float],

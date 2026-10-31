@@ -140,13 +140,6 @@ class OpenSeeFaceProvider(AbstractProvider):
         """
         import sys
         
-        # Inform user about Python 3.13 fallback context
-        if sys.version_info >= (3, 13):
-            print("🧪 Using OpenSeeFace provider (experimental alternative for Python 3.13)")
-            print("⚠️ Note: Results may be less accurate than MediaPipe on older Python versions")
-            print("📢 Want MediaPipe Python 3.13 support? Add your voice:")
-            print("   https://github.com/google-ai-edge/mediapipe/issues/5708")
-        
         if not OPENSEEFACE_AVAILABLE:
             raise RuntimeError(
                 "OpenSeeFace is not available. Please install OpenSeeFace:\n"
@@ -516,20 +509,7 @@ class OpenSeeFaceProvider(AbstractProvider):
             if self.processed_width != original_width or self.processed_height != original_height:
                 frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
             
-            # Store frame for preview if requested
-            if preview_mode:  # Store all frames - optimizations make this fast enough now
-                # (skip frames for faster preview)
-                # if preview_mode and frame_count % 3 == 0:  # Only store every 3rd frame
-                # Create annotated frame for preview
-                annotated_frame = self._create_annotated_frame(
-                    frame.copy(), 
-                    faces if 'faces' in locals() else [],
-                    mar_values[-1] if mar_values else 0.0,
-                    viseme_frames[-1] if viseme_frames else None,
-                    frame_count
-                )
-                preview_frames.append(annotated_frame)
-            
+            faces = []
             try:
                 # Track faces using OpenSeeFace
                 faces = self.tracker.predict(frame)
@@ -624,6 +604,14 @@ class OpenSeeFaceProvider(AbstractProvider):
                         geometric_features={}
                     ))
             
+            # Annotate the current frame after tracking, including its viseme.
+            if preview_mode:
+                preview_frames.append(self._create_annotated_frame(
+                    frame.copy(), faces,
+                    mar_values[-1] if mar_values else 0.0,
+                    viseme_frames[-1] if viseme_frames else None,
+                    frame_count))
+
             frame_count += 1
             
             # Progress reporting
@@ -670,7 +658,7 @@ class OpenSeeFaceProvider(AbstractProvider):
                 
                 # Add viseme data to segment
                 if segment_visemes:
-                    segment.viseme_sequence = segment_visemes
+                    segment.viseme_sequence = ''.join('_' if v == 'neutral' else v for v in segment_visemes)
                     segment.viseme_confidences = segment_confidences
         
         return TimingData(
@@ -681,7 +669,8 @@ class OpenSeeFaceProvider(AbstractProvider):
             provider="OpenSeeFace",
             metadata={
                 "mar_values": mar_values,
-                "mar_threshold": self.mar_threshold
+                "mar_threshold": self.mar_threshold,
+                "preview_path": self.get_preview_video()
             },
             viseme_frames=viseme_frames if enable_viseme else []
         )

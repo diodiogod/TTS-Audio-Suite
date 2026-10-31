@@ -4,7 +4,7 @@
 # --- INSTALLATION METHOD ---
 # This custom node uses install.py for intelligent dependency management.
 # ComfyUI Manager automatically runs install.py which handles:
-# - Python 3.13 compatibility issues (MediaPipe → OpenSeeFace fallback)
+# - MediaPipe Tasks installation with NumPy/OpenCV preservation
 # - NumPy/Numba compatibility (validated against installed dependency metadata)
 # - Package dependency conflicts (selective --no-deps installation)
 # - All bundled engines: ChatterBox, F5-TTS, Higgs Audio
@@ -111,7 +111,7 @@ torchfcpe>=0.0.4         # Fast Context-based Pitch Estimation for RVC (fcpe met
 # [OK] All TTS engines work (ChatterBox, F5-TTS, Higgs Audio, CosyVoice3)
 # [OK] RVC voice conversion works
 # [OK] OpenSeeFace mouth movement (experimental alternative)
-# [NO] MediaPipe incompatible (binary compatibility issue)
+# [OK] Current MediaPipe Tasks supports Python 3.13+ (installed by install.py)
 
 # CosyVoice3 engine dependencies (bundled in engines/cosyvoice/impl/)
 # Most dependencies handled by install.py (diffusers, hydra-core, matplotlib, rich, uvicorn, wetext, onnxruntime)
@@ -126,3 +126,5 @@ inflect>=7.3.0           # Text normalization for English (used in frontend.py)
 # - IndexTTS-2: engines/index_tts/ (emotion disentanglement TTS)
 # - CosyVoice3: engines/cosyvoice/impl/ (multilingual zero-shot voice cloning)
 
+
+# MediaPipe is installed by install.py with controlled dependencies; legacy installs are retained.

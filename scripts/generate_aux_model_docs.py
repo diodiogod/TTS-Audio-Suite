@@ -49,6 +49,8 @@ def generate_aux_model_sources(data):
             repo_id = model.get("repo_id", "")
             repo_url = f"https://huggingface.co/{repo_id}" if repo_id else ""
             repo_display = f"[{repo_id}]({repo_url})" if repo_id else "-"
+            if model.get("source_url"):
+                repo_display = f"[Official download]({model['source_url']})"
             size = model.get("size", "-")
             auto_download = "✅" if model.get("auto_download") else "❌"
             languages = ", ".join(model.get("languages", [])) or "-"

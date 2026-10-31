@@ -30,7 +30,7 @@ class VisemeDetectionOptionsNode:
                 "enable_viseme_detection": ("BOOLEAN", {
                     "default": True,
                     "label": "Enable Viseme Detection",
-                    "tooltip": "Enable vowel classification (A, E, I, O, U) for precise lip-sync:\n\n• Analyzes mouth shape geometry beyond simple open/close\n• Detects vowel patterns in mouth movements\n• Adds ~20% processing time\n• Provides phoneme sequences for better TTS synchronization"
+                    "tooltip": "Experimental mouth-shape classification (A, E, I, O, U). These geometric labels are not recognized phonemes or a transcript. Leave this node disconnected for phrase timing and dubbing."
                 }),
                 "viseme_sensitivity": ("FLOAT", {
                     "default": 2.0,
@@ -59,17 +59,17 @@ class VisemeDetectionOptionsNode:
                 "enable_consonant_detection": ("BOOLEAN", {
                     "default": True,
                     "label": "Enable Consonant Detection",
-                    "tooltip": "Detect consonants (B, P, M, F, V, TH, etc.) in addition to vowels:\n\n• Vowels only: A, E, I, O, U, _\n• With consonants: A, E, I, O, U, B, P, M, F, V, TH, _, etc.\n• Adds ~10% processing time\n• Provides more detailed phoneme sequences\n• Better for advanced lip-sync and speech analysis\n\nLeave disabled for basic vowel-only detection."
+                    "tooltip": "Experimental consonant-shaped mouth labels. Visually similar sounds such as B, P and M cannot be reliably distinguished from geometry alone. Not a speech recognizer."
                 }),
                 "enable_temporal_analysis": ("BOOLEAN", {
                     "default": True,
                     "label": "Enable Temporal Analysis",
-                    "tooltip": "Advanced consonant burst detection using 5-frame windows:\n\n• Analyzes onset → peak → release patterns for true consonants\n• Dramatically improves B/P/M distinction accuracy\n• Detects rapid lip closure/release vs sustained patterns\n• Better coarticulation modeling (vowel context)\n• Adds ~50% processing time but much higher accuracy\n• Requires consonant detection enabled\n\nRecommended for: research, high-quality phonetic analysis\nSkip for: basic lip-sync, real-time processing"
+                    "tooltip": "Use short frame windows to stabilize experimental consonant labels. This does not establish which consonant was spoken. Extra processing cost depends on the video."
                 }),
                 "enable_word_prediction": ("BOOLEAN", {
                     "default": False,
                     "label": "Enable Word Prediction",
-                    "tooltip": "Predict words from detected phoneme sequences:\n\n• Uses 10,000 most common English words\n• Matches phoneme patterns to suggest likely words\n• Shows confidence with ?, (), markers\n• Example: 'AEIOU' → 'you', 'hey?', '(audio)'\n• Helpful for manual SRT editing\n• No processing time impact\n\nRequires viseme detection enabled to work."
+                    "tooltip": "Experimental English dictionary guesses from mouth-shape labels. Guesses can be wrong even when the displayed geometric score is high. Use ASR or a supplied transcript for dubbing; leave prediction off for timing-only use."
                 }),
             }
         }

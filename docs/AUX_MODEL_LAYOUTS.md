@@ -20,3 +20,11 @@ Notes:
 - These are helper models for text cleanup, not TTS/ASR engines.
 - The English model is the lightest and is mainly intended for raw English ASR text.
 - The 47-language model is much heavier and should be treated as the multilingual fallback.
+
+## MediaPipe Face Landmarker
+
+```text
+ComfyUI/models/TTS/mediapipe/face_landmarker.task
+```
+
+Downloaded lazily from Google for the Tasks backend; not needed for legacy FaceMesh.

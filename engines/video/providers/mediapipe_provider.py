@@ -9,15 +9,7 @@ import sys
 from typing import Optional, Tuple, List, Any, Dict
 import numpy as np
 
-try:
-    import cv2
-    import mediapipe as mp
-    MEDIAPIPE_AVAILABLE = True
-except ImportError:
-    MEDIAPIPE_AVAILABLE = False
-
-import sys
-import os
+import cv2
 
 # Add project root to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -80,34 +72,10 @@ class MediaPipeProvider(AbstractProvider):
     
     def _initialize(self):
         """Initialize MediaPipe components"""
-        import sys
-        
-        if not MEDIAPIPE_AVAILABLE:
-            if sys.version_info >= (3, 13):
-                raise ImportError(
-                    "MediaPipe is not compatible with Python 3.13. "
-                    "OpenSeeFace is available as an experimental alternative, "
-                    "but results may be less accurate.\n\n"
-                    "📢 Help request Python 3.13 support! Vote/comment on:\n"
-                    "• https://github.com/google-ai-edge/mediapipe/issues/5708\n"
-                    "• https://github.com/google-ai-edge/mediapipe/issues/6025\n"
-                    "The more users request it, the higher priority it gets!"
-                )
-            else:
-                raise ImportError("MediaPipe is not installed. Please install with: pip install mediapipe opencv-python")
-        
-        self.mp_face_mesh = mp.solutions.face_mesh
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
-        
-        # Initialize face mesh with optimized settings
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            max_num_faces=1,
-            refine_landmarks=True,  # Enables iris landmarks and better accuracy
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
-        
+        from engines.video.providers.mediapipe_tracker import mediapipe_backend
+        mediapipe_backend()  # Check actual APIs, independent of Python version.
+        self._tracker = None
+
         # Enhanced MAR threshold with exponential scaling for ultra-fine control
         # Exponential mapping for much more granular sensitivity control:
         # At sensitivity 0.1: threshold ≈ 0.25 (very conservative, only obvious movements)
@@ -234,120 +202,135 @@ class MediaPipeProvider(AbstractProvider):
         scale_y = original_height / height
         needs_scaling = scale_x != 1.0 or scale_y != 1.0
         
-        frame_count = 0
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            
-            # Resize frame for optimal MediaPipe processing
-            if needs_scaling:
-                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
-            
-            # Detect movement in frame
-            is_moving, confidence, landmarks = self.detect_movement(frame)
-            
-            movement_frames.append(is_moving)
-            confidence_scores.append(confidence)
-            
-            # Calculate MAR and extract features if landmarks detected
-            if landmarks is not None:
-                mar = self.calculate_mar(landmarks)
-                mar_values.append(mar)
-                
-                # Extract viseme features if enabled
-                if enable_viseme:
-                    features = self.extract_geometric_features(landmarks)
-                    
-                    # Use modular analysis system if available
-                    metadata = None
-                    if ANALYSIS_AVAILABLE and self.viseme_options:
-                        # Create analyzer only once per video, not per frame!
-                        if not hasattr(self, '_temporal_analyzer'):
-                            self._temporal_analyzer = VisemeAnalysisFactory.create_analyzer(self.viseme_options)
-                            print(f"[DEBUG] Created persistent analyzer: {type(self._temporal_analyzer).__name__}")
-                        
-                        result = self._temporal_analyzer.classify_viseme(features, self.enable_consonant_detection)
-                        viseme, viseme_conf = result.viseme, result.confidence
-                        metadata = result.metadata  # Capture classifier metadata
-                    else:
-                        # Fallback to built-in method
-                        print(f"[DEBUG] Using built-in method: ANALYSIS_AVAILABLE={ANALYSIS_AVAILABLE}, viseme_options={bool(self.viseme_options)}")
-                        viseme, viseme_conf = self.classify_viseme(features, self.enable_consonant_detection)
-                    
-                    viseme_frames.append(VisemeFrame(
-                        frame_index=frame_count,
-                        viseme=viseme,
-                        confidence=viseme_conf,
-                        geometric_features=features,
-                        metadata=metadata
-                    ))
-            else:
-                mar_values.append(0.0)
-                if enable_viseme:
-                    viseme_frames.append(VisemeFrame(
-                        frame_index=frame_count,
-                        viseme='neutral',
-                        confidence=0.0,
-                        geometric_features={},
-                        metadata=None
-                    ))
-            
-            # Store frame data for preview generation if requested
-            if preview_mode:
-                # Get current viseme and geometric features if available
-                current_viseme = None
-                viseme_confidence = 0.0
-                geometric_features = None
-                consonant_scores = None
-                analyzer_method = 'basic'  # Default analyzer method
-                if enable_viseme and viseme_frames and frame_count < len(viseme_frames):
-                    current_viseme = viseme_frames[-1].viseme  # Last added viseme
-                    viseme_confidence = viseme_frames[-1].confidence
-                    geometric_features = viseme_frames[-1].geometric_features
-                    # Extract debug info from metadata
-                    if hasattr(viseme_frames[-1], 'metadata') and viseme_frames[-1].metadata:
-                        metadata = viseme_frames[-1].metadata
-                        consonant_scores = metadata.get('raw_scores', {})
-                        # Filter for consonant scores only
-                        consonant_scores = {k: v for k, v in consonant_scores.items()
-                                          if k in ['B', 'P', 'M', 'F', 'V', 'TH', 'T', 'D', 'N', 'K', 'G'] and v > 0.0}
+        from engines.video.providers.mediapipe_tracker import FaceTracker
+        self.previous_visemes = []
+        if hasattr(self, '_temporal_analyzer'):
+            del self._temporal_analyzer
+        try:
+            if not np.isfinite(fps) or fps <= 0:
+                raise ValueError("Video has no valid frame rate; cannot calculate mouth timing.")
+            with FaceTracker() as tracker:
+                self._tracker = tracker
+                logger.info(f"MediaPipe backend: {tracker.backend}")
+                frame_count = 0
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
 
-                        # Extract analyzer method info
-                        analyzer_method = metadata.get('method', 'unknown')
+                    # Resize frame for optimal MediaPipe processing
+                    if needs_scaling:
+                        frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+
+                    # Detect movement in frame
+                    is_moving, confidence, landmarks = self.detect_movement(frame, frame_count * 1000.0 / fps)
+
+                    movement_frames.append(is_moving)
+                    confidence_scores.append(confidence)
+
+                    # Calculate MAR and extract features if landmarks detected
+                    if landmarks is not None:
+                        mar = self.calculate_mar(landmarks)
+                        mar_values.append(mar)
+
+                        # Extract viseme features if enabled
+                        if enable_viseme:
+                            features = self.extract_geometric_features(landmarks)
+
+                            # Use modular analysis system if available
+                            metadata = None
+                            if ANALYSIS_AVAILABLE and self.viseme_options:
+                                # Create analyzer only once per video, not per frame!
+                                if not hasattr(self, '_temporal_analyzer'):
+                                    self._temporal_analyzer = VisemeAnalysisFactory.create_analyzer(self.viseme_options)
+                                    print(f"[DEBUG] Created persistent analyzer: {type(self._temporal_analyzer).__name__}")
+
+                                result = self._temporal_analyzer.classify_viseme(features, self.enable_consonant_detection)
+                                viseme, viseme_conf = result.viseme, result.confidence
+                                metadata = result.metadata  # Capture classifier metadata
+                            else:
+                                # Fallback to built-in method
+                                print(f"[DEBUG] Using built-in method: ANALYSIS_AVAILABLE={ANALYSIS_AVAILABLE}, viseme_options={bool(self.viseme_options)}")
+                                viseme, viseme_conf = self.classify_viseme(features, self.enable_consonant_detection)
+
+                            viseme_frames.append(VisemeFrame(
+                                frame_index=frame_count,
+                                viseme=viseme,
+                                confidence=viseme_conf,
+                                geometric_features=features,
+                                metadata=metadata
+                            ))
                     else:
-                        analyzer_method = 'basic'
-                
-                # Store frame data for later preview generation
-                frame_data.append({
-                    'frame': frame.copy(),  # Store copy of frame
-                    'landmarks': landmarks,
-                    'is_moving': is_moving,
-                    'confidence': confidence,
-                    'frame_number': frame_count,
-                    'current_viseme': current_viseme,
-                    'viseme_confidence': viseme_confidence,
-                    'geometric_features': geometric_features,
-                    'consonant_scores': consonant_scores,
-                    'analyzer_method': analyzer_method
-                })
-            
-            frame_count += 1
-            
-            # Progress logging
-            if frame_count % 30 == 0:
-                progress = (frame_count / total_frames) * 100
-                logger.debug(f"Processing: {progress:.1f}% ({frame_count}/{total_frames} frames)")
-        
-        cap.release()
-        
+                        mar_values.append(0.0)
+                        if enable_viseme:
+                            viseme_frames.append(VisemeFrame(
+                                frame_index=frame_count,
+                                viseme='neutral',
+                                confidence=0.0,
+                                geometric_features={},
+                                metadata=None
+                            ))
+
+                    # Store frame data for preview generation if requested
+                    if preview_mode:
+                        # Get current viseme and geometric features if available
+                        current_viseme = None
+                        viseme_confidence = 0.0
+                        geometric_features = None
+                        consonant_scores = None
+                        analyzer_method = 'basic'  # Default analyzer method
+                        if enable_viseme and viseme_frames and frame_count < len(viseme_frames):
+                            current_viseme = viseme_frames[-1].viseme  # Last added viseme
+                            viseme_confidence = viseme_frames[-1].confidence
+                            geometric_features = viseme_frames[-1].geometric_features
+                            # Extract debug info from metadata
+                            if hasattr(viseme_frames[-1], 'metadata') and viseme_frames[-1].metadata:
+                                metadata = viseme_frames[-1].metadata
+                                consonant_scores = metadata.get('raw_scores', {})
+                                # Filter for consonant scores only
+                                consonant_scores = {k: v for k, v in consonant_scores.items()
+                                                  if k in ['B', 'P', 'M', 'F', 'V', 'TH', 'T', 'D', 'N', 'K', 'G'] and v > 0.0}
+
+                                # Extract analyzer method info
+                                analyzer_method = metadata.get('method', 'unknown')
+                            else:
+                                analyzer_method = 'basic'
+
+                        # Store frame data for later preview generation
+                        frame_data.append({
+                            'frame': frame.copy(),  # Store copy of frame
+                            'landmarks': landmarks,
+                            'is_moving': is_moving,
+                            'confidence': confidence,
+                            'frame_number': frame_count,
+                            'current_viseme': current_viseme,
+                            'viseme_confidence': viseme_confidence,
+                            'geometric_features': geometric_features,
+                            'consonant_scores': consonant_scores,
+                            'analyzer_method': analyzer_method
+                        })
+
+                    frame_count += 1
+
+                    # Progress logging
+                    if frame_count % 30 == 0:
+                        progress = (frame_count / total_frames) * 100
+                        logger.debug(f"Processing: {progress:.1f}% ({frame_count}/{total_frames} frames)")
+
+
+        finally:
+            self._tracker = None
+            cap.release()
+
         # Smooth confidence scores to reduce noise
         confidence_scores = self.smooth_confidence_scores(confidence_scores)
         
         # Convert frame-by-frame detection to segments
         segments = self.frames_to_segments(movement_frames, confidence_scores, mar_values, fps)
         
-        # Apply filtering
+        # Keep visemes on raw segments so cached re-filtering preserves them.
+        if enable_viseme and viseme_frames:
+            self._add_viseme_sequences_to_segments(segments, viseme_frames, fps)
         filtered_segments = self.filter_segments(segments)
         
         # Store frame data for preview generation (done separately)
@@ -355,10 +338,6 @@ class MediaPipeProvider(AbstractProvider):
             self.frame_data = frame_data
         else:
             self.frame_data = None
-        
-        # Add viseme sequences to segments if enabled
-        if enable_viseme and viseme_frames:
-            self._add_viseme_sequences_to_segments(filtered_segments, viseme_frames, fps)
         
         # Create timing data
         timing_data = TimingData(
@@ -392,27 +371,27 @@ class MediaPipeProvider(AbstractProvider):
 
         return timing_data
     
-    def detect_movement(self, frame: np.ndarray) -> Tuple[bool, float, Optional[np.ndarray]]:
+    def detect_movement(self, frame: np.ndarray, timestamp_ms: float = 0) -> Tuple[bool, float, Optional[np.ndarray]]:
         """
         Detect mouth movement in a single frame using MediaPipe
         """
         # Convert BGR to RGB for MediaPipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # Process frame with MediaPipe
-        results = self.face_mesh.process(rgb_frame)
-        
-        if not results.multi_face_landmarks:
+        if self._tracker is None:
+            from engines.video.providers.mediapipe_tracker import FaceTracker
+            with FaceTracker() as tracker:
+                face_landmarks = tracker.landmarks(rgb_frame, timestamp_ms)
+        else:
+            face_landmarks = self._tracker.landmarks(rgb_frame, timestamp_ms)
+        if face_landmarks is None:
             return False, 0.0, None
-        
-        # Get first face landmarks
-        face_landmarks = results.multi_face_landmarks[0]
-        
+
         # Convert to numpy array
         h, w = frame.shape[:2]
         landmarks = np.array([
             [landmark.x * w, landmark.y * h, landmark.z * w]
-            for landmark in face_landmarks.landmark
+            for landmark in face_landmarks
         ])
         
         # Calculate MAR
@@ -956,69 +935,11 @@ class MediaPipeProvider(AbstractProvider):
         return getattr(self, 'preview_video', None)
     
     def _create_preview_video(self, frames: List[np.ndarray], fps: float, width: int, height: int):
-        """Create preview video with movement annotations in temp directory"""
-        if not frames:
-            return
+        """Encode using the same browser-playable temp preview as other providers."""
+        from engines.video.utils.preview_creator import PreviewVideoCreator
+        self.preview_video = PreviewVideoCreator.create_preview_video(
+            frames, fps, width, height, self.provider_name)
 
-        # Create preview in temp directory (not output)
-        import folder_paths
-        import os
-        import tempfile
-
-        try:
-            temp_dir = folder_paths.get_temp_directory()
-        except:
-            temp_dir = tempfile.gettempdir()
-
-        os.makedirs(temp_dir, exist_ok=True)
-
-        # Generate unique filename
-        import time
-        timestamp = int(time.time())
-        filename_webm = f"mouth_preview_{timestamp}.webm"
-        output_path_webm = os.path.join(temp_dir, filename_webm)
-
-        # Create WEBM video for native ComfyUI display - optimized for fast preview
-        try:
-            import av
-            from fractions import Fraction
-
-            # Convert BGR frames to RGB
-            rgb_frames = []
-            for frame in frames:
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgb_frames.append(rgb_frame)
-
-            # Create WEBM using av library - optimized for fast preview
-            container = av.open(output_path_webm, mode="w")
-            stream = container.add_stream("libvpx-vp9", rate=Fraction(round(fps * 1000), 1000))
-            stream.width = width
-            stream.height = height
-            stream.pix_fmt = "yuv420p"
-            # Fast encoding options for preview (lower quality but much faster)
-            stream.options = {
-                "crf": "45",  # Higher CRF = lower quality but faster encoding
-                "speed": "8",  # Fastest encoding speed
-                "cpu-used": "8"  # Maximum CPU efficiency mode
-            }
-
-            for rgb_frame in rgb_frames:
-                av_frame = av.VideoFrame.from_ndarray(rgb_frame, format="rgb24")
-                for packet in stream.encode(av_frame):
-                    container.mux(packet)
-
-            # Flush encoder
-            for packet in stream.encode():
-                container.mux(packet)
-
-            container.close()
-
-            self.preview_video = output_path_webm
-            logger.info(f"Preview WEBM created in temp: {output_path_webm}")
-
-        except Exception as e:
-            logger.error(f"Failed to create preview WEBM: {e}")
-    
     def annotate_frame(
         self,
         frame: np.ndarray,
@@ -1039,7 +960,7 @@ class MediaPipeProvider(AbstractProvider):
         
         # Add movement indicator
         color = (0, 255, 0) if is_moving else (255, 0, 0)
-        status_text = f"SPEAKING: {confidence:.2f}" if is_moving else f"SILENT: {confidence:.2f}"
+        status_text = f"MOUTH ACTIVE: {confidence:.2f}" if is_moving else f"MOUTH STILL: {confidence:.2f}"
         
         # Add semi-transparent background for better text visibility
         overlay = annotated.copy()
@@ -1287,5 +1208,6 @@ class MediaPipeProvider(AbstractProvider):
     
     def _check_dependencies(self):
         """Check if required dependencies are installed"""
-        import mediapipe
+        from engines.video.providers.mediapipe_tracker import mediapipe_backend
+        mediapipe_backend()
         import cv2

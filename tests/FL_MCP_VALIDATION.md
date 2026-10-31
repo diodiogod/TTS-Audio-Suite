@@ -90,6 +90,10 @@ REST access does not imply browser/canvas access. Before starting the implementa
 
 The browser stores its session ID in local storage, so normal ComfyUI restarts and browser refreshes should retain it. If the browser session is reset or a different browser/profile is used, update the MCP client configuration and restart that client again.
 
+## Preview delivery check
+
+For generated media previews, verify the returned UI filename/subfolder/type through ComfyUI `/view` and decode the served bytes. A local file or successful encoder alone does not prove the frontend can retrieve the artifact. Keep this check separate from the user's visual quality test.
+
 ## Validation Layers
 
 Run all applicable layers:
