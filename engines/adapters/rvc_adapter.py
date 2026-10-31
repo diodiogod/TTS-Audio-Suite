@@ -11,9 +11,9 @@ import os
 
 # Add project root to path for imports
 current_dir = os.path.dirname(__file__)
-parent_dir = os.path.dirname(current_dir)
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+project_root = os.path.dirname(os.path.dirname(current_dir))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from engines.rvc.rvc_engine import RVCEngine
 from engines.rvc.minimal_reference_wrapper import minimal_wrapper

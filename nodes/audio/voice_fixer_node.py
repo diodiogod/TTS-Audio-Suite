@@ -22,7 +22,7 @@ from utils.comfyui_compatibility import ensure_python312_cudnn_fix
 # Add bundled voicefixer to path
 import sys
 current_dir = os.path.dirname(__file__)
-utils_dir = os.path.dirname(os.path.dirname(current_dir))
+utils_dir = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "utils")
 if utils_dir not in sys.path:
     sys.path.insert(0, utils_dir)
 

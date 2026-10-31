@@ -6,6 +6,8 @@ Centralized downloading for all models (F5-TTS, ChatterBox, RVC, etc.) without c
 import os
 import requests
 import subprocess
+import shutil
+import sys
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 import fnmatch
@@ -76,54 +78,28 @@ class UnifiedDownloader:
             env = os.environ.copy()
             env['PYTHONIOENCODING'] = 'utf-8'
 
-            # Try modern 'hf download' first, fallback to legacy 'huggingface-cli download'
-            # Show progress bar by not capturing output
-            hf_command = [
-                "hf", "download",
-                repo_id,
-                filename,
-                "--local-dir", target_dir
-            ]
-            if revision:
-                hf_command.extend(["--revision", revision])
-            if force_download:
-                hf_command.append("--force-download")
-            result = subprocess.run(
-                hf_command,
-                check=False,
-                env=env,
-                capture_output=False  # Allow progress bar to show
-            )
-
-            # If new command succeeded, return
-            if result.returncode == 0 and os.path.exists(target_path):
-                return True
-
-            # Try legacy command if new one failed
-            legacy_command = [
-                "huggingface-cli", "download",
-                repo_id,
-                filename,
-                "--local-dir", target_dir
-            ]
-            if revision:
-                legacy_command.extend(["--revision", revision])
-            if force_download:
-                legacy_command.append("--force-download")
-            result = subprocess.run(
-                legacy_command,
-                check=False,
-                env=env,
-                capture_output=False  # Allow progress bar to show
-            )
-
-            if result.returncode == 0 and os.path.exists(target_path):
-                return True
-
+            # ComfyUI can launch a venv Python without adding its Scripts/bin to PATH.
+            # Prefer that environment's CLI, then try PATH and the legacy command.
+            for cli_name in ("hf", "huggingface-cli"):
+                local_cli = Path(sys.executable).with_name(
+                    cli_name + (".exe" if os.name == "nt" else "")
+                )
+                executable = str(local_cli) if local_cli.is_file() else shutil.which(cli_name)
+                if not executable:
+                    continue
+                command = [executable, "download", repo_id, filename, "--local-dir", target_dir]
+                if revision:
+                    command.extend(["--revision", revision])
+                if force_download:
+                    command.append("--force-download")
+                result = subprocess.run(command, check=False, env=env, capture_output=False)
+                if result.returncode == 0 and os.path.exists(target_path):
+                    return True
+            print(f"Hugging Face CLI download failed: {repo_id}/{filename}")
             return False
 
-        except Exception:
-            # Silently fail - will use HTTP fallback
+        except Exception as exc:
+            print(f"Hugging Face CLI download failed for {repo_id}/{filename}: {exc}")
             return False
 
     def download_file(

@@ -11,41 +11,8 @@ import os
 from typing import Dict, Any, Optional, Tuple
 import comfy.model_management as model_management
 
-# Use absolute imports that work when loaded via importlib
-import os
-import sys
-
-# Add project root directory to path for imports
-# When loaded via importlib, __file__ might not resolve correctly
-# So we'll use a more aggressive approach to find the project root
-try:
-    from utils.models.manager import model_manager
-except ImportError:
-    # Find project root by going up from this file location
-    current_file = os.path.abspath(__file__)
-    current_dir = os.path.dirname(current_file)
-    nodes_dir = os.path.dirname(current_dir)  # nodes/
-    project_root = os.path.dirname(nodes_dir)  # project root
-    
-    # Add to beginning of path and force reload of sys.modules
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    # Also try adding the utils directory directly
-    utils_dir = os.path.join(project_root, 'utils')
-    if utils_dir not in sys.path:
-        sys.path.insert(0, utils_dir)
-    
-    # Clear any cached import failures
-    if 'utils' in sys.modules:
-        del sys.modules['utils']
-    if 'utils.models' in sys.modules:
-        del sys.modules['utils.models']
-    if 'utils.models.manager' in sys.modules:
-        del sys.modules['utils.models.manager']
-    
-    # Try import again
-    from utils.models.manager import model_manager
+# The suite entry point prepares utils without replacing ComfyUI modules.
+from utils.models.manager import model_manager
 
 # Defense-in-depth: save_audio_safe provides fallback for PyTorch 2.9 TorchCodec issues.
 # The global monkey-patch in __init__.py handles most cases, but this function provides
