@@ -1006,69 +1006,51 @@ class TTSAudioInstaller:
                 "WARNING",
             )
 
+    def numpy_stack_conflicts(self):
+        """Check declared compatibility without importing potentially broken binaries."""
+        from importlib.metadata import PackageNotFoundError, requires, version
+        from packaging.requirements import Requirement
+        conflicts = []
+        for package in ("numba", "scipy", "librosa"):
+            try:
+                version(package)
+                for text in requires(package) or []:
+                    requirement = Requirement(text)
+                    if requirement.name.lower() not in ("numpy", "numba", "llvmlite", "scipy"):
+                        continue
+                    if requirement.marker and not requirement.marker.evaluate():
+                        continue
+                    installed = version(requirement.name)
+                    if installed not in requirement.specifier:
+                        conflicts.append(f"{package} requires {requirement}; installed {installed}")
+            except PackageNotFoundError as exc:
+                conflicts.append(str(exc))
+        return conflicts
+
     def install_numpy_with_constraints(self):
-        """Install numpy with version constraints for compatibility"""
-        self.log("Checking numpy compatibility", "INFO")
-        
-        # Python 3.13+ requires numpy 2.1.0 or newer (no wheels for 1.26.x)
-        if self.python_version >= (3, 13):
-            minimum_numpy = "numpy>=2.1.0,<2.3.0"
-            self.log("Python 3.13+ detected - requires NumPy 2.1.0 or newer", "INFO")
-        else:
-            minimum_numpy = "numpy>=1.26.4,<2.3.0"
-        
-        # Check if numpy is already installed and what version
+        """Preserve supported NumPy and resolve its actual audio-stack requirements."""
+        from importlib.metadata import PackageNotFoundError, version
+        from packaging.specifiers import SpecifierSet
+        numpy_range = ">=2.1.0,<3" if self.python_version >= (3, 13) else ">=1.26.4,<3"
+        numpy_requirement = f"numpy{numpy_range}"
         try:
-            import numpy
-            numpy_version = numpy.__version__
-            self.log(f"Current numpy version: {numpy_version}", "INFO")
-            
-            # Parse numpy version
-            import re
-            version_match = re.match(r'(\d+)\.(\d+)', numpy_version)
-            if version_match:
-                major, minor = int(version_match.group(1)), int(version_match.group(2))
-                
-                # Python 3.13+ specific check
-                if self.python_version >= (3, 13) and major < 2:
-                    self.log(f"NumPy {numpy_version} is incompatible with Python 3.13+", "ERROR")
-                    self.log("Python 3.13 requires NumPy 2.1.0 or newer (no wheels for 1.26.x)", "WARNING")
-                    numpy_constraint = minimum_numpy
-                # Accept both numpy 1.26.x and 2.x.x (but not 2.3.x) for older Python
-                elif major == 1 and minor >= 26 and self.python_version < (3, 13):
-                    self.log(f"NumPy {numpy_version} is compatible - keeping current version", "INFO")
-                    return  # NumPy 1.26.x is fine for Python < 3.13
-                elif major == 2 and minor < 3:
-                    self.log(f"NumPy {numpy_version} is compatible - keeping current version", "INFO")
-                    return  # NumPy 2.0.x, 2.1.x, 2.2.x are fine
-                elif major >= 2 and minor >= 3:
-                    # Only numpy 2.3+ needs downgrading
-                    self.log(f"NumPy {numpy_version} may cause issues - constraining to <2.3.0", "WARNING")
-                    numpy_constraint = minimum_numpy
-                else:
-                    # Very old numpy needs updating
-                    self.log(f"NumPy {numpy_version} is too old", "WARNING")
-                    numpy_constraint = minimum_numpy
-            else:
-                # Can't parse version - install safe range
-                numpy_constraint = minimum_numpy
-                
-        except ImportError:
-            # No numpy installed - install with appropriate constraints
-            self.log("NumPy not found - installing with appropriate constraints", "INFO")
-            numpy_constraint = minimum_numpy
-        except Exception as e:
-            # NumPy import failed
-            self.log(f"NumPy check failed ({e}) - installing safe version", "WARNING")
-            numpy_constraint = minimum_numpy
-        
-        # Only install/upgrade numpy if needed
-        if 'numpy_constraint' in locals():
-            self.run_pip_command(["install", numpy_constraint], "Installing numpy with version constraints")
-        
-        # Note: We're not forcing numba installation anymore since we disable JIT anyway
-        self.log("NumPy compatibility check complete", "INFO")
-    
+            installed = version("numpy")
+            if installed in SpecifierSet(numpy_range):
+                numpy_requirement = f"numpy=={installed}"
+                conflicts = self.numpy_stack_conflicts()
+                if not conflicts:
+                    self.log(f"NumPy {installed}: installed audio-stack requirements satisfied", "SUCCESS")
+                    return
+                for conflict in conflicts:
+                    self.log(conflict, "WARNING")
+        except PackageNotFoundError:
+            pass
+        # Resolve together; pin an already supported NumPy to avoid silent downgrades.
+        self.run_pip_command(
+            ["install", numpy_requirement, "numba", "scipy", "librosa"],
+            "Resolving compatible NumPy/Numba audio dependencies",
+        )
+
     def install_audio_separator_if_compatible(self):
         """Install audio-separator only if numpy version supports it"""
         try:
@@ -1833,21 +1815,20 @@ class TTSAudioInstaller:
         return len(validation_errors) == 0
 
     def check_version_conflicts(self):
-        """Check for known version conflicts"""
-        self.log("Checking for version conflicts...", "INFO")
-
+        """Report actual audio-stack conflicts instead of a fixed NumPy minor cap."""
+        from importlib.metadata import PackageNotFoundError, version
+        from packaging.specifiers import SpecifierSet
+        numpy_range = ">=2.1.0,<3" if self.python_version >= (3, 13) else ">=1.26.4,<3"
         try:
-            from importlib.metadata import version, PackageNotFoundError
-            numpy_version_text = version("numpy")
-            numpy_version = tuple(map(int, numpy_version_text.split('.')[:2]))
-
-            if numpy_version >= (2, 3):
-                self.log(f"WARNING: NumPy {numpy_version_text} detected - may cause numba conflicts", "WARNING")
-                self.log("Consider downgrading: pip install 'numpy>=2.2.0,<2.3.0'", "WARNING")
-            else:
-                self.log(f"NumPy {numpy_version_text}: Version OK for compatibility", "SUCCESS")
-
-        except (PackageNotFoundError, ImportError, ValueError):
+            installed = version("numpy")
+            conflicts = self.numpy_stack_conflicts()
+            if installed not in SpecifierSet(numpy_range):
+                conflicts.append(f"NumPy {installed} is outside supported range {numpy_range}")
+            for conflict in conflicts:
+                self.log(conflict, "WARNING")
+            if not conflicts:
+                self.log(f"NumPy {installed}: audio-stack dependency metadata compatible", "SUCCESS")
+        except PackageNotFoundError:
             self.log("NumPy not found - this will cause issues", "ERROR")
 
     def prepare_shared_runtime(self):

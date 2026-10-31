@@ -128,7 +128,8 @@ def _center_and_normalize_points(points):
                        [0, norm_factor, -norm_factor * centroid[1]],
                        [0, 0, 1]])
 
-    pointsh = np.row_stack([points.T, np.ones((points.shape[0]),)])
+    # TTS Audio Suite patch: vstack replaces the deprecated row_stack alias.
+    pointsh = np.vstack([points.T, np.ones((points.shape[0]),)])
 
     new_pointsh = (matrix @ pointsh).T
 

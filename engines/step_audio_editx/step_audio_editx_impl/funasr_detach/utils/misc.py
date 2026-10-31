@@ -21,7 +21,8 @@ def int2vec(x, vec_dim=8, dtype=np.int32):
 
 
 def seq2arr(seq, vec_dim=8):
-    return np.row_stack([int2vec(int(x), vec_dim) for x in seq])
+    # TTS Audio Suite patch: vstack replaces the deprecated row_stack alias.
+    return np.vstack([int2vec(int(x), vec_dim) for x in seq])
 
 
 def load_scp_as_dict(scp_path, value_type="str", kv_sep=" "):

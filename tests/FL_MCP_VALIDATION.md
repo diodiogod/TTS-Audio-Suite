@@ -18,6 +18,8 @@ Do not use FL-MCP as a replacement for efficient terminal work. Avoid fetching f
 
 ## Preconditions
 
+- After changing runtime profiles or the base dependency environment, check `runtime_is_ready(profile, base_python=configured_test_python)` for affected installed runtimes before handing workflows to the user. Profile changes invalidate saved runtime metadata even if no runtime packages were directly changed. Repair through the installation entry point and verify effective package versions; server health and node registration do not establish worker readiness.
+
 - Use the canonical Windows ComfyUI installation documented in the repository instructions.
 - ComfyUI starts with TTS Audio Suite enabled and no suite import errors.
 - FL-MCP is installed according to its upstream documentation.

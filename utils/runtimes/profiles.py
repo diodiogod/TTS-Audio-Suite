@@ -25,7 +25,7 @@ class RuntimeProfile:
 
 
 _VIBEVOICE_T4_PACKAGES = [
-    "numpy>=1.26.4,<2.3.0",
+    "numpy>=1.26.4,<3",
     "soundfile>=0.12.0",
     "omegaconf>=2.3.0",
     "transformers>=4.51.3,<=4.57.3",
