@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.10.8] - 2026-11-05
+
+### Changed
+
+- Update IndexTTS streaming and low-VRAM tooltips
+
+### Fixed
+
+- Fix IndexTTS streaming generation failures
+- Fix IndexTTS crashes when stream_return is enabled
+
+### Removed
+
+- Remove the unused more_segment_before control while preserving saved workflows
 ## [5.10.7] - 2026-10-31
 
 ### Changed
