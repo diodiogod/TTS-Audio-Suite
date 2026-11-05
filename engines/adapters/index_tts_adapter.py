@@ -343,9 +343,9 @@ class IndexTTSAdapter:
                 f"❌ IndexTTS-2 ran out of GPU memory during generation.\n{audio_analysis}"
             ) from e
 
-        # Handle streaming vs non-streaming returns
+        # Streaming audio is already buffered by the engine for the TTS nodes.
         if stream_return:
-            # In streaming mode, audio is a generator - return it as-is without caching
+            # Preserve the existing behavior of not caching streamed generation.
             return audio
         else:
             # Cache the result for non-streaming mode

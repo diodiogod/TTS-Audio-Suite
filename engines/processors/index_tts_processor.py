@@ -405,7 +405,6 @@ class IndexTTSProcessor:
                             duration_factor=current_config.get('duration_factor', 1.0),
                             text_normalization=current_config.get('text_normalization', True),
                             stream_return=current_config.get('stream_return', False),
-                            more_segment_before=current_config.get('more_segment_before', 0)
                         )
                         
                         # Clean up temp files
@@ -515,7 +514,6 @@ class IndexTTSProcessor:
                         duration_factor=current_config.get('duration_factor', 1.0),
                         text_normalization=current_config.get('text_normalization', True),
                         stream_return=current_config.get('stream_return', False),
-                        more_segment_before=current_config.get('more_segment_before', 0)
                     )
                     
                     # Clean up temp files

@@ -176,15 +176,16 @@ This can be connected together with the vector/text emotion input above; IndexTT
                 }),
                 "stream_return": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable streaming mode for low-latency audio generation. Returns generator yielding audio chunks instead of complete file."
+                    "tooltip": "Experimental: use the model's streaming path, but ComfyUI still receives the completed audio. With IndexTTS-2.5, this bypasses low-VRAM text splitting and may change the speech or increase VRAM use. No speedup is guaranteed."
                 }),
+                # Preserve the widget position for older saved workflows.
                 "more_segment_before": ("INT", {
-                    "default": 0, "min": 0, "max": 80, "step": 5,
-                    "tooltip": "Streaming segmentation parameter. Higher values produce first audio chunk faster but may affect quality. Only used when stream_return is enabled. Recommended: 0-20."
+                    "default": 0, "min": 0, "max": 80, "step": 5, "hidden": True,
+                    "tooltip": "Legacy workflow compatibility input; ignored."
                 }),
                 "low_vram": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Enable IndexTTS low-VRAM behavior. Legacy 2.0 uses sequential offloading; 2.5 uses more aggressive text splitting."
+                    "tooltip": "Enable IndexTTS low-VRAM behavior. IndexTTS-2.0 uses sequential offloading; 2.5 uses extra text splitting, which is also enabled automatically on CUDA GPUs under 10 GB and bypassed by stream_return."
                 }),
                 # Appended for workflow widget-position compatibility.
                 "language": (["English", "Chinese", "Japanese", "Spanish", "Arabic"], {
@@ -378,7 +379,8 @@ This can be connected together with the vector/text emotion input above; IndexTT
                 "use_torch_compile": use_torch_compile,
                 "use_accel": use_accel,
                 "stream_return": stream_return,
-                "more_segment_before": more_segment_before,
+                # Ignore the retired setting supplied by older workflows.
+                "more_segment_before": 0,
                 "low_vram": low_vram,
                 "language": language,
                 "duration_factor": duration_factor,
@@ -403,7 +405,7 @@ This can be connected together with the vector/text emotion input above; IndexTT
             print(f"   Emotion: {emotion_desc}")
             print(f"   Generation: temp={temperature}, top_p={top_p}, top_k={top_k}, do_sample={do_sample}, num_beams={num_beams}")
             print(f"   Chunking: max_tokens={max_text_tokens_per_segment}, silence={interval_silence}ms")
-            # Report optimization and streaming parameters
+            # Report optimization parameters
             optimizations = []
             if use_torch_compile:
                 optimizations.append("torch.compile")
@@ -412,9 +414,9 @@ This can be connected together with the vector/text emotion input above; IndexTT
             if optimizations:
                 print(f"   Optimizations: {', '.join(optimizations)}")
             if stream_return:
-                print(f"   Streaming: enabled (more_segment_before={more_segment_before})")
+                print("   Streaming inference: enabled (complete audio returned)")
             if low_vram:
-                print(f"   Low VRAM: enabled (sequential offloading)")
+                print("   Low VRAM: enabled")
             
             # Return engine data for consumption by unified TTS nodes
             engine_data = {

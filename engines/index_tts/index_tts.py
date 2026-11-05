@@ -395,23 +395,35 @@ class IndexTTSEngine:
             result = self._tts_engine.infer(**infer_kwargs)
 
             if supported_kwargs.get("stream_return", False):
-                # TTS Audio Suite patch: Normalize native streamed int16 chunks
-                # instead of trying to unpack the generator as a final WAV tuple.
-                def normalized_stream():
-                    for chunk in result:
-                        if not isinstance(chunk, torch.Tensor):
+                if self.model_version == "2.5":
+                    # Native 2.5 yields alternating PCM-scaled speech and silence,
+                    # including an extra silence after the last speech chunk.
+                    # Buffer here while reference files still exist, and return the
+                    # complete waveform expected by the TTS processors.
+                    chunks = []
+                    pending_silence = None
+                    for index, chunk in enumerate(result):
+                        if index % 2:
+                            # Zero interval_silence yields a list, not a tensor.
+                            pending_silence = chunk if isinstance(chunk, torch.Tensor) else None
                             continue
-                        chunk = chunk.detach().cpu()
-                        if chunk.dtype == torch.int16:
-                            chunk = chunk.float() / 32767.0
-                        else:
-                            chunk = chunk.float()
-                        if chunk.dim() == 1:
-                            chunk = chunk.unsqueeze(0)
-                        elif chunk.dim() > 2:
-                            chunk = chunk.reshape(-1, chunk.shape[-1]).mean(dim=0, keepdim=True)
-                        yield chunk
-                return normalized_stream()
+                        if not isinstance(chunk, torch.Tensor):
+                            raise RuntimeError("IndexTTS-2.5 returned an invalid streaming audio chunk")
+                        if pending_silence is not None:
+                            chunks.append(pending_silence)
+                        chunks.append(chunk)
+                        pending_silence = None
+                    if not chunks:
+                        raise RuntimeError("IndexTTS-2.5 returned no streaming audio")
+                    return torch.cat(
+                        [chunk.detach().cpu().float() / 32767.0 for chunk in chunks],
+                        dim=-1,
+                    )
+
+                # The 2.0 backend yields one final (sample_rate, WAV) tuple.
+                result = next(result, None)
+                if result is None:
+                    raise RuntimeError("IndexTTS-2 returned no streaming audio")
 
             # Get audio tensor directly from infer result
             # infer() with output_path=None returns a tuple (sampling_rate, wav_data)
