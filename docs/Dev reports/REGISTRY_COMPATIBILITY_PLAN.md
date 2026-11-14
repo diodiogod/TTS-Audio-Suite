@@ -208,6 +208,12 @@ the actual preference file and runtime folder; no UI route or node runs pip.
 - Source rewrites must match AST call identity. Compare preserved attribute-call
   identities against the original source, independently of edit selection; builtin
   eval removal must not rename model.eval() or other unrelated methods.
+- Installer entry points must also be checked in a fresh interpreter with isolated
+  import paths (`-I -S`), without the suite on `sys.path`, and with unrelated
+  packages/modules sharing generic names, including already-cached imports.
+  Cover default preferences, opt-out, and prepared-runtime reuse without loading
+  engine dependencies or changing the host's import paths/modules. Ordinary
+  in-process tests with the suite prepended do not establish Portable compatibility.
 
 ## Completed local verification
 

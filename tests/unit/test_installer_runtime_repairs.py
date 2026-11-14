@@ -1,6 +1,10 @@
 import importlib.util
+import json
+import shutil
+import subprocess
 import sys
 import types
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -15,7 +19,81 @@ INSTALL_MODULE = importlib.util.module_from_spec(INSTALL_SPEC)
 INSTALL_SPEC.loader.exec_module(INSTALL_MODULE)
 
 from engines.dots_tts.dots_tts_engine import DotsTTSEngine
+from utils.runtimes.bootstrap import BOOTSTRAP_STRATEGY
 from utils.runtimes.profiles import get_runtime_profile
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("shadow_utils", ["absent", "package", "cached_package", "module"])
+@pytest.mark.parametrize("install_shared_runtime", [True, False])
+def test_installer_runtime_helpers_work_with_isolated_import_paths(
+    tmp_path, shadow_utils, install_shared_runtime
+):
+    suite = tmp_path / "ComfyUI" / "custom_nodes" / "tts_audio_suite"
+    suite.mkdir(parents=True)
+    shutil.copy2(REPO_ROOT / "install.py", suite / "install.py")
+    shutil.copytree(
+        REPO_ROOT / "utils" / "runtimes", suite / "utils" / "runtimes",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+
+    # A prepared runtime must be reusable without importing the engine stack
+    # or touching pip. Missing preferences intentionally exercise default-on.
+    runtime = suite / "runtimes" / "shared_legacy_t4"
+    python_path = runtime / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    python_path.parent.mkdir(parents=True)
+    python_path.write_bytes(b"prepared runtime sentinel")
+    (runtime / "runtime_metadata.json").write_text(json.dumps({
+        "profile": asdict(get_runtime_profile("vibevoice_transformers4_shared")),
+        "bootstrap_strategy": BOOTSTRAP_STRATEGY,
+        "install_complete": True,
+        "source_python": sys.executable,
+    }), encoding="utf-8")
+    if not install_shared_runtime:
+        settings = tmp_path / "ComfyUI" / "user" / "__tts_audio_suite" / "runtime_settings.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_text('{"install_shared_runtime": false}', encoding="utf-8")
+
+    foreign = tmp_path / "foreign"
+    foreign.mkdir()
+    if shadow_utils in ("package", "cached_package"):
+        (foreign / "utils").mkdir()
+        (foreign / "utils" / "__init__.py").write_text("", encoding="utf-8")
+    elif shadow_utils == "module":
+        (foreign / "utils.py").write_text("", encoding="utf-8")
+
+    code = """
+import os, runpy, subprocess, sys
+from pathlib import Path
+suite, foreign, shadow_utils = sys.argv[1:]
+os.environ['COMFYUI_PATH'] = str(Path(suite).parents[1])
+os.environ.pop('TTS_AUDIO_SUITE_USER_DIRECTORY', None)
+sys.path.insert(0, foreign)
+if shadow_utils in ('cached_package', 'module'):
+    import utils
+original_utils = sys.modules.get('utils')
+original_path = sys.path[:]
+assert suite not in sys.path
+def unexpected_subprocess(*args, **kwargs):
+    raise AssertionError('A prepared or opted-out runtime must not run installers')
+subprocess.run = unexpected_subprocess
+installer = runpy.run_path(str(Path(suite) / 'install.py'), run_name='isolated_install')['TTSAudioInstaller']()
+installer.prepare_shared_runtime()
+installer.prepare_shared_runtime()
+assert sys.modules.get('utils') is original_utils
+assert sys.path == original_path
+assert 'torch' not in sys.modules
+assert 'numpy' not in sys.modules
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", code, str(suite), str(foreign), shadow_utils],
+        cwd=tmp_path, capture_output=True, text=True, timeout=30,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    expected = "Preparing Shared Runtime" if install_shared_runtime else "Shared Runtime installation skipped"
+    assert expected in result.stdout
+    assert python_path.read_bytes() == b"prepared runtime sentinel"
 
 
 @pytest.mark.unit

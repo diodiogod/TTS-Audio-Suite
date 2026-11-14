@@ -1826,14 +1826,23 @@ class TTSAudioInstaller:
             self.log("NumPy not found - this will cause issues", "ERROR")
 
     def prepare_shared_runtime(self):
-        from utils.runtimes.settings import read_settings, settings_path
-        from utils.runtimes.installation import install_runtime
-        from utils.runtimes.profiles import get_runtime_profile
-        if read_settings()["install_shared_runtime"]:
+        # Portable Python may omit this script's directory from sys.path, and
+        # ComfyUI/dependencies can already own the generic "utils" name. Load
+        # only installation helpers, without the runtime package's engine imports.
+        package_name = "_tts_audio_suite_installer_runtimes"
+        if package_name not in sys.modules:
+            spec = importlib.machinery.ModuleSpec(package_name, loader=None, is_package=True)
+            spec.submodule_search_locations = [str(Path(os.path.abspath(__file__)).parent / "utils" / "runtimes")]
+            sys.modules[package_name] = importlib.util.module_from_spec(spec)
+
+        settings = importlib.import_module(f"{package_name}.settings")
+        installation = importlib.import_module(f"{package_name}.installation")
+        profiles = importlib.import_module(f"{package_name}.profiles")
+        if settings.read_settings()["install_shared_runtime"]:
             self.log("Preparing Shared Runtime (existing compatible installations are reused)", "INFO")
-            install_runtime(get_runtime_profile("vibevoice_transformers4_shared"))
+            installation.install_runtime(profiles.get_runtime_profile("vibevoice_transformers4_shared"))
         else:
-            self.log(f"Shared Runtime installation skipped by {settings_path()}; existing files are kept", "INFO")
+            self.log(f"Shared Runtime installation skipped by {settings.settings_path()}; existing files are kept", "INFO")
 
     def print_installation_summary(self, installation_valid: bool):
         """Print installation summary and next steps"""
