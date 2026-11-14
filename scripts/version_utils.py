@@ -6,9 +6,8 @@ Provides centralized version reading/writing functionality
 
 import os
 import re
-import sys
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Optional
 
 class VersionManager:
     """Manages version updates across multiple files"""
@@ -97,189 +96,39 @@ class VersionManager:
         
         return success
     
-    def _categorize_simple_description(self, description: str) -> str:
-        """Categorize a simple description for changelog (legacy fallback)"""
-        import re
-        desc_lower = description.lower()
-        
-        # Helper function to check for whole words only (avoids "add" in "advanced")
-        def has_whole_word(text, words):
-            for word in words:
-                # Use word boundary \b to match whole words only
-                if re.search(rf'\b{re.escape(word)}\b', text):
-                    return True
-            return False
-        
-        # Check Fixed FIRST (most important - fixes take priority)
-        if has_whole_word(desc_lower, [
-            'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
-            'crash', 'problem', 'fail', 'broken', 'dependency', 'missing'
-        ]):
-            return "### Fixed"
-        # Check Added second (for new features/documentation)
-        elif has_whole_word(desc_lower, [
-            'add', 'new', 'implement', 'feature', 'create', 'introduce', 'support',
-            'documentation', 'readme', 'guide', 'section', 'workflow', 'example'
-        ]):
-            return "### Added"
-        # Check Changed third (for improvements/UI)
-        elif has_whole_word(desc_lower, [
-            'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
-            'ui', 'interface', 'slider', 'tooltip', 'dropdown', 'better', 'cleaner'
-        ]):
-            return "### Changed"
-        # Check Removed last  
-        elif has_whole_word(desc_lower, [
-            'remove', 'delete', 'deprecate', 'drop', 'eliminate'
-        ]):
-            return "### Removed"
-        else:
-            return "### Added"  # Default to Added for new features
-    
-    def _generate_changelog_content(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> str:
-        """Generate changelog entry content"""
-        today = datetime.now().strftime('%Y-%m-%d')
-        
-        # Simple mode - use exact text with proper formatting
-        if simple_mode:
-            # Smart categorization for simple mode
-            change_type = self._categorize_simple_description(description)
-            
-            # Split multi-sentence descriptions into proper bullet points
-            if '. ' in description and len(description) > 100:
-                # Break long descriptions into bullet points
-                sentences = [s.strip() for s in description.split('. ') if s.strip()]
-                items = []
-                for sentence in sentences:
-                    if not sentence.endswith('.') and sentence != sentences[-1]:
-                        sentence += '.'
-                    items.append(f"- {sentence}")
-                item_text = '\n'.join(items)
-            else:
-                # Single item
-                item_text = f"- {description}"
-            
-            return f"""## [{version}] - {today}
+    def _generate_changelog_content(self, version: str, description: str) -> str:
+        """Wrap authored Markdown without classifying or rewriting its contents."""
+        body = description.strip()
+        categories = {
+            "### Added", "### Changed", "### Deprecated",
+            "### Removed", "### Fixed", "### Security",
+        }
+        lines = body.splitlines()
+        if not lines or lines[0] not in categories:
+            raise ValueError(
+                "Provide an authored changelog body with explicit category headings, "
+                "for example: '### Fixed\n\n- Describe the user-facing fix'. "
+                "The script no longer categorizes descriptions by keywords."
+            )
+        for line in lines:
+            if re.match(r"^#{1,3}(?:\s|$)", line) and line not in categories:
+                raise ValueError(
+                    f"Unsupported changelog heading: {line!r}. Use Added, Changed, "
+                    "Deprecated, Removed, Fixed, or Security at level 3; "
+                    "the script supplies the version/date header."
+                )
+        sections = re.split(r"(?m)^### .*$", body)[1:]
+        if any(not section.strip() for section in sections):
+            raise ValueError("Omit empty changelog sections.")
 
-{change_type}
+        today = datetime.now().strftime("%Y-%m-%d")
+        return f"## [{version}] - {today}\n\n{body}\n\n"
 
-{item_text}
-"""
-        # Parse description for structured changelog
-        elif '\n' in description or (details and len(details) > 0):
-            # Multiline description - create detailed changelog with better parsing
-            lines = description.split('\n') if '\n' in description else [description]
-            if details:
-                lines.extend(details)
-            
-            # Group by change type
-            added_items = []
-            fixed_items = []
-            changed_items = []
-            removed_items = []
-            
-            # Process each line with better formatting
-            for line in lines:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                
-                # Clean up the line - remove existing bullet points for consistent formatting
-                clean_line = re.sub(r'^[-*•]\s*', '', line)
-                if not clean_line:
-                    continue
-                
-                # Skip section headers or emoji-only lines
-                if re.match(r'^[🌍📋🚀⚡🎯🔧🎭🎙️📺🎵🏗️]+\s*[\w\s]*:?\s*$', line):
-                    continue
-                
-                # Enhanced categorization based on keywords (whole words only)
-                line_lower = clean_line.lower()
-                
-                # Helper function for whole word matching in multiline context
-                def has_whole_word_in_line(text, words):
-                    import re
-                    for word in words:
-                        # Use word boundary \b to match whole words only
-                        if re.search(rf'\b{re.escape(word)}\b', text):
-                            return True
-                    return False
-                
-                # Check for specific patterns first
-                if has_whole_word_in_line(line_lower, [
-                    'fix', 'bug', 'error', 'issue', 'resolve', 'correct', 'patch',
-                    'crash', 'problem', 'fail', 'broken', 'dependency', 'missing',
-                    'compatibility', 'mismatch'
-                ]):
-                    fixed_items.append(clean_line)
-                elif has_whole_word_in_line(line_lower, [
-                    'remove', 'delete', 'deprecate', 'drop', 'eliminate'
-                ]):
-                    removed_items.append(clean_line)
-                elif has_whole_word_in_line(line_lower, [
-                    'update', 'enhance', 'improve', 'change', 'modify', 'optimize',
-                    'performance', 'smart', 'efficient', 'better', 'cleaner',
-                    'reorganize', 'refactor', 'streamline'
-                ]):
-                    changed_items.append(clean_line)
-                else:
-                    # Default to Added for new features, documentation, etc.
-                    added_items.append(clean_line)
-            
-            # Build changelog entry with proper spacing
-            entry_parts = [f"## [{version}] - {today}"]
-            
-            # Add sections in conventional order: Added, Changed, Fixed, Removed
-            if added_items:
-                entry_parts.extend(["", "### Added", ""])
-                for item in added_items:
-                    entry_parts.append(f"- {item}")
-            
-            if changed_items:
-                entry_parts.extend(["", "### Changed", ""])
-                for item in changed_items:
-                    entry_parts.append(f"- {item}")
-            
-            if fixed_items:
-                entry_parts.extend(["", "### Fixed", ""])
-                for item in fixed_items:
-                    entry_parts.append(f"- {item}")
-            
-            if removed_items:
-                entry_parts.extend(["", "### Removed", ""])
-                for item in removed_items:
-                    entry_parts.append(f"- {item}")
-            
-            # Ensure proper ending
-            entry_parts.append("")
-            return "\n".join(entry_parts)
-        else:
-            # Single line description - provide helpful error message
-            error_msg = f"""
-❌ ERROR: Single-line descriptions are no longer supported for better changelog quality.
-
-Please use the proper format with detailed descriptions:
-
-CORRECT USAGE:
-python3 scripts/bump_version_enhanced.py {version} "commit message" "changelog description
-
-Explain what users will experience.
-Focus on benefits and improvements.
-Use bullet points for multiple changes."
-
-EXAMPLE:
-python3 scripts/bump_version_enhanced.py patch "Fix RVC dropdown" "Fix RVC model dropdown to show both downloadable and local models
-
-The Load RVC Character Model node now properly displays both downloadable character models and local models in the same dropdown.
-This matches the F5-TTS dropdown behavior for consistent user experience across all engines."
-"""
-            raise ValueError(error_msg)
-    
-    def preview_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> str:
+    def preview_changelog_entry(self, version: str, description: str) -> str:
         """Preview changelog entry content without writing to file (for dry-run)"""
-        return self._generate_changelog_content(version, description, details, simple_mode)
+        return self._generate_changelog_content(version, description)
     
-    def add_changelog_entry(self, version: str, description: str, details: List[str] = None, simple_mode: bool = False) -> bool:
+    def add_changelog_entry(self, version: str, description: str) -> bool:
         """Add entry to CHANGELOG.md with proper formatting"""
         try:
             changelog_path = os.path.join(self.project_root, 'CHANGELOG.md')
@@ -289,24 +138,27 @@ This matches the F5-TTS dropdown behavior for consistent user experience across 
             
             # Generate changelog entry content using extracted method
             try:
-                new_entry = self._generate_changelog_content(version, description, details, simple_mode)
+                new_entry = self._generate_changelog_content(version, description)
             except ValueError as e:
                 print(str(e))
                 return False
             
             # Insert after the header (find first ## line)
-            lines = content.split('\n')
-            insert_index = 0
+            lines = content.splitlines()
+            insert_index = len(lines)
             for i, line in enumerate(lines):
                 if line.startswith('## [') and ']' in line:
                     insert_index = i
                     break
             
             # Insert the new entry with proper spacing
-            lines.insert(insert_index, new_entry.rstrip())
+            if insert_index > 0 and lines[insert_index - 1] != "":
+                lines.insert(insert_index, "")
+                insert_index += 1
+            lines.insert(insert_index, new_entry.rstrip() + "\n")
             
             with open(changelog_path, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(lines))
+                f.write('\n'.join(lines).rstrip() + '\n')
             
             print(f"✓ Added changelog entry for v{version}")
             return True
@@ -318,7 +170,7 @@ This matches the F5-TTS dropdown behavior for consistent user experience across 
     def backup_files(self) -> Dict[str, str]:
         """Create backup of all version files"""
         backups = {}
-        for file_path in self.version_files.keys():
+        for file_path in list(self.version_files) + ["CHANGELOG.md"]:
             full_path = os.path.join(self.project_root, file_path)
             if os.path.exists(full_path):
                 with open(full_path, 'r', encoding='utf-8') as f:

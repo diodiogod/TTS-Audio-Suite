@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 """
-Enhanced Automated Version Bumping Script for ComfyUI ChatterBox Voice
+Version bumping for TTS Audio Suite with an authored Markdown changelog.
 
 SEPARATE COMMIT & CHANGELOG MODE (recommended):
-python scripts/bump_version_enhanced.py 3.0.2 --commit "Fix critical bugs" --changelog "Bug fixes and improvements"
+python scripts/bump_version_enhanced.py patch "Commit description" "### Fixed\n\n- Describe the user-facing fix"
 
-LEGACY MODE (same description for both):
-python scripts/bump_version_enhanced.py 3.0.2 "Add sounddevice dependency"
-
-INTERACTIVE MODE:
-python scripts/bump_version_enhanced.py 3.0.2 --interactive
-
-FILE MODE:
-python scripts/bump_version_enhanced.py 3.0.2 --changelog-file changelog.txt --commit-file commit.txt
+FILE MODE (recommended for multiline text):
+python scripts/bump_version_enhanced.py patch --changelog-file changelog.md --commit-file commit.txt
 """
 
 import os
@@ -53,7 +47,7 @@ def main():
     parser = argparse.ArgumentParser(description='Bump version with separate commit and changelog descriptions')
     parser.add_argument('version', nargs='?', help='New version number (e.g., 3.0.2) or auto-increment type (patch/minor/major)')
     parser.add_argument('commit_description', nargs='?', help='Commit message description (what this version bump does)')
-    parser.add_argument('changelog_description', nargs='?', help='Changelog description (what users should know)')
+    parser.add_argument('changelog_description', nargs='?', help='Authored Markdown changelog body with explicit category headings')
     
     # Legacy mode (deprecated)
     parser.add_argument('--legacy', help='[DEPRECATED] Single description for both commit and changelog')
@@ -62,7 +56,7 @@ def main():
     
     # File input options
     parser.add_argument('--commit-file', help='Read commit description from file')
-    parser.add_argument('--changelog-file', help='Read changelog description from file')
+    parser.add_argument('--changelog-file', help='Read authored Markdown changelog body from a UTF-8 file')
     parser.add_argument('--file', help='[LEGACY] Read description from file for both commit and changelog')
     
     # Other options
@@ -72,6 +66,12 @@ def main():
     parser.add_argument('--allow-downgrade', action='store_true', help='Allow bumping to a lower version number (for reverts/fixes)')
     
     args = parser.parse_args()
+
+    if args.commit_file or args.changelog_file:
+        if not (args.commit_file and args.changelog_file):
+            parser.error("Use --commit-file and --changelog-file together")
+        if args.commit_description is not None or args.changelog_description is not None:
+            parser.error("Use either positional descriptions or file inputs, not both")
     
     # Initialize version manager
     vm = VersionManager()
@@ -108,9 +108,9 @@ def main():
     elif args.commit_file and args.changelog_file:
         # File input mode
         try:
-            with open(args.commit_file, 'r', encoding='utf-8') as f:
+            with open(args.commit_file, 'r', encoding='utf-8-sig') as f:
                 commit_description = f.read().strip()
-            with open(args.changelog_file, 'r', encoding='utf-8') as f:
+            with open(args.changelog_file, 'r', encoding='utf-8-sig') as f:
                 changelog_description = f.read().strip()
         except Exception as e:
             print(f"Error reading files: {e}")
@@ -169,9 +169,18 @@ def main():
             print(f"Error reading description file: {e}")
             sys.exit(1)
     
-    # Process newline characters
-    commit_description = commit_description.replace('\\n', '\n')
-    changelog_description = changelog_description.replace('\\n', '\n')
+    # Positional strings retain escaped-newline support; file contents stay literal.
+    if not (args.commit_file or args.file) or args.commit:
+        commit_description = commit_description.replace('\\n', '\n')
+    if not (args.changelog_file or args.file) or args.changelog:
+        changelog_description = changelog_description.replace('\\n', '\n')
+
+    # Validate authored notes before changing any version files, even in dry runs.
+    try:
+        changelog_preview = vm.preview_changelog_entry(args.version, changelog_description)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
     
     print(f"Current version: {current_version}")
     print(f"New version: {args.version}")
@@ -197,11 +206,7 @@ def main():
         print(f"\n[DRY RUN] Changelog entry that would be added:")
         print("=" * 50)
         
-        try:
-            changelog_preview = vm.preview_changelog_entry(args.version, changelog_description)
-            print(changelog_preview.rstrip())
-        except Exception as e:
-            print(f"Error generating changelog preview: {e}")
+        print(changelog_preview.rstrip())
         
         print("=" * 50)
         
@@ -247,7 +252,7 @@ def main():
         
         # Add changelog entry with multiline support
         print("\nUpdating changelog...")
-        if not vm.add_changelog_entry(args.version, changelog_description, simple_mode=False):
+        if not vm.add_changelog_entry(args.version, changelog_description):
             print("Error: Failed to update changelog")
             print("Restoring backup...")
             vm.restore_files(backup)
