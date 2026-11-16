@@ -1,0 +1,20 @@
+{
+ "space": "attnres_source",
+ "source_index": 19,
+ "group_by": "clip",
+ "center": "speaker",
+ "directions": {
+  "expressive": {
+   "regress": "f0_st",
+   "within": "corpus",
+   "filter": {
+    "corpus": "libritts_r"
+   },
+   "kind": "axis",
+   "poles": {
+    "+": "lively intonation",
+    "-": "flat"
+   }
+  }
+ }
+}

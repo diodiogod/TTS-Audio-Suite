@@ -1,0 +1,410 @@
+{
+ "emb": {
+  "gender_norm": 1.9442397226456662,
+  "age_norm": 0.6478588309219074,
+  "cos_age_gender": -0.6172022869398367,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9999152542372881,
+   "age_spearman_female": 0.7045544554455444,
+   "age_spearman_male": 0.4656177986187956
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9987541528239202,
+   "age_spearman_female": 0.2688995215311005,
+   "age_spearman_male": 0.44699486559951673
+  }
+ },
+ "L0.attn": {
+  "gender_norm": 0.05769759457863937,
+  "age_norm": 0.013753704289664413,
+  "cos_age_gender": -0.6531037236737948,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9999152542372881,
+   "age_spearman_female": 0.6743114311431143,
+   "age_spearman_male": 0.43863647153776764
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9995847176079734,
+   "age_spearman_female": 0.1525632262474368,
+   "age_spearman_male": 0.48927816369676835
+  }
+ },
+ "L0.ffn": {
+  "gender_norm": 0.04964405537121398,
+  "age_norm": 0.012859791351890285,
+  "cos_age_gender": -0.5654928540511042,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.6084128412841282,
+   "age_spearman_male": 0.504168812244585
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.3209842788790157,
+   "age_spearman_male": 0.3498942917547569
+  }
+ },
+ "L1.attn": {
+  "gender_norm": 0.056755717714755474,
+  "age_norm": 0.014415598194727737,
+  "cos_age_gender": -0.5139677337068287,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.5565796579657966,
+   "age_spearman_male": 0.5238825647599327
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.3005468215994532,
+   "age_spearman_male": 0.3921775898520084
+  }
+ },
+ "L1.ffn": {
+  "gender_norm": 0.19358489234776693,
+  "age_norm": 0.03850617414562324,
+  "cos_age_gender": -0.4220080300627343,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9984745762711864,
+   "age_spearman_female": 0.4835163516351635,
+   "age_spearman_male": 0.2554497679123801
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9954318936877077,
+   "age_spearman_female": 0.31367053998632954,
+   "age_spearman_male": 0.27469042585321657
+  }
+ },
+ "L2.attn": {
+  "gender_norm": 0.039878253083404966,
+  "age_norm": 0.00817551378484557,
+  "cos_age_gender": -0.5581811433166836,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9969491525423729,
+   "age_spearman_female": 0.6074887488748875,
+   "age_spearman_male": 0.4816356790434558
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9908637873754153,
+   "age_spearman_female": 0.24969241285030763,
+   "age_spearman_male": 0.28903654485049834
+  }
+ },
+ "L2.ffn": {
+  "gender_norm": 0.04066410929098142,
+  "age_norm": 0.012486810394310656,
+  "cos_age_gender": -0.6371392968382179,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9996610169491525,
+   "age_spearman_female": 0.6102730273027301,
+   "age_spearman_male": 0.5421062818869399
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.012440191387559809,
+   "age_spearman_male": 0.5450015101177892
+  }
+ },
+ "L3.attn": {
+  "gender_norm": 0.0817004657580971,
+  "age_norm": 0.026833417250830584,
+  "cos_age_gender": -0.4942248068905884,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.8037323732373236,
+   "age_spearman_male": 0.6283165156545018
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.4215994531784006,
+   "age_spearman_male": 0.626698882512836
+  }
+ },
+ "L3.ffn": {
+  "gender_norm": 0.02188530121647111,
+  "age_norm": 0.013449045237649103,
+  "cos_age_gender": -0.1773247017089892,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9997457627118644,
+   "age_spearman_female": 0.722124212421242,
+   "age_spearman_male": 0.7353142039084213
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9995847176079734,
+   "age_spearman_female": 0.5336978810663022,
+   "age_spearman_male": 0.6535789791603744
+  }
+ },
+ "L4.attn": {
+  "gender_norm": 0.0852170270641935,
+  "age_norm": 0.02448517549812161,
+  "cos_age_gender": -0.5846551288931808,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.7636963696369635,
+   "age_spearman_male": 0.5457364171222596
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.348257006151743,
+   "age_spearman_male": 0.6227725762609484
+  }
+ },
+ "L4.ffn": {
+  "gender_norm": 0.062220928218118025,
+  "age_norm": 0.01639493496529516,
+  "cos_age_gender": -0.5785743053857367,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9997457627118644,
+   "age_spearman_female": 0.3838943894389439,
+   "age_spearman_male": 0.36317786567038807
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9941860465116279,
+   "age_spearman_female": 0.09706083390293918,
+   "age_spearman_male": 0.3657505285412262
+  }
+ },
+ "L5.attn": {
+  "gender_norm": 0.039981915877810324,
+  "age_norm": 0.011120098040139898,
+  "cos_age_gender": -0.4614205030711731,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9995762711864407,
+   "age_spearman_female": 0.5956795679567957,
+   "age_spearman_male": 0.3823657233427921
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9975083056478405,
+   "age_spearman_female": 0.3492139439507861,
+   "age_spearman_male": 0.4510721836303232
+  }
+ },
+ "L5.ffn": {
+  "gender_norm": 0.0327712228429931,
+  "age_norm": 0.010371210230402992,
+  "cos_age_gender": -0.49776828316068156,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9947457627118644,
+   "age_spearman_female": 0.37528952895289525,
+   "age_spearman_male": 0.1110112884788857
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9821428571428571,
+   "age_spearman_female": 0.37689678742310323,
+   "age_spearman_male": 0.2873754152823921
+  }
+ },
+ "L6.attn": {
+  "gender_norm": 0.042983456097556265,
+  "age_norm": 0.013962699735829738,
+  "cos_age_gender": -0.5236291215432274,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9999152542372881,
+   "age_spearman_female": 0.7385898589858985,
+   "age_spearman_male": 0.4466782801777817
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9995847176079734,
+   "age_spearman_female": 0.04429254955570745,
+   "age_spearman_male": 0.4163394744790094
+  }
+ },
+ "L6.ffn": {
+  "gender_norm": 0.031129745631914046,
+  "age_norm": 0.01242433612905748,
+  "cos_age_gender": -0.5897048177295249,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9978813559322034,
+   "age_spearman_female": 0.7517431743174318,
+   "age_spearman_male": 0.4689630741475208
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.992109634551495,
+   "age_spearman_female": 0.2581681476418319,
+   "age_spearman_male": 0.47296889157354277
+  }
+ },
+ "L7.attn": {
+  "gender_norm": 0.11168872375545172,
+  "age_norm": 0.039985313146240556,
+  "cos_age_gender": -0.5220159837893595,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.8787398739873986,
+   "age_spearman_male": 0.6519452631117636
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.5609706083390295,
+   "age_spearman_male": 0.7219873150105709
+  }
+ },
+ "L7.ffn": {
+  "gender_norm": 0.05514661667393825,
+  "age_norm": 0.018983366268918427,
+  "cos_age_gender": -0.6204876389854211,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9986440677966102,
+   "age_spearman_female": 0.6007200720072006,
+   "age_spearman_male": 0.49472461735672113
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.041558441558441565,
+   "age_spearman_male": 0.5114768951978255
+  }
+ },
+ "L8.attn": {
+  "gender_norm": 0.030120329177232206,
+  "age_norm": 0.009304546130817373,
+  "cos_age_gender": -0.3219965144960377,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.7892709270927092,
+   "age_spearman_male": 0.44939540353299084
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.3443609022556391,
+   "age_spearman_male": 0.46617336152219874
+  }
+ },
+ "L8.ffn": {
+  "gender_norm": 0.033512205165378214,
+  "age_norm": 0.01718561514224993,
+  "cos_age_gender": -0.5498456048540582,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9998305084745762,
+   "age_spearman_female": 0.6393879387938795,
+   "age_spearman_male": 0.6136133723372008
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.26233766233766237,
+   "age_spearman_male": 0.5655391120507399
+  }
+ },
+ "L9.attn": {
+  "gender_norm": 0.031420507450612485,
+  "age_norm": 0.009044028784692544,
+  "cos_age_gender": -0.6187958988497088,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.7298529852985298,
+   "age_spearman_male": 0.6038989259328242
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.09931647300068354,
+   "age_spearman_male": 0.5385080036242826
+  }
+ },
+ "L9.ffn": {
+  "gender_norm": 0.1504822756448529,
+  "age_norm": 0.04945183953428105,
+  "cos_age_gender": -0.20042000791303352,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9994915254237288,
+   "age_spearman_female": 0.5640804080408041,
+   "age_spearman_male": 0.341272884642775
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9904485049833887,
+   "age_spearman_female": 0.3292549555707451,
+   "age_spearman_male": 0.3346421020839625
+  }
+ },
+ "L10.attn": {
+  "gender_norm": 0.014318056959327126,
+  "age_norm": 0.00621089693068045,
+  "cos_age_gender": -0.6307619494164919,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9628813559322034,
+   "age_spearman_female": 0.7624242424242424,
+   "age_spearman_male": 0.5230060733550266
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.7637043189368771,
+   "age_spearman_female": 0.2419002050580998,
+   "age_spearman_male": 0.1375717305949864
+  }
+ },
+ "L10.ffn": {
+  "gender_norm": 0.18652416085958584,
+  "age_norm": 0.056917759144084444,
+  "cos_age_gender": -0.6377149544753009,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 0.9995762711864407,
+   "age_spearman_female": 0.452037203720372,
+   "age_spearman_male": 0.42478060324520944
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.07676008202323993,
+   "age_spearman_male": 0.38704318936877075
+  }
+ },
+ "speaker_embedding": {
+  "gender_norm": 1.8763586747638452,
+  "age_norm": 1.2692715820938114,
+  "cos_age_gender": -0.16108777352606762,
+  "held_out": {
+   "n": 218,
+   "gender_auc": 1.0,
+   "age_spearman_female": 0.8699309930993099,
+   "age_spearman_male": 0.7659840989850961
+  },
+  "ears": {
+   "n": 99,
+   "gender_auc": 0.9327242524916943,
+   "age_spearman_female": 0.6403964456596036,
+   "age_spearman_male": 0.5382059800664452
+  }
+ }
+}

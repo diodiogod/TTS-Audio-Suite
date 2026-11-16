@@ -1,0 +1,74 @@
+{
+ "dim": 192,
+ "input_dim": 192,
+ "space": "raw",
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 4.244113436359932,
+ "neutral": "eng",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "pools": "/data/groups/audio/sofian/runs/accent_steering/clips_x10",
+ "orthogonal_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k",
+ "note": "accent recordings minus English recordings in the ownmect_s2 speaker embedding (per-recording means), gender and age projected out; accent_strength 1 = the full mean shift, speaker_mode embedding only.",
+ "directions": {
+  "hin": {
+   "file": "hin.npy",
+   "kind": "named",
+   "norm": 1.8782425651795351,
+   "recordings": 4436,
+   "held_out_auc": 0.9996012677465737
+  },
+  "spa": {
+   "file": "spa.npy",
+   "kind": "named",
+   "norm": 1.7367654167700746,
+   "recordings": 3335,
+   "held_out_auc": 0.9998526608218377
+  },
+  "fra": {
+   "file": "fra.npy",
+   "kind": "named",
+   "norm": 1.6489054230455826,
+   "recordings": 2972,
+   "held_out_auc": 0.9974572434167244
+  },
+  "por": {
+   "file": "por.npy",
+   "kind": "named",
+   "norm": 2.0142613643759857,
+   "recordings": 3490,
+   "held_out_auc": 0.9986462332607521
+  },
+  "deu": {
+   "file": "deu.npy",
+   "kind": "named",
+   "norm": 1.6574719452411217,
+   "recordings": 3148,
+   "held_out_auc": 0.9890293469275282
+  },
+  "vie": {
+   "file": "vie.npy",
+   "kind": "named",
+   "norm": 2.456273247263244,
+   "recordings": 5534,
+   "held_out_auc": 0.9853344751746823
+  },
+  "pol": {
+   "file": "pol.npy",
+   "kind": "named",
+   "norm": 2.0049545527795387,
+   "recordings": 2026,
+   "held_out_auc": 0.9891498643981042
+  }
+ },
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_accents_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_accents_mect60k_x10",
+ "native_norms": {
+  "hin": 1.8268731084466328,
+  "spa": 1.6804944559123247,
+  "fra": 1.5545753952356685,
+  "por": 1.884320374666189,
+  "deu": 1.5528703918974764,
+  "vie": 2.9577446455019714,
+  "pol": 1.8934338850455503
+ }
+}

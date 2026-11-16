@@ -1,0 +1,26 @@
+{
+ "space": "raw",
+ "orthogonal_to": [
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+ ],
+ "directions": {
+  "pitch": {
+   "regress": "f0_log",
+   "within": "corpus_gender",
+   "kind": "axis",
+   "poles": {
+    "+": "higher",
+    "-": "lower"
+   }
+  },
+  "pitch_range": {
+   "regress": "f0_st",
+   "within": "corpus_gender",
+   "kind": "axis",
+   "poles": {
+    "+": "varied",
+    "-": "monotone"
+   }
+  }
+ }
+}

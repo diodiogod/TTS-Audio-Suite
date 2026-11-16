@@ -1,0 +1,127 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": "/data/groups/audio/sofian/runs/steer_corpora/ears_emotions/clips.json",
+ "spec": {
+  "space": "attnres_source",
+  "group_by": "clip",
+  "center": "speaker",
+  "directions": {
+   "angry": {
+    "pairs": [
+     [
+      {
+       "style": "anger"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "sad": {
+    "pairs": [
+     [
+      {
+       "style": "sadness"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "happy": {
+    "pairs": [
+     [
+      {
+       "style": "amusement"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "fearful": {
+    "pairs": [
+     [
+      {
+       "style": "fear"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "disgusted": {
+    "pairs": [
+     [
+      {
+       "style": "disgust"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "surprised": {
+    "pairs": [
+     [
+      {
+       "style": "amazement"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   }
+  },
+  "source_index": 19
+ },
+ "directions": {
+  "angry": {
+   "file": "angry.npy",
+   "kind": "named",
+   "norm": 0.024435275369628806
+  },
+  "sad": {
+   "file": "sad.npy",
+   "kind": "named",
+   "norm": 0.01633910478720501
+  },
+  "happy": {
+   "file": "happy.npy",
+   "kind": "named",
+   "norm": 0.01910547416830079
+  },
+  "fearful": {
+   "file": "fearful.npy",
+   "kind": "named",
+   "norm": 0.02055408798565512
+  },
+  "disgusted": {
+   "file": "disgusted.npy",
+   "kind": "named",
+   "norm": 0.020196482824966278
+  },
+  "surprised": {
+   "file": "surprised.npy",
+   "kind": "named",
+   "norm": 0.019633100615820298
+  }
+ },
+ "source_index": 19,
+ "source_name": "L9.attn",
+ "prompt_conditioning": "speaker_row=no,condition_rows=3:unknown"
+}

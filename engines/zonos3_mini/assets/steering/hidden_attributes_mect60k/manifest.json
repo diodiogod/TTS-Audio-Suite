@@ -1,0 +1,80 @@
+{
+  "dim": 1024,
+  "space": "attnres_source",
+  "source_index": 19,
+  "source_name": "L9.attn",
+  "prompt_conditioning": "speaker_row=no,condition_rows=3:unknown",
+  "cosines_with_emotion_axes": {
+    "valence": {
+      "gender": 0.3333434885022961,
+      "age": 0.028904903135182545
+    },
+    "arousal": {
+      "gender": 0.2682256299648177,
+      "age": 0.11110420256606866
+    },
+    "dominance": {
+      "gender": -0.07288586985791787,
+      "age": 0.1374217278819063
+    },
+    "loudness": {
+      "gender": -0.0858001003491795,
+      "age": -0.12050357237243656
+    },
+    "tempo": {
+      "gender": 0.3444991753770675,
+      "age": 0.16759401695238177
+    },
+    "clarity": {
+      "gender": 0.036435301497266696,
+      "age": 0.1808654964303496
+    },
+    "articulation": {
+      "gender": -0.03336615820242795,
+      "age": -0.043437830029046685
+    }
+  },
+  "corpus": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_corpus_libritts_ears/clips.json",
+  "labeller": "audeering/wav2vec2-large-robust-24-ft-age-gender",
+  "train_speakers": 850,
+  "age_gap_years": 27.869893920918308,
+  "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+  "checks": {
+    "gender_norm": 0.031420507450612485,
+    "age_norm": 0.009044028784692544,
+    "cos_age_gender": -0.6187958988497088,
+    "held_out": {
+      "n": 218,
+      "gender_auc": 1.0,
+      "age_spearman_female": 0.7298529852985298,
+      "age_spearman_male": 0.6038989259328242
+    },
+    "ears": {
+      "n": 99,
+      "gender_auc": 1.0,
+      "age_spearman_female": 0.09931647300068354,
+      "age_spearman_male": 0.5385080036242826
+    }
+  },
+  "directions": {
+    "gender": {
+      "file": "gender.npy",
+      "kind": "axis",
+      "norm": 0.031420507450612485,
+      "poles": {
+        "+": "female",
+        "-": "male"
+      }
+    },
+    "age": {
+      "file": "age.npy",
+      "kind": "axis",
+      "norm": 0.009044028784692544,
+      "poles": {
+        "+": "older",
+        "-": "younger"
+      },
+      "years_per_dose": 27.869893920918308
+    }
+  }
+}

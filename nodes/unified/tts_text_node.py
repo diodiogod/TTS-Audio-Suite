@@ -237,6 +237,10 @@ Back to the main narrator voice for the conclusion.""",
                 stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
                 stable_params['dtype'] = config.get('dtype', 'auto')
 
+            if engine_type == "zonos3_mini":
+                stable_params['model_variant'] = config.get('model_variant', 'ZONOS3-Mini')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+
             # For MOSS-TTS, include model identity and load-time options.
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
@@ -669,6 +673,40 @@ Back to the main narrator voice for the conclusion.""",
                             raise InterruptedError("OmniVoice processing interrupted by user")
 
                 engine_instance = OmniVoiceWrapper(config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+
+                return engine_instance
+
+            elif engine_type == "zonos3_mini":
+                from engines.adapters.zonos3_mini_adapter import Zonos3MiniEngineAdapter
+                zonos3_mini_processor_path = os.path.join(nodes_dir, "zonos3_mini", "zonos3_mini_processor.py")
+                zonos3_mini_processor_spec = importlib.util.spec_from_file_location("zonos3_mini_processor_module", zonos3_mini_processor_path)
+                zonos3_mini_processor_module = importlib.util.module_from_spec(zonos3_mini_processor_spec)
+                zonos3_mini_processor_spec.loader.exec_module(zonos3_mini_processor_module)
+
+                Zonos3MiniProcessor = zonos3_mini_processor_module.Zonos3MiniProcessor
+
+                class Zonos3MiniWrapper:
+                    def __init__(self, cfg):
+                        self.config = cfg.copy()
+                        self.adapter = Zonos3MiniEngineAdapter(self.config)
+                        self.processor = Zonos3MiniProcessor(self.adapter, self.config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.adapter.update_config(new_config)
+                        self.processor.update_config(new_config)
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("ZONOS3-Mini processing interrupted by user")
+
+                engine_instance = Zonos3MiniWrapper(config)
 
                 import time
                 self._cached_engine_instances[cache_key] = {
@@ -1677,6 +1715,46 @@ Back to the main narrator voice for the conclusion.""",
                 generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
 
                 formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 24000)
+                result = (formatted_audio, generation_info)
+
+            elif engine_type == "zonos3_mini":
+                import re
+                from utils.audio.chunk_timing import ChunkTimingHelper
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
+                    }
+
+                segment_records = engine_instance.processor.process_text(
+                    text=text,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    enable_chunking=enable_chunking,
+                    max_chars_per_chunk=max_chars_per_chunk,
+                    chunk_combination_method=chunk_combination_method,
+                    silence_between_chunks_ms=silence_between_chunks_ms,
+                    enable_audio_cache=enable_audio_cache
+                )
+
+                combined_audio, chunk_info = engine_instance.processor.combine_audio_segments(
+                    segments=segment_records,
+                    method=chunk_combination_method,
+                    silence_ms=silence_between_chunks_ms,
+                    original_text=text,
+                    return_info=True
+                )
+
+                total_duration = combined_audio.shape[-1] / 44100.0 if combined_audio.numel() else 0.0
+                clean_text = re.sub(r'\[.*?\]', '', text)
+
+                base_info = f"Generated {total_duration:.1f}s audio from {len(clean_text)} characters (ZONOS3-Mini, narrator: {char_display})"
+                base_info += "\n🎭 Character switching, language switching, pause tags, and native steering enabled"
+                generation_info = ChunkTimingHelper.enhance_generation_info(f"✅ {base_info}", chunk_info)
+
+                formatted_audio = AudioProcessingUtils.format_for_comfyui(combined_audio, 44100)
                 result = (formatted_audio, generation_info)
 
             elif engine_type == "moss_tts":

@@ -1,0 +1,22 @@
+{
+ "space": "raw",
+ "group_by": "clip",
+ "center": "speaker",
+ "orthogonal_to": [
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+ ],
+ "directions": {
+  "clean": {
+   "regress": "clean",
+   "within": "corpus",
+   "filter": {
+    "corpus": "voxceleb"
+   },
+   "kind": "axis",
+   "poles": {
+    "+": "clean studio",
+    "-": "noisy / far-field"
+   }
+  }
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "expressive": {
+  "norm": 0.004637929738914279,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "libritts_r"
+     },
+     "f0_st P10-P90 2.4"
+    ],
+    "train_speakers": [
+     58224,
+     0
+    ],
+    "held_out_speakers": [
+     14455,
+     0
+    ],
+    "cos_with_direction": 0.9999999999999998,
+    "held_out_auc": 0.4629097442278548
+   }
+  ]
+ }
+}

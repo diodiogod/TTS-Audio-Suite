@@ -1,0 +1,26 @@
+{
+ "clean": {
+  "norm": 0.23518481655259238,
+  "removed_share": 0.001405939938506573,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "voxceleb"
+     },
+     "clean P10-P90 2.93"
+    ],
+    "train_speakers": [
+     39360,
+     0
+    ],
+    "held_out_speakers": [
+     10919,
+     0
+    ],
+    "cos_with_direction": 0.999296782773513,
+    "held_out_auc": 0.44752766401580896
+   }
+  ]
+ }
+}

@@ -1,0 +1,16 @@
+{
+  "objective": "seed doses for the ZONOS3 Mini release LM (mect_60k) hidden-space (L9.attn) conceptual axes; replaced by calibrate_emotion_oneshot.py",
+  "grid": [],
+  "global_default": 4.0,
+  "default": {
+    "valence": 4,
+    "arousal": 4,
+    "dominance": 4,
+    "loudness": 2,
+    "tempo": 4,
+    "clarity": 2,
+    "articulation": 4
+  },
+  "by_speaker": {},
+  "labels": {}
+}

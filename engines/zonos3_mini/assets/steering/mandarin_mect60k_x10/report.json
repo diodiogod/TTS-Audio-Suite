@@ -1,0 +1,12 @@
+{
+ "cmn": {
+  "recordings": 7317,
+  "norm": 2.242821851338046,
+  "removed_share": 0.008074123450096726,
+  "held_out_auc": 0.9999067025609887,
+  "cos_gender_before": 0.08953805529943391,
+  "cos_age_before": -0.00755381393013134,
+  "max_cos_other": "-",
+  "common_share": 1.0
+ }
+}

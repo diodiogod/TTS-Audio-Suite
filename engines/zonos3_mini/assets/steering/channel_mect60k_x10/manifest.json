@@ -1,0 +1,52 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": [
+  "/data/groups/audio/sofian/runs/steer_corpora/paraspeechcaps_x10/clips.json"
+ ],
+ "features": [
+  "/data/groups/audio/sofian/runs/steer_corpora/paraspeechcaps_x10/features.npz"
+ ],
+ "spec": {
+  "space": "raw",
+  "group_by": "clip",
+  "center": "speaker",
+  "orthogonal_to": [
+   "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+  ],
+  "directions": {
+   "clean": {
+    "regress": "clean",
+    "within": "corpus",
+    "filter": {
+     "corpus": "voxceleb"
+    },
+    "kind": "axis",
+    "poles": {
+     "+": "clean studio",
+     "-": "noisy / far-field"
+    }
+   }
+  }
+ },
+ "directions": {
+  "clean": {
+   "file": "clean.npy",
+   "kind": "axis",
+   "norm": 0.2605003421494315,
+   "poles": {
+    "+": "clean studio",
+    "-": "noisy / far-field"
+   }
+  }
+ },
+ "input_dim": 192,
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 2.456478395583328,
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/channel_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/channel_mect60k_x10",
+ "native_norms": {
+  "clean": 0.23518481764928556
+ }
+}

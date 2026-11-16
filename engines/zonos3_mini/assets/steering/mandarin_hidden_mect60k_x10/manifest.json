@@ -1,0 +1,27 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "source_index": 15,
+ "source_name": "L7.attn",
+ "neutral": "eng",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "row_norm": 0.4157493654916953,
+ "clips": 15989,
+ "prompt_conditioning": "speaker_row=own,condition_rows=3:unknown,pools=/data/groups/audio/sofian/runs/accent_steering/clips_x10",
+ "directions": {
+  "cmn": {
+   "file": "cmn.npy",
+   "kind": "named",
+   "norm": 0.19311231014963434,
+   "snr": 0.6825645565986633,
+   "clips": 7990,
+   "data": "pool"
+  }
+ },
+ "note": "Native Mandarin minus native English at L7.attn, ten times the data: accent_steering clips_x10 pools (8,000 cmn / 8,000 eng clips, COUNT=8000 sbatch_accent_clip_dump.sh job 89327), fit_hidden_directions.py --pools --pool-languages cmn --reference eng (job 89388, bank tmp/mandarin_hidden_x10_bank), --export-source 15. Report only: not in studio_bundle_mect60k.json.",
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/mandarin_hidden_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/mandarin_hidden_mect60k_x10",
+ "native_norms": {
+  "cmn": 0.19349619185078337
+ }
+}

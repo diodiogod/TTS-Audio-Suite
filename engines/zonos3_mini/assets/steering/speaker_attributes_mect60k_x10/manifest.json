@@ -1,0 +1,72 @@
+{
+ "dim": 192,
+ "input_dim": 192,
+ "space": "raw",
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 3.961446589420855,
+ "corpus": "/data/groups/audio/sofian/runs/steer_corpora/speaker_x10/clips.json",
+ "labeller": "audeering/wav2vec2-large-robust-24-ft-age-gender",
+ "train_corpora": [
+  "libritts_r",
+  "commonvoice",
+  "voxceleb"
+ ],
+ "train_speakers": 7652,
+ "age_gap_years": 40.918334935392664,
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "features": "/data/groups/audio/sofian/runs/steer_corpora/speaker_x10/features.npz",
+ "checks": {
+  "gender_norm": 1.0104743923882493,
+  "age_norm": 1.4678720609308809,
+  "cos_age_gender": -0.10614574626605681,
+  "held_out": {
+   "n": 1877,
+   "gender_auc": 0.9517059697442195,
+   "age_spearman_female": 0.9098148182903488,
+   "age_spearman_male": 0.8756437495033579
+  },
+  "external": {
+   "n": 199,
+   "gender_auc": 0.9682033340193456,
+   "age_spearman_female": 0.646940914232484,
+   "age_spearman_male": 0.6816453606302183
+  },
+  "external_corpora": [
+   "ears",
+   "vctk"
+  ],
+  "held_out_age_bucket": {
+   "n": 866,
+   "spearman": 0.8510521993906238,
+   "spearman_female": 0.8809202830501005,
+   "spearman_male": 0.8566609708246312
+  }
+ },
+ "directions": {
+  "gender": {
+   "file": "gender.npy",
+   "kind": "axis",
+   "norm": 1.8763586715005394,
+   "poles": {
+    "+": "female",
+    "-": "male"
+   }
+  },
+  "age": {
+   "file": "age.npy",
+   "kind": "axis",
+   "norm": 1.2692715816558056,
+   "poles": {
+    "+": "older",
+    "-": "younger"
+   },
+   "years_per_dose": 40.918334935392664
+  }
+ },
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k_x10",
+ "native_norms": {
+  "gender": 1.0104743952983855,
+  "age": 1.4678720618966865
+ }
+}

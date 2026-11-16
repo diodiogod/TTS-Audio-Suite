@@ -1,0 +1,19 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "checkpoint": "checkpoints/z3m_mect_edit_nv45_phonemes",
+ "corpus": "/data/groups/audio/sofian/runs/steer_corpora/expresso_emphasis/clips.json",
+ "features": "/data/groups/audio/sofian/runs/steer_corpora/expresso_emphasis/features_nv45.npz",
+ "fit": "scripts/fit_word_emphasis.py: mean over every Expresso pair of (emphasized word - the same word in the speaker's plain take), per-word bank means of the teacher-forced takes; projected out: log-duration slope",
+ "directions": {
+  "emphasis": {
+   "file": "emphasis.npy",
+   "kind": "named",
+   "norm": 0.0086831500344842,
+   "pairs": 636
+  }
+ },
+ "source_index": 19,
+ "source_name": "L9.attn",
+ "prompt_conditioning": "speaker_row=no,condition_rows=3:unknown"
+}

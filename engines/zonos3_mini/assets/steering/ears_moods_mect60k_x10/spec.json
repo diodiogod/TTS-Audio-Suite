@@ -1,0 +1,1170 @@
+{
+ "space": "attnres_source",
+ "source_index": 19,
+ "group_by": "clip",
+ "center": "speaker",
+ "holdout": "auto",
+ "directions": {
+  "angry": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "anger"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "esd",
+      "style": "angry"
+     },
+     {
+      "corpus": "esd",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "cremad",
+      "style": "angry"
+     },
+     {
+      "corpus": "cremad",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "ravdess",
+      "style": "angry"
+     },
+     {
+      "corpus": "ravdess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "msp_podcast",
+      "style": "angry"
+     },
+     {
+      "corpus": "msp_podcast",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "meld",
+      "style": "angry"
+     },
+     {
+      "corpus": "meld",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "iemocap",
+      "style": "angry"
+     },
+     {
+      "corpus": "iemocap",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "mead",
+      "style": "angry"
+     },
+     {
+      "corpus": "mead",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emov_db",
+      "style": "angry"
+     },
+     {
+      "corpus": "emov_db",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "tess",
+      "style": "angry"
+     },
+     {
+      "corpus": "tess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "jlcorpus",
+      "style": "angry"
+     },
+     {
+      "corpus": "jlcorpus",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emns",
+      "style": "angry"
+     },
+     {
+      "corpus": "emns",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "savee",
+      "style": "angry"
+     },
+     {
+      "corpus": "savee",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_angry": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "sad": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "sadness"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "esd",
+      "style": "sad"
+     },
+     {
+      "corpus": "esd",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "cremad",
+      "style": "sad"
+     },
+     {
+      "corpus": "cremad",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "ravdess",
+      "style": "sad"
+     },
+     {
+      "corpus": "ravdess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "msp_podcast",
+      "style": "sad"
+     },
+     {
+      "corpus": "msp_podcast",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "meld",
+      "style": "sad"
+     },
+     {
+      "corpus": "meld",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "iemocap",
+      "style": "sad"
+     },
+     {
+      "corpus": "iemocap",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "mead",
+      "style": "sad"
+     },
+     {
+      "corpus": "mead",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "tess",
+      "style": "sad"
+     },
+     {
+      "corpus": "tess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "jlcorpus",
+      "style": "sad"
+     },
+     {
+      "corpus": "jlcorpus",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emns",
+      "style": "sad"
+     },
+     {
+      "corpus": "emns",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "savee",
+      "style": "sad"
+     },
+     {
+      "corpus": "savee",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_saddened": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "happy": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "amusement"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "esd",
+      "style": "happy"
+     },
+     {
+      "corpus": "esd",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "cremad",
+      "style": "happy"
+     },
+     {
+      "corpus": "cremad",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "ravdess",
+      "style": "happy"
+     },
+     {
+      "corpus": "ravdess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "msp_podcast",
+      "style": "happy"
+     },
+     {
+      "corpus": "msp_podcast",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "meld",
+      "style": "happy"
+     },
+     {
+      "corpus": "meld",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "iemocap",
+      "style": "happy"
+     },
+     {
+      "corpus": "iemocap",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "mead",
+      "style": "happy"
+     },
+     {
+      "corpus": "mead",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "tess",
+      "style": "happy"
+     },
+     {
+      "corpus": "tess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "jlcorpus",
+      "style": "happy"
+     },
+     {
+      "corpus": "jlcorpus",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emns",
+      "style": "happy"
+     },
+     {
+      "corpus": "emns",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "savee",
+      "style": "happy"
+     },
+     {
+      "corpus": "savee",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_happy": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "fearful": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "fear"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "cremad",
+      "style": "fearful"
+     },
+     {
+      "corpus": "cremad",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "ravdess",
+      "style": "fearful"
+     },
+     {
+      "corpus": "ravdess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_scared": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "disgusted": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "disgust"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "cremad",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "cremad",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "ravdess",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "ravdess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "msp_podcast",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "msp_podcast",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "meld",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "meld",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "mead",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "mead",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emov_db",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "emov_db",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "tess",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "tess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emns",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "emns",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "savee",
+      "style": "disgusted"
+     },
+     {
+      "corpus": "savee",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_disgusted": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "surprised": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "amazement"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "esd",
+      "style": "surprised"
+     },
+     {
+      "corpus": "esd",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "ravdess",
+      "style": "surprised"
+     },
+     {
+      "corpus": "ravdess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "msp_podcast",
+      "style": "surprised"
+     },
+     {
+      "corpus": "msp_podcast",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "meld",
+      "style": "surprised"
+     },
+     {
+      "corpus": "meld",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "mead",
+      "style": "surprised"
+     },
+     {
+      "corpus": "mead",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "tess",
+      "style": "surprised"
+     },
+     {
+      "corpus": "tess",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emns",
+      "style": "surprised"
+     },
+     {
+      "corpus": "emns",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "savee",
+      "style": "surprised"
+     },
+     {
+      "corpus": "savee",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_awed": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "adoring": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "adoration"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_admiring": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "confused": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "confusion"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_confused": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "content": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "contentment"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_calm": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "cute": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "cuteness"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_happy": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "desirous": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "desire"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_desirous": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "disappointed": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "disappointment"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_saddened": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "distressed": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "distress"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_anxious": true,
+      "s_scared": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "embarrassed": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "embarassment"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_anxious": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "ecstatic": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "extasy"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_happy": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "guilty": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "guilt"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_guilt": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "interested": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "interest"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_enthusiastic": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "pained": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "pain"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_pained": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "proud": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "pride"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_admiring": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "realizing": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "realization"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_awed": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "relieved": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "relief"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_calm": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "serene": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "serenity"
+     },
+     {
+      "corpus": "ears",
+      "style": "neutral"
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_calm": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": false
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "scared": {
+   "pairs": [
+    [
+     {
+      "corpus": "ears",
+      "style": "fear"
+     },
+     {
+      "corpus": "ears",
+      "style": [
+       "anger",
+       "sadness",
+       "amusement",
+       "disgust",
+       "amazement",
+       "adoration",
+       "confusion",
+       "contentment",
+       "cuteness",
+       "desire",
+       "disappointment",
+       "distress",
+       "embarassment",
+       "extasy",
+       "guilt",
+       "interest",
+       "pain",
+       "pride",
+       "realization",
+       "relief",
+       "serenity"
+      ]
+     }
+    ],
+    [
+     {
+      "corpus": "cremad",
+      "style": "fearful"
+     },
+     {
+      "corpus": "cremad",
+      "style": [
+       "angry",
+       "disgusted",
+       "happy",
+       "sad"
+      ]
+     }
+    ],
+    [
+     {
+      "corpus": "ravdess",
+      "style": "fearful"
+     },
+     {
+      "corpus": "ravdess",
+      "style": [
+       "angry",
+       "calm",
+       "disgusted",
+       "happy",
+       "sad",
+       "surprised"
+      ]
+     }
+    ],
+    [
+     {
+      "corpus": "emilia",
+      "s_scared": true
+     },
+     {
+      "corpus": "emilia",
+      "s_any": true,
+      "s_scared": false
+     }
+    ]
+   ],
+   "kind": "named"
+  }
+ }
+}

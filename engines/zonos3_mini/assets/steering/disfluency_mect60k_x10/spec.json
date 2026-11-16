@@ -1,0 +1,15 @@
+{
+ "space": "attnres_source",
+ "source_index": 19,
+ "group_by": "clip",
+ "center": "speaker",
+ "directions": {
+  "disfluent": {
+   "regress": "disfl",
+   "within": "corpus",
+   "kind": "axis",
+   "poles": {"+": "hesitant, fillers", "-": "fluent"}
+  }
+ },
+ "holdout": "auto"
+}

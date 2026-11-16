@@ -1,0 +1,158 @@
+{
+ "angry": {
+  "norm": 0.024435275369628806,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "anger"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 1.0
+   }
+  ]
+ },
+ "sad": {
+  "norm": 0.01633910478720501,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "sadness"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 1.0
+   }
+  ]
+ },
+ "happy": {
+  "norm": 0.01910547416830079,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "amusement"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 0.9999999999999998
+   }
+  ]
+ },
+ "fearful": {
+  "norm": 0.02055408798565512,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "fear"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 1.0
+   }
+  ]
+ },
+ "disgusted": {
+  "norm": 0.020196482824966278,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "disgust"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 1.0
+   }
+  ]
+ },
+ "surprised": {
+  "norm": 0.019633100615820298,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "amazement"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 1.0000000000000002
+   }
+  ]
+ }
+}

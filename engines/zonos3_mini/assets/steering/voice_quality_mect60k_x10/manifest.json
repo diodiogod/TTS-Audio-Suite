@@ -1,0 +1,437 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": [
+  "/data/groups/audio/sofian/runs/steer_corpora/paraspeechcaps_x10/clips.json",
+  "/data/groups/audio/sofian/runs/steer_corpora/paraspeechcaps_x10/emilia_clips.json"
+ ],
+ "features": [
+  "/data/groups/audio/sofian/runs/steer_corpora/paraspeechcaps_x10/features.npz"
+ ],
+ "spec": {
+  "space": "raw",
+  "orthogonal_to": [
+   "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+  ],
+  "directions": {
+   "deep": {
+    "pairs": [
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_deep": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_deep": false
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_deep": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_deep": false
+      }
+     ],
+     [
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_deep": true
+      },
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_deep": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_deep": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_deep": false
+      }
+     ]
+    ]
+   },
+   "shrill": {
+    "pairs": [
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_shrill": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_shrill": false
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_shrill": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_shrill": false
+      }
+     ],
+     [
+      {
+       "corpus": "ears",
+       "gender": "female",
+       "q_shrill": true
+      },
+      {
+       "corpus": "ears",
+       "gender": "female",
+       "q_shrill": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_shrill": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_shrill": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_shrill": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_shrill": false
+      }
+     ]
+    ]
+   },
+   "husky": {
+    "pairs": [
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_husky": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_husky": false
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_husky": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_husky": false
+      }
+     ],
+     [
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_husky": true
+      },
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_husky": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_husky": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_husky": false
+      }
+     ]
+    ]
+   },
+   "raspy": {
+    "pairs": [
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_raspy": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_raspy": false
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_raspy": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_raspy": false
+      }
+     ],
+     [
+      {
+       "corpus": "ears",
+       "gender": "female",
+       "q_raspy": true
+      },
+      {
+       "corpus": "ears",
+       "gender": "female",
+       "q_raspy": false
+      }
+     ],
+     [
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_raspy": true
+      },
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_raspy": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_raspy": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_raspy": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_raspy": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_raspy": false
+      }
+     ]
+    ]
+   },
+   "soft": {
+    "pairs": [
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_soft": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_soft": false
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_soft": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_soft": false
+      }
+     ],
+     [
+      {
+       "corpus": "ears",
+       "gender": "female",
+       "q_soft": true
+      },
+      {
+       "corpus": "ears",
+       "gender": "female",
+       "q_soft": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_soft": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_soft": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_soft": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_soft": false
+      }
+     ]
+    ]
+   },
+   "authoritative": {
+    "pairs": [
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_authoritative": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "female",
+       "q_authoritative": false
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_authoritative": true
+      },
+      {
+       "corpus": "voxceleb",
+       "gender": "male",
+       "q_authoritative": false
+      }
+     ],
+     [
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_authoritative": true
+      },
+      {
+       "corpus": "ears",
+       "gender": "male",
+       "q_authoritative": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_authoritative": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "female",
+       "q_authoritative": false
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_authoritative": true
+      },
+      {
+       "corpus": "emilia",
+       "gender": "male",
+       "q_authoritative": false
+      }
+     ]
+    ]
+   }
+  }
+ },
+ "directions": {
+  "deep": {
+   "file": "deep.npy",
+   "kind": "named",
+   "norm": 0.5765019737824737
+  },
+  "shrill": {
+   "file": "shrill.npy",
+   "kind": "named",
+   "norm": 0.8610223431906169
+  },
+  "husky": {
+   "file": "husky.npy",
+   "kind": "named",
+   "norm": 0.586754511050251
+  },
+  "raspy": {
+   "file": "raspy.npy",
+   "kind": "named",
+   "norm": 0.8753706548154716
+  },
+  "soft": {
+   "file": "soft.npy",
+   "kind": "named",
+   "norm": 0.7225086004989077
+  },
+  "authoritative": {
+   "file": "authoritative.npy",
+   "kind": "named",
+   "norm": 0.6506623689503621
+  }
+ },
+ "input_dim": 192,
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 3.9860571833206913,
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/voice_quality_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/voice_quality_mect60k_x10",
+ "native_norms": {
+  "deep": 0.8272651989380675,
+  "shrill": 0.8728952683592021,
+  "husky": 0.947636375783993,
+  "raspy": 0.9184872703740711,
+  "soft": 1.00829955514056,
+  "authoritative": 0.6312534158808493
+ }
+}

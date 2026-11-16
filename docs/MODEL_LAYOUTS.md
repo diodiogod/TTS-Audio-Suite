@@ -464,3 +464,41 @@ Notes:
 - Native sample rate is 24kHz.
 - The main OmniVoice model stays in the main Transformers 5 environment.
 - Voice cloning requires reference audio plus explicit reference text in this suite.
+
+## ZONOS3-Mini
+
+```text
+ComfyUI/models/TTS/zonos3_mini/
+└── ZONOS3-Mini/
+```
+
+Model contents (the layout of the `Zyphra/ZONOS3-Mini` repository):
+
+```text
+ComfyUI/models/TTS/zonos3_mini/ZONOS3-Mini/
+├── lm/zonos3_mini/
+│   ├── model.pth                                   (1.77 GB)
+│   ├── params.json
+│   ├── tokenizer/superbpe8192.json
+│   └── text_rows/pause_tokens_s5000.pt
+├── autoencoder/
+│   ├── generator.pt                                (7.96 GB)
+│   ├── heads/keep2_plain/
+│   │   ├── config_full_unfreezeall_mr_drop30_4x10.json
+│   │   └── step_0050000.pt                         (0.52 GB)
+│   ├── heads/full_mr/                              (optional, decoder = full_mr)
+│   │   ├── config_full_unfreezeall_mr.json
+│   │   └── step_0050000.pt                         (4.01 GB)
+│   └── teacher/                                    (optional, voice_mode = reference)
+│       ├── config.json
+│       └── model.safetensors                       (0.77 GB)
+└── speaker_encoders/ownmect_s2/ckpt_0037.pth       (50 MB)
+```
+
+Notes:
+
+- Downloads into a dedicated `zonos3_mini/` folder; optional parts are fetched the first time they are selected.
+- Other complete model folders placed under `zonos3_mini/` appear in the engine node as `local:<folder>`.
+- Native sample rate is 44.1kHz.
+- Runs in the main environment; the inference code is Zyphra's reference implementation bundled in `engines/zonos3_mini/vendor/`.
+- Voice cloning needs reference audio only; no reference transcript is used.

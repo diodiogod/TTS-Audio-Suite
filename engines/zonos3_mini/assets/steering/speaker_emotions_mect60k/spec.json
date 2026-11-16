@@ -1,0 +1,88 @@
+{
+ "space": "raw",
+ "group_by": "clip",
+ "center": "speaker",
+ "directions": {
+  "angry": {
+   "pairs": [
+    [
+     {
+      "style": "anger"
+     },
+     {
+      "style": "neutral"
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "sad": {
+   "pairs": [
+    [
+     {
+      "style": "sadness"
+     },
+     {
+      "style": "neutral"
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "happy": {
+   "pairs": [
+    [
+     {
+      "style": "amusement"
+     },
+     {
+      "style": "neutral"
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "fearful": {
+   "pairs": [
+    [
+     {
+      "style": "fear"
+     },
+     {
+      "style": "neutral"
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "disgusted": {
+   "pairs": [
+    [
+     {
+      "style": "disgust"
+     },
+     {
+      "style": "neutral"
+     }
+    ]
+   ],
+   "kind": "named"
+  },
+  "surprised": {
+   "pairs": [
+    [
+     {
+      "style": "amazement"
+     },
+     {
+      "style": "neutral"
+     }
+    ]
+   ],
+   "kind": "named"
+  }
+ },
+ "orthogonal_to": [
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+ ]
+}

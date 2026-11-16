@@ -1,0 +1,26 @@
+{
+ "dim": 192,
+ "input_dim": 192,
+ "space": "raw",
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 4.244113436359932,
+ "neutral": "eng",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "pools": "/data/groups/audio/sofian/runs/accent_steering/clips_x10",
+ "orthogonal_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k",
+ "note": "accent recordings minus English recordings in the ownmect_s2 speaker embedding (per-recording means), gender and age projected out; accent_strength 1 = the full mean shift, speaker_mode embedding only.",
+ "directions": {
+  "cmn": {
+   "file": "cmn.npy",
+   "kind": "named",
+   "norm": 2.239289584013058,
+   "recordings": 7317,
+   "held_out_auc": 0.9999067025609887
+  }
+ },
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/mandarin_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/mandarin_mect60k_x10",
+ "native_norms": {
+  "cmn": 2.2428218607423727
+ }
+}

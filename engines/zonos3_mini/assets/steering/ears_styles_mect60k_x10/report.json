@@ -1,0 +1,285 @@
+{
+ "whisper": {
+  "norm": 0.04663607351327713,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "ears",
+      "style": "whisper"
+     },
+     {
+      "corpus": "ears",
+      "style": "regular"
+     }
+    ],
+    "train_speakers": [
+     948,
+     1580
+    ],
+    "held_out_speakers": [
+     336,
+     560
+    ],
+    "held_out_auc": 0.9997130102040817,
+    "cos_with_direction": 0.9407572476515691
+   },
+   {
+    "pair": [
+     {
+      "corpus": "expresso",
+      "mode": "read",
+      "style": "whisper"
+     },
+     {
+      "corpus": "expresso",
+      "mode": "read",
+      "style": "default"
+     }
+    ],
+    "train_speakers": [
+     1136,
+     1136
+    ],
+    "held_out_speakers": [
+     380,
+     380
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 0.9741641905586343
+   },
+   {
+    "pair": [
+     {
+      "corpus": "expresso",
+      "mode": "conv",
+      "style": "whisper"
+     },
+     {
+      "corpus": "expresso",
+      "mode": "conv",
+      "style": "default"
+     }
+    ],
+    "train_speakers": [
+     442,
+     521
+    ],
+    "held_out_speakers": [
+     96,
+     168
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 0.9684566718883448
+   }
+  ]
+ },
+ "loud": {
+  "norm": 0.021826019507861824,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "ears",
+      "style": "loud"
+     },
+     {
+      "corpus": "ears",
+      "style": "regular"
+     }
+    ],
+    "train_speakers": [
+     948,
+     1580
+    ],
+    "held_out_speakers": [
+     336,
+     560
+    ],
+    "held_out_auc": 0.9847789115646258,
+    "cos_with_direction": 0.9338090961463845
+   },
+   {
+    "pair": [
+     {
+      "corpus": "expresso",
+      "mode": "conv",
+      "style": "projected"
+     },
+     {
+      "corpus": "expresso",
+      "mode": "conv",
+      "style": "default"
+     }
+    ],
+    "train_speakers": [
+     597,
+     521
+    ],
+    "held_out_speakers": [
+     226,
+     168
+    ],
+    "held_out_auc": 0.9991308470290771,
+    "cos_with_direction": 0.9110966220945176
+   }
+  ]
+ },
+ "tempo": {
+  "norm": 0.01678297367355682,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "ears",
+      "style": "fast"
+     },
+     {
+      "corpus": "ears",
+      "style": "slow"
+     }
+    ],
+    "train_speakers": [
+     948,
+     948
+    ],
+    "held_out_speakers": [
+     336,
+     336
+    ],
+    "held_out_auc": 0.9969440901360545,
+    "cos_with_direction": 0.8254648863722247
+   },
+   {
+    "pair": [
+     {
+      "corpus": "expresso",
+      "mode": "conv",
+      "style": "fast"
+     },
+     {
+      "corpus": "expresso",
+      "mode": "conv",
+      "style": "default"
+     }
+    ],
+    "train_speakers": [
+     502,
+     521
+    ],
+    "held_out_speakers": [
+     135,
+     168
+    ],
+    "held_out_auc": 0.8450176366843033,
+    "cos_with_direction": 0.4248036689691556
+   },
+   {
+    "pair": [
+     {
+      "corpus": "emilia",
+      "speed": "fast"
+     },
+     {
+      "corpus": "emilia",
+      "speed": "slow"
+     }
+    ],
+    "train_speakers": [
+     7973,
+     7970
+    ],
+    "held_out_speakers": [
+     2020,
+     2020
+    ],
+    "held_out_auc": 0.997047103225174,
+    "cos_with_direction": 0.9900264532274996
+   }
+  ]
+ },
+ "pitch": {
+  "norm": 0.034771262436679794,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "ears",
+      "style": "highpitch"
+     },
+     {
+      "corpus": "ears",
+      "style": "lowpitch"
+     }
+    ],
+    "train_speakers": [
+     948,
+     948
+    ],
+    "held_out_speakers": [
+     336,
+     336
+    ],
+    "held_out_auc": 0.9996545493197279,
+    "cos_with_direction": 1.0
+   }
+  ]
+ },
+ "conversational": {
+  "norm": 0.016372234301609216,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "ears",
+      "mode": "freeform",
+      "style": "freeform"
+     },
+     {
+      "corpus": "ears",
+      "style": "regular"
+     }
+    ],
+    "train_speakers": [
+     4319,
+     1580
+    ],
+    "held_out_speakers": [
+     1516,
+     560
+    ],
+    "held_out_auc": 0.9996972766679231,
+    "cos_with_direction": 0.9439957318526757
+   },
+   {
+    "pair": [
+     {
+      "corpus": "expresso",
+      "mode": "conv",
+      "style": "default"
+     },
+     {
+      "corpus": "expresso",
+      "mode": "read",
+      "style": "default"
+     }
+    ],
+    "train_speakers": [
+     521,
+     1136
+    ],
+    "held_out_speakers": [
+     168,
+     380
+    ],
+    "held_out_auc": 0.9714598997493734,
+    "cos_with_direction": 0.7123494372288685
+   }
+  ]
+ }
+}

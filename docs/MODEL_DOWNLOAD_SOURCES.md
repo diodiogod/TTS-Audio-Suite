@@ -144,6 +144,12 @@ Use this as the canonical list of model repositories/links for offline setup.
 |---|---|---|---|---|
 | OmniVoice | [k2-fsa/OmniVoice](https://huggingface.co/k2-fsa/OmniVoice) | ~3.7GB | ✅ | Official main model including bundled audio_tokenizer assets |
 
+## ZONOS3-Mini
+
+| Component | Source | Size | Auto-Download | Notes |
+|---|---|---|---|---|
+| ZONOS3-Mini | [Zyphra/ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini) | ~10.3GB | ✅ | Language model, shared autoencoder, speaker encoder and keep2_plain decoder; full_mr decoder (+4GB) and reference-mode encoder (+0.8GB) download on first use |
+
 ## MOSS-TTS
 
 | Component | Source | Size | Auto-Download | Notes |

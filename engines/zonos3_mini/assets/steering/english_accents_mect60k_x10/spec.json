@@ -1,0 +1,249 @@
+{
+ "space": "raw",
+ "orthogonal_to": [
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+ ],
+ "directions": {
+  "british": {
+   "pairs": [
+    [
+     {
+      "corpus": "vctk",
+      "accent": "English"
+     },
+     {
+      "corpus": "vctk",
+      "accent": "American"
+     }
+    ],
+    [
+     {
+      "corpus": "voxceleb",
+      "accent": "UK"
+     },
+     {
+      "corpus": "voxceleb",
+      "accent": "USA"
+     }
+    ],
+    [
+     {
+      "corpus": "commonvoice",
+      "accent": "England English"
+     },
+     {
+      "corpus": "commonvoice",
+      "accent": "United States English"
+     }
+    ]
+   ]
+  },
+  "american": {
+   "pairs": [
+    [
+     {
+      "corpus": "vctk",
+      "accent": "American"
+     },
+     {
+      "corpus": "vctk",
+      "accent": "English"
+     }
+    ],
+    [
+     {
+      "corpus": "voxceleb",
+      "accent": "USA"
+     },
+     {
+      "corpus": "voxceleb",
+      "accent": "UK"
+     }
+    ],
+    [
+     {
+      "corpus": "commonvoice",
+      "accent": "United States English"
+     },
+     {
+      "corpus": "commonvoice",
+      "accent": "England English"
+     }
+    ]
+   ]
+  },
+  "scottish": {
+   "pairs": [
+    [
+     {
+      "corpus": "vctk",
+      "accent": "Scottish"
+     },
+     {
+      "corpus": "vctk",
+      "accent": "American"
+     }
+    ],
+    [
+     {
+      "corpus": "english_dialects",
+      "accent": "scottish"
+     },
+     {
+      "corpus": "english_dialects",
+      "accent": "southern"
+     },
+     "+british"
+    ],
+    [
+     {
+      "corpus": "commonvoice",
+      "accent": "Scottish English"
+     },
+     {
+      "corpus": "commonvoice",
+      "accent": "United States English"
+     }
+    ]
+   ]
+  },
+  "irish": {
+   "pairs": [
+    [
+     {
+      "corpus": "vctk",
+      "accent": "Irish"
+     },
+     {
+      "corpus": "vctk",
+      "accent": "American"
+     }
+    ],
+    [
+     {
+      "corpus": "voxceleb",
+      "accent": "Ireland"
+     },
+     {
+      "corpus": "voxceleb",
+      "accent": "USA"
+     }
+    ],
+    [
+     {
+      "corpus": "english_dialects",
+      "accent": "irish"
+     },
+     {
+      "corpus": "english_dialects",
+      "accent": "southern"
+     },
+     "+british"
+    ],
+    [
+     {
+      "corpus": "commonvoice",
+      "accent": "Irish English"
+     },
+     {
+      "corpus": "commonvoice",
+      "accent": "United States English"
+     }
+    ]
+   ]
+  },
+  "australian": {
+   "pairs": [
+    [
+     {
+      "corpus": "vctk",
+      "accent": "Australian"
+     },
+     {
+      "corpus": "vctk",
+      "accent": "American"
+     }
+    ],
+    [
+     {
+      "corpus": "voxceleb",
+      "accent": "Australia"
+     },
+     {
+      "corpus": "voxceleb",
+      "accent": "USA"
+     }
+    ],
+    [
+     {
+      "corpus": "commonvoice",
+      "accent": "Australian English"
+     },
+     {
+      "corpus": "commonvoice",
+      "accent": "United States English"
+     }
+    ]
+   ]
+  },
+  "indian": {
+   "pairs": [
+    [
+     {
+      "corpus": "vctk",
+      "accent": "Indian"
+     },
+     {
+      "corpus": "vctk",
+      "accent": "American"
+     }
+    ],
+    [
+     {
+      "corpus": "voxceleb",
+      "accent": "India"
+     },
+     {
+      "corpus": "voxceleb",
+      "accent": "USA"
+     }
+    ],
+    [
+     {
+      "corpus": "commonvoice",
+      "accent": "India and South Asia (India, Pakistan, Sri Lanka)"
+     },
+     {
+      "corpus": "commonvoice",
+      "accent": "United States English"
+     }
+    ]
+   ]
+  },
+  "welsh": {
+   "pairs": [
+    [
+     {
+      "corpus": "english_dialects",
+      "accent": "welsh"
+     },
+     {
+      "corpus": "english_dialects",
+      "accent": "southern"
+     },
+     "+british"
+    ],
+    [
+     {
+      "corpus": "commonvoice",
+      "accent": "Welsh English"
+     },
+     {
+      "corpus": "commonvoice",
+      "accent": "United States English"
+     }
+    ]
+   ]
+  }
+ }
+}

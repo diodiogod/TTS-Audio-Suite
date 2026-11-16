@@ -1,0 +1,33 @@
+{
+ "elderly Scottish narrator": {
+  "age": 1.5,
+  "scottish": 1.5,
+  "deep": 2.0,
+  "pitch_range": -1.0
+ },
+ "young Australian": {
+  "age": -1.5,
+  "australian": 1.5,
+  "pitch_range": 1.0
+ },
+ "gravelly old man": {
+  "gender": -1.0,
+  "age": 2.0,
+  "raspy": 3.0,
+  "deep": 2.0
+ },
+ "BBC newsreader": {
+  "british": 1.5,
+  "authoritative": 3.0,
+  "clean": 2.0
+ },
+ "soft-spoken Irish woman": {
+  "gender": 1.0,
+  "irish": 1.5,
+  "soft": 3.0
+ },
+ "Indian English caller": {
+  "indian": 1.5,
+  "clean": -2.0
+ }
+}

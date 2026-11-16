@@ -1,0 +1,312 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": [
+  "/data/groups/audio/sofian/runs/steer_corpora/english_accents_x10/clips.json"
+ ],
+ "features": [
+  "/data/groups/audio/sofian/runs/steer_corpora/english_accents_x10/features.npz",
+  "/data/groups/audio/sofian/runs/steer_corpora/english_accents_x10/features_dialects.npz"
+ ],
+ "spec": {
+  "space": "raw",
+  "orthogonal_to": [
+   "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+  ],
+  "directions": {
+   "british": {
+    "pairs": [
+     [
+      {
+       "corpus": "vctk",
+       "accent": "English"
+      },
+      {
+       "corpus": "vctk",
+       "accent": "American"
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "accent": "UK"
+      },
+      {
+       "corpus": "voxceleb",
+       "accent": "USA"
+      }
+     ],
+     [
+      {
+       "corpus": "commonvoice",
+       "accent": "England English"
+      },
+      {
+       "corpus": "commonvoice",
+       "accent": "United States English"
+      }
+     ]
+    ]
+   },
+   "american": {
+    "pairs": [
+     [
+      {
+       "corpus": "vctk",
+       "accent": "American"
+      },
+      {
+       "corpus": "vctk",
+       "accent": "English"
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "accent": "USA"
+      },
+      {
+       "corpus": "voxceleb",
+       "accent": "UK"
+      }
+     ],
+     [
+      {
+       "corpus": "commonvoice",
+       "accent": "United States English"
+      },
+      {
+       "corpus": "commonvoice",
+       "accent": "England English"
+      }
+     ]
+    ]
+   },
+   "scottish": {
+    "pairs": [
+     [
+      {
+       "corpus": "vctk",
+       "accent": "Scottish"
+      },
+      {
+       "corpus": "vctk",
+       "accent": "American"
+      }
+     ],
+     [
+      {
+       "corpus": "english_dialects",
+       "accent": "scottish"
+      },
+      {
+       "corpus": "english_dialects",
+       "accent": "southern"
+      },
+      "+british"
+     ],
+     [
+      {
+       "corpus": "commonvoice",
+       "accent": "Scottish English"
+      },
+      {
+       "corpus": "commonvoice",
+       "accent": "United States English"
+      }
+     ]
+    ]
+   },
+   "irish": {
+    "pairs": [
+     [
+      {
+       "corpus": "vctk",
+       "accent": "Irish"
+      },
+      {
+       "corpus": "vctk",
+       "accent": "American"
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "accent": "Ireland"
+      },
+      {
+       "corpus": "voxceleb",
+       "accent": "USA"
+      }
+     ],
+     [
+      {
+       "corpus": "english_dialects",
+       "accent": "irish"
+      },
+      {
+       "corpus": "english_dialects",
+       "accent": "southern"
+      },
+      "+british"
+     ],
+     [
+      {
+       "corpus": "commonvoice",
+       "accent": "Irish English"
+      },
+      {
+       "corpus": "commonvoice",
+       "accent": "United States English"
+      }
+     ]
+    ]
+   },
+   "australian": {
+    "pairs": [
+     [
+      {
+       "corpus": "vctk",
+       "accent": "Australian"
+      },
+      {
+       "corpus": "vctk",
+       "accent": "American"
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "accent": "Australia"
+      },
+      {
+       "corpus": "voxceleb",
+       "accent": "USA"
+      }
+     ],
+     [
+      {
+       "corpus": "commonvoice",
+       "accent": "Australian English"
+      },
+      {
+       "corpus": "commonvoice",
+       "accent": "United States English"
+      }
+     ]
+    ]
+   },
+   "indian": {
+    "pairs": [
+     [
+      {
+       "corpus": "vctk",
+       "accent": "Indian"
+      },
+      {
+       "corpus": "vctk",
+       "accent": "American"
+      }
+     ],
+     [
+      {
+       "corpus": "voxceleb",
+       "accent": "India"
+      },
+      {
+       "corpus": "voxceleb",
+       "accent": "USA"
+      }
+     ],
+     [
+      {
+       "corpus": "commonvoice",
+       "accent": "India and South Asia (India, Pakistan, Sri Lanka)"
+      },
+      {
+       "corpus": "commonvoice",
+       "accent": "United States English"
+      }
+     ]
+    ]
+   },
+   "welsh": {
+    "pairs": [
+     [
+      {
+       "corpus": "english_dialects",
+       "accent": "welsh"
+      },
+      {
+       "corpus": "english_dialects",
+       "accent": "southern"
+      },
+      "+british"
+     ],
+     [
+      {
+       "corpus": "commonvoice",
+       "accent": "Welsh English"
+      },
+      {
+       "corpus": "commonvoice",
+       "accent": "United States English"
+      }
+     ]
+    ]
+   }
+  }
+ },
+ "directions": {
+  "british": {
+   "file": "british.npy",
+   "kind": "named",
+   "norm": 1.6460160017597512
+  },
+  "american": {
+   "file": "american.npy",
+   "kind": "named",
+   "norm": 1.6460160017597512
+  },
+  "scottish": {
+   "file": "scottish.npy",
+   "kind": "named",
+   "norm": 1.5993952311712185
+  },
+  "irish": {
+   "file": "irish.npy",
+   "kind": "named",
+   "norm": 1.4670428843057417
+  },
+  "australian": {
+   "file": "australian.npy",
+   "kind": "named",
+   "norm": 1.6846640478949597
+  },
+  "indian": {
+   "file": "indian.npy",
+   "kind": "named",
+   "norm": 1.9338742575658665
+  },
+  "welsh": {
+   "file": "welsh.npy",
+   "kind": "named",
+   "norm": 1.6942607197704886
+  }
+ },
+ "input_dim": 192,
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 4.247367781337215,
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/english_accents_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/english_accents_mect60k_x10",
+ "native_norms": {
+  "british": 1.347926209047298,
+  "american": 1.347926209047298,
+  "scottish": 1.305907091866488,
+  "irish": 1.088743346128299,
+  "australian": 1.3546273058660547,
+  "indian": 1.7996119091855258,
+  "welsh": 1.5387075424324888
+ }
+}

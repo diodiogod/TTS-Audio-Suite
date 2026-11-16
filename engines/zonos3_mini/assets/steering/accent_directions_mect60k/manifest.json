@@ -1,0 +1,22 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "source_index": 15,
+ "source_name": "L7.attn",
+ "neutral": "eng",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "row_norm": 0.4042471716391197,
+ "clips": 9713,
+ "prompt_conditioning": "speaker_row=own,condition_rows=3:unknown,pools=/data/groups/audio/sofian/runs/accent_steering/clips_l2eng",
+ "directions": {
+  "hin": {
+   "file": "hin.npy",
+   "kind": "named",
+   "norm": 0.13439911603927612,
+   "snr": 0.48619717359542847,
+   "clips": 800,
+   "data": "pool"
+  }
+ },
+ "note": "Accented English minus English at L7.attn: English-labelled zv3subsample segments with the largest MMS-LID Hindi posterior (lingua apps.zonos.accented_english_keys; 39% top-pods-intl/pods/in) vs native English, 800 clips each. accent_strength 1 = the measured shift; validated with the ZTTS2-Eval accent harness (results/_accent_steering_mect60k/hin_l2eng_s15)."
+}

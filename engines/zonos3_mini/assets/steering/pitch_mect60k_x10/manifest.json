@@ -1,0 +1,66 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": [
+  "/data/groups/audio/sofian/runs/steer_corpora/speaker_x10/clips.json"
+ ],
+ "features": [
+  "/data/groups/audio/sofian/runs/steer_corpora/speaker_x10/features.npz"
+ ],
+ "spec": {
+  "space": "raw",
+  "orthogonal_to": [
+   "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+  ],
+  "directions": {
+   "pitch": {
+    "regress": "f0_log",
+    "within": "corpus_gender",
+    "kind": "axis",
+    "poles": {
+     "+": "higher",
+     "-": "lower"
+    }
+   },
+   "pitch_range": {
+    "regress": "f0_st",
+    "within": "corpus_gender",
+    "kind": "axis",
+    "poles": {
+     "+": "varied",
+     "-": "monotone"
+    }
+   }
+  }
+ },
+ "directions": {
+  "pitch": {
+   "file": "pitch.npy",
+   "kind": "axis",
+   "norm": 0.7707383913456111,
+   "poles": {
+    "+": "higher",
+    "-": "lower"
+   }
+  },
+  "pitch_range": {
+   "file": "pitch_range.npy",
+   "kind": "axis",
+   "norm": 0.5263656528988094,
+   "poles": {
+    "+": "varied",
+    "-": "monotone"
+   }
+  }
+ },
+ "input_dim": 192,
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 3.964427184081943,
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/pitch_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/pitch_mect60k_x10",
+ "native_norms": {
+  "pitch": 0.6008552064765184,
+  "pitch_range": 0.3836799088095366
+ }
+}

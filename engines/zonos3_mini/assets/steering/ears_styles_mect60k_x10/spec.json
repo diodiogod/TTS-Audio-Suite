@@ -1,0 +1,47 @@
+{
+ "space": "attnres_source",
+ "source_index": 19,
+ "group_by": "clip",
+ "center": "speaker",
+ "directions": {
+  "whisper": {
+   "pairs": [
+    [{"corpus": "ears", "style": "whisper"}, {"corpus": "ears", "style": "regular"}],
+    [{"corpus": "expresso", "mode": "read", "style": "whisper"}, {"corpus": "expresso", "mode": "read", "style": "default"}],
+    [{"corpus": "expresso", "mode": "conv", "style": "whisper"}, {"corpus": "expresso", "mode": "conv", "style": "default"}]
+   ],
+   "kind": "named"
+  },
+  "loud": {
+   "pairs": [
+    [{"corpus": "ears", "style": "loud"}, {"corpus": "ears", "style": "regular"}],
+    [{"corpus": "expresso", "mode": "conv", "style": "projected"}, {"corpus": "expresso", "mode": "conv", "style": "default"}]
+   ],
+   "kind": "named"
+  },
+  "tempo": {
+   "pairs": [
+    [{"corpus": "ears", "style": "fast"}, {"corpus": "ears", "style": "slow"}],
+    [{"corpus": "expresso", "mode": "conv", "style": "fast"}, {"corpus": "expresso", "mode": "conv", "style": "default"}],
+    [{"corpus": "emilia", "speed": "fast"}, {"corpus": "emilia", "speed": "slow"}]
+   ],
+   "kind": "axis",
+   "poles": {"+": "fast", "-": "slow"}
+  },
+  "pitch": {
+   "pairs": [
+    [{"corpus": "ears", "style": "highpitch"}, {"corpus": "ears", "style": "lowpitch"}]
+   ],
+   "kind": "axis",
+   "poles": {"+": "high", "-": "low"}
+  },
+  "conversational": {
+   "pairs": [
+    [{"corpus": "ears", "mode": "freeform", "style": "freeform"}, {"corpus": "ears", "style": "regular"}],
+    [{"corpus": "expresso", "mode": "conv", "style": "default"}, {"corpus": "expresso", "mode": "read", "style": "default"}]
+   ],
+   "kind": "axis",
+   "poles": {"+": "spontaneous", "-": "read"}
+  }
+ }
+}

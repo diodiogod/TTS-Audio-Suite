@@ -1,0 +1,129 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": "/data/groups/audio/sofian/runs/steer_corpora/ears_emotions/clips.json",
+ "spec": {
+  "space": "raw",
+  "group_by": "clip",
+  "center": "speaker",
+  "directions": {
+   "angry": {
+    "pairs": [
+     [
+      {
+       "style": "anger"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "sad": {
+    "pairs": [
+     [
+      {
+       "style": "sadness"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "happy": {
+    "pairs": [
+     [
+      {
+       "style": "amusement"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "fearful": {
+    "pairs": [
+     [
+      {
+       "style": "fear"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "disgusted": {
+    "pairs": [
+     [
+      {
+       "style": "disgust"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "surprised": {
+    "pairs": [
+     [
+      {
+       "style": "amazement"
+      },
+      {
+       "style": "neutral"
+      }
+     ]
+    ],
+    "kind": "named"
+   }
+  },
+  "orthogonal_to": [
+   "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k"
+  ]
+ },
+ "directions": {
+  "angry": {
+   "file": "angry.npy",
+   "kind": "named",
+   "norm": 1.0596890887233845
+  },
+  "sad": {
+   "file": "sad.npy",
+   "kind": "named",
+   "norm": 0.6941092554111131
+  },
+  "happy": {
+   "file": "happy.npy",
+   "kind": "named",
+   "norm": 0.7464997821482542
+  },
+  "fearful": {
+   "file": "fearful.npy",
+   "kind": "named",
+   "norm": 0.9065878465855942
+  },
+  "disgusted": {
+   "file": "disgusted.npy",
+   "kind": "named",
+   "norm": 0.9784041116068823
+  },
+  "surprised": {
+   "file": "surprised.npy",
+   "kind": "named",
+   "norm": 0.7549633561679097
+  }
+ },
+ "input_dim": 192,
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 1.7932623487910373
+}

@@ -707,6 +707,28 @@ class OmniVoiceCacheKeyGenerator(CacheKeyGenerator):
         return hashlib.md5(cache_string.encode()).hexdigest()
 
 
+class Zonos3MiniCacheKeyGenerator(CacheKeyGenerator):
+    """Cache key generator for ZONOS3-Mini: every native request field plus the voice identity."""
+
+    @staticmethod
+    def _stable(value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, float):
+            return round(value, 3)
+        if isinstance(value, dict):
+            return tuple(sorted((str(k), Zonos3MiniCacheKeyGenerator._stable(v)) for k, v in value.items()))
+        return value
+
+    def generate_cache_key(self, **params) -> str:
+        cache_data = {key: self._stable(value) for key, value in params.items()}
+        cache_data.setdefault('character', 'narrator')
+        cache_data['engine'] = 'zonos3_mini'
+
+        cache_string = str(sorted(cache_data.items()))
+        return hashlib.md5(cache_string.encode()).hexdigest()
+
+
 class AudioCache:
     """Unified audio cache manager for all TTS engines."""
     
@@ -726,6 +748,7 @@ class AudioCache:
             'dramabox': DramaBoxCacheKeyGenerator(),
             'fish_audio_s2': FishAudioS2CacheKeyGenerator(),
             'omnivoice': OmniVoiceCacheKeyGenerator(),
+            'zonos3_mini': Zonos3MiniCacheKeyGenerator(),
             'moss_tts': MossTTSCacheKeyGenerator(),
             'moss_soundeffect_v2': MossSoundEffectV2CacheKeyGenerator(),
             'echo_tts': EchoTTSCacheKeyGenerator()

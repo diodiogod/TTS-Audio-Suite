@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 19 Engines
+## Quick Engine Comparison — 20 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -43,6 +43,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **DramaBox** | 🇺🇸 | ~16.4GB | Expressive scene prompting and stage directions, Native and SRT-aware duration targeting |
 | **OmniVoice** | 🌐 600+ languages | ~3.7GB | Inline non-verbal tags and pronunciation overrides, Reference-free voice design |
+| **ZONOS3-Mini** | 🌐 44 languages | ~10.3GB (+4GB full_mr) | 44.1 kHz output, 44 languages, cross-lingual cloning without a transcript, 30 built-in voices |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +18 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | Reference-free voice design with MOSS-VoiceGenerator, Native 1-5 speaker TTSD dialogue |
 | **MOSS-SoundEffect v2** | 🇺🇸​🇨🇳 | ~11.2GB | Durations up to 30 seconds, Native negative prompting, CFG, flow shift, and diffusion-step controls |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
@@ -1578,6 +1579,7 @@ For offline/manual setup:
 | DramaBox | `ComfyUI/models/TTS/dramabox/DramaBox/` | ✅ | ~16.4GB download; fast mode roughly 24GB VRAM; experimental FP8, staged, and sequential options can reduce VRAM, but no minimum GPU size is guaranteed; conditional LTX-2 Community License |
 | Fish Audio S2 Pro | `ComfyUI/models/TTS/fish_audio_s2_pro/` | ✅ | Official BF16 or optional community FP8 checkpoint; the official checkpoint can be quantized on load with BNB INT8/NF4; main T5 environment with process teardown for Clear VRAM; Fish Audio Research License |
 | OmniVoice | `ComfyUI/models/TTS/omnivoice/` | ✅ | Official OmniVoice model. Voice cloning in this suite requires explicit reference text. |
+| ZONOS3-Mini | `ComfyUI/models/TTS/zonos3_mini/` | ✅ | Native Zyphra/ZONOS3-Mini files, ~10.3GB; the full_mr decoder (+4GB) and the reference-mode encoder (+0.8GB) download on first use. No reference transcript needed. |
 
 *Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*
 

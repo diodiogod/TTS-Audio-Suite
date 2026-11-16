@@ -13,7 +13,9 @@ LANGUAGE_ALIASES = {
     'de': 'de', 'german': 'de', 'deutsch': 'de', 'germany': 'de', 'deutschland': 'de',
     
     # English variations
-    'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'uk': 'en', 'america': 'en', 'britain': 'en',
+    'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'america': 'en', 'britain': 'en',
+    'en_us': 'en', 'en-us': 'en',
+    'en-gb': 'en-gb', 'en_gb': 'en-gb', 'british': 'en-gb',
     
     # Brazilian Portuguese (separate from European Portuguese)
     'pt': 'pt',  # Generic Portuguese (used by ChatterBox Official 23-Lang)
@@ -181,6 +183,15 @@ LANGUAGE_ALIASES = {
     
     # Urdu variations
     'ur': 'ur', 'urdu': 'ur', 'اردو': 'ur', 'pakistan': 'ur',
+
+    # Ukrainian variations ('uk' is the ISO 639-1 code for Ukrainian, not the United Kingdom)
+    'uk': 'uk', 'ukrainian': 'uk', 'українська': 'uk', 'ukraine': 'uk',
+
+    # Thai variations
+    'th': 'th', 'thai': 'th', 'ไทย': 'th', 'thailand': 'th',
+
+    # Georgian variations
+    'ka': 'ka', 'georgian': 'ka', 'ქართული': 'ka', 'georgia': 'ka',
     
     # Afrikaans variations
     'af': 'af', 'afrikaans': 'af', 'south africa': 'af',
@@ -193,6 +204,10 @@ LANGUAGE_ALIASES = {
     'kr': 'ko',  # Common abbreviation for Korean
     'se': 'sv',  # Common abbreviation for Swedish
     'dk': 'da',  # Common abbreviation for Danish
+    'fr_fr': 'fr', 'fr-fr': 'fr',  # ZONOS3 regional codes
+    'pt_br': 'pt-br',
+    'cmn': 'zh',  # ISO 639-3 Mandarin
+    'nb': 'no',  # Norwegian Bokmål
 }
 
 

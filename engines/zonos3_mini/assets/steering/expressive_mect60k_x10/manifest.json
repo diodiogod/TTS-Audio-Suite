@@ -1,0 +1,51 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": [
+  "/data/groups/audio/sofian/runs/steer_corpora/libritts_x10/clips.json"
+ ],
+ "features": [
+  "/data/groups/audio/sofian/runs/steer_corpora/libritts_x10/features_0.npz",
+  "/data/groups/audio/sofian/runs/steer_corpora/libritts_x10/features_1.npz"
+ ],
+ "spec": {
+  "space": "attnres_source",
+  "source_index": 19,
+  "group_by": "clip",
+  "center": "speaker",
+  "directions": {
+   "expressive": {
+    "regress": "f0_st",
+    "within": "corpus",
+    "filter": {
+     "corpus": "libritts_r"
+    },
+    "kind": "axis",
+    "poles": {
+     "+": "lively intonation",
+     "-": "flat"
+    }
+   }
+  }
+ },
+ "directions": {
+  "expressive": {
+   "file": "expressive.npy",
+   "kind": "axis",
+   "norm": 0.0040849415961084126,
+   "poles": {
+    "+": "lively intonation",
+    "-": "flat"
+   }
+  }
+ },
+ "source_index": 19,
+ "source_name": "L9.attn",
+ "prompt_conditioning": "speaker_row=no,condition_rows=3:unknown",
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/expressive_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/expressive_mect60k_x10",
+ "native_norms": {
+  "expressive": 0.00463792974487743
+ }
+}

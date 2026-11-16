@@ -1,0 +1,500 @@
+{
+ "dim": 1024,
+ "ref_base_norm": null,
+ "neutral": null,
+ "space": "attnres_source",
+ "source_index": 19,
+ "source_name": "L9.attn",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "speaker_codec": null,
+ "folded_from": "emotion_directions_mect60k_x10_full",
+ "axis_norm": 0.019202508467236323,
+ "common_mode_weight": {
+  "disgusted": 0.5,
+  "whisper": 1.0
+ },
+ "common_mode_energy": 0.276,
+ "axis_cosines": {
+  "valence": {
+   "valence": 1.0,
+   "arousal": 0.0,
+   "dominance": -0.0,
+   "loudness": -0.0,
+   "tempo": 0.0,
+   "clarity": -0.0,
+   "articulation": 0.0
+  },
+  "arousal": {
+   "valence": 0.0,
+   "arousal": 1.0,
+   "dominance": -0.0,
+   "loudness": -0.0,
+   "tempo": -0.0,
+   "clarity": 0.0,
+   "articulation": 0.0
+  },
+  "dominance": {
+   "valence": -0.0,
+   "arousal": -0.0,
+   "dominance": 1.0,
+   "loudness": -0.0,
+   "tempo": 0.0,
+   "clarity": -0.0,
+   "articulation": 0.0
+  },
+  "loudness": {
+   "valence": -0.0,
+   "arousal": -0.0,
+   "dominance": -0.0,
+   "loudness": 1.0,
+   "tempo": 0.0,
+   "clarity": -0.0,
+   "articulation": -0.0
+  },
+  "tempo": {
+   "valence": 0.0,
+   "arousal": -0.0,
+   "dominance": 0.0,
+   "loudness": 0.0,
+   "tempo": 1.0,
+   "clarity": -0.0,
+   "articulation": 0.0
+  },
+  "clarity": {
+   "valence": -0.0,
+   "arousal": 0.0,
+   "dominance": -0.0,
+   "loudness": -0.0,
+   "tempo": -0.0,
+   "clarity": 1.0,
+   "articulation": -0.0
+  },
+  "articulation": {
+   "valence": 0.0,
+   "arousal": 0.0,
+   "dominance": 0.0,
+   "loudness": -0.0,
+   "tempo": 0.0,
+   "clarity": -0.0,
+   "articulation": 1.0
+  }
+ },
+ "directions": {
+  "valence": {
+   "file": "valence.npy",
+   "kind": "axis",
+   "norm": 0.019202508477559957,
+   "group": "affect",
+   "recipe": {
+    "happy": 2.0,
+    "laughing": 0.5,
+    "calm": 0.5,
+    "sympathetic": 0.5,
+    "awe": 0.25,
+    "sad": -1.0,
+    "disgusted": -0.5,
+    "fearful": -0.5,
+    "sarcastic": -0.5
+   },
+   "judge": {
+    "+": [
+     "happy",
+     "calm"
+    ],
+    "-": [
+     "sad",
+     "angry"
+    ]
+   },
+   "orthogonal_to": [],
+   "norm_kept_after_orthogonalisation": 0.9999999999999998
+  },
+  "arousal": {
+   "file": "arousal.npy",
+   "kind": "axis",
+   "norm": 0.01920250843973024,
+   "group": "affect",
+   "recipe": {
+    "angry": 0.75,
+    "fearful": 0.5,
+    "fast": 1.0,
+    "projected": 0.75,
+    "happy": 0.5,
+    "laughing": 0.25,
+    "sleepy": -1.0,
+    "calm": -0.75,
+    "sad": -0.5,
+    "bored": -0.5,
+    "whisper": -0.5
+   },
+   "judge": {
+    "+": [
+     "fast",
+     "angry"
+    ],
+    "-": [
+     "sleepy",
+     "calm"
+    ]
+   },
+   "orthogonal_to": [
+    "valence"
+   ],
+   "norm_kept_after_orthogonalisation": 0.853811662978585
+  },
+  "dominance": {
+   "file": "dominance.npy",
+   "kind": "axis",
+   "norm": 0.019202508442805816,
+   "group": "affect",
+   "recipe": {
+    "angry": 0.75,
+    "projected": 1.0,
+    "enunciated": 0.5,
+    "disgusted": 0.25,
+    "sarcastic": 0.5,
+    "fearful": -0.75,
+    "sympathetic": -0.5,
+    "confused": -0.75,
+    "whisper": -0.5,
+    "sad": -0.5
+   },
+   "judge": {
+    "+": [
+     "projected",
+     "angry"
+    ],
+    "-": [
+     "fearful",
+     "confused"
+    ]
+   },
+   "orthogonal_to": [
+    "valence",
+    "arousal"
+   ],
+   "norm_kept_after_orthogonalisation": 0.46716882303367213
+  },
+  "loudness": {
+   "file": "loudness.npy",
+   "kind": "axis",
+   "norm": 0.01920250845316313,
+   "group": "delivery",
+   "recipe": {
+    "projected": 1.0,
+    "whisper": -1.0
+   },
+   "judge": {
+    "+": [
+     "projected"
+    ],
+    "-": [
+     "whisper"
+    ]
+   },
+   "orthogonal_to": [
+    "valence",
+    "arousal",
+    "dominance"
+   ],
+   "norm_kept_after_orthogonalisation": 0.5798434072638387
+  },
+  "tempo": {
+   "file": "tempo.npy",
+   "kind": "axis",
+   "norm": 0.019202508453848684,
+   "group": "delivery",
+   "recipe": {
+    "fast": 1.0,
+    "sleepy": -1.0
+   },
+   "judge": {
+    "+": [
+     "fast"
+    ],
+    "-": [
+     "sleepy"
+    ]
+   },
+   "orthogonal_to": [
+    "valence",
+    "arousal",
+    "dominance",
+    "loudness"
+   ],
+   "norm_kept_after_orthogonalisation": 0.31423540421474794
+  },
+  "clarity": {
+   "file": "clarity.npy",
+   "kind": "axis",
+   "norm": 0.01920250849981491,
+   "group": "delivery",
+   "recipe": {
+    "enunciated": 1.0,
+    "confused": -0.75,
+    "sleepy": -0.5
+   },
+   "judge": {
+    "+": [
+     "enunciated"
+    ],
+    "-": [
+     "confused"
+    ]
+   },
+   "orthogonal_to": [
+    "valence",
+    "arousal",
+    "dominance",
+    "loudness",
+    "tempo"
+   ],
+   "norm_kept_after_orthogonalisation": 0.6357984999374339
+  },
+  "articulation": {
+   "file": "articulation.npy",
+   "kind": "axis",
+   "norm": 0.01920250848219605,
+   "group": "delivery",
+   "recipe": {
+    "enunciated": 1.0,
+    "confused": 1.0
+   },
+   "judge": {
+    "+": [
+     "enunciated",
+     "confused"
+    ],
+    "-": null
+   },
+   "orthogonal_to": [
+    "valence",
+    "arousal",
+    "dominance",
+    "loudness",
+    "tempo",
+    "clarity"
+   ],
+   "norm_kept_after_orthogonalisation": 0.6313648309415935
+  }
+ },
+ "presets": {
+  "happy": {
+   "sliders": {
+    "valence": 1.0,
+    "arousal": 0.58,
+    "dominance": -0.11,
+    "loudness": 0.13,
+    "tempo": -0.3,
+    "clarity": -0.06,
+    "articulation": 0.09
+   },
+   "captured": 0.943
+  },
+  "sad": {
+   "sliders": {
+    "valence": -0.97,
+    "arousal": -1.0,
+    "dominance": -0.52,
+    "loudness": 0.64,
+    "clarity": 0.38
+   },
+   "captured": 0.908
+  },
+  "angry": {
+   "sliders": {
+    "valence": 0.41,
+    "arousal": 1.0,
+    "dominance": 0.13,
+    "loudness": -0.06,
+    "tempo": -0.29
+   },
+   "captured": 0.967
+  },
+  "calm": {
+   "sliders": {
+    "valence": -0.49,
+    "arousal": -1.0,
+    "dominance": -0.16,
+    "loudness": 0.25,
+    "tempo": 0.19,
+    "clarity": 0.12
+   },
+   "captured": 0.889
+  },
+  "fearful": {
+   "sliders": {
+    "valence": 0.21,
+    "arousal": 1.0,
+    "dominance": -0.68,
+    "loudness": 0.32,
+    "tempo": -0.58,
+    "clarity": -0.13,
+    "articulation": -0.25
+   },
+   "captured": 0.88
+  },
+  "disgusted": {
+   "sliders": {
+    "valence": -0.23,
+    "arousal": 1.0,
+    "dominance": 0.24,
+    "loudness": -0.48,
+    "tempo": -0.67,
+    "clarity": -0.26,
+    "articulation": 0.66
+   },
+   "captured": 0.777
+  },
+  "sympathetic": {
+   "sliders": {
+    "valence": -0.5,
+    "arousal": -1.0,
+    "dominance": -0.4,
+    "loudness": 0.22,
+    "clarity": -0.08,
+    "articulation": -0.18
+   },
+   "captured": 0.934
+  },
+  "sarcastic": {
+   "sliders": {
+    "valence": 0.78,
+    "arousal": 0.12,
+    "dominance": 0.23,
+    "loudness": 0.96,
+    "tempo": -0.34,
+    "clarity": -1.0,
+    "articulation": 0.23
+   },
+   "captured": 0.734
+  },
+  "confused": {
+   "sliders": {
+    "valence": -0.53,
+    "arousal": -0.16,
+    "dominance": -0.09,
+    "loudness": 0.92,
+    "tempo": -0.17,
+    "clarity": 0.11,
+    "articulation": 1.0
+   },
+   "captured": 0.996
+  },
+  "awe": {
+   "sliders": {
+    "valence": -0.08,
+    "arousal": -1.0,
+    "dominance": 0.15,
+    "loudness": 0.3,
+    "tempo": -0.12,
+    "clarity": -0.09,
+    "articulation": 0.36
+   },
+   "captured": 0.651
+  },
+  "bored": {
+   "sliders": {
+    "valence": -0.46,
+    "arousal": -1.0,
+    "dominance": 0.3,
+    "loudness": 0.38,
+    "tempo": -0.12,
+    "clarity": -0.72,
+    "articulation": -0.29
+   },
+   "captured": 0.919
+  },
+  "sleepy": {
+   "sliders": {
+    "valence": -0.56,
+    "arousal": -1.0,
+    "loudness": 0.33,
+    "tempo": -0.23,
+    "clarity": -0.47,
+    "articulation": -0.17
+   },
+   "captured": 0.955
+  },
+  "whisper": {
+   "sliders": {
+    "valence": -0.43,
+    "arousal": -0.53,
+    "dominance": -0.09,
+    "loudness": -1.0,
+    "tempo": 0.08,
+    "articulation": -0.08
+   },
+   "captured": 0.96
+  },
+  "projected": {
+   "sliders": {
+    "valence": 0.53,
+    "arousal": 1.0,
+    "dominance": 0.35,
+    "loudness": 0.32,
+    "tempo": 0.08,
+    "articulation": -0.08
+   },
+   "captured": 0.96
+  },
+  "fast": {
+   "sliders": {
+    "valence": 0.51,
+    "arousal": 1.0,
+    "dominance": -0.32,
+    "loudness": -0.1,
+    "tempo": 0.55,
+    "clarity": -0.5,
+    "articulation": -0.19
+   },
+   "captured": 0.955
+  },
+  "enunciated": {
+   "sliders": {
+    "valence": -0.52,
+    "arousal": 0.26,
+    "dominance": 0.76,
+    "loudness": 0.36,
+    "tempo": -0.14,
+    "clarity": 1.0,
+    "articulation": 0.71
+   },
+   "captured": 0.996
+  },
+  "laughing": {
+   "sliders": {
+    "valence": 1.0,
+    "arousal": 0.18,
+    "dominance": -0.1,
+    "loudness": 0.38,
+    "tempo": -0.1,
+    "clarity": -0.1
+   },
+   "captured": 0.615
+  },
+  "desire": {
+   "sliders": {
+    "valence": 1.0,
+    "arousal": 0.52,
+    "dominance": -0.14,
+    "loudness": 0.53,
+    "tempo": 0.12,
+    "clarity": -0.13,
+    "articulation": 0.67
+   },
+   "captured": 0.602
+  }
+ },
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/emotion_directions_mect60k_axes",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/emotion_directions_mect60k_axes_x10",
+ "native_norms": {
+  "valence": 0.019202508480956493,
+  "arousal": 0.019202508485129152,
+  "dominance": 0.019202508469892594,
+  "loudness": 0.019202508458634547,
+  "tempo": 0.019202508445163597,
+  "clarity": 0.019202508447396637,
+  "articulation": 0.019202508440422938
+ }
+}

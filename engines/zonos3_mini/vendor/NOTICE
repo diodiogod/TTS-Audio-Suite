@@ -1,0 +1,82 @@
+ZONOS3
+Copyright (c) 2026 Zyphra, Inc.
+
+This product includes third-party software components listed below. The full
+text of each third-party license is reproduced in the third_party/licenses/ directory.
+
+================================================================================
+1. Mini-SGLang
+   https://github.com/sgl-project/mini-sglang
+   Copyright (c) 2026 sgl-project
+   SPDX-License-Identifier: MIT
+   Full license: third_party/licenses/mini-sglang-MIT.txt
+
+   The TTS inference server and supporting runtime under servers/sgl/src/zonos3_sgl/
+   (including the scheduler, engine, KV-cache, attention, distributed,
+   message, and server modules) are derived from Mini-SGLang.
+
+================================================================================
+2. NVIDIA NeMo-text-processing
+   https://github.com/NVIDIA/NeMo-text-processing
+   Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES
+   Portions Copyright 2015 and onwards Google, Inc.
+   SPDX-License-Identifier: Apache-2.0
+   Full license: third_party/licenses/nemo-Apache-2.0.txt
+
+   Ported in zyphra-textnorm (Rust, https://github.com/Zyphra/zyphra-textnorm:
+   the submodule third_party/zyphra-textnorm, linked into the ggml server, and
+   the PyPI package the Python servers install): the original nine Rust grammar
+   packages and tables port the r1.2.0 grammars, and the additional 34 packages
+   port Zyphra's locale grammars in the NeMo-derived architecture. Its NOTICE
+   and licenses/ cover it.
+
+================================================================================
+3. sacremoses
+   https://github.com/hplt-project/sacremoses
+   Copyright (c) 2020 alvations
+   SPDX-License-Identifier: MIT
+   Full license: third_party/licenses/sacremoses-MIT.txt
+
+   MosesDetokenizer and the perluniprops IsAlpha/IsSc tables are ported in
+   zyphra-textnorm (third_party/zyphra-textnorm: src/moses.rs,
+   data/perluniprops/).
+================================================================================
+4. Unicode Common Locale Data Repository (CLDR), release 49
+   https://github.com/unicode-org/cldr/tree/release-49
+   Copyright © 2001–2026 Unicode, Inc.
+   SPDX-License-Identifier: Unicode-3.0
+   Full license: third_party/licenses/unicode-3.0.txt
+
+   Number vocabularies, morphology and lexical tables of the added locale
+   grammars in zyphra-textnorm (third_party/zyphra-textnorm: data/, src/lang/).
+================================================================================
+5. mlx-lm
+   https://github.com/ml-explore/mlx-lm
+   Copyright (c) 2023 Apple Inc.
+   SPDX-License-Identifier: MIT
+   Full license: third_party/licenses/mlx-lm-MIT.txt
+
+   The gated-delta Metal kernel and its decode step in
+   servers/mlx/src/zonos3_mlx/models/gdn_kernel.py are adapted from
+   mlx_lm/models/gated_delta.py.
+================================================================================
+6. FuseAlign (fusealign-multilingual)
+   https://github.com/Zyphra/fusealign-multilingual
+   Copyright (c) 2026 Zyphra, Inc.
+   SPDX-License-Identifier: Apache-2.0
+   Full license: third_party/licenses/fusealign-multilingual-Apache-2.0.txt
+
+   The forced aligner of speech editing: the git submodule
+   third_party/fusealign-multilingual (Python package fusealign_hub), shipped
+   unmodified as python/fusealign_hub/ in the ggml server's release packages.
+================================================================================
+7. z-speech-alignment (textmatch)
+   https://github.com/Zyphra/z-speech-alignment
+   Copyright (c) 2026 Sofian Mejjoute
+   SPDX-License-Identifier: MIT
+   Full license: third_party/licenses/z-speech-alignment-MIT.txt
+
+   normalize and char_error_rate in model/src/zonos3/tts/textmatch.py (the
+   transcript tokens and character error rate of speech editing) are copied
+   from z_speech_alignment/textmatch.py.
+================================================================================

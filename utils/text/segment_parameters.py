@@ -77,6 +77,13 @@ PARAMETER_ALIASES = {
     'top_k': 'top_k',
     'topk': 'top_k',
     'topp': 'top_p',
+    'min_p': 'min_p',
+    'speaker_cfg_scale': 'speaker_cfg_scale',
+    'speaker_cfg': 'speaker_cfg_scale',
+    'loudness_bucket': 'loudness_bucket',
+    'fmax_bucket': 'fmax_bucket',
+    'speaking_rate_bucket': 'speaking_rate_bucket',
+    'rate_bucket': 'speaking_rate_bucket',
     'audio_temp': 'audio_temperature',
     'audio_temperature': 'audio_temperature',
     'audio_top_p': 'audio_top_p',
@@ -117,11 +124,11 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
-        'dots_tts', 'fish_audio_s2', 'omnivoice',
+        'dots_tts', 'fish_audio_s2', 'omnivoice', 'zonos3_mini',
         'echo_tts', 'moss_tts', 'moss_soundeffect_v2', 'dramabox'
     },
     'temperature': {
-        'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
+        'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio', 'zonos3_mini',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
     },
     'cfg': {
@@ -219,10 +226,26 @@ PARAMETER_ENGINES = {
         'f5tts', 'cosyvoice', 'omnivoice'
     },
     'top_p': {
-        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2',
+        'zonos3_mini'
     },
     'top_k': {
-        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts'
+        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts', 'zonos3_mini'
+    },
+    'min_p': {
+        'zonos3_mini'
+    },
+    'speaker_cfg_scale': {
+        'zonos3_mini'
+    },
+    'loudness_bucket': {
+        'zonos3_mini'
+    },
+    'fmax_bucket': {
+        'zonos3_mini'
+    },
+    'speaking_rate_bucket': {
+        'zonos3_mini'
     },
     'audio_temperature': {
         'moss_tts'
@@ -234,7 +257,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'repetition_penalty': {
-        'moss_tts', 'fish_audio_s2'
+        'moss_tts', 'fish_audio_s2', 'zonos3_mini'
     },
     'audio_repetition_penalty': {
         'moss_tts'
@@ -319,7 +342,12 @@ PARAMETER_VALIDATION = {
     'exaggeration': (float, 0.0, 2.0, "Voice emotion exaggeration (ChatterBox only)"),
     'speed': (float, 0.25, 3.0, "Speech speed multiplier"),
     'top_p': (float, 0.0, 1.0, "Nucleus sampling probability"),
-    'top_k': (int, 1, 100, "Top-k sampling"),
+    'top_k': (int, 1, 4096, "Top-k sampling"),
+    'min_p': (float, 0.0, 1.0, "ZONOS3-Mini minimum probability relative to the top token"),
+    'speaker_cfg_scale': (float, 0.0, 5.0, "ZONOS3-Mini speaker classifier-free guidance scale"),
+    'loudness_bucket': (int, 0, 10, "ZONOS3-Mini loudness conditioning bucket (10 = unknown)"),
+    'fmax_bucket': (int, 0, 10, "ZONOS3-Mini bandwidth conditioning bucket (10 = unknown)"),
+    'speaking_rate_bucket': (int, 0, 30, "ZONOS3-Mini speaking-rate conditioning bucket (30 = unknown)"),
     'audio_temperature': (float, 0.1, 2.5, "MOSS-TTS audio sampling temperature"),
     'audio_top_p': (float, 0.0, 1.0, "MOSS-TTS audio nucleus sampling probability"),
     'audio_top_k': (int, 1, 200, "MOSS-TTS audio top-k sampling"),
@@ -389,6 +417,11 @@ PARAMETER_NODE_KEYS = {
     'speed': 'speed',
     'top_p': 'top_p',
     'top_k': 'top_k',
+    'min_p': 'min_p',
+    'speaker_cfg_scale': 'speaker_cfg_scale',
+    'loudness_bucket': 'loudness_bucket',
+    'fmax_bucket': 'fmax_bucket',
+    'speaking_rate_bucket': 'speaking_rate_bucket',
     'audio_temperature': 'audio_temperature',
     'audio_top_p': 'audio_top_p',
     'audio_top_k': 'audio_top_k',

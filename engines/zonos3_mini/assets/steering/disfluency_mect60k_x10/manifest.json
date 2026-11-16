@@ -1,0 +1,50 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": [
+  "/data/groups/audio/sofian/runs/steer_corpora/disfluency_x10/clips.json",
+  "/data/groups/audio/sofian/runs/steer_corpora/delivery_views/ears_freeform.json"
+ ],
+ "features": [
+  "/data/groups/audio/sofian/runs/steer_corpora/disfluency_x10/features.npz",
+  "/data/groups/audio/sofian/runs/steer_corpora/ears_x10/features.npz"
+ ],
+ "spec": {
+  "space": "attnres_source",
+  "source_index": 19,
+  "group_by": "clip",
+  "center": "speaker",
+  "directions": {
+   "disfluent": {
+    "regress": "disfl",
+    "within": "corpus",
+    "kind": "axis",
+    "poles": {
+     "+": "hesitant, fillers",
+     "-": "fluent"
+    }
+   }
+  },
+  "holdout": "auto"
+ },
+ "directions": {
+  "disfluent": {
+   "file": "disfluent.npy",
+   "kind": "axis",
+   "norm": 0.007459484141554981,
+   "poles": {
+    "+": "hesitant, fillers",
+    "-": "fluent"
+   }
+  }
+ },
+ "source_index": 19,
+ "source_name": "L9.attn",
+ "prompt_conditioning": "speaker_row=no,condition_rows=3:unknown",
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/disfluency_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/disfluency_mect60k_x10",
+ "native_norms": {
+  "disfluent": 0.00264253674657242
+ }
+}

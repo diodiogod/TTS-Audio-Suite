@@ -1,0 +1,158 @@
+{
+ "angry": {
+  "norm": 1.0596890887233845,
+  "removed_share": 0.0005207913225800942,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "anger"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 0.999739570426929
+   }
+  ]
+ },
+ "sad": {
+  "norm": 0.6941092554111131,
+  "removed_share": 0.015428586551108348,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "sadness"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 0.9846938775510204,
+    "cos_with_direction": 0.9922557197864328
+   }
+  ]
+ },
+ "happy": {
+  "norm": 0.7464997821482542,
+  "removed_share": 0.029723891857365015,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "amusement"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 0.9936224489795918,
+    "cos_with_direction": 0.9850259428779705
+   }
+  ]
+ },
+ "fearful": {
+  "norm": 0.9065878465855942,
+  "removed_share": 0.007604743483358711,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "fear"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 1.0,
+    "cos_with_direction": 0.9961903716241396
+   }
+  ]
+ },
+ "disgusted": {
+  "norm": 0.9784041116068823,
+  "removed_share": 0.0014086687968790645,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "disgust"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 0.9987244897959183,
+    "cos_with_direction": 0.9992954173832285
+   }
+  ]
+ },
+ "surprised": {
+  "norm": 0.7549633561679097,
+  "removed_share": 0.007241204422737235,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "style": "amazement"
+     },
+     {
+      "style": "neutral"
+     }
+    ],
+    "train_speakers": [
+     79,
+     79
+    ],
+    "held_out_speakers": [
+     28,
+     28
+    ],
+    "held_out_auc": 0.9923469387755102,
+    "cos_with_direction": 0.9963728195696944
+   }
+  ]
+ }
+}

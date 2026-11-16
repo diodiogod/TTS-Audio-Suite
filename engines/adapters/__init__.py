@@ -77,6 +77,15 @@ except Exception as e:
             raise ImportError(f"OmniVoice adapter not available: {e}")
 
 try:
+    from .zonos3_mini_adapter import Zonos3MiniEngineAdapter
+    ZONOS3_MINI_ADAPTER_AVAILABLE = True
+except Exception as e:
+    ZONOS3_MINI_ADAPTER_AVAILABLE = False
+    class Zonos3MiniEngineAdapter:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"ZONOS3-Mini adapter not available: {e}")
+
+try:
     from .moss_tts_adapter import MossTTSEngineAdapter
     MOSS_TTS_ADAPTER_AVAILABLE = True
 except Exception as e:
@@ -97,11 +106,11 @@ except Exception as e:
 __all__ = [
     'ChatterBoxEngineAdapter', 'F5TTSEngineAdapter', 'CosyVoiceAdapter', 'EchoTTSEngineAdapter',
     'DotsTTSEngineAdapter', 'DramaBoxEngineAdapter', 'OmniVoiceEngineAdapter',
-    'MossTTSEngineAdapter', 'HiggsAudioV3EngineAdapter',
+    'MossTTSEngineAdapter', 'HiggsAudioV3EngineAdapter', 'Zonos3MiniEngineAdapter',
     'CHATTERBOX_ADAPTER_AVAILABLE', 'F5TTS_ADAPTER_AVAILABLE', 'COSYVOICE_ADAPTER_AVAILABLE',
     'ECHO_TTS_ADAPTER_AVAILABLE', 'DOTS_TTS_ADAPTER_AVAILABLE',
     'DRAMABOX_ADAPTER_AVAILABLE', 'OMNIVOICE_ADAPTER_AVAILABLE',
-    'MOSS_TTS_ADAPTER_AVAILABLE', 'HIGGS_AUDIO_V3_ADAPTER_AVAILABLE',
+    'MOSS_TTS_ADAPTER_AVAILABLE', 'HIGGS_AUDIO_V3_ADAPTER_AVAILABLE', 'ZONOS3_MINI_ADAPTER_AVAILABLE',
     'MossSoundEffectV2Adapter'
 ]
 

@@ -1,0 +1,72 @@
+{
+ "hin": {
+  "recordings": 4436,
+  "norm": 1.8268731174975055,
+  "removed_share": 0.0006852382830284665,
+  "held_out_auc": 0.9996012677465737,
+  "cos_gender_before": -0.008419951720740986,
+  "cos_age_before": -0.024785937455652995,
+  "max_cos_other": "deu 0.33",
+  "common_share": 0.2800082574205465
+ },
+ "spa": {
+  "recordings": 3335,
+  "norm": 1.6804944489885092,
+  "removed_share": 0.0034222133741100835,
+  "held_out_auc": 0.9998526608218377,
+  "cos_gender_before": 0.03276688167637082,
+  "cos_age_before": -0.04846178745228023,
+  "max_cos_other": "fra 0.23",
+  "common_share": 0.26639406016185996
+ },
+ "fra": {
+  "recordings": 2972,
+  "norm": 1.5545753982805395,
+  "removed_share": 0.00820216361127224,
+  "held_out_auc": 0.9974572434167244,
+  "cos_gender_before": 0.03170707819815647,
+  "cos_age_before": -0.08483410169128035,
+  "max_cos_other": "deu 0.24",
+  "common_share": 0.327489545945488
+ },
+ "por": {
+  "recordings": 3490,
+  "norm": 1.8843203665620305,
+  "removed_share": 0.00203999609667338,
+  "held_out_auc": 0.9986462332607521,
+  "cos_gender_before": 0.043990533767952006,
+  "cos_age_before": -0.010238605205245745,
+  "max_cos_other": "pol 0.33",
+  "common_share": 0.322715824867604
+ },
+ "deu": {
+  "recordings": 3148,
+  "norm": 1.552870399057349,
+  "removed_share": 0.005020129184560518,
+  "held_out_auc": 0.9890293469275282,
+  "cos_gender_before": -0.06625673488833936,
+  "cos_age_before": -0.025103271949395704,
+  "max_cos_other": "hin 0.33",
+  "common_share": 0.3782174435926805
+ },
+ "vie": {
+  "recordings": 5534,
+  "norm": 2.9577446451963274,
+  "removed_share": 0.00040992123289840254,
+  "held_out_auc": 0.9853344751746823,
+  "cos_gender_before": 0.020124101907808663,
+  "cos_age_before": 0.0022230058922290312,
+  "max_cos_other": "fra 0.18",
+  "common_share": 0.17834647219362323
+ },
+ "pol": {
+  "recordings": 2026,
+  "norm": 1.8934338922422755,
+  "removed_share": 0.018593092054954408,
+  "held_out_auc": 0.9891498643981042,
+  "cos_gender_before": -0.032289200651981785,
+  "cos_age_before": -0.1324782984722376,
+  "max_cos_other": "por 0.33",
+  "common_share": 0.2926508857892631
+ }
+}

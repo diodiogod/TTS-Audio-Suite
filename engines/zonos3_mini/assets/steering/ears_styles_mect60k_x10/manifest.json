@@ -1,0 +1,234 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "corpus": [
+  "/data/groups/audio/sofian/runs/steer_corpora/delivery_views/ears_delivery.json",
+  "/data/groups/audio/sofian/runs/steer_corpora/delivery_views/expresso_delivery.json",
+  "/data/groups/audio/sofian/runs/steer_corpora/emilia_delivery_x10/clips.json",
+  "/data/groups/audio/sofian/runs/steer_corpora/emilia_delivery_x10/clips_tar.json"
+ ],
+ "features": [
+  "/data/groups/audio/sofian/runs/steer_corpora/ears_x10/features.npz",
+  "/data/groups/audio/sofian/runs/steer_corpora/expresso_x10/features.npz",
+  "/data/groups/audio/sofian/runs/steer_corpora/emilia_delivery_x10/features.npz",
+  "/data/groups/audio/sofian/runs/steer_corpora/emilia_delivery_x10/features_tar.npz"
+ ],
+ "spec": {
+  "space": "attnres_source",
+  "source_index": 19,
+  "group_by": "clip",
+  "center": "speaker",
+  "directions": {
+   "whisper": {
+    "pairs": [
+     [
+      {
+       "corpus": "ears",
+       "style": "whisper"
+      },
+      {
+       "corpus": "ears",
+       "style": "regular"
+      }
+     ],
+     [
+      {
+       "corpus": "expresso",
+       "mode": "read",
+       "style": "whisper"
+      },
+      {
+       "corpus": "expresso",
+       "mode": "read",
+       "style": "default"
+      }
+     ],
+     [
+      {
+       "corpus": "expresso",
+       "mode": "conv",
+       "style": "whisper"
+      },
+      {
+       "corpus": "expresso",
+       "mode": "conv",
+       "style": "default"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "loud": {
+    "pairs": [
+     [
+      {
+       "corpus": "ears",
+       "style": "loud"
+      },
+      {
+       "corpus": "ears",
+       "style": "regular"
+      }
+     ],
+     [
+      {
+       "corpus": "expresso",
+       "mode": "conv",
+       "style": "projected"
+      },
+      {
+       "corpus": "expresso",
+       "mode": "conv",
+       "style": "default"
+      }
+     ]
+    ],
+    "kind": "named"
+   },
+   "tempo": {
+    "pairs": [
+     [
+      {
+       "corpus": "ears",
+       "style": "fast"
+      },
+      {
+       "corpus": "ears",
+       "style": "slow"
+      }
+     ],
+     [
+      {
+       "corpus": "expresso",
+       "mode": "conv",
+       "style": "fast"
+      },
+      {
+       "corpus": "expresso",
+       "mode": "conv",
+       "style": "default"
+      }
+     ],
+     [
+      {
+       "corpus": "emilia",
+       "speed": "fast"
+      },
+      {
+       "corpus": "emilia",
+       "speed": "slow"
+      }
+     ]
+    ],
+    "kind": "axis",
+    "poles": {
+     "+": "fast",
+     "-": "slow"
+    }
+   },
+   "pitch": {
+    "pairs": [
+     [
+      {
+       "corpus": "ears",
+       "style": "highpitch"
+      },
+      {
+       "corpus": "ears",
+       "style": "lowpitch"
+      }
+     ]
+    ],
+    "kind": "axis",
+    "poles": {
+     "+": "high",
+     "-": "low"
+    }
+   },
+   "conversational": {
+    "pairs": [
+     [
+      {
+       "corpus": "ears",
+       "mode": "freeform",
+       "style": "freeform"
+      },
+      {
+       "corpus": "ears",
+       "style": "regular"
+      }
+     ],
+     [
+      {
+       "corpus": "expresso",
+       "mode": "conv",
+       "style": "default"
+      },
+      {
+       "corpus": "expresso",
+       "mode": "read",
+       "style": "default"
+      }
+     ]
+    ],
+    "kind": "axis",
+    "poles": {
+     "+": "spontaneous",
+     "-": "read"
+    }
+   }
+  }
+ },
+ "directions": {
+  "whisper": {
+   "file": "whisper.npy",
+   "kind": "named",
+   "norm": 0.040509051801186455
+  },
+  "loud": {
+   "file": "loud.npy",
+   "kind": "named",
+   "norm": 0.01728037279205718
+  },
+  "tempo": {
+   "file": "tempo.npy",
+   "kind": "axis",
+   "norm": 0.02787669991968247,
+   "poles": {
+    "+": "fast",
+    "-": "slow"
+   }
+  },
+  "pitch": {
+   "file": "pitch.npy",
+   "kind": "axis",
+   "norm": 0.03443120882877866,
+   "poles": {
+    "+": "high",
+    "-": "low"
+   }
+  },
+  "conversational": {
+   "file": "conversational.npy",
+   "kind": "axis",
+   "norm": 0.01566362730017692,
+   "poles": {
+    "+": "spontaneous",
+    "-": "read"
+   }
+  }
+ },
+ "source_index": 19,
+ "source_name": "L9.attn",
+ "prompt_conditioning": "speaker_row=no,condition_rows=3:unknown",
+ "matched_to": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/ears_styles_mect60k",
+ "matched_from": "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/ears_styles_mect60k_x10",
+ "native_norms": {
+  "whisper": 0.04663607362766721,
+  "loud": 0.02182601945640792,
+  "tempo": 0.01678297369008884,
+  "pitch": 0.03477126241715324,
+  "conversational": 0.01637223432038737
+ }
+}

@@ -1,0 +1,179 @@
+{
+ "space": "raw",
+ "dim": 192,
+ "input_dim": 192,
+ "speaker_codec": "ownmect_s2",
+ "ref_base_norm": 3.5114699447297797,
+ "checkpoint": "/data/groups/audio/gabriel/hf_release_zonos3mini_20261020/lm/mect_60k",
+ "sources": [
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/speaker_attributes_mect60k",
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/english_accents_mect60k",
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/voice_quality_mect60k",
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/pitch_mect60k",
+  "/data/groups/audio/sofian/bingua2-gdn-emotion/minisgl/channel_mect60k"
+ ],
+ "directions": {
+  "gender": {
+   "file": "gender.npy",
+   "kind": "axis",
+   "norm": 1.8763586747638452,
+   "poles": {
+    "+": "female",
+    "-": "male"
+   },
+   "from": "speaker_attributes_mect60k"
+  },
+  "age": {
+   "file": "age.npy",
+   "kind": "axis",
+   "norm": 1.2692715820938114,
+   "poles": {
+    "+": "older",
+    "-": "younger"
+   },
+   "years_per_dose": 27.869893920918308,
+   "from": "speaker_attributes_mect60k"
+  },
+  "british": {
+   "file": "british.npy",
+   "kind": "named",
+   "norm": 1.6460160023035668,
+   "from": "english_accents_mect60k"
+  },
+  "american": {
+   "file": "american.npy",
+   "kind": "named",
+   "norm": 1.6460160023035668,
+   "from": "english_accents_mect60k"
+  },
+  "scottish": {
+   "file": "scottish.npy",
+   "kind": "named",
+   "norm": 1.5993952256562336,
+   "from": "english_accents_mect60k"
+  },
+  "irish": {
+   "file": "irish.npy",
+   "kind": "named",
+   "norm": 1.4670428877353188,
+   "from": "english_accents_mect60k"
+  },
+  "australian": {
+   "file": "australian.npy",
+   "kind": "named",
+   "norm": 1.6846640382867135,
+   "from": "english_accents_mect60k"
+  },
+  "indian": {
+   "file": "indian.npy",
+   "kind": "named",
+   "norm": 1.9338742609604493,
+   "from": "english_accents_mect60k"
+  },
+  "welsh": {
+   "file": "welsh.npy",
+   "kind": "named",
+   "norm": 1.694260713795206,
+   "from": "english_accents_mect60k"
+  },
+  "deep": {
+   "file": "deep.npy",
+   "kind": "named",
+   "norm": 0.5765019744974527,
+   "from": "voice_quality_mect60k"
+  },
+  "shrill": {
+   "file": "shrill.npy",
+   "kind": "named",
+   "norm": 0.8610223457716267,
+   "from": "voice_quality_mect60k"
+  },
+  "husky": {
+   "file": "husky.npy",
+   "kind": "named",
+   "norm": 0.5867545131746184,
+   "from": "voice_quality_mect60k"
+  },
+  "raspy": {
+   "file": "raspy.npy",
+   "kind": "named",
+   "norm": 0.8753706576316298,
+   "from": "voice_quality_mect60k"
+  },
+  "soft": {
+   "file": "soft.npy",
+   "kind": "named",
+   "norm": 0.722508601574993,
+   "from": "voice_quality_mect60k"
+  },
+  "authoritative": {
+   "file": "authoritative.npy",
+   "kind": "named",
+   "norm": 0.6506623679403928,
+   "from": "voice_quality_mect60k"
+  },
+  "pitch": {
+   "file": "pitch.npy",
+   "kind": "axis",
+   "norm": 0.7707383909536902,
+   "poles": {
+    "+": "higher",
+    "-": "lower"
+   },
+   "from": "pitch_mect60k"
+  },
+  "pitch_range": {
+   "file": "pitch_range.npy",
+   "kind": "axis",
+   "norm": 0.526365652403613,
+   "poles": {
+    "+": "varied",
+    "-": "monotone"
+   },
+   "from": "pitch_mect60k"
+  },
+  "clean": {
+   "file": "clean.npy",
+   "kind": "axis",
+   "norm": 0.26050034319127313,
+   "poles": {
+    "+": "clean studio",
+    "-": "noisy / far-field"
+   },
+   "from": "channel_mect60k"
+  }
+ },
+ "presets": {
+  "elderly Scottish narrator": {
+   "age": 1.5,
+   "scottish": 1.5,
+   "deep": 2.0,
+   "pitch_range": -1.0
+  },
+  "young Australian": {
+   "age": -1.5,
+   "australian": 1.5,
+   "pitch_range": 1.0
+  },
+  "gravelly old man": {
+   "gender": -1.0,
+   "age": 2.0,
+   "raspy": 3.0,
+   "deep": 2.0
+  },
+  "BBC newsreader": {
+   "british": 1.5,
+   "authoritative": 3.0,
+   "clean": 2.0
+  },
+  "soft-spoken Irish woman": {
+   "gender": 1.0,
+   "irish": 1.5,
+   "soft": 3.0
+  },
+  "Indian English caller": {
+   "indian": 1.5,
+   "clean": -2.0
+  }
+ }
+}

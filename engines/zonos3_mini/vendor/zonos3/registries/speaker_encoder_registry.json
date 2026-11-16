@@ -1,0 +1,38 @@
+{
+ "_comment": "Speaker-embedding encoders keyed by the checkpoint's speaker_embedding_codec; override with ZONOS3_SPEAKER_ENCODER_REGISTRY.",
+ "ownmect_s2": {
+  "type": "mect_fbank",
+  "description": "George's own-weights MECT-B2 speaker encoder (arXiv 2609.24061 architecture, trained from scratch at Zyphra on VoxCeleb2 + VoxBlink2, stage-2 large-margin finetune), 192-d; the ownmect_s2 column of data_shards_w2vsv (zv3subsample) and the ZTTS2 prompt vectors in ztts2_mect_prompts_20261015/vectors were extracted with this checkpoint",
+  "checkpoint": "hf://Zyphra/ZONOS3-Mini/speaker_encoders/ownmect_s2/ckpt_0037.pth",
+  "sha256": "3cef65631f3161cbd8eacc6ea40e59a237c79656d85c7232dcbe0c8d07cae88f",
+  "backbone_type": "MECT_B2",
+  "backbone_config": {
+   "moe_type": "token",
+   "num_experts_shard": 2,
+   "num_experts_token": 4,
+   "top_k_shard": null,
+   "top_k_token": null,
+   "shard_scale": 1.0
+  },
+  "pooling": "ASTP",
+  "embed_dim": 192,
+  "sample_rate": 16000,
+  "max_seconds": 60,
+  "fbank": {
+   "num_mel_bins": 80,
+   "frame_length": 25,
+   "frame_shift": 10,
+   "dither": 0.0,
+   "energy_floor": 0.0,
+   "window_type": "hamming",
+   "scale": 32768
+  },
+  "provenance": {
+   "source_checkpoint": "/data/home/george/repos/w2v-bert-sv-mect-results/checkpoints/ownmect_s2_261009190656/ckpt_0037.pth",
+   "code": "/data/home/george/repos/w2v-bert-sv-mect (branch own-mect): recipes/DeepASV/local/mect_sv.py MECTFbank + local/third_party/antspeaker",
+   "infer_config": "speaker_encoders/ownmect_s2/ownmect_b2_infer.yaml of Zyphra/ZONOS3_Mini_release_ckpts (not in the public repo)",
+   "train_config": "speaker_encoders/ownmect_s2/train.yaml of Zyphra/ZONOS3_Mini_release_ckpts (not in the public repo)",
+   "extractor": "/data/groups/audio/gabriel/ztts2_mect_prompts_20261015/george/embed_prompt_scp.py (whole prompt, fp32, --emb-dim 192)"
+  }
+ }
+}

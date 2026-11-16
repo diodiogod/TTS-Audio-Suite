@@ -1,0 +1,374 @@
+{
+ "pitch": {
+  "norm": 0.6008552050186419,
+  "removed_share": 0.19633481601876068,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus_gender": "commonvoice/female"
+     },
+     "f0_log P10-P90 0.567"
+    ],
+    "train_speakers": [
+     1728,
+     0
+    ],
+    "held_out_speakers": [
+     426,
+     0
+    ],
+    "cos_with_direction": 0.6251644135495752,
+    "held_out_auc": 0.734880333107614
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "commonvoice/male"
+     },
+     "f0_log P10-P90 0.668"
+    ],
+    "train_speakers": [
+     1881,
+     0
+    ],
+    "held_out_speakers": [
+     463,
+     0
+    ],
+    "cos_with_direction": 0.7084335157990707,
+    "held_out_auc": 0.6506438374316529
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "ears/female"
+     },
+     "f0_log P10-P90 0.508"
+    ],
+    "train_speakers": [
+     45,
+     0
+    ],
+    "held_out_speakers": [
+     19,
+     0
+    ],
+    "cos_with_direction": 0.30712611031734993,
+    "held_out_auc": 0.6771929824561403
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "ears/male"
+     },
+     "f0_log P10-P90 0.451"
+    ],
+    "train_speakers": [
+     34,
+     0
+    ],
+    "held_out_speakers": [
+     9,
+     0
+    ],
+    "cos_with_direction": 0.3407253324100443,
+    "held_out_auc": 0.7666666666666667
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "libritts_r/female"
+     },
+     "f0_log P10-P90 0.407"
+    ],
+    "train_speakers": [
+     873,
+     0
+    ],
+    "held_out_speakers": [
+     201,
+     0
+    ],
+    "cos_with_direction": 0.451453662248958,
+    "held_out_auc": 0.7948677405053939
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "libritts_r/male"
+     },
+     "f0_log P10-P90 0.54"
+    ],
+    "train_speakers": [
+     904,
+     0
+    ],
+    "held_out_speakers": [
+     240,
+     0
+    ],
+    "cos_with_direction": 0.6771142120358031,
+    "held_out_auc": 0.8041337523220887
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "vctk/female"
+     },
+     "f0_log P10-P90 1.08"
+    ],
+    "train_speakers": [
+     45,
+     0
+    ],
+    "held_out_speakers": [
+     18,
+     0
+    ],
+    "cos_with_direction": 0.04591702794814328,
+    "held_out_auc": 0.32094943240454077
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "vctk/male"
+     },
+     "f0_log P10-P90 0.733"
+    ],
+    "train_speakers": [
+     39,
+     0
+    ],
+    "held_out_speakers": [
+     7,
+     0
+    ],
+    "cos_with_direction": 0.3258635950289634,
+    "held_out_auc": 0.642857142857143
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "voxceleb/female"
+     },
+     "f0_log P10-P90 0.519"
+    ],
+    "train_speakers": [
+     1018,
+     0
+    ],
+    "held_out_speakers": [
+     230,
+     0
+    ],
+    "cos_with_direction": 0.48693807726990446,
+    "held_out_auc": 0.433729740925488
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "voxceleb/male"
+     },
+     "f0_log P10-P90 0.618"
+    ],
+    "train_speakers": [
+     1392,
+     0
+    ],
+    "held_out_speakers": [
+     352,
+     0
+    ],
+    "cos_with_direction": 0.6897541849354903,
+    "held_out_auc": 0.5477775686699198
+   }
+  ]
+ },
+ "pitch_range": {
+  "norm": 0.38367991198732315,
+  "removed_share": 0.2336638879056545,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus_gender": "commonvoice/female"
+     },
+     "f0_st P10-P90 3.28"
+    ],
+    "train_speakers": [
+     1728,
+     0
+    ],
+    "held_out_speakers": [
+     426,
+     0
+    ],
+    "cos_with_direction": 0.6399788944273924,
+    "held_out_auc": 0.41811641303947117
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "commonvoice/male"
+     },
+     "f0_st P10-P90 3.33"
+    ],
+    "train_speakers": [
+     1881,
+     0
+    ],
+    "held_out_speakers": [
+     463,
+     0
+    ],
+    "cos_with_direction": 0.6660520612530398,
+    "held_out_auc": 0.3095296935134575
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "ears/female"
+     },
+     "f0_st P10-P90 2.93"
+    ],
+    "train_speakers": [
+     45,
+     0
+    ],
+    "held_out_speakers": [
+     19,
+     0
+    ],
+    "cos_with_direction": 0.18358118659655176,
+    "held_out_auc": 0.4403508771929824
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "ears/male"
+     },
+     "f0_st P10-P90 2.49"
+    ],
+    "train_speakers": [
+     34,
+     0
+    ],
+    "held_out_speakers": [
+     9,
+     0
+    ],
+    "cos_with_direction": 0.20408432747048325,
+    "held_out_auc": 0.25
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "libritts_r/female"
+     },
+     "f0_st P10-P90 2.04"
+    ],
+    "train_speakers": [
+     873,
+     0
+    ],
+    "held_out_speakers": [
+     201,
+     0
+    ],
+    "cos_with_direction": 0.3792743826413076,
+    "held_out_auc": 0.3903916063248116
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "libritts_r/male"
+     },
+     "f0_st P10-P90 2.17"
+    ],
+    "train_speakers": [
+     904,
+     0
+    ],
+    "held_out_speakers": [
+     240,
+     0
+    ],
+    "cos_with_direction": 0.527953178216112,
+    "held_out_auc": 0.425537769752947
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "vctk/female"
+     },
+     "f0_st P10-P90 4.64"
+    ],
+    "train_speakers": [
+     45,
+     0
+    ],
+    "held_out_speakers": [
+     18,
+     0
+    ],
+    "cos_with_direction": 0.020537426303806453,
+    "held_out_auc": -0.11042311661506708
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "vctk/male"
+     },
+     "f0_st P10-P90 3.33"
+    ],
+    "train_speakers": [
+     39,
+     0
+    ],
+    "held_out_speakers": [
+     7,
+     0
+    ],
+    "cos_with_direction": -0.01860551695934883,
+    "held_out_auc": 0.6071428571428572
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "voxceleb/female"
+     },
+     "f0_st P10-P90 1.97"
+    ],
+    "train_speakers": [
+     1018,
+     0
+    ],
+    "held_out_speakers": [
+     230,
+     0
+    ],
+    "cos_with_direction": 0.5543526028095599,
+    "held_out_auc": 0.3893495151137072
+   },
+   {
+    "pair": [
+     {
+      "corpus_gender": "voxceleb/male"
+     },
+     "f0_st P10-P90 2.12"
+    ],
+    "train_speakers": [
+     1392,
+     0
+    ],
+    "held_out_speakers": [
+     352,
+     0
+    ],
+    "cos_with_direction": 0.6904274124966018,
+    "held_out_auc": 0.548516875004127
+   }
+  ]
+ }
+}

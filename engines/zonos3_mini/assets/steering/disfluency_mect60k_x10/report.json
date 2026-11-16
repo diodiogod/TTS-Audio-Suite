@@ -1,0 +1,62 @@
+{
+ "disfluent": {
+  "norm": 0.002642536750176259,
+  "removed_share": 0.0,
+  "pairs": [
+   {
+    "pair": [
+     {
+      "corpus": "disfluencyspeech"
+     },
+     "disfl P10-P90 0.348"
+    ],
+    "train_speakers": [
+     3976,
+     0
+    ],
+    "held_out_speakers": [
+     1024,
+     0
+    ],
+    "cos_with_direction": 0.9129497538701339,
+    "held_out_auc": 0.6532593005686288
+   },
+   {
+    "pair": [
+     {
+      "corpus": "ears"
+     },
+     "disfl P10-P90 0.0321"
+    ],
+    "train_speakers": [
+     4319,
+     0
+    ],
+    "held_out_speakers": [
+     1516,
+     0
+    ],
+    "cos_with_direction": 0.34518417738792,
+    "held_out_auc": 0.058780490732417506
+   },
+   {
+    "pair": [
+     {
+      "corpus": "emilia"
+     },
+     "disfl P10-P90 0.0424"
+    ],
+    "train_speakers": [
+     19956,
+     0
+    ],
+    "held_out_speakers": [
+     5052,
+     0
+    ],
+    "cos_with_direction": 0.9685669426229994,
+    "held_out_auc": 0.2279611231911974
+   }
+  ]
+ }
+}

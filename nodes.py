@@ -204,6 +204,17 @@ except Exception as e:
     OMNIVOICE_ENGINE_AVAILABLE = False
 
 try:
+    zonos3_mini_engine_module = load_node_module("zonos3_mini_engine_node", "engines/zonos3_mini_engine_node.py")
+    Zonos3MiniEngineNode = zonos3_mini_engine_module.Zonos3MiniEngineNode
+    zonos3_mini_steering_module = load_node_module("zonos3_mini_steering_nodes", "engines/zonos3_mini_steering_nodes.py")
+    Zonos3MiniVoiceDesignNode = zonos3_mini_steering_module.Zonos3MiniVoiceDesignNode
+    Zonos3MiniDeliveryNode = zonos3_mini_steering_module.Zonos3MiniDeliveryNode
+    ZONOS3_MINI_ENGINE_AVAILABLE = True
+except Exception as e:
+    print(f"❌ ZONOS3-Mini Engine failed: {e}")
+    ZONOS3_MINI_ENGINE_AVAILABLE = False
+
+try:
     omnivoice_instruction_builder_module = load_node_module("omnivoice_instruction_builder_node", "omnivoice/omnivoice_instruction_builder_node.py")
     OmniVoiceInstructionBuilderNode = omnivoice_instruction_builder_module.OmniVoiceInstructionBuilderNode
     OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE = True
@@ -705,6 +716,14 @@ if FISH_AUDIO_S2_ENGINE_AVAILABLE:
 if OMNIVOICE_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceEngineNode"] = OmniVoiceEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["OmniVoiceEngineNode"] = "⚙️ OmniVoice Engine"
+
+if ZONOS3_MINI_ENGINE_AVAILABLE:
+    NODE_CLASS_MAPPINGS["Zonos3MiniEngineNode"] = Zonos3MiniEngineNode
+    NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniEngineNode"] = "⚙️ ZONOS3-Mini Engine"
+    NODE_CLASS_MAPPINGS["Zonos3MiniVoiceDesignNode"] = Zonos3MiniVoiceDesignNode
+    NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniVoiceDesignNode"] = "🎚️ ZONOS3-Mini Voice Design"
+    NODE_CLASS_MAPPINGS["Zonos3MiniDeliveryNode"] = Zonos3MiniDeliveryNode
+    NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniDeliveryNode"] = "🎭 ZONOS3-Mini Delivery & Mood"
 
 if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceInstructionBuilderNode"] = OmniVoiceInstructionBuilderNode
