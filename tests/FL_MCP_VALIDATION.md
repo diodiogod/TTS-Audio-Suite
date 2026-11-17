@@ -6,6 +6,10 @@ Point Codex's `comfyui-fl-mcp` server entry at `tests/codex_fl_mcp_server.cmd`. 
 
 Run `powershell -ExecutionPolicy Bypass -File tests/start_fl_mcp_validation.ps1 -RestartComfyUI` after code changes. It starts visible ComfyUI and FL-MCP terminals, opens the browser, checks the configured browser session, and prints the exact next action. If an already-open Codex task has no FL-MCP tools, open a new task because MCP servers are discovered at task startup and are not hot-added. Then call `mcp_capability_audit` once and use only targeted tools for the node, prompt ID, or output being validated.
 
+For native-allocator validation, add `-DisableCudaMalloc -RestartComfyUI`. This passes ComfyUI's `--disable-cuda-malloc` flag for that launch; it does not change persistent settings. ZONOS3 Fast requires this allocator. With the default cudaMallocAsync allocator, Auto must fall back to Reference and forced Fast must give an actionable error before CUDA graph construction.
+
+When adding a compiled or CUDA-graph backend, validate real initialization, one generation, unload and reload with the allocator used by live ComfyUI. Kernel math tests alone do not cover graph capture or allocator compatibility. Reproduce suspected process-level failures in a disposable child interpreter using the configured test Python before running them in the main server; test rejection or fallback under incompatible settings as well as generation under supported settings.
+
 This runbook defines an optional live acceptance test for new engine implementations using [ComfyUI_FL-MCP](https://github.com/filliptm/ComfyUI_FL-MCP).
 
 FL-MCP gives an MCP-capable LLM access to ComfyUI workflow state, queue execution, history, errors, output files, and browser screenshots. It does not replace pytest, canonical Windows validation, or human evaluation of audio quality.

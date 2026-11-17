@@ -1,6 +1,7 @@
 param(
     [switch]$RestartComfyUI,
     [switch]$NoBrowser,
+    [switch]$DisableCudaMalloc,
     [int]$TimeoutSeconds = 90
 )
 
@@ -40,7 +41,8 @@ if (-not $listener) {
     # Keep ComfyUI's console UTF-8 without forcing UTF-8 locale semantics on
     # Windows subprocess pipes. Some GPU tools emit the active Windows code
     # page, which makes Python's strict UTF-8 reader thread crash.
-    $command = "`$env:PYTHONIOENCODING='utf-8'; Remove-Item Env:PYTHONUTF8 -ErrorAction SilentlyContinue; Set-Location -LiteralPath $root; & $python 'main.py' '--listen' '127.0.0.1'"
+    $allocatorArg = if ($DisableCudaMalloc) { " '--disable-cuda-malloc'" } else { "" }
+    $command = "`$env:PYTHONIOENCODING='utf-8'; Remove-Item Env:PYTHONUTF8 -ErrorAction SilentlyContinue; Set-Location -LiteralPath $root; & $python 'main.py' '--listen' '127.0.0.1'$allocatorArg"
     Start-VisibleTerminal "ComfyUI :8188" $comfyRoot $command
 }
 

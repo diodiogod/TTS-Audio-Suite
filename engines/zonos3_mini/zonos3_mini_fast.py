@@ -26,8 +26,9 @@ _ENGINE_ENV = {
     "ZONOS3_USE_TRAINING_ROPE": "1",
 }
 
-# Rows of context the engine reserves per request: reference prefix (up to 900) + text + generated frames. The
-# checkpoint allows 32768; a TTS chunk never comes close, and the KV pool and page table scale with this.
+# Rows reserved per request: reference prefix (up to 900) + text + generated frames. The checkpoint supports
+# 32768; this integration chooses 4096 to reduce preallocated GPU cache/buffer memory. It limits long individual
+# takes: use smaller suite chunks or the reference backend for the model's full context.
 MAX_CONTEXT_ROWS = 4096
 # LACI reads this many text keys per request inside the decode graph; longer texts decode without the graph.
 PROBE_MAX_TEXT = 1024
@@ -46,6 +47,14 @@ def availability(device: str, dtype: torch.dtype) -> Optional[str]:
         return "it runs in bfloat16 only"
     if importlib.util.find_spec("triton") is None:
         return "the triton package (triton-windows on Windows) is not installed"
+    # cudaMallocAsync's captured allocations fail Triton's pointer checks and can
+    # abort Python while the failed graph is destroyed. Check before constructing it.
+    if torch.cuda.memory.get_allocator_backend() == "cudaMallocAsync":
+        return (
+            "its Triton CUDA graphs require PyTorch's native GPU allocator; "
+            "cudaMallocAsync can crash graph capture. Restart ComfyUI with "
+            "--disable-cuda-malloc to use Fast, or select Reference"
+        )
     return None
 
 

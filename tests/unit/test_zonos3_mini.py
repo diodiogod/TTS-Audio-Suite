@@ -575,6 +575,31 @@ def test_fast_engine_falls_back_on_auto_and_raises_when_forced():
         Zonos3MiniEngine(device="cpu", engine="turbo")
 
 
+@pytest.mark.unit
+def test_fast_engine_checks_allocator_before_constructing_cuda_graphs(monkeypatch):
+    from engines.zonos3_mini import zonos3_mini_fast
+    from engines.zonos3_mini import zonos3_mini_engine as engine_module
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(zonos3_mini_fast.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.setattr(engine_module, "resolve_torch_device", lambda device: "cuda:0")
+    monkeypatch.setattr(torch.cuda.memory, "get_allocator_backend", lambda: "native")
+    assert zonos3_mini_fast.availability("cuda:0", torch.bfloat16) is None
+
+    monkeypatch.setattr(torch.cuda.memory, "get_allocator_backend", lambda: "cudaMallocAsync")
+    assert "--disable-cuda-malloc" in zonos3_mini_fast.availability("cuda:0", torch.bfloat16)
+
+    def forbidden_runner(*args, **kwargs):
+        pytest.fail("The incompatible allocator must be rejected before graph construction")
+
+    monkeypatch.setattr(zonos3_mini_fast, "Zonos3MiniFastRunner", forbidden_runner)
+    auto = engine_module.Zonos3MiniEngine(device="cuda:0", engine="auto")
+    assert auto._fast_runner() is None
+    assert "cudaMallocAsync" in auto._fast_failure
+    with pytest.raises(RuntimeError, match="--disable-cuda-malloc"):
+        engine_module.Zonos3MiniEngine(device="cuda:0", engine="fast")._fast_runner()
+
+
 def _triton_cuda():
     if not torch.cuda.is_available() or importlib.util.find_spec("triton") is None:
         pytest.skip("needs CUDA and Triton")
@@ -638,8 +663,12 @@ def test_paged_attention_kernel_matches_causal_softmax_over_each_requests_pages(
 
 
 @pytest.mark.unit
-def test_gdn_layer_output_does_not_depend_on_where_prefill_ends_and_decode_starts():
+def test_gdn_layer_output_does_not_depend_on_where_prefill_ends_and_decode_starts(monkeypatch):
     device = _triton_cuda()
+    # This float32 math check needs full precision. The suite can enable TF32 globally;
+    # its rounding varies with the matrix shapes used by prefill versus single-row decode.
+    monkeypatch.setattr(torch.backends.cuda.matmul, "allow_tf32", False)
+    monkeypatch.setattr(torch.backends.cudnn, "allow_tf32", False)
     from types import SimpleNamespace
 
     from zonos3_sgl.models.gdn import OriginalGDN, PrefillInputs, PrefillLayout
