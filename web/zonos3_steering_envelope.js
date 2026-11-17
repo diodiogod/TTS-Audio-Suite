@@ -52,8 +52,20 @@ export function envelopeSvg({ full, ramp, remaining }, end = envelopeViewSeconds
 export function createEnvelopePanel(node, widgets, defaults, definitions) {
     const panel = addPanel(node, "zonos3_effect_timing");
     const { body } = panel;
-    body.append(element("h3", "Effect strength over time"));
-    body.append(element("p", "Relative steering influence, starting at the beginning of each generated segment."));
+    const heading = element("h3", "Effect strength over time ");
+    const help = element("span", "ⓘ");
+    help.title = "Drag the first dot left/right to set how long full strength lasts.\n"
+        + "Drag the second dot up/down for remaining strength, left/right for fade duration.\n"
+        + "Scroll to change the time scale. Double-click to fit.\n\n"
+        + "Timing restarts for each chunk or subtitle.\n"
+        + "Pace, whisper and Voice Characteristics stay constant; Mandarin's delivery component follows the timing.\n"
+        + "The graph shows effect settings, not how strong an emotion will sound.";
+    help.style.cursor = "help";
+    help.tabIndex = 0;
+    help.setAttribute("role", "img");
+    help.setAttribute("aria-label", help.title);
+    heading.appendChild(help);
+    body.appendChild(heading);
     const label = element("label", null, "zonos3-defaults");
     label.title = definitions.use_model_defaults[1].tooltip;
     const useDefaults = document.createElement("input");
@@ -77,8 +89,6 @@ export function createEnvelopePanel(node, widgets, defaults, definitions) {
     graph.style.userSelect = "none";
     const description = element("p");
     body.append(graph, description);
-    body.append(element("p", "Drag the first dot horizontally for full-strength duration. Drag the second dot vertically for remaining strength, horizontally for reduction duration. Wheel: time scale. Double-click: fit."));
-    body.append(element("p", "Resets for every chunk or subtitle. Speaker-embedding changes stay constant. Pace and whisper keep full influence. Timing follows the model's audio frames."));
     const advanced = element("details");
     advanced.append(element("summary", "Advanced: control guidance"));
     const guidance = numberRow(advanced, "Control guidance", {
