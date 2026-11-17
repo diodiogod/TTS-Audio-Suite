@@ -17,6 +17,7 @@ from engines.zonos3_mini import zonos3_mini_downloader as downloader_module
 from engines.zonos3_mini.languages import LANGUAGES, to_suite_language, to_zonos_language
 from engines.zonos3_mini.steering_controls import DELIVERY, VOICE_DESIGN, build_controls, parse_extra_controls
 from engines.zonos3_mini.zonos3_mini_downloader import FILES, Zonos3MiniDownloader
+from utils.text.chunking import ImprovedChatterBoxChunker
 
 
 def _load(name, relative):
@@ -356,6 +357,58 @@ def test_processor_turns_pause_tags_into_exact_silence(no_interrupt):
     assert [record["text"] for record in records] == ["Hello", "[pause:0.250s]", "again."]
     assert records[1]["waveform"].shape[-1] == 11025 and not records[1]["waveform"].any()
     assert [call["text"] for call in recording.calls] == ["Hello", "again."]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("method", ["auto", "concatenate", "silence_padding", "crossfade"])
+@pytest.mark.parametrize("duration", [0.05, 0.25])
+def test_processor_preserves_pause_duration_when_combining(no_interrupt, method, duration):
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(RecordingAdapter(), {"language": "English (US)"})
+    text = f"Alpha [pause:{duration}] omega."
+    records = processor.process_text(text, {}, seed=1, show_text_logging=False)
+
+    audio, info = processor.combine_audio_segments(records, method=method, original_text=text, return_info=True)
+
+    expected = torch.cat([record["waveform"] for record in records], dim=-1)
+    assert torch.equal(audio, expected)
+    assert info["junction_methods"] == ["concatenate", "concatenate"]
+    assert info["chunk_timings"][-1]["end"] == pytest.approx(audio.shape[-1] / 44100)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("text", [
+    "A short opening. " + "word " * 180 + "End.",
+    "First clause, " + "word " * 180 + "end.",
+    "a, " * 220 + "end.",
+    "word " * 180 + "End.",
+], ids=["long_sentence_after_short", "long_comma_part", "comma_punctuation", "long_sentence_alone"])
+def test_shared_chunker_enforces_limit_without_changing_text(text):
+    chunks = ImprovedChatterBoxChunker.split_into_chunks(text, 400)
+
+    assert chunks and all(0 < len(chunk) <= 400 for chunk in chunks)
+    assert " ".join(chunks) == " ".join(text.split())
+
+
+@pytest.mark.unit
+def test_shared_chunker_splits_single_oversized_token():
+    text = "Opening. " + "x" * 905
+    chunks = ImprovedChatterBoxChunker.split_into_chunks(text, 400)
+
+    assert all(0 < len(chunk) <= 400 for chunk in chunks)
+    assert "".join(chunks).replace(" ", "") == text.replace(" ", "")
+
+
+@pytest.mark.unit
+def test_processor_accepts_long_form_character_budget(no_interrupt):
+    recording = RecordingAdapter(seconds=0.001)
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(recording, {"language": "English (US)"})
+    text = "A complete sentence. " * 700
+    budget = ImprovedChatterBoxChunker.validate_chunking_params(20_000)
+
+    processor.process_text(text, {}, seed=1, max_chars_per_chunk=budget, show_text_logging=False)
+
+    assert budget == 20_000
+    assert [call["text"] for call in recording.calls] == [text.strip()]
 
 
 @pytest.mark.unit

@@ -3,9 +3,11 @@ Chunk Combination Utility - Modular audio chunk combination for all TTS engines
 Provides standardized chunk combination methods to avoid code duplication
 """
 
+import re
 import torch
 from typing import List, Optional
 from .processing import AudioProcessingUtils
+from utils.text.pause_processor import PauseTagProcessor
 
 
 class ChunkCombiner:
@@ -35,7 +37,7 @@ class ChunkCombiner:
             sample_rate: Audio sample rate
             text_length: Original text length for auto-selection (legacy fallback)
             original_text: Original text before chunking (for smart auto-selection)
-            text_chunks: List of text chunks after splitting (for smart auto-selection)
+            text_chunks: Aligned text chunks for auto-selection and preserving explicit pause-only segments
             return_info: If True, return tuple of (combined_audio, timing_info)
             
         Returns:
@@ -69,11 +71,22 @@ class ChunkCombiner:
             junction_methods = ChunkCombiner._analyze_per_junction_methods(
                 original_text, text_chunks, text_length, len(audio_segments)
             )
-            # Use most common method for display purposes
-            method = ChunkCombiner._get_dominant_method(junction_methods)
         else:
             # Single method for all junctions
             junction_methods = [method] * (len(audio_segments) - 1)
+
+        # Explicit pause records already contain the requested silence. Neither overlap
+        # nor extra padding should change their duration, regardless of the join setting.
+        if text_chunks and len(text_chunks) == len(audio_segments):
+            pause_chunks = [
+                re.fullmatch(PauseTagProcessor.PAUSE_PATTERN, text.strip(), re.IGNORECASE) is not None
+                for text in text_chunks
+            ]
+            junction_methods = [
+                "concatenate" if pause_chunks[i] or pause_chunks[i + 1] else junction_method
+                for i, junction_method in enumerate(junction_methods)
+            ]
+        method = ChunkCombiner._get_dominant_method(junction_methods)
         
         # Combine chunks junction by junction
         combined = ChunkCombiner._combine_with_junction_methods(

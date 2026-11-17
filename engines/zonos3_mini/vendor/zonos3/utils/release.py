@@ -62,7 +62,8 @@ def _local(path: str) -> str:
         raise ValueError(f"ZONOS3-Mini: unexpected model repository {repo_id}")
     if _LOCAL_ROOT is None:
         raise RuntimeError("ZONOS3-Mini: local model root is not set")
-    local = os.path.join(_LOCAL_ROOT, inside) if inside else _LOCAL_ROOT
+    # TTS Audio Suite Patch: normalize separators for the decoder's Windows path consistency check.
+    local = os.path.normpath(os.path.join(_LOCAL_ROOT, inside) if inside else _LOCAL_ROOT)
     if not os.path.exists(local):
         raise FileNotFoundError(f"ZONOS3-Mini model file missing: {local}")
     return local

@@ -32,7 +32,7 @@ base_spec.loader.exec_module(base_module)
 # Import the base class
 BaseTTSNode = base_module.BaseTTSNode
 
-from utils.text.chunking import ImprovedChatterBoxChunker
+from utils.text.chunking import ImprovedChatterBoxChunker, MAX_CHARS_PER_CHUNK
 from utils.audio.processing import AudioProcessingUtils
 from utils.voice.discovery import (
     get_available_voices,
@@ -105,8 +105,8 @@ Back to the main narrator voice for the conclusion.""",
                     "tooltip": "Enable text chunking for long texts. When enabled, long texts are split into smaller chunks for more stable generation."
                 }),
                 "max_chars_per_chunk": ("INT", {
-                    "default": 400, "min": 100, "max": 1000, "step": 50,
-                    "tooltip": "Maximum characters per chunk when chunking is enabled. Smaller chunks = more stable but potentially less coherent speech."
+                    "default": 400, "min": 100, "max": MAX_CHARS_PER_CHUNK, "step": 50,
+                    "tooltip": "Maximum characters per chunk when chunking is enabled. Default: 400. Increase for engines that support long-form generation; smaller chunks can improve stability. Character counts do not set an audio duration, and the engine's own context and generation limits still apply. Character, parameter and pause tags can create shorter segments. Engines using their own chunking settings may ignore this value."
                 }),
                 "chunk_combination_method": (["auto", "concatenate", "silence_padding", "crossfade"], {
                     "default": "auto",

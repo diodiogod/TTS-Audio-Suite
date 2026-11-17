@@ -21,6 +21,8 @@ byte-identical to the commit.
 
 1. `zonos3/utils/release.py` — `resolve_file` / `resolve_dir_or_local` map `hf://Zyphra/ZONOS3-Mini/...` into a local
    model root set with `set_local_root()`; the `huggingface_hub` downloads, `_token` and the fetch prints are removed.
+   Normalize local path separators so the decoder's path consistency check works on Windows, preserving configured
+   symlink paths.
 2. `zonos3/tokenizer/matched_codec.py` — decoder head checkpoint loaded with `weights_only=True` (was `False`).
 3. `zonos3/models/speaker_cloning.py` — legacy `Qwen3SpeakerEmbedding`, `_AttentiveStatisticsPooling`,
    `W2VBertSVSpeakerEmbedding`, their `torchaudio` / `huggingface_hub` / `transformers` / `zonos` imports,
