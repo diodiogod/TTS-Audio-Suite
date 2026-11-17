@@ -1,11 +1,15 @@
 """
 ZONOS3-Mini engine wrapper.
 
-Runs the vendored official plain-PyTorch reference implementation (`zonos3.reference`) on the native
-Zyphra/ZONOS3-Mini weights, with ComfyUI-friendly loading, offloading, progress and interruption.
+Runs the native Zyphra/ZONOS3-Mini weights with ComfyUI-friendly loading, offloading, progress and interruption,
+through one of two vendored official implementations:
+
+- ``fast``: the `zonos3_sgl` CUDA-graph engine (engines/zonos3_mini/zonos3_mini_fast.py). CUDA, bfloat16, Triton.
+- ``reference``: the plain-PyTorch `zonos3.reference` implementation. CUDA or CPU, any supported dtype.
 """
 
 import gc
+import json
 import os
 import sys
 import time
@@ -76,7 +80,7 @@ class Zonos3MiniProgress:
 
 
 class Zonos3MiniEngine:
-    """Thin wrapper around `zonos3.reference.synth.synthesize`."""
+    """ZONOS3-Mini model lifecycle and generation over the fast or the reference implementation."""
 
     SAMPLE_RATE = 44100
 
@@ -86,6 +90,7 @@ class Zonos3MiniEngine:
         device: str = "auto",
         dtype: str = "auto",
         model_dir: Optional[str] = None,
+        engine: str = "auto",
     ):
         self.model_name = model_name or "ZONOS3-Mini"
         resolved = str(resolve_torch_device(device))
@@ -95,11 +100,17 @@ class Zonos3MiniEngine:
         self._target_device = resolved
         self.device = resolved
         self.dtype = self._resolve_dtype(dtype, resolved)
+        if engine not in ("auto", "fast", "reference"):
+            raise ValueError(f"ZONOS3-Mini engine must be auto, fast or reference, got '{engine}'")
+        self.engine_mode = engine
         self.model_dir = model_dir
         self.downloader = Zonos3MiniDownloader()
         self.root: Optional[str] = None
-        self.lm = None
+        self.config = None  # the checkpoint's Zonos3LMConfig
+        self.lm = None  # the reference LM, loaded on first use of the reference implementation
         self.assets = None
+        self._fast = None  # the fast runner, built on first use
+        self._fast_failure: Optional[str] = None
         self._decoders_ready = set()
 
     @staticmethod
@@ -124,8 +135,10 @@ class Zonos3MiniEngine:
         return self.downloader.ensure(self.model_name, features)
 
     def _ensure_model_loaded(self, decoder: str = "keep2_plain"):
+        """Model files present, the vendored package importable, the shared assets and checkpoint config loaded. The
+        LM weights themselves load on first use of an implementation."""
         decoder = decoder or "keep2_plain"
-        if self.lm is not None:
+        if self.assets is not None:
             if decoder not in self._decoders_ready:
                 self._ensure_files([decoder])
                 self._decoders_ready.add(decoder)
@@ -135,8 +148,7 @@ class Zonos3MiniEngine:
         self._decoders_ready.add(decoder)
         ensure_vendor_path()
         try:
-            from zonos3.models.text_extra import TextExtraRows
-            from zonos3.reference.lm import Zonos3LM
+            from zonos3.reference.lm import Zonos3LMConfig
             from zonos3.reference.synth import ReferenceAssets
             from zonos3.tts.laci import discover_laci_heads
             from zonos3.utils import release
@@ -147,26 +159,67 @@ class Zonos3MiniEngine:
                 ) from e
             raise
 
-        print("🔄 Loading ZONOS3-Mini (official reference implementation)")
+        release.set_local_root(self.root)
+        with open(os.path.join(self.root, LM_FOLDER, "params.json"), encoding="utf-8") as f:
+            self.config = Zonos3LMConfig.from_params(json.load(f))
+        self._steer_bundle = os.path.join(ASSETS_DIR, "steering", "studio_bundle_mect60k_x10.json")
+        self._laci_heads = discover_laci_heads(os.path.join(ASSETS_DIR, "laci_heads"))
+        self.assets = ReferenceAssets.load(steer_bundle=self._steer_bundle, laci_heads=self._laci_heads)
+        self.device = self._target_device
+
+    def _ensure_reference_lm(self):
+        if self.lm is not None:
+            if self.device != self._target_device:
+                self.to(self._target_device)
+            return
+        from zonos3.models.text_extra import TextExtraRows
+        from zonos3.reference.lm import Zonos3LM
+
+        print("🔄 Loading ZONOS3-Mini (reference implementation)")
         print(f"   Path: {self.root}")
         print(f"   Device: {self._target_device} | Dtype: {self.dtype}")
-        release.set_local_root(self.root)
         lm = Zonos3LM.load(os.path.join(self.root, LM_FOLDER), device=self._target_device, dtype=torch.float32)
         lm.append_text_rows(TextExtraRows.load(os.path.join(self.root, TEXT_ROWS)))
         if self.dtype != torch.float32:
             lm.cast(self.dtype)
         lm.eval()
-        self.assets = ReferenceAssets.load(
-            steer_bundle=os.path.join(ASSETS_DIR, "steering", "studio_bundle_mect60k_x10.json"),
-            laci_heads=discover_laci_heads(os.path.join(ASSETS_DIR, "laci_heads")),
-        )
         self.lm = lm
         self.device = self._target_device
         print("✅ ZONOS3-Mini model loaded successfully")
 
+    def _fast_runner(self):
+        """The fast runner, or None when this engine uses the reference implementation (``auto`` falls back with the
+        reason printed once; ``fast`` raises it)."""
+        if self.engine_mode == "reference" or self._fast_failure is not None:
+            return None
+        if self._fast is not None:
+            return self._fast
+        from engines.zonos3_mini import zonos3_mini_fast
+
+        reason = zonos3_mini_fast.availability(self._target_device, self.dtype)
+        if reason is None:
+            try:
+                print("🔄 Loading ZONOS3-Mini (fast CUDA-graph engine)")
+                print(f"   Path: {self.root}")
+                print(f"   Device: {self._target_device} | Dtype: {self.dtype}")
+                self._fast = zonos3_mini_fast.Zonos3MiniFastRunner(
+                    self.root, self._target_device, self.dtype, self.assets, self._steer_bundle, self._laci_heads
+                )
+                self.device = self._target_device
+                print("✅ ZONOS3-Mini fast engine ready")
+                return self._fast
+            except Exception as e:
+                if self.engine_mode == "fast":
+                    raise
+                reason = f"it failed to start ({type(e).__name__}: {e})"
+        if self.engine_mode == "fast":
+            raise RuntimeError(f"ZONOS3-Mini fast engine is not available: {reason}")
+        self._fast_failure = reason
+        print(f"⚠️ ZONOS3-Mini fast engine not used: {reason}. Using the slower reference implementation.")
+        return None
+
     def _restore_device(self):
-        if self.device != self._target_device:
-            self.to(self._target_device)
+        self.device = self._target_device
 
     # ------------------------------------------------------------------ voices
 
@@ -174,7 +227,7 @@ class Zonos3MiniEngine:
         """Reference clip ``[channels, samples]`` -> the 192-D speaker embedding (CPU float32)."""
         self._ensure_model_loaded()
         self._restore_device()
-        config = self.lm.config
+        config = self.config
         encoder = self.assets.speaker_encoder(
             config.speaker_embedding_codec, config.speaker_embedding_dim, torch.device(self.device)
         )
@@ -209,7 +262,7 @@ class Zonos3MiniEngine:
             return encode_dual_reference(
                 waveform.detach().float().cpu(),
                 int(sample_rate),
-                max_seconds=self.lm.config.speaker_reference_max_seconds,
+                max_seconds=self.config.speaker_reference_max_seconds,
                 device=f"cuda:{index}",
             )
         finally:
@@ -232,52 +285,63 @@ class Zonos3MiniEngine:
     def generate(self, request: dict) -> Tuple[torch.Tensor, Optional[dict]]:
         """One native GenerateRequest -> (CPU float32 ``[1, samples]`` at 44.1 kHz, LACI record or None)."""
         self._ensure_model_loaded(request.get("decoder") or "keep2_plain")
-        self._restore_device()
-        from zonos3.reference.synth import synthesize
-
         import comfy.model_management as model_management
 
-        guided = (
-            float(request.get("speaker_cfg_scale", 1.0)) != 1.0
-            or float(request.get("controls_cfg_scale", 1.0)) != 1.0
-        )
-        progress = Zonos3MiniProgress(2 if guided else 1)
+        request = {**request, "stream": False, "stream_decode": "whole"}
+        fast = self._fast_runner()
+        if fast is not None:
+            progress = Zonos3MiniProgress(1)
+            try:
+                pcm, laci = fast.generate(request, lambda: bool(model_management.interrupt_processing), progress.step)
+            except BaseException:
+                progress.abort()
+                raise
+            progress.end()
+        else:
+            self._ensure_reference_lm()
+            from zonos3.reference.synth import synthesize
 
-        def before_forward(_module, _args):
-            if model_management.interrupt_processing:
-                raise InterruptedError("ZONOS3-Mini generation interrupted by user")
-            progress.step()
-
-        handle = self.lm.register_forward_pre_hook(before_forward)
-        try:
-            result = synthesize(
-                self.lm,
-                {**request, "stream": False, "stream_decode": "whole"},
-                assets=self.assets,
-                device=self.device,
+            guided = (
+                float(request.get("speaker_cfg_scale", 1.0)) != 1.0
+                or float(request.get("controls_cfg_scale", 1.0)) != 1.0
             )
-        except BaseException:
-            progress.abort()
-            raise
-        finally:
-            handle.remove()
-        progress.end()
+            progress = Zonos3MiniProgress(2 if guided else 1)
 
-        pcm = np.asarray(result.pcm, dtype=np.float32).reshape(-1)
+            def before_forward(_module, _args):
+                if model_management.interrupt_processing:
+                    raise InterruptedError("ZONOS3-Mini generation interrupted by user")
+                progress.step()
+
+            handle = self.lm.register_forward_pre_hook(before_forward)
+            try:
+                result = synthesize(self.lm, request, assets=self.assets, device=self.device)
+            except BaseException:
+                progress.abort()
+                raise
+            finally:
+                handle.remove()
+            progress.end()
+            pcm, laci = result.pcm, result.laci
+
+        pcm = np.asarray(pcm, dtype=np.float32).reshape(-1)
         if pcm.size == 0 or not np.isfinite(pcm).all():
             raise RuntimeError(f"ZONOS3-Mini returned no audio for: '{str(request.get('text', ''))[:40]}'")
-        return torch.from_numpy(pcm.copy())[None], result.laci
+        return torch.from_numpy(pcm.copy())[None], laci
 
     # ------------------------------------------------------------------ device management
 
     def to(self, device):
         device = str(device)
         self.device = device
-        if self.lm is None:
+        if self.assets is None:
             return self
-        self.lm.to(device)
+        if self.lm is not None:
+            self.lm.to(device)
         if device == "cpu":
-            # GPU-owning helper caches of the reference implementation; they reload lazily on the next request
+            # The fast engine owns only GPU state: drop it. It and the helper caches below reload on the next request.
+            if self._fast is not None:
+                self._fast.close()
+                self._fast = None
             from zonos3.models.mect_speaker import MECTFbankSpeakerEmbedding
             from zonos3.tokenizer import dual_reference, matched_codec
 

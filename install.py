@@ -1796,6 +1796,19 @@ class TTSAudioInstaller:
                 warning,
             )
             self.log(warning, "WARNING")
+
+        # ZONOS3-Mini falls back to its reference implementation without Triton;
+        # this affects speed, not engine availability.
+        if not self.module_available("triton"):
+            warning = (
+                "ZONOS3-Mini fast engine unavailable (Triton missing; triton-windows on Windows); "
+                "ZONOS3-Mini will use its slower reference implementation"
+            )
+            self.add_install_warning(
+                "ZONOS3-Mini fast engine (optional)",
+                warning,
+            )
+            self.log(warning, "WARNING")
         
         # Check RVC dependencies
         rvc_modules = [("monotonic_alignment_search", "Monotonic Alignment Search")]

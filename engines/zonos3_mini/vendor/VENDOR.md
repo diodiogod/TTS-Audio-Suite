@@ -1,18 +1,20 @@
-# Vendored ZONOS3-Mini reference implementation
+# Vendored ZONOS3-Mini implementations
 
 - Source: https://github.com/Zyphra/ZONOS3-Mini
 - Commit: `96d9e0ec1e39083ed336ac78f24e3dbc93721c0f`
-- Upstream path: `model/src/zonos3/` -> `zonos3/` (import closure of `zonos3.reference.synth` plus
-  `models/text_extra.py`, minus the modules listed under "Not included"; the SGL/CUDA-kernel server `zonos3_sgl` is
-  not included)
+- `zonos3/` <- `model/src/zonos3/`: the reference implementation (import closure of `zonos3.reference.synth` plus
+  `models/text_extra.py` and the three modules the fast engine adds: `models/config.py`, `utils/hf.py`,
+  `utils/moe_topk.py`), minus the modules listed under "Not included".
+- `zonos3_sgl/` <- `servers/sgl/src/zonos3_sgl/`: the CUDA-graph engine, reduced to what one in-process scheduler
+  needs and with its compiled kernels replaced; see "Fast engine".
 - License: MIT (`LICENSE`, `NOTICE`, `third_party/licenses/`). Model weights (`Zyphra/ZONOS3-Mini` on Hugging Face) are
   Apache-2.0 and are downloaded separately into `ComfyUI/models/TTS/zonos3_mini/`.
 - `../assets/` holds the parts of upstream `assets/` that the reference implementation reads; see "Assets".
 
-The package keeps its absolute `zonos3.*` imports; `engines/zonos3_mini/__init__.py::ensure_vendor_path()` puts this
+The packages keep their absolute `zonos3.*` / `zonos3_sgl.*` imports; `engines/zonos3_mini/__init__.py::ensure_vendor_path()` puts this
 folder on `sys.path`.
 
-## Patches
+## Patches to `zonos3/`
 
 Every change is marked `# TTS Audio Suite Patch:` in the source. All other Python files and the registries are
 byte-identical to the commit.
@@ -38,6 +40,41 @@ Modules of the import closure that are only imported lazily, on paths this integ
   always requests `stream_decode: "whole"`; `matched_codec.stream()` / `capture_stream_graphs()` and the `on_audio`
   branch of `synthesize()` would need them.
 - `zonos3/tts/edit.py` — speech editing, which needs model exports that are not published.
+
+## Fast engine (`zonos3_sgl/`)
+
+Upstream's engine compiles C++/CUDA at start-up (`tvm_ffi`, needing `nvcc` and a host compiler) and imports
+`sgl_kernel`, `flashinfer`, `fla-core`, ZeroMQ and MessagePack. This copy needs PyTorch and Triton only.
+`engines/zonos3_mini/zonos3_mini_fast.py` drives the scheduler in-process. Changed files carry
+`# TTS Audio Suite Patch:`; the rest are byte-identical to the commit.
+
+Kernels replaced with PyTorch ops (token output stayed identical to upstream's native build):
+
+- `kernel/index.py`, `kernel/store.py`, `kernel/__init__.py` — embedding gather and KV store (were JIT-compiled CUDA).
+- `layers/moe/fused_moe/fused_moe_impl.py`, `layers/moe/fused_moe/topk.py`, `layers/activation.py` — MoE block
+  alignment, top-k and `silu_and_mul` (were `sgl_kernel` / `flashinfer`).
+- `layers/norm.py`, `layers/rotary.py` — RMSNorm and RoPE: only the PyTorch ("training") variants remain.
+
+Kernels replaced with new Triton kernels (not upstream files; these round differently, so tokens differ from
+upstream's native build for the same seed):
+
+- `kernel/triton/paged_attention.py` — causal attention over the paged KV cache, replacing FlashAttention-3
+  (`sgl_kernel.flash_attn`); called from `attention/fa.py`.
+- `kernel/triton/gated_delta.py` and a rewritten `models/gdn.py` — the gated-delta layers run the reference
+  implementation's per-token recurrence instead of `fla-core`'s 64-frame chunked kernels. A slot's state is always at
+  the request's last row, so there is no per-step replay of the unfinished chunk and no FLA cache pinning
+  (`engine/engine.py`, `engine/prefill_graph.py`).
+
+Removed:
+
+- Server and transport: `server/`, `tokenizer/`, `shell.py`, `__main__.py`, `benchmark/`, `utils/mp.py`, the
+  ZeroMQ queues in `scheduler/io.py`, NCCL (`kernel/pynccl.py`, `distributed/impl.py`), `kernel/csrc/`.
+- The offline API `tts/llm.py` and `tts/sequence.py` (replaced by `zonos3_mini_fast.py`).
+- Unused back ends: `attention/fi.py` (flashinfer), `kvcache/radix_manager.py`, `kernel/radix.py`,
+  `kernel/tensor.py`, `kernel/utils.py`, `layers/moe/moe_backend.py`, `utils/arch.py`, the `tqdm` progress bar in
+  `engine/graph.py`.
+- Accent adapters: `models/accent_adapters.py`, `kernel/triton/expert_lora.py`; `EngineConfig.accent_adapters`
+  raises. The release checkpoint ships none.
 
 ## Assets
 

@@ -1811,11 +1811,12 @@ def register_zonos3_mini_factory():
     """Register ZONOS3-Mini model factory."""
 
     def zonos3_mini_factory(config: ModelLoadConfig):
-        """Factory for ZONOS3-Mini (official reference implementation) with ComfyUI integration."""
+        """Factory for ZONOS3-Mini (official fast engine or reference implementation) with ComfyUI integration."""
         model_name = config.model_name or "ZONOS3-Mini"
         device = config.device or "auto"
         additional_params = config.additional_params or {}
         dtype = additional_params.get("dtype", "auto")
+        engine_mode = additional_params.get("engine", "auto")
 
         from engines.zonos3_mini.zonos3_mini_engine import Zonos3MiniEngine
 
@@ -1824,9 +1825,10 @@ def register_zonos3_mini_factory():
             model_name=model_name,
             device=device,
             dtype=dtype,
+            engine=engine_mode,
         )
         engine._ensure_model_loaded()
-        print(f"✅ ZONOS3-Mini model '{model_name}' loaded successfully")
+        print(f"✅ ZONOS3-Mini model '{model_name}' ready")
         return engine
 
     unified_model_interface.register_model_factory("zonos3_mini", "tts", zonos3_mini_factory)

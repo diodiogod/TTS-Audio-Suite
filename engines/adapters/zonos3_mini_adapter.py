@@ -50,9 +50,10 @@ class Zonos3MiniEngineAdapter:
             self.config.get("model_variant", "ZONOS3-Mini"),
             self.config.get("device", "auto"),
             self.config.get("dtype", "auto"),
+            self.config.get("engine", "auto"),
         )
 
-    def load_model(self, model_variant: str, device: str = "auto", dtype: str = "auto"):
+    def load_model(self, model_variant: str, device: str = "auto", dtype: str = "auto", engine: str = "auto"):
         from utils.models.unified_model_interface import unified_model_interface
 
         config = ModelLoadConfig(
@@ -63,6 +64,7 @@ class Zonos3MiniEngineAdapter:
             device=device,
             additional_params={
                 "dtype": dtype,
+                "engine": engine,
             },
         )
         self._last_config = config
@@ -78,6 +80,7 @@ class Zonos3MiniEngineAdapter:
             model_variant=self.config.get("model_variant", "ZONOS3-Mini"),
             device=self.config.get("device", "auto"),
             dtype=self.config.get("dtype", "auto"),
+            engine=self.config.get("engine", "auto"),
         )
         self._load_signature = signature
 
@@ -233,6 +236,7 @@ class Zonos3MiniEngineAdapter:
                 audio_component=audio_component,
                 model_variant=self.config.get("model_variant", "ZONOS3-Mini"),
                 dtype=self.config.get("dtype", "auto"),
+                lm_engine=self.config.get("engine", "auto"),
                 character=character_name or "narrator",
             )
             cached_audio = self.audio_cache.get_cached_audio(cache_key)

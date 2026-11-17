@@ -424,3 +424,121 @@ def test_srt_processor_places_cues_on_the_subtitle_timeline(no_interrupt, monkey
     assert recording.calls[1]["config"]["language"] == "fr_fr"
     assert len(processor.SRTParser().parse_srt_content(adjusted_srt)) == 2
     assert "ZONOS3-Mini" in info
+
+
+# ---------------------------------------------------------------------------------------------- fast engine
+
+
+@pytest.mark.unit
+def test_fast_engine_falls_back_on_auto_and_raises_when_forced():
+    from engines.zonos3_mini import zonos3_mini_fast
+    from engines.zonos3_mini.zonos3_mini_engine import Zonos3MiniEngine
+
+    assert "CUDA" in zonos3_mini_fast.availability("cpu", torch.float32)
+    assert Zonos3MiniEngine(device="cpu", engine="auto")._fast_runner() is None
+    with pytest.raises(RuntimeError, match="fast engine is not available"):
+        Zonos3MiniEngine(device="cpu", engine="fast")._fast_runner()
+    with pytest.raises(ValueError, match="auto, fast or reference"):
+        Zonos3MiniEngine(device="cpu", engine="turbo")
+
+
+def _triton_cuda():
+    if not torch.cuda.is_available() or importlib.util.find_spec("triton") is None:
+        pytest.skip("needs CUDA and Triton")
+    ensure_vendor_path()
+    return torch.device("cuda")
+
+
+@pytest.mark.unit
+def test_gated_delta_kernel_matches_the_reference_recurrence():
+    device = _triton_cuda()
+    from zonos3_sgl.kernel.triton.gated_delta import gated_delta
+
+    generator = torch.Generator(device=device).manual_seed(0)
+    rand = lambda *shape: torch.randn(*shape, device=device, generator=generator)
+    heads, dim, lengths, slots = 4, 128, [5, 0, 70], [2, 0, 3]
+    starts = [0, 5, 6]  # row 5 belongs to no sequence
+    rows = 76
+    q, k, v = rand(rows, heads, dim), torch.nn.functional.normalize(rand(rows, heads, dim), dim=-1), rand(rows, heads, dim)
+    decay, beta = torch.rand(rows, heads, device=device, generator=generator), torch.rand(rows, heads, device=device, generator=generator)
+    state = rand(4, heads, dim, dim) * 0.1
+    expected_state, expected = state.clone(), torch.zeros(rows, heads, dim, device=device)
+    for start, n, slot in zip(starts, lengths, slots):
+        s = expected_state[slot].clone()
+        for t in range(start, start + n):
+            s = s * decay[t, :, None, None]
+            delta = beta[t, :, None] * (v[t] - (s * k[t, :, None, :]).sum(-1))
+            s = s + delta[:, :, None] * k[t, :, None, :]
+            expected[t] = (s * (q[t] * 0.5)[:, None, :]).sum(-1)
+        expected_state[slot] = s
+
+    as_long = lambda values: torch.tensor(values, device=device)
+    out = gated_delta(q, k, v, decay, beta, state, as_long(starts), as_long(lengths), as_long(slots), 0.5)
+
+    assert torch.allclose(out, expected, atol=1e-4, rtol=1e-4)
+    assert torch.allclose(state, expected_state, atol=1e-4, rtol=1e-4)
+    assert torch.equal(state[1], expected_state[1])  # a slot no sequence owns is untouched
+
+
+@pytest.mark.unit
+def test_paged_attention_kernel_matches_causal_softmax_over_each_requests_pages():
+    device = _triton_cuda()
+    from zonos3_sgl.kernel.triton.paged_attention import paged_attention
+
+    generator = torch.Generator(device=device).manual_seed(0)
+    heads, kv_heads, dim, pages = 4, 2, 32, 400
+    k_cache = torch.randn(pages, 1, kv_heads, dim, device=device, generator=generator)
+    v_cache = torch.randn(pages, 1, kv_heads, dim, device=device, generator=generator)
+    page_table = torch.randperm(pages, device=device, generator=generator)[:300].to(torch.int32).view(2, 150).contiguous()
+    owner = torch.tensor([0, 1, 1, 0], dtype=torch.int32, device=device)
+    last = torch.tensor([0, 63, 64, 149], dtype=torch.int32, device=device)  # block edges of the 64-key loop
+    q = torch.randn(4, heads, dim, device=device, generator=generator)
+
+    out = paged_attention(q, k_cache, v_cache, page_table, owner, last, dim**-0.5)
+
+    for row in range(4):
+        visible = page_table[owner[row], : last[row] + 1].long()
+        for head in range(heads):
+            keys, values = k_cache[visible, 0, head // 2], v_cache[visible, 0, head // 2]
+            weights = torch.softmax(keys @ q[row, head] * dim**-0.5, dim=0)
+            assert torch.allclose(out[row, head], weights @ values, atol=1e-4, rtol=1e-4)
+
+
+@pytest.mark.unit
+def test_gdn_layer_output_does_not_depend_on_where_prefill_ends_and_decode_starts():
+    device = _triton_cuda()
+    from types import SimpleNamespace
+
+    from zonos3_sgl.models.gdn import OriginalGDN, PrefillInputs, PrefillLayout
+
+    generator = torch.Generator(device=device).manual_seed(0)
+    rand = lambda *shape: torch.randn(*shape, device=device, generator=generator)
+    hidden, rows = 64, 150
+
+    def layer():
+        gdn = OriginalGDN(SimpleNamespace(hidden_size=hidden), 0)
+        g = torch.Generator(device=device).manual_seed(1)
+        fill = lambda t, scale: torch.randn(t.shape, device=device, generator=g) * scale
+        gdn.in_proj.weight, gdn.conv.weight = fill(gdn.in_proj.weight, 0.1), fill(gdn.conv.weight, 0.5)
+        gdn.out_weight, gdn.wo.weight = torch.ones(128, device=device), fill(gdn.wo.weight, 0.1)
+        gdn.A_log, gdn.dt_bias = fill(gdn.A_log, 1.0), fill(gdn.dt_bias, 1.0)
+        gdn.allocate_cache(3, device, torch.float32)
+        return gdn
+
+    def run(prefill_rows, slot):
+        gdn = layer()
+        slots = torch.tensor([slot], device=device)
+        layout = PrefillLayout.build([prefill_rows // 64], device)
+        padded = torch.zeros(layout.lengths[0], hidden, device=device)
+        padded[:prefill_rows] = x[:prefill_rows]
+        inputs = PrefillInputs(layout=layout, slots=slots, lengths=torch.tensor([prefill_rows], device=device))
+        out = [gdn._forward_prefill_static(padded, inputs)[:prefill_rows]]
+        gdn.enable_graph_decode(slots, OriginalGDN.static_tables(device, [1]))
+        out += [gdn._forward_decode_static(x[t : t + 1], 1) for t in range(prefill_rows, rows)]
+        return torch.cat(out)
+
+    x = rand(rows, hidden)
+    whole = run(rows, 0)
+    assert whole.abs().max() > 1e-3
+    for prefill_rows, slot in ((1, 1), (64, 2), (77, 0)):
+        assert torch.allclose(run(prefill_rows, slot), whole, atol=1e-4, rtol=1e-3)

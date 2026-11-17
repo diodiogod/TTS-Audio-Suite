@@ -41,7 +41,7 @@ class Zonos3MiniEngineNode(BaseTTSNode):
             "required": {
                 "model_variant": (models, {
                     "default": "ZONOS3-Mini",
-                    "tooltip": "Zyphra ZONOS3-Mini (Apache-2.0 weights), 44.1 kHz multilingual TTS with voice cloning. First use downloads about 10.3 GB into ComfyUI/models/TTS/zonos3_mini/ZONOS3-Mini/; the full_mr decoder adds 4 GB and voice_mode 'reference' adds 0.8 GB, each fetched only when first used. Runs Zyphra's official plain-PyTorch reference implementation, which is slower than their CUDA-kernel server. 'local:<folder>' entries are complete model folders you placed under models/TTS/zonos3_mini/."
+                    "tooltip": "Zyphra ZONOS3-Mini (Apache-2.0 weights), 44.1 kHz multilingual TTS with voice cloning. First use downloads about 10.3 GB into ComfyUI/models/TTS/zonos3_mini/ZONOS3-Mini/; the full_mr decoder adds 4 GB and voice_mode 'reference' adds 0.8 GB, each fetched only when first used. Runs Zyphra's official inference code: their CUDA-graph engine when available, else their plain-PyTorch reference implementation (see 'engine'). 'local:<folder>' entries are complete model folders you placed under models/TTS/zonos3_mini/."
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
@@ -76,6 +76,10 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                 "dtype": (["auto", "bfloat16", "float32"], {
                     "default": "auto",
                     "tooltip": "Model precision. Auto uses bfloat16 on CUDA (less VRAM, faster) and float32 on CPU. float32 on CUDA is mainly for diagnosis."
+                }),
+                "engine": (["auto", "fast", "reference"], {
+                    "default": "auto",
+                    "tooltip": "Which of Zyphra's two implementations runs the model. fast: their CUDA-graph engine, several times faster; needs CUDA (cuda:0), bfloat16 and the triton package (triton-windows on Windows), and uses about 2.5 GB of VRAM. reference: their plain-PyTorch implementation; works on CPU and in float32. auto uses fast when it can and says why when it falls back. The two round differently, so the same seed gives different (equally valid) audio on each."
                 }),
                 "decoder": (["keep2_plain", "full_mr"], {
                     "default": "keep2_plain",
@@ -170,6 +174,7 @@ class Zonos3MiniEngineNode(BaseTTSNode):
         top_k: int,
         top_p: float,
         dtype: str = "auto",
+        engine: str = "auto",
         decoder: str = "keep2_plain",
         min_p: float = 0.0,
         repetition_penalty: float = 2.4,
@@ -201,6 +206,7 @@ class Zonos3MiniEngineNode(BaseTTSNode):
             "model_variant": model_variant,
             "device": device,
             "dtype": dtype,
+            "engine": engine,
             "decoder": decoder,
             "language": language,
             "voice_preset": voice_preset,
@@ -238,7 +244,7 @@ class Zonos3MiniEngineNode(BaseTTSNode):
         print(f"⚙️ ZONOS3-Mini: Configured on {device}")
         print(
             f"   Model: {model_variant} | Language: {language} ({to_zonos_language(language)}) | "
-            f"Dtype: {dtype} | Decoder: {decoder}"
+            f"Dtype: {dtype} | Engine: {engine} | Decoder: {decoder}"
         )
         print(
             f"   Voice: mode={voice_mode}, preset={voice_preset} (used without reference audio) | "

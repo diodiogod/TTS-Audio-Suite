@@ -1570,7 +1570,7 @@ engines:
       native_long_form: { supported: false, notes: "(use suite chunking)" }
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(main env works; the shared 8GB autoencoder checkpoint is loaded for decoding)" }
-      speed_performance: { supported: "partial", notes: "Official plain-PyTorch reference implementation; faster than real time on a high-end GPU, slower than Zyphra's CUDA server" }
+      speed_performance: { supported: true, notes: "Fast CUDA-graph engine (CUDA + Triton): about 30x real time on an RTX 4090; the plain-PyTorch reference implementation (CPU, float32) is several times slower" }
       reference_free_tts: { supported: true, notes: "(30 built-in voices)" }
 
   - id: moss-tts
@@ -2588,5 +2588,5 @@ model_layouts_markdown: |
   - Downloads into a dedicated `zonos3_mini/` folder; optional parts are fetched the first time they are selected.
   - Other complete model folders placed under `zonos3_mini/` appear in the engine node as `local:<folder>`.
   - Native sample rate is 44.1kHz.
-  - Runs in the main environment; the inference code is Zyphra's reference implementation bundled in `engines/zonos3_mini/vendor/`.
+  - Runs in the main environment; the inference code is Zyphra's, bundled in `engines/zonos3_mini/vendor/`: their CUDA-graph engine (`engine: fast`, needs CUDA, bfloat16 and Triton; `triton-windows` on Windows) and their plain-PyTorch reference implementation (`engine: reference`). `auto` picks the fast one when it can.
   - Voice cloning needs reference audio only; no reference transcript is used.

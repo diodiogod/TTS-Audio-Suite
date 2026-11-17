@@ -240,6 +240,7 @@ Back to the main narrator voice for the conclusion.""",
             if engine_type == "zonos3_mini":
                 stable_params['model_variant'] = config.get('model_variant', 'ZONOS3-Mini')
                 stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['engine'] = config.get('engine', 'auto')
 
             # For MOSS-TTS, include model identity and load-time options.
             if engine_type == "moss_tts":

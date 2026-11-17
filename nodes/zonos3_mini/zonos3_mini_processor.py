@@ -79,11 +79,13 @@ class Zonos3MiniProcessor:
         cfg = self.config
         controls = {k: v for k, v in (cfg.get("controls") or {}).items() if float(v) != 0.0}
         settings = (
-            "⚙️ ZONOS3-Mini Settings: model={model}, device={device}/{dtype}, decoder={decoder}, language={language}, "
+            "⚙️ ZONOS3-Mini Settings: model={model}, device={device}/{dtype}, engine={engine}, decoder={decoder}, "
+            "language={language}, "
             "voice_mode={voice_mode}, preset={preset}, LACI={laci}{controls}".format(
                 model=cfg.get("model_variant", "ZONOS3-Mini"),
                 device=cfg.get("device", "auto"),
                 dtype=cfg.get("dtype", "auto"),
+                engine=cfg.get("engine", "auto"),
                 decoder=cfg.get("decoder", "keep2_plain"),
                 language=to_zonos_language(cfg.get("language", DEFAULT_LANGUAGE)),
                 voice_mode=cfg.get("voice_mode", "embedding"),

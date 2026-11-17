@@ -245,6 +245,7 @@ Hello! This is unified SRT TTS with character switching.
             if engine_type == "zonos3_mini":
                 stable_params['model_variant'] = config.get('model_variant', 'ZONOS3-Mini')
                 stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['engine'] = config.get('engine', 'auto')
 
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
