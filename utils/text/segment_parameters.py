@@ -446,6 +446,21 @@ PARAMETER_NODE_KEYS = {
 }
 
 
+# ZONOS3-Mini steering tags: the configuration nodes' sliders, additional effects and envelope
+# (engines/zonos3_mini/steering_tags.py). happy / angry / sad / calm reuse the emotion tags above.
+from engines.zonos3_mini.steering_tags import TAG_PARAMETERS as _ZONOS3_TAGS
+
+for _tag, (_canonical, _low, _high, _description) in _ZONOS3_TAGS.items():
+    if _tag in INDEX_TTS_EMOTIONS:
+        PARAMETER_ENGINES[PARAMETER_ALIASES[_tag]].add('zonos3_mini')
+        continue
+    if PARAMETER_ALIASES.setdefault(_tag, _canonical) != _canonical:
+        raise RuntimeError(f"ZONOS3-Mini tag '{_tag}' collides with an existing parameter alias")
+    PARAMETER_ENGINES[_canonical] = {'zonos3_mini'}
+    PARAMETER_VALIDATION[_canonical] = (float, _low, _high, _description)
+    PARAMETER_NODE_KEYS[_canonical] = _canonical
+
+
 class ParameterValidator:
     """Validates and filters parameters based on engine type and value constraints."""
 
@@ -609,7 +624,11 @@ class SegmentParameterParser:
                 # A character may legitimately be named after an emotion. Only a
                 # numeric value turns [sad:...] into an inline vector control;
                 # [sad:audio_ref] must remain a character emotion-reference tag.
-                if key_stripped.lower() in INDEX_TTS_EMOTIONS and not re.fullmatch(
+                # The same holds for the ZONOS3-Mini steering tags ([Soft:audio_ref], [pace:Bob]).
+                if (
+                    key_stripped.lower() in INDEX_TTS_EMOTIONS
+                    or (canonical_name or '').startswith('zonos3_')
+                ) and not re.fullmatch(
                     r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)', value
                 ):
                     canonical_name = None

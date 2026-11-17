@@ -176,7 +176,6 @@ class Zonos3MiniEngineAdapter:
             "repetition_penalty": float(cfg.get("repetition_penalty", 2.4)),
             "repetition_window": int(cfg.get("repetition_window", 96)),
             "repetition_codebooks": int(cfg.get("repetition_codebooks", 6)),
-            "seed": int(seed or 0),
             "speaker_cfg_scale": float(cfg.get("speaker_cfg_scale", 1.0)),
             "controls_cfg_scale": float(cfg.get("controls_cfg_scale", 1.0)),
             "condition_buckets": {
@@ -191,6 +190,8 @@ class Zonos3MiniEngineAdapter:
             "headroom_db": float(cfg.get("headroom_db", 3.0)),
             "fade_out_ms": float(cfg.get("fade_out_ms", 0.0)),
         }
+        if int(seed or 0) > 0:  # 0 = random: the model draws a seed when the request has none
+            request["seed"] = int(seed)
         max_new_frames = int(cfg.get("max_new_frames", 0) or 0)
         if max_new_frames > 0:
             request["max_tokens"] = max_new_frames
@@ -228,7 +229,7 @@ class Zonos3MiniEngineAdapter:
             audio_component = f"preset:{preset}"
 
         cache_key = None
-        if enable_audio_cache:
+        if enable_audio_cache and "seed" in request:  # a random take is never a cache hit and is not stored
             cache_key = self.audio_cache.generate_cache_key(
                 "zonos3_mini",
                 **request,

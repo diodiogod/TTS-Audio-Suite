@@ -13,9 +13,10 @@ LANGUAGE_ALIASES = {
     'de': 'de', 'german': 'de', 'deutsch': 'de', 'germany': 'de', 'deutschland': 'de',
     
     # English variations
-    'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'america': 'en', 'britain': 'en',
+    'en': 'en', 'english': 'en', 'eng': 'en', 'usa': 'en', 'america': 'en',
     'en_us': 'en', 'en-us': 'en',
-    'en-gb': 'en-gb', 'en_gb': 'en-gb', 'british': 'en-gb',
+    # British English: a regional variant (see REGIONAL_VARIANTS). 'uk' is not an alias: it is Ukrainian.
+    'en-gb': 'en-gb', 'en_gb': 'en-gb', 'british': 'en-gb', 'britain': 'en-gb',
     
     # Brazilian Portuguese (separate from European Portuguese)
     'pt': 'pt',  # Generic Portuguese (used by ChatterBox Official 23-Lang)
@@ -211,12 +212,20 @@ LANGUAGE_ALIASES = {
 }
 
 
-def resolve_language_alias(language_input: str) -> str:
+# Regional variants only some engines distinguish: canonical code -> (base language, engines that keep the variant).
+# Every other engine receives the base language, so [en-GB:] is plain English for them.
+REGIONAL_VARIANTS = {
+    'en-gb': ('en', frozenset({'zonos3_mini'})),
+}
+
+
+def resolve_language_alias(language_input: str, engine_type: Optional[str] = None) -> str:
     """
     Resolve language alias to canonical language code.
     
     Args:
         language_input: User input language (e.g., "German", "brasil", "pt-BR")
+        engine_type: Engine the language is resolved for; decides whether a regional variant is kept
         
     Returns:
         Canonical language code (e.g., "de", "pt-br")
@@ -227,7 +236,8 @@ def resolve_language_alias(language_input: str) -> str:
     # Look up in aliases
     canonical = LANGUAGE_ALIASES.get(normalized)
     if canonical:
-        return canonical
+        base, engines = REGIONAL_VARIANTS.get(canonical, (canonical, ()))
+        return canonical if engine_type in engines else base
         
     # If no alias found, return the original (for backward compatibility)
     return normalized

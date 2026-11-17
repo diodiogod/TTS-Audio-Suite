@@ -50,7 +50,11 @@ class SemanticTeacher(nn.Module):
             raise ValueError("The recipe targets transformer layer 16")
         from transformers import Wav2Vec2BertModel
 
-        self.model = Wav2Vec2BertModel.from_pretrained(path, dtype=dtype, local_files_only=True)
+        # TTS Audio Suite Patch: attn_implementation="eager". Transformers 5 picks SDPA attention for this model,
+        # whose bfloat16 rounding changes about 15% of the reference codes; eager is what the codec was built with.
+        self.model = Wav2Vec2BertModel.from_pretrained(
+            path, dtype=dtype, local_files_only=True, attn_implementation="eager"
+        )
         self.model.encoder.layers = nn.ModuleList(list(self.model.encoder.layers[:layer]))
         self.model.config.num_hidden_layers = layer
         self.model.eval().requires_grad_(False)

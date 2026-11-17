@@ -30,6 +30,8 @@ byte-identical to the commit.
 4. `zonos3/codec/data_processing/torch_utils.py` — `import fcntl` moved into the inductor branch that uses it, so the
    module imports on Windows.
 5. `zonos3/models/third_party/antspeaker/models/model.py` — `torch.load(..., weights_only=True)`.
+6. `zonos3/codec/s1dac/losses.py` — the reference-clip teacher loads with `attn_implementation="eager"`, so
+   Transformers 5 (which would pick SDPA attention) produces the same reference codes as Transformers 4.
 
 Removed `if __name__ == "__main__":` demo blocks: `zonos3/codec/s1dac/vendor/modded_dac.py`,
 `zonos3/codec/s1dac/vendor/rvq.py`, `zonos3/tts/laci.py`.

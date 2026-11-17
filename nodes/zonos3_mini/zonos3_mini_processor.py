@@ -20,6 +20,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from engines.zonos3_mini.languages import DEFAULT_LANGUAGE, to_suite_language, to_zonos_language
+from engines.zonos3_mini.steering_tags import apply_steering_tags
 from utils.audio.chunk_timing import ChunkTimingHelper
 from utils.text.character_parser import character_parser
 from utils.text.chunking import ImprovedChatterBoxChunker
@@ -180,7 +181,9 @@ class Zonos3MiniProcessor:
             parameter_log = ""
             if segment_params:
                 filtered_params = ParameterValidator.filter_parameters_for_engine(segment_params, self.ENGINE_TYPE)
-                current_config = apply_segment_parameters(base_config, segment_params, self.ENGINE_TYPE)
+                current_config = apply_steering_tags(
+                    apply_segment_parameters(base_config, segment_params, self.ENGINE_TYPE)
+                )
                 if "seed" in current_config:
                     current_seed = int(current_config.get("seed", seed))
                 parameter_log = ", ".join(f"{key}={value}" for key, value in filtered_params.items())

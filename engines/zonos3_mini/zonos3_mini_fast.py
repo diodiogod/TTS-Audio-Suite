@@ -10,6 +10,7 @@ Needs CUDA and Triton; `availability()` reports why it cannot run.
 """
 
 import importlib.util
+import json
 import os
 from typing import Dict, List, Optional, Tuple
 
@@ -26,10 +27,6 @@ _ENGINE_ENV = {
     "ZONOS3_USE_TRAINING_ROPE": "1",
 }
 
-# Rows reserved per request: reference prefix (up to 900) + text + generated frames. The checkpoint supports
-# 32768; this integration chooses 4096 to reduce preallocated GPU cache/buffer memory. It limits long individual
-# takes: use smaller suite chunks or the reference backend for the model's full context.
-MAX_CONTEXT_ROWS = 4096
 # LACI reads this many text keys per request inside the decode graph; longer texts decode without the graph.
 PROBE_MAX_TEXT = 1024
 
@@ -74,9 +71,16 @@ class Zonos3MiniFastRunner:
 
         self.P = P
         self.assets = assets
+        lm_dir = os.path.join(root, "lm", "zonos3_mini")
+        with open(os.path.join(lm_dir, "params.json"), encoding="utf-8") as handle:
+            params = json.load(handle)
+        # Rows per request (reference prefix + text + generated frames): the checkpoint's whole context, as the
+        # reference implementation plans with. A request and its CFG twin each get that many KV pages; at 32768 rows
+        # this costs about 0.3 GB more than a 4096-row pool (measured) and no speed.
+        context_rows = int(params.get("model", params)["max_seqlen"])
         self.device = torch.device("cuda:0")  # zonos3_sgl binds its single rank to cuda:0
         config = _config_class(SchedulerConfig)(
-            model_path=os.path.join(root, "lm", "zonos3_mini"),
+            model_path=lm_dir,
             tp_info=DistributedInfo(0, 1),
             dtype=dtype,
             offline_mode=True,
@@ -84,18 +88,21 @@ class Zonos3MiniFastRunner:
             cache_type="naive",
             max_running_req=2,  # a request and its CFG twin
             cuda_graph_max_bs=2,
-            max_seq_len_override=MAX_CONTEXT_ROWS,
-            num_page_override=2 * MAX_CONTEXT_ROWS,
-            phoneme_rows=os.path.join(root, "lm", "zonos3_mini", "text_rows", "pause_tokens_s5000.pt"),
+            max_seq_len_override=context_rows,
+            num_page_override=2 * context_rows,
+            phoneme_rows=os.path.join(lm_dir, "text_rows", "pause_tokens_s5000.pt"),
             laci_heads=dict(laci_heads),
             align_probe_max_text=PROBE_MAX_TEXT,
             align_probe_max_masked=1,
-            align_probe_max_keys=MAX_CONTEXT_ROWS,
+            align_probe_max_keys=context_rows,
             steer_bundle=steer_bundle,
         )
         self._previous_stream = torch.cuda.current_stream(self.device)
-        self.scheduler = _OfflineScheduler(config)
-        self.context = _FastContext(self.scheduler, config, assets, self.device)
+        # Built in inference mode, like every later call: graph capture updates the CUDA generator's state in place,
+        # and that state is an inference tensor once anything (the reference-clip encoder) seeded it in that mode.
+        with torch.inference_mode():
+            self.scheduler = _OfflineScheduler(config)
+        self.context = _FastContext(self.scheduler, config, params, assets, self.device)
 
     # ------------------------------------------------------------------ generation
 
@@ -321,16 +328,13 @@ class _FastContext:
 
     steer_hint = "the steering bundle failed to load"
 
-    def __init__(self, scheduler, config, assets, device):
+    def __init__(self, scheduler, config, params, assets, device):
         from zonos3.generation import SAMPLE_RATE
         from zonos3.reference.lm import Zonos3LMConfig
         from zonos3.tokenizer.matched_codec import entry
         from zonos3.tts import plan as P
         from zonos3.tts.prompt import TTSPromptBuilder, TTSPromptConfig
 
-        import json
-
-        params = json.load(open(os.path.join(config.model_path, "params.json"), encoding="utf-8"))
         c = Zonos3LMConfig.from_params(params)
         self.config, self.assets, self.device = c, assets, device
         self.lm_view = _LMView(c)

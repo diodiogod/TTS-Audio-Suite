@@ -22,7 +22,7 @@ BaseTTSNode = base_module.BaseTTSNode
 from engines.zonos3_mini.languages import DEFAULT_LANGUAGE, LANGUAGES, to_zonos_language
 from engines.zonos3_mini.voices import DEFAULT_PRESET, PRESETS
 from engines.zonos3_mini.zonos3_mini_downloader import Zonos3MiniDownloader
-from engines.zonos3_mini.steering_ui import control_catalog
+from engines.zonos3_mini.steering_ui import validate_steering
 
 
 class Zonos3MiniEngineNode(BaseTTSNode):
@@ -122,10 +122,9 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                     "default": 0, "min": 0, "max": 9000, "step": 1,
                     "tooltip": (
                         "Maximum audio length for each text chunk.\n\n"
-                        "0: use the selected backend's limit.\n"
+                        "0: use the model's limit.\n"
                         "15 frames = 1 second; 9000 = 10 minutes.\n\n"
-                        "Fast has a shorter limit: under about 4½ minutes, reduced by the text and voice clip.\n"
-                        "Reaching a limit stops speech, even if text remains. Split longer scripts into smaller Unified chunks."
+                        "Reaching the limit stops speech, even if text remains. Split longer scripts into smaller Unified chunks."
                     )
                 }),
                 "loudness_bucket": ("INT", {
@@ -173,8 +172,9 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                     "tooltip": (
                         "Choose how the model generates speech.\n\n"
                         "Auto: use Fast when available, otherwise Reference.\n"
-                        "Fast: quicker generation, with a smaller cache to save GPU memory. Each chunk is limited to under about 4½ minutes; text and the voice clip reduce that limit.\n"
-                        "Reference: slower, with support for the model's advertised takes of up to 10 minutes.\n\n"
+                        "Fast: quicker generation.\n"
+                        "Reference: slower; also works on CPU and in float32.\n\n"
+                        "Both support the model's full context, for takes of up to 10 minutes.\n"
                         "The backends can sound different, even with the same seed.\n\n"
                         "Fast setup: NVIDIA GPU (cuda:0), bfloat16 and Triton. Start ComfyUI with --disable-cuda-malloc."
                     )
@@ -236,11 +236,6 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                 for direction, dose in (steering.get("controls") or {}).items():
                     controls[direction] = float(dose)
 
-        if voice_mode != "embedding":
-            embedding_ids = {effect["id"] for effect in control_catalog()["effects"] if effect["embedding_only"]}
-            if any(dose != 0 and direction in embedding_ids for direction, dose in controls.items()):
-                raise ValueError("ZONOS3-Mini Voice Characteristics requires embedding voice mode. Select embedding or disconnect Voice Characteristics before generating in reference mode.")
-
         config = {
             "engine_type": "zonos3_mini",
             "model_variant": model_variant,
@@ -281,14 +276,7 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                 if key in delivery:
                     config[key] = float(delivery[key])
 
-        if config["controls_cfg_scale"] != 1.0:
-            if voice_mode != "embedding":
-                raise ValueError("ZONOS3-Mini control guidance requires embedding voice mode. Use normal guidance (1) in Emotion & Delivery for reference mode.")
-            if laci or float(speaker_cfg_scale) != 1.0:
-                raise ValueError("ZONOS3-Mini control guidance cannot be combined with LACI or speaker guidance. Use normal control guidance (1).")
-            hidden_ids = {effect["id"] for effect in control_catalog()["effects"] if not effect["embedding_only"]}
-            if not any(dose != 0 and direction in hidden_ids for direction, dose in controls.items()):
-                raise ValueError("ZONOS3-Mini control guidance requires an active delivery effect. Use normal guidance (1) while effects are off.")
+        validate_steering(voice_mode, controls, config["controls_cfg_scale"], bool(laci), float(speaker_cfg_scale))
 
         print(f"⚙️ ZONOS3-Mini: Configured on {device}")
         print(

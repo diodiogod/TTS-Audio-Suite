@@ -704,3 +704,123 @@ def test_gdn_layer_output_does_not_depend_on_where_prefill_ends_and_decode_start
     assert whole.abs().max() > 1e-3
     for prefill_rows, slot in ((1, 1), (64, 2), (77, 0)):
         assert torch.allclose(run(prefill_rows, slot), whole, atol=1e-4, rtol=1e-3)
+
+
+# ---------------------------------------------------------------------------------------------- PR #386 follow-up
+
+
+@pytest.mark.unit
+def test_seed_zero_is_a_random_take_that_is_never_cached(adapter, no_interrupt, monkeypatch):
+    for _ in range(2):
+        adapter.generate_single("Random take.", None, seed=0)
+    assert len(adapter.engine.requests) == 2  # the second call is not served from the audio cache
+    assert all("seed" not in request for request in adapter.engine.requests)  # the model draws the seed
+
+    adapter.generate_single("Fixed take.", None, seed=5)
+    adapter.generate_single("Fixed take.", None, seed=5)
+    assert len(adapter.engine.requests) == 3 and adapter.engine.requests[-1]["seed"] == 5
+
+    recording = RecordingAdapter(seconds=1.0)
+    monkeypatch.setattr(SRT_MODULE, "Zonos3MiniEngineAdapter", lambda config: recording)
+    SRT_MODULE.Zonos3MiniSRTProcessor(None, {"language": "English (US)"}).process_srt_content(
+        TWO_CUE_SRT, {}, seed=0, timing_mode="pad_with_silence", timing_params={}
+    )
+    assert [call["seed"] for call in recording.calls] == [0, 0]  # not 0, 1: every subtitle stays random
+
+
+@pytest.mark.unit
+def test_uk_is_ukrainian_and_british_english_is_a_variant_only_zonos_keeps(no_interrupt):
+    from utils.models.language_mapper import resolve_language_alias
+    from utils.text.character_parser.base_parser import CharacterParser
+
+    for tag in ("uk", "UK", "Ukrainian"):
+        assert resolve_language_alias(tag) == "uk"
+    for tag in ("en-GB", "EN_gb", "British", "britain"):
+        assert resolve_language_alias(tag) == "en"  # engines without regional variants get English
+        assert resolve_language_alias(tag, "zonos3_mini") == "en-gb"
+        assert to_zonos_language(resolve_language_alias(tag, "zonos3_mini")) == "en_gb"
+
+    parser = CharacterParser()
+    parse = lambda text, engine: parser.parse_text_segments(text, engine_type=engine)[0].language
+    assert parse("[en-GB:] Lovely weather.", "zonos3_mini") == "en-gb"
+    assert parse("[en-GB:] Lovely weather.", "chatterbox") == "en"
+    assert parse("[UK:] Привіт", "chatterbox") == "uk"
+
+    recording = RecordingAdapter()
+    PROCESSOR_MODULE.Zonos3MiniProcessor(recording, {"language": "English (US)"}).process_text(
+        "[en-GB:] Lovely weather. [uk:] Привіт.", {}, seed=1, show_text_logging=False
+    )
+    assert [to_zonos_language(call["config"]["language"]) for call in recording.calls] == ["en_gb", "uk"]
+
+
+@pytest.mark.unit
+def test_steering_tags_override_one_segment_and_restore_the_node_baseline(no_interrupt):
+    from engines.zonos3_mini.steering_tags import TAG_PARAMETERS
+
+    # every slider, every additional effect and the envelope are reachable as tags
+    delivery_node = _load("zonos3_steering_tags_test", "nodes/engines/zonos3_mini_steering_nodes.py").Zonos3MiniDeliveryNode
+    envelope = {"full_strength_seconds", "reduction_seconds", "remaining_strength_percent", "control_guidance"}
+    sliders = {c[0] for c in VOICE_DESIGN + DELIVERY}
+    accents = {c[0] for c in VOICE_DESIGN if c[0] + "_accent" in TAG_PARAMETERS}
+    assert (sliders - accents) | {a + "_accent" for a in accents} | envelope <= TAG_PARAMETERS.keys()
+    assert envelope <= set(delivery_node.INPUT_TYPES()["optional"])
+    assert {"british", "french", "mandarin"} <= accents and not accents & TAG_PARAMETERS.keys()
+    assert "emotions.proud" in TAG_PARAMETERS
+
+    recording = RecordingAdapter()
+    base = {
+        "language": "English (US)", "voice_mode": "embedding", "controls_cfg_scale": 1.0,
+        "controls": {"emotions.happy": 2.0, "delivery.loud": 1.0, "identity.gender": 1.0},
+        "steer_hold": -1.0, "steer_onset_seconds": -1.0, "steer_ramp_seconds": -1.0,
+    }
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(recording, base)
+    processor.process_text(
+        # the suite resets tag parameters at each new line
+        "Baseline.\n"
+        "[Zorblax|happy:0|sad:4|projection:-2|british_accent:1.5|emotions.proud:2.5|full_strength:2|remaining_strength:50] Tagged.\n"
+        "[Zorblax] Back to the baseline.\n"
+        "[Zorblax|pace:99|mandarin_accent:1.5] Out of range pace.",
+        {}, seed=1, show_text_logging=False,
+    )
+    first, tagged, restored, clamped = (call["config"] for call in recording.calls)
+
+    assert first["controls"] == restored["controls"] == base["controls"]
+    assert restored["steer_onset_seconds"] == -1.0
+    assert tagged["controls"] == {
+        "identity.gender": 1.0,  # untouched node setting
+        "emotions.sad": 4.0, "delivery.whisper": 2.0,  # happy:0 and projection:-2 replaced happy / loud
+        "accents_en.british": 1.5, "emotions.proud": 2.5,
+    }
+    assert (tagged["steer_onset_seconds"], tagged["steer_hold"], tagged["steer_ramp_seconds"]) == (2.0, 0.5, -1.0)
+    assert "delivery.tempo" not in clamped["controls"]  # an out-of-range value is ignored, not clamped
+    assert clamped["controls"]["mandarin.cmn"] == 1.5 and clamped["controls"]["mandarin_hidden.cmn"] == 0.5
+    assert not [key for call in recording.calls for key in call["config"] if key.startswith("zonos3_")]
+
+    # a non-numeric value keeps the tag a character reference, and other engines ignore these tags
+    from utils.text.segment_parameters import ParameterValidator, SegmentParameterParser
+
+    assert SegmentParameterParser.parse_tag_segments("soft:whisper_ref") == (["soft:whisper_ref"], {})
+    _, params = SegmentParameterParser.parse_tag_segments("Alice|pace:1|happy:0.5")
+    assert ParameterValidator.filter_parameters_for_engine(params, "chatterbox", warn=False) == {}
+    assert set(ParameterValidator.filter_parameters_for_engine(params, "index_tts", warn=False)) == {"emotion_happy_inline"}
+
+    # tags obey the node's mode restrictions
+    reference = PROCESSOR_MODULE.Zonos3MiniProcessor(RecordingAdapter(), {"language": "English (US)", "voice_mode": "reference"})
+    with pytest.raises(ValueError, match="requires embedding voice mode"):
+        reference.process_text("[Zorblax|gender:1] No.", {}, seed=1, show_text_logging=False)
+    reference.process_text("[Zorblax|happy:2] Fine in reference mode.", {}, seed=1, show_text_logging=False)
+    with pytest.raises(ValueError, match="LACI"):
+        PROCESSOR_MODULE.Zonos3MiniProcessor(RecordingAdapter(), {"language": "English (US)", "laci": True}).process_text(
+            "[Zorblax|happy:2|control_guidance:2] No.", {}, seed=1, show_text_logging=False
+        )
+
+
+@pytest.mark.unit
+def test_steering_tag_changes_the_cache_key(adapter):
+    adapter.update_config({"language": "English (US)", "controls": {"emotions.happy": 2.0}})
+    adapter.generate_single("Same text.", None, seed=5)
+    adapter.update_config({"language": "English (US)", "controls": {"emotions.happy": 2.0}, "steer_onset_seconds": 2.0})
+    adapter.generate_single("Same text.", None, seed=5)
+    adapter.update_config({"language": "English (US)", "controls": {"emotions.sad": 2.0}})
+    adapter.generate_single("Same text.", None, seed=5)
+    assert len(adapter.engine.requests) == 3

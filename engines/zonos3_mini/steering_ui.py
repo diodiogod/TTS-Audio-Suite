@@ -86,6 +86,21 @@ def control_catalog():
     return {"effects": catalog, "release": bundle["steer_release"]}
 
 
+def validate_steering(voice_mode, controls, controls_cfg_scale, laci, speaker_cfg_scale):
+    """The native mode restrictions of a set of steering controls (node settings or per-segment tags)."""
+    effects = control_catalog()["effects"]
+    active = {direction for direction, dose in controls.items() if dose != 0}
+    if voice_mode != "embedding" and active & {effect["id"] for effect in effects if effect["embedding_only"]}:
+        raise ValueError("ZONOS3-Mini Voice Characteristics requires embedding voice mode. Select embedding, or remove the voice characteristics (node connection or tags) before generating in reference mode.")
+    if controls_cfg_scale != 1.0:
+        if voice_mode != "embedding":
+            raise ValueError("ZONOS3-Mini control guidance requires embedding voice mode. Use normal guidance (1) in Emotion & Delivery for reference mode.")
+        if laci or float(speaker_cfg_scale) != 1.0:
+            raise ValueError("ZONOS3-Mini control guidance cannot be combined with LACI or speaker guidance. Use normal control guidance (1).")
+        if not active & {effect["id"] for effect in effects if not effect["embedding_only"]}:
+            raise ValueError("ZONOS3-Mini control guidance requires an active delivery effect. Use normal guidance (1) while effects are off.")
+
+
 def parse_additional_effects(text):
     """Validate the effect editor's structured values; slider effects cannot be overridden."""
     try:

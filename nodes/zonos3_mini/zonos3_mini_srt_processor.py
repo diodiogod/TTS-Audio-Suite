@@ -178,7 +178,7 @@ class Zonos3MiniSRTProcessor:
                     segment_records = self.processor.process_text(
                         text=text,
                         voice_mapping=voice_mapping,
-                        seed=seed + i,
+                        seed=seed + i if seed > 0 else 0,  # 0 = random for every subtitle
                         enable_chunking=False,
                         enable_audio_cache=enable_audio_cache,
                         apply_edit_postprocessing=False,

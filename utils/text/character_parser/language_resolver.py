@@ -83,7 +83,7 @@ class LanguageResolver:
             # Check if the first part is actually a language code
             if self.is_known_language_code(potential_language):
                 # It's a language:character format
-                language = resolve_language_alias(potential_language)
+                language = resolve_language_alias(potential_language, self.engine_type)
                 character = character_part if character_part else "narrator"
                 return language, character
             else:
@@ -119,7 +119,7 @@ class LanguageResolver:
         if len(parts) == 1:
             # [Alice] or [de]
             if self.is_known_language_code(parts[0]):
-                result['language'] = resolve_language_alias(parts[0])
+                result['language'] = resolve_language_alias(parts[0], self.engine_type)
                 result['character'] = "narrator"
             else:
                 result['character'] = parts[0] or "narrator"
@@ -127,7 +127,7 @@ class LanguageResolver:
         elif len(parts) == 2:
             # [de:Alice] or [Alice:angry_bob]
             if self.is_known_language_code(parts[0]):
-                result['language'] = resolve_language_alias(parts[0])
+                result['language'] = resolve_language_alias(parts[0], self.engine_type)
                 result['character'] = parts[1] or "narrator"
             else:
                 result['character'] = parts[0] or "narrator"
@@ -135,7 +135,7 @@ class LanguageResolver:
 
         elif len(parts) == 3:
             # [de:Alice:angry_bob]
-            result['language'] = resolve_language_alias(parts[0]) if parts[0] else None
+            result['language'] = resolve_language_alias(parts[0], self.engine_type) if parts[0] else None
             result['character'] = parts[1] or "narrator"
             result['emotion'] = parts[2] if parts[2] else None
 

@@ -1566,8 +1566,8 @@ engines:
       native_multi_speaker: { supported: false, notes: "" }
       voice_conversion: { supported: false, notes: "" }
       asr_transcribe: { supported: false, notes: "" }
-      emotion_control: { supported: true, notes: "(native steering directions: emotions, mood, delivery)" }
-      native_long_form: { supported: false, notes: "(use suite chunking)" }
+      emotion_control: { supported: true, notes: "(native steering directions: emotions, mood, delivery; also as per-segment tags)" }
+      native_long_form: { supported: true, notes: "(single takes of several minutes on both engines; the model context is 32768 rows at 15 audio frames per second. Suite chunking stays the default)" }
       community_finetunes: { supported: false, notes: "" }
       vram_efficient: { supported: "partial", notes: "(main env works; the shared 8GB autoencoder checkpoint is loaded for decoding)" }
       speed_performance: { supported: true, notes: "Fast CUDA-graph engine (CUDA + Triton): about 30x real time on an RTX 4090; the plain-PyTorch reference implementation (CPU, float32) is several times slower" }

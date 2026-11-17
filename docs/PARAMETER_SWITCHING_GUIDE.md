@@ -135,6 +135,34 @@ See the [Sound Effects Guide](SOUND_EFFECTS_GUIDE.md) for pauses, crossfades, lo
 | `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
 | `inference_steps` | `steps` | int | 1-100 | Number of inference steps |
 
+#### ZONOS3-Mini
+| Parameter | Alias | Type | Range | Description |
+|-----------|-------|------|-------|-------------|
+| `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
+| `top_k` | `topk` | int | 1-4096 | Top-k sampling |
+| `min_p` | — | float | 0.0-1.0 | Minimum probability relative to the top token |
+| `repetition_penalty` | `rep_penalty` | float | 0.5-3.0 | Audio repetition penalty |
+| `speaker_cfg_scale` | `speaker_cfg` | float | 0.0-5.0 | Speaker guidance (1 = off) |
+| `loudness_bucket` | — | int | 0-10 | Loudness conditioning (10 = unknown) |
+| `fmax_bucket` | — | int | 0-10 | Bandwidth conditioning (10 = unknown) |
+| `speaking_rate_bucket` | `rate_bucket` | int | 0-30 | Speaking-rate conditioning (30 = unknown) |
+
+**Steering tags.** Every control of the 🌈 Emotion & Delivery and 🌈 Voice Characteristics nodes is also a tag, with the node's own range. A tag replaces that one control for its line; everything else keeps the node's setting, and `0` switches a control off.
+
+- Emotion & Delivery: `projection` (-3 to 4), `pace` (-3 to 3), `chatty` (-5 to 5), `hesitant` (-8 to 20), `lively` (-16 to 16), `valence` (-6 to 6), `arousal` (-6 to 6), `angry` (0 to 6), `happy` (0 to 6), `sad` (0 to 8), `calm` (0 to 8), `scared` (0 to 14), `confused` (0 to 4)
+- Voice Characteristics (embedding voice mode only): `gender` (-3 to 3), `age` (-3 to 3), `pitch` (-3 to 3), `pitch_range` (-3 to 3), `deep` (0 to 6), `bright` (0 to 6), `husky` (0 to 6), `raspy` (0 to 6), `soft` (0 to 6), `authority` (0 to 6), `room` (-4 to 6), `american_accent` (0 to 2), `british_accent` (0 to 2), `scottish_accent` (0 to 2), `irish_accent` (0 to 2), `welsh_accent` (0 to 2), `australian_accent` (0 to 2), `indian_accent` (0 to 2), `hindi_accent` (0 to 2), `spanish_accent` (0 to 2), `french_accent` (0 to 2), `portuguese_accent` (0 to 2), `german_accent` (0 to 2), `vietnamese_accent` (0 to 2), `polish_accent` (0 to 2), `mandarin_accent` (0 to 1.5)
+- Additional effects by their native name, e.g. `emotions.proud:2`, `mood.dominance:1.5`, `delivery.pitch:-1`
+- Effect timing: `full_strength` (seconds at full strength), `reduction` (seconds to fade down), `remaining_strength` (percent kept afterwards), `control_guidance` (1 = normal)
+
+```
+[Alice|happy:2.5|pace:1] Alice sounds cheerful and quick on this line.
+[Alice|sad:4|full_strength:2|remaining_strength:50] Sad for two seconds, then half as sad.
+[Bob|deep:3|british_accent:1.2] Bob with a deeper voice and a British accent.
+[Alice] Back to the node's settings.
+```
+
+Accent tags end in `_accent` because the bare names (`british`, `french`, ...) are language tags. Values outside a control's range are ignored with a warning. The same restrictions as the nodes apply: voice characteristics need embedding voice mode, and `control_guidance` other than 1 cannot be combined with LACI or speaker guidance.
+
 #### IndexTTS 2 / 2.5
 | Parameter | Alias | Type | Range | Description |
 |-----------|-------|------|-------|-------------|
