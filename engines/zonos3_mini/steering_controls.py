@@ -1,6 +1,7 @@
 """ZONOS3-Mini steering widgets: slider tables and their mapping to the request's ``controls`` ({direction: dose}).
 
-Ranges and mappings follow the public bundle's own UI table (assets/steering/studio_bundle_mect60k_x10.json, ``ui``).
+Ranges and mappings follow the ``ui`` table of upstream's assets/steering/studio_bundle_mect60k_x10.json (that table
+is not part of the trimmed copy bundled here).
 Raw sets (identity, pitch, texture, room, accents_en, accents_l1, mandarin) move the speaker embedding and need
 speaker_mode=embedding; hidden sets (delivery, disfluency, expressive, mood, emotions, mandarin_hidden) work in both
 speaker modes.
