@@ -207,7 +207,7 @@ try:
     zonos3_mini_engine_module = load_node_module("zonos3_mini_engine_node", "engines/zonos3_mini_engine_node.py")
     Zonos3MiniEngineNode = zonos3_mini_engine_module.Zonos3MiniEngineNode
     zonos3_mini_steering_module = load_node_module("zonos3_mini_steering_nodes", "engines/zonos3_mini_steering_nodes.py")
-    Zonos3MiniVoiceDesignNode = zonos3_mini_steering_module.Zonos3MiniVoiceDesignNode
+    Zonos3MiniVoiceCharacteristicsNode = zonos3_mini_steering_module.Zonos3MiniVoiceCharacteristicsNode
     Zonos3MiniDeliveryNode = zonos3_mini_steering_module.Zonos3MiniDeliveryNode
     ZONOS3_MINI_ENGINE_AVAILABLE = True
 except Exception as e:
@@ -720,10 +720,10 @@ if OMNIVOICE_ENGINE_AVAILABLE:
 if ZONOS3_MINI_ENGINE_AVAILABLE:
     NODE_CLASS_MAPPINGS["Zonos3MiniEngineNode"] = Zonos3MiniEngineNode
     NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniEngineNode"] = "⚙️ ZONOS3-Mini Engine"
-    NODE_CLASS_MAPPINGS["Zonos3MiniVoiceDesignNode"] = Zonos3MiniVoiceDesignNode
-    NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniVoiceDesignNode"] = "🎚️ ZONOS3-Mini Voice Design"
+    NODE_CLASS_MAPPINGS["Zonos3MiniVoiceCharacteristicsNode"] = Zonos3MiniVoiceCharacteristicsNode
+    NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniVoiceCharacteristicsNode"] = Zonos3MiniVoiceCharacteristicsNode.NAME()
     NODE_CLASS_MAPPINGS["Zonos3MiniDeliveryNode"] = Zonos3MiniDeliveryNode
-    NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniDeliveryNode"] = "🎭 ZONOS3-Mini Delivery & Mood"
+    NODE_DISPLAY_NAME_MAPPINGS["Zonos3MiniDeliveryNode"] = Zonos3MiniDeliveryNode.NAME()
 
 if OMNIVOICE_INSTRUCTION_BUILDER_AVAILABLE:
     NODE_CLASS_MAPPINGS["OmniVoiceInstructionBuilderNode"] = OmniVoiceInstructionBuilderNode

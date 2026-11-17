@@ -15,7 +15,8 @@ sys.path.insert(0, str(REPO_ROOT))
 from engines.zonos3_mini import ensure_vendor_path
 from engines.zonos3_mini import zonos3_mini_downloader as downloader_module
 from engines.zonos3_mini.languages import LANGUAGES, to_suite_language, to_zonos_language
-from engines.zonos3_mini.steering_controls import DELIVERY, VOICE_DESIGN, build_controls, parse_extra_controls
+from engines.zonos3_mini.steering_controls import DELIVERY, VOICE_DESIGN, build_controls
+from engines.zonos3_mini.steering_ui import parse_additional_effects
 from engines.zonos3_mini.zonos3_mini_downloader import FILES, Zonos3MiniDownloader
 from utils.text.chunking import ImprovedChatterBoxChunker
 
@@ -184,13 +185,14 @@ def test_steering_sliders_map_to_native_directions():
         "accents_l1.hin": 1.0,
     }
 
-    assert parse_extra_controls("emotions.proud=3\n\n mood.dominance = -1.5 ") == {
+    assert parse_additional_effects('{"emotions.proud":3,"mood.dominance":-1.5}') == {
         "emotions.proud": 3.0,
         "mood.dominance": -1.5,
     }
-    for bad in ("bad line", "proud=3", "emotions.proud=lots"):
-        with pytest.raises(ValueError, match="must be 'set.direction=number'"):
-            parse_extra_controls(bad)
+    for bad in ("bad line", "[]", '{"emotions.proud":"lots"}', '{"emotions.proud":true}',
+                '{"emotions.happy":3}', '{"not.present":2}', '{"emotions.proud":NaN}'):
+        with pytest.raises(ValueError):
+            parse_additional_effects(bad)
 
 
 @pytest.mark.unit
@@ -208,17 +210,95 @@ def test_every_slider_direction_exists_in_the_bundled_steering_assets():
 
 
 @pytest.mark.unit
-def test_delivery_node_merges_extra_controls_and_drops_neutral_sliders():
+def test_delivery_node_merges_additional_effects_and_drops_neutral_sliders():
     steering_nodes = _load("zonos3_mini_steering_nodes_test_module", "nodes/engines/zonos3_mini_steering_nodes.py")
 
     (delivery,) = steering_nodes.Zonos3MiniDeliveryNode().create_steering(
-        happy=3.0, sad=0.0, extra_controls="emotions.proud=3", steer_hold=0.5
+        happy=3.0, sad=0.0, additional_effects='{"emotions.proud":3}',
+        use_model_defaults=False, remaining_strength_percent=50
     )
     assert delivery["controls"] == {"emotions.happy": 3.0, "emotions.proud": 3.0}
-    assert delivery["steer_hold"] == 0.5 and delivery["steer_onset_seconds"] == -1.0
+    assert delivery["steer_hold"] == 0.5 and delivery["steer_onset_seconds"] == 4.0
 
-    (design,) = steering_nodes.Zonos3MiniVoiceDesignNode().create_steering(gender=-2.0, age=0.0)
-    assert design == {"controls": {"identity.gender": -2.0}}
+    (design,) = steering_nodes.Zonos3MiniVoiceCharacteristicsNode().create_steering(gender=-2.0, age=0.0)
+    assert design == {"kind": "voice_characteristics", "controls": {"identity.gender": -2.0}}
+
+
+@pytest.mark.unit
+def test_steering_catalog_matches_every_native_direction():
+    import json
+    from engines.zonos3_mini.steering_ui import control_catalog
+
+    catalog = control_catalog()
+    root = REPO_ROOT / "engines/zonos3_mini/assets/steering"
+    bundle = json.loads((root / "studio_bundle_mect60k_x10.json").read_text())
+    expected = set()
+    for group, folder in bundle["sets"].items():
+        manifest = json.loads((root / folder / "manifest.json").read_text())
+        expected.update(f"{group}.{name}" for name in manifest["directions"])
+    assert {effect["id"] for effect in catalog["effects"]} == expected
+    assert len(catalog["effects"]) == len(expected) == 65
+    slider_directions = {effect["id"] for effect in catalog["effects"] if effect["slider"]}
+    additional = {effect["id"] for effect in catalog["effects"] if not effect["slider"] and not effect["embedding_only"]}
+    assert slider_directions.isdisjoint(additional)
+    assert slider_directions | additional == expected
+    assert set(parse_additional_effects(json.dumps(dict.fromkeys(additional, 1.0)))) == additional
+    from engines.zonos3_mini.steering_ui import EFFECT_DESCRIPTIONS
+    assert additional <= EFFECT_DESCRIPTIONS.keys()
+    for effect in catalog["effects"]:
+        assert effect["hint"]
+        assert "calibrat" not in effect["hint"].lower()
+        assert "no recommended" not in effect["hint"].lower()
+    assert catalog["release"] == bundle["steer_release"]
+    json.dumps(catalog)  # must travel through ComfyUI's node schema
+    proud = next(effect for effect in catalog["effects"] if effect["id"] == "emotions.proud")
+    assert proud["slider"] is None and not proud["embedding_only"]
+
+
+@pytest.mark.unit
+def test_steering_nodes_expose_readable_settings_and_native_timing():
+    module = _load("zonos3_steering_ui_test", "nodes/engines/zonos3_mini_steering_nodes.py")
+    names = list(module.Zonos3MiniDeliveryNode.INPUT_TYPES()["optional"])
+    assert names == [control[0] for control in DELIVERY] + [
+        "additional_effects", "use_model_defaults", "full_strength_seconds", "reduction_seconds",
+        "remaining_strength_percent", "control_guidance"
+    ]
+    assert module.Zonos3MiniVoiceCharacteristicsNode.NAME().startswith("🌈")
+    assert module.Zonos3MiniDeliveryNode.NAME().startswith("🌈")
+    (settings,) = module.Zonos3MiniDeliveryNode().create_steering(
+        angry=2.5, use_model_defaults=False, full_strength_seconds=4.6, reduction_seconds=2.6, remaining_strength_percent=30
+    )
+    assert settings["kind"] == "delivery"
+    assert (settings["steer_onset_seconds"], settings["steer_ramp_seconds"], settings["steer_hold"]) == (4.6, 2.6, 0.3)
+    (defaults,) = module.Zonos3MiniDeliveryNode().create_steering(full_strength_seconds=20)
+    assert [defaults[key] for key in ("steer_hold", "steer_onset_seconds", "steer_ramp_seconds")] == [-1, -1, -1]
+    assert module.Zonos3MiniVoiceCharacteristicsNode.RETURN_TYPES != module.Zonos3MiniDeliveryNode.RETURN_TYPES
+
+
+@pytest.mark.unit
+def test_engine_rejects_wrong_steering_socket_and_inactive_guidance():
+    module = _load("zonos3_engine_ui_test", "nodes/engines/zonos3_mini_engine_node.py")
+    engine = module.Zonos3MiniEngineNode()
+    args = dict(model_variant="ZONOS3-Mini", device="auto", language="English (US)",
+                voice_preset="Savannah", voice_mode="embedding", temperature=0.75, top_k=80, top_p=0.69)
+    with pytest.raises(ValueError, match="connect delivery"):
+        engine.create_engine_config(**args, voice_characteristics={"kind": "delivery", "controls": {}, "steer_hold": 0.5})
+    with pytest.raises(ValueError, match="connect voice_characteristics"):
+        engine.create_engine_config(**args, delivery={"kind": "voice_characteristics", "controls": {}})
+    with pytest.raises(ValueError, match="Voice Characteristics requires embedding"):
+        engine.create_engine_config(**{**args, "voice_mode": "reference"},
+            voice_characteristics={"kind": "voice_characteristics", "controls": {"identity.gender": 1}})
+    delivery = {"kind": "delivery", "controls": {"emotions.proud": 3}, "controls_cfg_scale": 2,
+                "steer_hold": 0.3, "steer_onset_seconds": 4.6, "steer_ramp_seconds": 2.6}
+    (data,) = engine.create_engine_config(**args, delivery=delivery)
+    assert data["config"]["steer_hold"] == 0.3 and data["config"]["controls_cfg_scale"] == 2
+    assert data["config"]["controls"] == {"emotions.proud": 3}
+    with pytest.raises(ValueError, match="embedding voice mode"):
+        engine.create_engine_config(**{**args, "voice_mode": "reference"}, delivery=delivery)
+    with pytest.raises(ValueError, match="LACI"):
+        engine.create_engine_config(**args, delivery=delivery, laci=True)
+    with pytest.raises(ValueError, match="active delivery effect"):
+        engine.create_engine_config(**args, delivery={**delivery, "controls": {}})
 
 
 @pytest.mark.unit

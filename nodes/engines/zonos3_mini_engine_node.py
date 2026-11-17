@@ -22,6 +22,7 @@ BaseTTSNode = base_module.BaseTTSNode
 from engines.zonos3_mini.languages import DEFAULT_LANGUAGE, LANGUAGES, to_zonos_language
 from engines.zonos3_mini.voices import DEFAULT_PRESET, PRESETS
 from engines.zonos3_mini.zonos3_mini_downloader import Zonos3MiniDownloader
+from engines.zonos3_mini.steering_ui import control_catalog
 
 
 class Zonos3MiniEngineNode(BaseTTSNode):
@@ -57,7 +58,7 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                 }),
                 "voice_mode": (["embedding", "reference"], {
                     "default": "embedding",
-                    "tooltip": "How a voice is given to the model. embedding: the clip is reduced to a 192-number speaker embedding; works on CPU and is required for the Voice Design node. reference: the clip (up to its first 60 s) is encoded to codec codes and used as an audio prefix; closest cloning of timbre and recording character, CUDA only, downloads an extra 0.8 GB encoder. No reference transcript is needed in either mode."
+                    "tooltip": "How a voice is given to the model. embedding: the clip is reduced to a 192-number speaker embedding; works on CPU and is required for Voice Characteristics. reference: the clip (up to its first 60 s) is encoded to codec codes and used as an audio prefix; closest cloning of timbre and recording character, CUDA only, downloads an extra 0.8 GB encoder. No reference transcript is needed in either mode."
                 }),
                 "temperature": ("FLOAT", {
                     "default": 0.75, "min": 0.1, "max": 2.5, "step": 0.01,
@@ -149,11 +150,11 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                     "default": 0.0, "min": 0.0, "max": 1000.0, "step": 10.0,
                     "tooltip": "Fade-out applied to the end of each generated chunk, in milliseconds. 0 = off."
                 }),
-                "voice_design": ("ZONOS3_STEERING", {
-                    "tooltip": "Optional ZONOS3-Mini Voice Design node (gender, age, pitch, texture, room, accents). Requires voice_mode 'embedding'."
+                "voice_characteristics": ("ZONOS3_VOICE_CHARACTERISTICS", {
+                    "tooltip": "Connect 🌈 ZONOS3-Mini Voice Characteristics (gender, age, pitch, texture, recording character, accents). Requires voice_mode 'embedding'."
                 }),
-                "delivery": ("ZONOS3_STEERING", {
-                    "tooltip": "Optional ZONOS3-Mini Delivery & Mood node (projection, pace, liveliness, mood, emotions). Works with both voice modes."
+                "delivery": ("ZONOS3_DELIVERY", {
+                    "tooltip": "Connect 🌈 ZONOS3-Mini Emotion & Delivery (delivery, mood, emotions and effect strength over time). Works with both voice modes; extra control guidance needs embedding mode."
                 }),
             },
         }
@@ -192,14 +193,24 @@ class Zonos3MiniEngineNode(BaseTTSNode):
         decode_context: bool = False,
         headroom_db: float = 3.0,
         fade_out_ms: float = 0.0,
-        voice_design=None,
+        voice_characteristics=None,
         delivery=None,
     ) -> tuple:
+        for expected, steering in (("voice_characteristics", voice_characteristics), ("delivery", delivery)):
+            if isinstance(steering, dict):
+                kind = steering.get("kind")
+                if kind != expected:
+                    raise ValueError(f"ZONOS3-Mini: connect {kind} to the {kind} socket, not {expected}.")
         controls = {}
-        for steering in (voice_design, delivery):
+        for steering in (voice_characteristics, delivery):
             if isinstance(steering, dict):
                 for direction, dose in (steering.get("controls") or {}).items():
                     controls[direction] = float(dose)
+
+        if voice_mode != "embedding":
+            embedding_ids = {effect["id"] for effect in control_catalog()["effects"] if effect["embedding_only"]}
+            if any(dose != 0 and direction in embedding_ids for direction, dose in controls.items()):
+                raise ValueError("ZONOS3-Mini Voice Characteristics requires embedding voice mode. Select embedding or disconnect Voice Characteristics before generating in reference mode.")
 
         config = {
             "engine_type": "zonos3_mini",
@@ -240,6 +251,15 @@ class Zonos3MiniEngineNode(BaseTTSNode):
             for key in ("steer_hold", "steer_onset_seconds", "steer_ramp_seconds", "controls_cfg_scale"):
                 if key in delivery:
                     config[key] = float(delivery[key])
+
+        if config["controls_cfg_scale"] != 1.0:
+            if voice_mode != "embedding":
+                raise ValueError("ZONOS3-Mini control guidance requires embedding voice mode. Use normal guidance (1) in Emotion & Delivery for reference mode.")
+            if laci or float(speaker_cfg_scale) != 1.0:
+                raise ValueError("ZONOS3-Mini control guidance cannot be combined with LACI or speaker guidance. Use normal control guidance (1).")
+            hidden_ids = {effect["id"] for effect in control_catalog()["effects"] if not effect["embedding_only"]}
+            if not any(dose != 0 and direction in hidden_ids for direction, dose in controls.items()):
+                raise ValueError("ZONOS3-Mini control guidance requires an active delivery effect. Use normal guidance (1) while effects are off.")
 
         print(f"⚙️ ZONOS3-Mini: Configured on {device}")
         print(

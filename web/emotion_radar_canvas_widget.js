@@ -28,7 +28,11 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
     const controlButtonMargin = modernControls ? 8 : 10;
 
     // Emotion configuration
-    const emotions = INDEX_TTS_EMOTION_VISUALS;
+    const emotions = options.emotions ?? INDEX_TTS_EMOTION_VISUALS;
+    const emotionByName = new Map(emotions.map(emotion => [emotion.name, emotion]));
+    const bounds = emotion => ({ min: emotion?.min ?? 0, max: emotion?.max ?? 1.2 });
+    const step = emotion => emotion?.step ?? 0.1;
+    const rightButtonX = width => width - 2 * controlButtonWidth - controlButtonSpacing - controlButtonMargin;
 
     // Current emotion values
     const emotionValues = {};
@@ -42,7 +46,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
     };
 
     // Chart configuration
-    const centerX = 160;
+    const centerX = options.centerX ?? 160;
     const centerY = 160;
     const maxRadius = 120;
 
@@ -87,13 +91,15 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
         return { radius, angle };
     }
 
-    function getEmotionValueFromRadius(radius) {
+    function getEmotionValueFromRadius(radius, emotion) {
         const normalizedRadius = Math.min(radius / maxRadius, 1.0);
-        return normalizedRadius * 1.2;
+        const { min, max } = bounds(emotion);
+        return min + normalizedRadius * (max - min);
     }
 
-    function getRadiusFromEmotionValue(value) {
-        return (value / 1.2) * maxRadius;
+    function getRadiusFromEmotionValue(value, emotion) {
+        const { min, max } = bounds(emotion);
+        return Math.max(0, Math.min(1, (value - min) / (max - min))) * maxRadius;
     }
 
     function blendEmotionColors() {
@@ -111,7 +117,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
                 const hexB = parseInt(color.substring(5, 7), 16);
 
                 // Weight by emotion value (higher values contribute more to the blend)
-                const weight = value;
+                const weight = getRadiusFromEmotionValue(value, emotion) / maxRadius;
                 totalWeight += weight;
 
                 r += hexR * weight;
@@ -179,7 +185,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
     function reduceAllEmotions() {
         emotions.forEach(emotion => {
             const currentValue = emotionValues[emotion.name];
-            setEmotionValue(emotion.name, Math.max(0.0, currentValue - 0.1));
+            setEmotionValue(emotion.name, Math.max(bounds(emotion).min, currentValue - step(emotion)));
         });
     }
 
@@ -206,7 +212,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
         for (const emotion of emotions) {
             const value = emotionValues[emotion.name];
             if (value > 0) {
-                const radius = getRadiusFromEmotionValue(value);
+                const radius = getRadiusFromEmotionValue(value, emotion);
                 const point = polarToCartesian(centerX, centerY, radius, emotion.angle);
                 const distance = Math.sqrt(
                     Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2)
@@ -220,7 +226,12 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
     }
 
     function setEmotionValue(emotionName, value) {
-        value = Math.max(0.0, Math.min(1.2, value));
+        if (options.isEmotionDisabled?.(emotionName)) return;
+        const emotion = emotionByName.get(emotionName);
+        const { min, max } = bounds(emotion);
+        if (emotion?.step) value = Math.round(value / emotion.step) * emotion.step;
+        value = Math.max(min, Math.min(max, value));
+        if (emotion?.step) value = Number(value.toFixed(6));
         emotionValues[emotionName] = value;
 
         // Update corresponding widget
@@ -230,6 +241,8 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
             if (widget.callback) {
                 widget.callback(value);
             }
+            node.graph?.change?.();
+            node.setDirtyCanvas?.(true, true);
         }
     }
 
@@ -252,10 +265,10 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
             const projectedDistance = dx * emotionDx + dy * emotionDy;
 
             // Only allow positive values (same direction as emotion axis)
-            value = projectedDistance > 0 ? getEmotionValueFromRadius(projectedDistance) : 0;
+            value = projectedDistance > 0 ? getEmotionValueFromRadius(projectedDistance, nearestEmotion) : 0;
         } else {
             // Normal fluid dragging outside deadzone
-            value = getEmotionValueFromRadius(radius);
+            value = getEmotionValueFromRadius(radius, nearestEmotion);
         }
 
         setEmotionValue(nearestEmotion.name, value);
@@ -304,8 +317,9 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
                 if (typeof value !== "number" || !Number.isFinite(value)) {
                     return { ok: false, message: `${emotionName} must be a number.` };
                 }
-                if (value < 0.0 || value > 1.2) {
-                    return { ok: false, message: `${emotionName} must be between 0.0 and 1.2.` };
+                const { min, max } = bounds(emotionByName.get(emotionName));
+                if (value < min || value > max) {
+                    return { ok: false, message: `${emotionName} must be between ${min} and ${max}.` };
                 }
             }
 
@@ -343,7 +357,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
         // Keep the emotion palette intact while tinting the negative side red.
         emotions.forEach(emotion => {
             if (getEmotionSign(emotion.name) >= 0 || emotionValues[emotion.name] <= 0) return;
-            const halfSector = Math.PI / 8;
+            const halfSector = Math.PI / emotions.length;
             const canvasAngle = emotion.angle - Math.PI / 2;
             const negativeGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
             negativeGradient.addColorStop(0, 'rgba(255, 70, 85, 0.04)');
@@ -421,7 +435,11 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
             ctx.font = hasGlow ? 'bold 12px Arial' : 'bold 11px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(emotion.name, labelPoint.x, labelPoint.y);
+            ctx.fillText(emotion.label ?? emotion.name, labelPoint.x, labelPoint.y);
+            if (options.showNativeValues) {
+                ctx.font = '10px Arial';
+                ctx.fillText(`${emotionValues[emotion.name].toFixed(1)} / ${bounds(emotion).max}`, labelPoint.x, labelPoint.y + 13);
+            }
 
             if (isNegative) {
                 ctx.save();
@@ -443,15 +461,15 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
                 ctx.font = '9px Arial';
                 ctx.fillStyle = '#ffffff';
                 const direction = getEmotionSign(emotion.name) < 0 ? '-' : '+';
-                const increaseText = `${direction}${(emotionClickCounts[emotion.name] * 0.1).toFixed(1)}`;
-                ctx.fillText(increaseText, labelPoint.x, labelPoint.y + 15);
+                const increaseText = `${direction}${(emotionClickCounts[emotion.name] * step(emotion)).toFixed(1)}`;
+                ctx.fillText(increaseText, labelPoint.x, labelPoint.y + (options.showNativeValues ? 25 : 15));
             }
 
             // Add cumulative reduction indicator when center was clicked
             if (isCenterClicked && centerClickCount > 0) {
                 ctx.font = '9px Arial';
                 ctx.fillStyle = '#ffffff';
-                const reductionText = `-${(centerClickCount * 0.1).toFixed(1)}`;
+                const reductionText = `-${(centerClickCount * step(emotion)).toFixed(1)}`;
                 ctx.fillText(reductionText, labelPoint.x, labelPoint.y + 15);
             }
         });
@@ -468,7 +486,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
             let firstPoint = true;
             emotions.forEach(emotion => {
                 const value = emotionValues[emotion.name];
-                const radius = getRadiusFromEmotionValue(value);
+                const radius = getRadiusFromEmotionValue(value, emotion);
                 const point = polarToCartesian(centerX, centerY, radius, emotion.angle);
 
                 if (firstPoint) {
@@ -488,7 +506,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
         emotions.forEach(emotion => {
             const value = emotionValues[emotion.name];
             if (value > 0) {
-                const radius = getRadiusFromEmotionValue(value);
+                const radius = getRadiusFromEmotionValue(value, emotion);
                 const point = polarToCartesian(centerX, centerY, radius, emotion.angle);
 
                 const isClicked = clickedEmotion === emotion;
@@ -579,11 +597,11 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
                 ctx.textBaseline = 'middle';
                 ctx.fillText(label, x + buttonWidth / 2, buttonY + buttonHeight / 2);
             };
-            const rightButtonX = width - 2 * buttonWidth - spacing - margin;
+            const rightX = rightButtonX(width);
             drawModernButton(margin, '⤨  Random');
             drawModernButton(margin + buttonWidth + spacing, '↻  Reset');
-            drawModernButton(rightButtonX, '⇩  Export');
-            drawModernButton(rightButtonX + buttonWidth + spacing, '⇧  Import');
+            drawModernButton(rightX, '⇩  Export');
+            drawModernButton(rightX + buttonWidth + spacing, '⇧  Import');
             return;
         }
 
@@ -604,19 +622,19 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
         ctx.fillText('Reset', margin + buttonWidth + spacing + buttonWidth/2, buttonY + buttonHeight/2);
 
         // Right side buttons (to avoid Sad label overlap)
-        const rightButtonX = width - 2*(buttonWidth + spacing) - margin;
+        const rightX = rightButtonX(width);
 
         // Export button (right side)
         ctx.fillStyle = '#45b7d1';
-        ctx.fillRect(rightButtonX, buttonY, buttonWidth, buttonHeight);
+        ctx.fillRect(rightX, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Export', rightButtonX + buttonWidth/2, buttonY + buttonHeight/2);
+        ctx.fillText('Export', rightX + buttonWidth/2, buttonY + buttonHeight/2);
 
         // Import button (right side)
         ctx.fillStyle = '#9b59b6';
-        ctx.fillRect(rightButtonX + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight);
+        ctx.fillRect(rightX + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Import', rightButtonX + buttonWidth + spacing + buttonWidth/2, buttonY + buttonHeight/2);
+        ctx.fillText('Import', rightX + buttonWidth + spacing + buttonWidth/2, buttonY + buttonHeight/2);
     }
 
     // Simple hover tracking - no external DOM events needed
@@ -629,6 +647,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
         y: 0,
         height: WIDGET_HEIGHT,
         serialize: false,
+        options: { serialize: false },
         isVisible: false,
 
         computeSize: function(width) {
@@ -691,13 +710,14 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
                 const buttonWidth = controlButtonWidth;
                 const spacing = controlButtonSpacing;
                 const margin = controlButtonMargin;
-                const rightButtonX = this.lastWidth - 2*(buttonWidth + spacing) - margin;
+                const rightX = rightButtonX(this.lastWidth);
 
                 if (localY >= buttonY && localY <= buttonY + 20) {
                     if (localX >= margin && localX <= margin + buttonWidth) {
                         // Random button (left side)
                         emotions.forEach(emotion => {
-                            setEmotionValue(emotion.name, Math.random() * 1.2);
+                            const { min, max } = bounds(emotion);
+                            setEmotionValue(emotion.name, min + Math.random() * (max - min));
                         });
                         return true;
                     } else if (localX >= margin + buttonWidth + spacing && localX <= margin + 2*buttonWidth + spacing) {
@@ -706,22 +726,13 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
                             setEmotionValue(emotion.name, 0.0);
                         });
                         return true;
-                    } else if (localX >= rightButtonX && localX <= rightButtonX + buttonWidth) {
+                    } else if (localX >= rightX && localX <= rightX + buttonWidth) {
                         // Export button - open selectable JSON
-                        const config = {
-                            "Happy": emotionValues["Happy"],
-                            "Angry": emotionValues["Angry"],
-                            "Sad": emotionValues["Sad"],
-                            "Surprised": emotionValues["Surprised"],
-                            "Afraid": emotionValues["Afraid"],
-                            "Disgusted": emotionValues["Disgusted"],
-                            "Calm": emotionValues["Calm"],
-                            "Melancholic": emotionValues["Melancholic"]
-                        };
+                        const config = { ...emotionValues };
 
-                        exportEmotionConfiguration(config);
+                        exportEmotionConfiguration(config, options.exportFilename);
                         return true;
-                    } else if (localX >= rightButtonX + buttonWidth + spacing && localX <= rightButtonX + 2*buttonWidth + spacing) {
+                    } else if (localX >= rightX + buttonWidth + spacing && localX <= rightX + 2*buttonWidth + spacing) {
                         // Import button (right side) - load emotion configuration from clipboard
                         importEmotionConfig();
                         return true;
@@ -734,7 +745,7 @@ export function createEmotionRadarCanvasWidget(node, options = {}) {
                     clickedEmotion = labelClicked; // Set clicked emotion for glow
                     clickedLabel = labelClicked; // Set clicked label for counter display
                     const currentValue = emotionValues[labelClicked.name];
-                    setEmotionValue(labelClicked.name, Math.min(1.2, currentValue + 0.1));
+                    setEmotionValue(labelClicked.name, currentValue + step(labelClicked));
 
                     // Increment click counter for this emotion
                     emotionClickCounts[labelClicked.name]++;

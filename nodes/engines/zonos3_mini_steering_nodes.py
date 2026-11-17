@@ -1,7 +1,7 @@
 """
 ZONOS3-Mini steering option nodes.
 
-Voice Design (speaker-embedding directions) and Delivery & Mood (hidden-state directions) sliders that
+Voice Characteristics (speaker-embedding directions) and Emotion & Delivery (hidden-state directions) sliders that
 connect to the ZONOS3-Mini Engine node. Values are the native steering doses of the public bundle.
 """
 
@@ -14,45 +14,48 @@ project_root = os.path.dirname(nodes_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from engines.zonos3_mini.steering_controls import DELIVERY, VOICE_DESIGN, build_controls, parse_extra_controls
+from engines.zonos3_mini.steering_controls import DELIVERY, VOICE_DESIGN, build_controls
+from engines.zonos3_mini.steering_ui import VOICE_NAME, DELIVERY_NAME, slider_metadata, control_catalog, parse_additional_effects
 
 
 def _sliders(table):
-    return {
-        widget: ("FLOAT", {
+    sliders = {}
+    for control in table:
+        widget, low, high, _mapping, tooltip = control
+        sliders[widget] = ("FLOAT", {
             "default": 0.0, "min": low, "max": high, "step": 0.1,
             "display": "slider",
             "tooltip": f"{tooltip} 0 = off.",
+            "zonos3": slider_metadata(control),
         })
-        for widget, low, high, _mapping, tooltip in table
-    }
+    return sliders
 
 
-class Zonos3MiniVoiceDesignNode:
+class Zonos3MiniVoiceCharacteristicsNode:
     """Speaker-embedding steering: who is speaking."""
 
     @classmethod
     def NAME(cls):
-        return "🎚️ ZONOS3-Mini Voice Design"
+        return VOICE_NAME
 
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {}, "optional": _sliders(VOICE_DESIGN)}
 
-    RETURN_TYPES = ("ZONOS3_STEERING",)
-    RETURN_NAMES = ("voice_design",)
+    RETURN_TYPES = ("ZONOS3_VOICE_CHARACTERISTICS",)
+    RETURN_NAMES = ("voice_characteristics",)
     FUNCTION = "create_steering"
     CATEGORY = "TTS Audio Suite/⚙️ Engines/ZONOS3-Mini"
     DESCRIPTION = (
         "Reshape the voice itself with ZONOS3-Mini's native speaker directions: gender, age, pitch, texture, "
-        "room and accent. Connect to the voice_design input of the ZONOS3-Mini Engine node. These directions move "
+        "room and accent. Connect to the voice_characteristics input of the ZONOS3-Mini Engine node. These directions move "
         "the speaker embedding, so the engine's voice_mode must be 'embedding'."
     )
 
     def create_steering(self, **values):
         controls = build_controls(VOICE_DESIGN, values)
-        print(f"🎚️ ZONOS3-Mini Voice Design: {controls if controls else 'neutral'}")
-        return ({"controls": controls},)
+        print(f"🌈 ZONOS3-Mini Voice Characteristics: {controls if controls else 'neutral'}")
+        return ({"kind": "voice_characteristics", "controls": controls},)
 
 
 class Zonos3MiniDeliveryNode:
@@ -60,37 +63,41 @@ class Zonos3MiniDeliveryNode:
 
     @classmethod
     def NAME(cls):
-        return "🎭 ZONOS3-Mini Delivery & Mood"
+        return DELIVERY_NAME
 
     @classmethod
     def INPUT_TYPES(cls):
         optional = _sliders(DELIVERY)
         optional.update({
-            "extra_controls": ("STRING", {
-                "default": "",
-                "multiline": True,
-                "tooltip": "Additional native steering directions, one 'set.direction=dose' per line, for directions without a slider. Examples: emotions.proud=3, emotions.surprised=3, emotions.disgusted=3, mood.dominance=2. Speaker sets (identity, pitch, texture, room, accents_en, accents_l1, mandarin) need voice_mode 'embedding'.",
+            "additional_effects": ("STRING", {
+                "default": "{}",
+                "tooltip": "Native effect strengths configured by the Add effect panel.",
+                "zonos3_catalog": control_catalog(),
             }),
-            "steer_hold": ("FLOAT", {
-                "default": -1.0, "min": -1.0, "max": 1.0, "step": 0.05,
-                "tooltip": "Fraction of the dose that is kept after the steering onset has passed (steer-then-hold). -1 uses the bundle default (0.35). Pace and whisper are always held fully.",
+            "use_model_defaults": ("BOOLEAN", {
+                "default": True,
+                "tooltip": "Use the model's effect envelope: full strength for 4 seconds, reduce over 1 second, then retain 35% of the steering influence.",
             }),
-            "steer_onset_seconds": ("FLOAT", {
-                "default": -1.0, "min": -1.0, "max": 60.0, "step": 0.1,
-                "tooltip": "Seconds of audio generated at full dose before the dose is released toward steer_hold. -1 uses the bundle default (4 s).",
+            "full_strength_seconds": ("FLOAT", {
+                "default": 4.0, "min": 0.0, "max": 600.0, "step": 0.1,
+                "tooltip": "Generated-speech seconds at full effect strength before reduction begins. Restarts for every chunk or subtitle. This measures generated speech, not the reference recording.",
             }),
-            "steer_ramp_seconds": ("FLOAT", {
-                "default": -1.0, "min": -1.0, "max": 60.0, "step": 0.1,
-                "tooltip": "Seconds over which the dose ramps from full to steer_hold. -1 uses the bundle default (1 s).",
+            "reduction_seconds": ("FLOAT", {
+                "default": 1.0, "min": 0.0, "max": 600.0, "step": 0.1,
+                "tooltip": "Generated-speech seconds spent reducing from full strength to remaining strength. 0 makes the change immediate.",
             }),
-            "controls_cfg_scale": ("FLOAT", {
+            "remaining_strength_percent": ("FLOAT", {
+                "default": 35.0, "min": 0.0, "max": 100.0, "step": 1.0,
+                "tooltip": "Steering influence retained after reduction: 0% releases the effect, 100% keeps full strength. This is not perceived emotion intensity. Pace and whisper stay constant.",
+            }),
+            "control_guidance": ("FLOAT", {
                 "default": 1.0, "min": 0.0, "max": 5.0, "step": 0.1,
-                "tooltip": "Classifier-free guidance on the steering controls. 1 = off. Other values run the model twice per frame (about half speed) and cannot be combined with LACI.",
+                "tooltip": "Extra guidance for active delivery effects in embedding voice mode. 1 uses normal steering; it does not turn effects off. Other values run an extra model pass per frame. Unavailable in reference mode, with LACI, or with speaker guidance other than 1.",
             }),
         })
         return {"required": {}, "optional": optional}
 
-    RETURN_TYPES = ("ZONOS3_STEERING",)
+    RETURN_TYPES = ("ZONOS3_DELIVERY",)
     RETURN_NAMES = ("delivery",)
     FUNCTION = "create_steering"
     CATEGORY = "TTS Audio Suite/⚙️ Engines/ZONOS3-Mini"
@@ -103,31 +110,33 @@ class Zonos3MiniDeliveryNode:
 
     def create_steering(
         self,
-        extra_controls="",
-        steer_hold=-1.0,
-        steer_onset_seconds=-1.0,
-        steer_ramp_seconds=-1.0,
-        controls_cfg_scale=1.0,
+        additional_effects="{}",
+        use_model_defaults=True,
+        full_strength_seconds=4.0,
+        reduction_seconds=1.0,
+        remaining_strength_percent=35.0,
+        control_guidance=1.0,
         **values,
     ):
         controls = build_controls(DELIVERY, values)
-        controls.update(parse_extra_controls(extra_controls))
-        print(f"🎭 ZONOS3-Mini Delivery & Mood: {controls if controls else 'neutral'}")
+        controls.update(parse_additional_effects(additional_effects))
+        print(f"🌈 ZONOS3-Mini Emotion & Delivery: {controls if controls else 'neutral'}")
         return ({
+            "kind": "delivery",
             "controls": controls,
-            "steer_hold": float(steer_hold),
-            "steer_onset_seconds": float(steer_onset_seconds),
-            "steer_ramp_seconds": float(steer_ramp_seconds),
-            "controls_cfg_scale": float(controls_cfg_scale),
+            "steer_hold": -1.0 if use_model_defaults else float(remaining_strength_percent) / 100,
+            "steer_onset_seconds": -1.0 if use_model_defaults else float(full_strength_seconds),
+            "steer_ramp_seconds": -1.0 if use_model_defaults else float(reduction_seconds),
+            "controls_cfg_scale": float(control_guidance),
         },)
 
 
 NODE_CLASS_MAPPINGS = {
-    "Zonos3MiniVoiceDesignNode": Zonos3MiniVoiceDesignNode,
+    "Zonos3MiniVoiceCharacteristicsNode": Zonos3MiniVoiceCharacteristicsNode,
     "Zonos3MiniDeliveryNode": Zonos3MiniDeliveryNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "Zonos3MiniVoiceDesignNode": "🎚️ ZONOS3-Mini Voice Design",
-    "Zonos3MiniDeliveryNode": "🎭 ZONOS3-Mini Delivery & Mood",
+    "Zonos3MiniVoiceCharacteristicsNode": VOICE_NAME,
+    "Zonos3MiniDeliveryNode": DELIVERY_NAME,
 }

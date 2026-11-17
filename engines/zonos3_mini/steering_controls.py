@@ -77,24 +77,3 @@ def build_controls(table: List[Control], values: Dict[str, float]) -> Dict[str, 
         for direction, dose in mapping(value).items():
             controls[direction] = controls.get(direction, 0.0) + float(dose)
     return controls
-
-
-def parse_extra_controls(text: str) -> Dict[str, float]:
-    """``set.direction=dose`` lines -> ``{direction: dose}``; blank lines are skipped."""
-    controls: Dict[str, float] = {}
-    for line in str(text or "").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        name, sep, dose = line.partition("=")
-        name = name.strip()
-        set_name, dot, direction = name.partition(".")
-        try:
-            if not (sep and dot and set_name and direction) or " " in name:
-                raise ValueError(line)
-            controls[name] = float(dose)
-        except ValueError:
-            raise ValueError(
-                f"ZONOS3-Mini extra_controls line '{line}' must be 'set.direction=number'"
-            ) from None
-    return controls
