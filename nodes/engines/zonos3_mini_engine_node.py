@@ -42,23 +42,39 @@ class Zonos3MiniEngineNode(BaseTTSNode):
             "required": {
                 "model_variant": (models, {
                     "default": "ZONOS3-Mini",
-                    "tooltip": "Zyphra ZONOS3-Mini (Apache-2.0 weights), 44.1 kHz multilingual TTS with voice cloning. First use downloads about 10.3 GB into ComfyUI/models/TTS/zonos3_mini/ZONOS3-Mini/; the full_mr decoder adds 4 GB and voice_mode 'reference' adds 0.8 GB, each fetched only when first used. Uses an adapted version of Zyphra's fast CUDA-graph engine or their plain-PyTorch reference implementation (see 'engine'). 'local:<folder>' entries are complete model folders you placed under models/TTS/zonos3_mini/."
+                    "tooltip": (
+                        "Choose the ZONOS3-Mini model for speech generation and voice cloning.\n\n"
+                        "First use downloads about 10.3 GB. Optional downloads:\n"
+                        "• full_mr decoder: about 4 GB extra.\n"
+                        "• Reference voice mode: about 0.8 GB extra.\n\n"
+                        "Models are stored in models/TTS/zonos3_mini/."
+                    )
                 }),
                 "device": (["auto", "cuda", "cpu"], {
                     "default": "auto",
-                    "tooltip": "Device to run ZONOS3-Mini on. Auto uses CUDA when available. CPU works with voice_mode 'embedding' but is far slower than real time."
+                    "tooltip": "Where to run the model.\n\nAuto: use an NVIDIA GPU when available.\nCPU: much slower; requires embedding voice mode."
                 }),
                 "language": (list(LANGUAGES.keys()), {
                     "default": DEFAULT_LANGUAGE,
-                    "tooltip": "Language of the text. Selects text normalization (numbers, dates, currency) and the alignment heads used by LACI; the voice is independent of it, so cross-lingual cloning is simply a reference voice in one language plus a different language here. Inline language tags such as [fr:] or [de:Alice] switch per segment; for Italian use [it:] or [it:Name] because a bare [it] is treated as text."
+                    "tooltip": (
+                        "Language to speak. Your voice clip can be in a different language.\n\n"
+                        "Switch within the text with tags such as [fr:] or [de:Alice].\n"
+                        "For Italian, use [it:] or [it:Name]; plain [it] is read as text."
+                    )
                 }),
                 "voice_preset": (list(PRESETS.keys()), {
                     "default": DEFAULT_PRESET,
-                    "tooltip": "Built-in ZONOS3 voice, used only when no narrator or character reference audio is connected. Root voices: AmericanFemale, AmericanMale, BritishFemale. English: Cillian (Irish), Imogen/Rupert (British), Jett (energetic), Morgana (witch), Sakura (anime), Savannah/Wyatt (American), Thaddeus (announcer), Willow (ASMR). Others: Gaspard (French), Liesel/Wolfgang (German), Ananya/Arjun (Hindi), Ginevra/Lorenzo (Italian), Minjun/Seoyeon (Korean), Haoran/Meilin (Mandarin), Leonor/Thiago (Portuguese), Rodrigo/Ximena (Spanish), Chaitanya/Sravya (Telugu)."
+                    "tooltip": "Built-in voice to use when no narrator or character voice clip is supplied.\n\nA supplied voice clip takes priority over this preset."
                 }),
                 "voice_mode": (["embedding", "reference"], {
                     "default": "embedding",
-                    "tooltip": "How a voice is given to the model. embedding: the clip is reduced to a 192-number speaker embedding; works on CPU and is required for Voice Characteristics. reference: the clip (up to its first 60 s) is encoded to codec codes and used as an audio prefix; closest cloning of timbre and recording character, CUDA only, downloads an extra 0.8 GB encoder. No reference transcript is needed in either mode."
+                    "tooltip": (
+                        "How the model uses your voice clip.\n\n"
+                        "Embedding: extracts the voice's characteristics. Supports the Voice Characteristics node and CPU.\n"
+                        "Reference: uses up to the first 60 seconds of the clip directly. Requires an NVIDIA GPU and an extra 0.8 GB download.\n\n"
+                        "Neither mode needs a transcript. Try both to compare voice resemblance.\n"
+                        "This is separate from the Fast/Reference backend choice."
+                    )
                 }),
                 "temperature": ("FLOAT", {
                     "default": 0.75, "min": 0.1, "max": 2.5, "step": 0.01,
@@ -76,11 +92,11 @@ class Zonos3MiniEngineNode(BaseTTSNode):
             "optional": {
                 "dtype": (["auto", "bfloat16", "float32"], {
                     "default": "auto",
-                    "tooltip": "Model precision. Auto uses bfloat16 on CUDA (less VRAM, faster) and float32 on CPU. float32 on CUDA is mainly for diagnosis."
+                    "tooltip": "Number precision used by the model.\n\nAuto: bfloat16 on GPU, float32 on CPU.\nbfloat16 uses less GPU memory and is required for Fast."
                 }),
                 "decoder": (["keep2_plain", "full_mr"], {
                     "default": "keep2_plain",
-                    "tooltip": "Audio decoder head. keep2_plain is the model default (0.5 GB). full_mr is the larger multi-resolution head (extra 4 GB download, more VRAM) for higher decoding fidelity."
+                    "tooltip": "How generated audio is decoded.\n\nkeep2_plain: standard decoder.\nfull_mr: larger decoder for higher fidelity; adds about 4 GB of downloads and uses more GPU memory."
                 }),
                 "min_p": ("FLOAT", {
                     "default": 0.0, "min": 0.0, "max": 1.0, "step": 0.01,
@@ -100,43 +116,49 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                 }),
                 "speaker_cfg_scale": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 5.0, "step": 0.1,
-                    "tooltip": "Classifier-free guidance toward the reference voice. 1 = off. Above 1 pushes harder toward the speaker but runs the model twice per frame (about half speed) and cannot be combined with LACI."
+                    "tooltip": "How strongly to reinforce the supplied voice.\n\n1: normal voice conditioning.\nAbove 1: stronger guidance toward the voice, at roughly half speed. Cannot be combined with LACI."
                 }),
                 "max_new_frames": ("INT", {
                     "default": 0, "min": 0, "max": 9000, "step": 1,
-                    "tooltip": "Upper limit on generated audio per text chunk: 15 frames = 1 second; 9000 frames = 10 minutes. 0 uses the selected backend's remaining context. Fast reserves 4096 positions shared by text, reference audio and generated frames, so its audio limit is below 4 minutes 33 seconds per chunk. Reference retains the model's 32768-position context for longer takes. A larger value cannot override the backend's context limit. Reaching either limit stops generation; unread text is not automatically continued. Use smaller Unified chunks for longer scripts."
+                    "tooltip": (
+                        "Maximum audio length for each text chunk.\n\n"
+                        "0: use the selected backend's limit.\n"
+                        "15 frames = 1 second; 9000 = 10 minutes.\n\n"
+                        "Fast has a shorter limit: under about 4½ minutes, reduced by the text and voice clip.\n"
+                        "Reaching a limit stops speech, even if text remains. Split longer scripts into smaller Unified chunks."
+                    )
                 }),
                 "loudness_bucket": ("INT", {
                     "default": 10, "min": 0, "max": 10, "step": 1,
-                    "tooltip": "Native loudness conditioning, 0 (quietest) to 9 (loudest). 10 = unknown, lets the model decide. This is a model input, not post-processing gain."
+                    "tooltip": "How loudly the model speaks.\n\n0–9: quietest to loudest.\n10: let the model decide.\n\nChanges the spoken delivery, rather than adjusting volume afterwards."
                 }),
                 "fmax_bucket": ("INT", {
                     "default": 10, "min": 0, "max": 10, "step": 1,
-                    "tooltip": "Native audio-bandwidth conditioning, 0 (narrow, muffled) to 9 (full band). 10 = unknown, lets the model decide."
+                    "tooltip": "How much high-frequency detail the voice has.\n\n0–9: muffled to full-band sound.\n10: let the model decide."
                 }),
                 "speaking_rate_bucket": ("INT", {
                     "default": 30, "min": 0, "max": 30, "step": 1,
-                    "tooltip": "Native speaking-rate conditioning, 0 (slowest) to 29 (fastest). 30 = unknown, lets the model decide. Changes how the model speaks rather than time-stretching audio."
+                    "tooltip": "How quickly the model speaks.\n\n0–29: slowest to fastest.\n30: let the model decide.\n\nChanges speech during generation; no audio stretching is applied."
                 }),
                 "laci": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "LACI watches the model's attention over the text while it speaks, detects skipped or stalled passages and regenerates that stretch (up to 8 retries). Helps long or difficult text; costs a little speed. Needs speaker_cfg_scale and controls_cfg_scale at 1."
+                    "tooltip": "Detect skipped or stalled passages and retry them automatically. Useful for long or difficult text; adds processing time.\n\nRequires speaker guidance and control guidance to both be 1."
                 }),
                 "short_text": (["auto", "off"], {
                     "default": "auto",
-                    "tooltip": "Handling of very short inputs (one or two words), which the model otherwise tends to garble. auto applies Zyphra's short-text treatment, which may enable LACI for that text. off sends the text as is."
+                    "tooltip": "Help the model handle very short text, such as one or two words.\n\nAuto: apply the model's short-text treatment; this may enable LACI.\nOff: generate the text without that treatment."
                 }),
                 "text_normalization": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "Spell out numbers, dates, currency and abbreviations in the selected language before synthesis ('$5.32' becomes 'five dollars thirty two cents'). Disable when the text is already written as it should be spoken."
+                    "tooltip": "Convert numbers, dates and currency into spoken words.\n\nFor example, '$5.32' becomes 'five dollars thirty two cents'.\nTurn off when the text is already written exactly as it should be spoken."
                 }),
                 "silence_prefill_frames": ("INT", {
                     "default": 3, "min": 0, "max": 30, "step": 1,
-                    "tooltip": "Silent frames placed before generation starts (15 frames = 1 second), giving the model a clean onset. They are not part of the output audio. Default 3."
+                    "tooltip": "A short silent lead-in used internally to start speech. It is removed from the output.\n\n15 frames = 1 second. Default: 3 frames."
                 }),
                 "decode_context": ("BOOLEAN", {
                     "default": False,
-                    "tooltip": "Reference voice mode only: decode the generated audio with the end of the reference clip as context, which can smooth the first instants of speech. Ignored in embedding mode."
+                    "tooltip": "Use the end of the voice clip to help smooth the start of generated speech.\n\nApplies only to reference voice mode."
                 }),
                 "headroom_db": ("FLOAT", {
                     "default": 3.0, "min": 0.0, "max": 24.0, "step": 0.5,
@@ -148,7 +170,14 @@ class Zonos3MiniEngineNode(BaseTTSNode):
                 }),
                 "engine": (["auto", "fast", "reference"], {
                     "default": "auto",
-                    "tooltip": "Choose how the model runs. Fast uses an adapted version of Zyphra's CUDA-graph backend for faster generation. It needs CUDA (cuda:0), bfloat16, Triton (triton-windows on Windows) and the native PyTorch GPU allocator. Start ComfyUI with --disable-cuda-malloc for Fast; cudaMallocAsync is incompatible with its CUDA graphs, so Auto uses Reference with that allocator. To reduce VRAM reserved for its GPU cache, this integration limits Fast to 4096 context positions shared by text, reference audio and generated speech: less than 4 minutes 33 seconds of audio per chunk, with the actual limit reduced by the inputs. Use smaller Unified chunks or Reference for longer individual takes. Reference preserves the model's 32768-position context and advertised up-to-10-minute capability; it also works on CPU and in float32. Auto prefers Fast, including its smaller context, and reports when initialization falls back to Reference. The same seed can produce different audio on each backend."
+                    "tooltip": (
+                        "Choose how the model generates speech.\n\n"
+                        "Auto: use Fast when available, otherwise Reference.\n"
+                        "Fast: quicker generation, with a smaller cache to save GPU memory. Each chunk is limited to under about 4½ minutes; text and the voice clip reduce that limit.\n"
+                        "Reference: slower, with support for the model's advertised takes of up to 10 minutes.\n\n"
+                        "The backends can sound different, even with the same seed.\n\n"
+                        "Fast setup: NVIDIA GPU (cuda:0), bfloat16 and Triton. Start ComfyUI with --disable-cuda-malloc."
+                    )
                 }),
                 "voice_characteristics": ("ZONOS3_VOICE_CHARACTERISTICS", {
                     "tooltip": "Connect 🌈 ZONOS3-Mini Voice Characteristics (gender, age, pitch, texture, recording character, accents). Requires voice_mode 'embedding'."

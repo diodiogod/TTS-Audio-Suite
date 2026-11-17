@@ -25,7 +25,7 @@ def _sliders(table):
         sliders[widget] = ("FLOAT", {
             "default": 0.0, "min": low, "max": high, "step": 0.1,
             "display": "slider",
-            "tooltip": f"{tooltip} 0 = off.",
+            "tooltip": f"{tooltip}\n\n0 = no change.",
             "zonos3": slider_metadata(control),
         })
     return sliders
@@ -47,9 +47,9 @@ class Zonos3MiniVoiceCharacteristicsNode:
     FUNCTION = "create_steering"
     CATEGORY = "TTS Audio Suite/⚙️ Engines/ZONOS3-Mini"
     DESCRIPTION = (
-        "Reshape the voice itself with ZONOS3-Mini's native speaker directions: gender, age, pitch, texture, "
-        "room and accent. Connect to the voice_characteristics input of the ZONOS3-Mini Engine node. These directions move "
-        "the speaker embedding, so the engine's voice_mode must be 'embedding'."
+        "Change the voice's gender, age, pitch, texture, recording character and accent.\n\n"
+        "Connect to voice_characteristics on the ZONOS3-Mini Engine.\n"
+        "Requires embedding voice mode."
     )
 
     def create_steering(self, **values):
@@ -71,28 +71,28 @@ class Zonos3MiniDeliveryNode:
         optional.update({
             "additional_effects": ("STRING", {
                 "default": "{}",
-                "tooltip": "Native effect strengths configured by the Add effect panel.",
+                "tooltip": "Choose more voice effects in the Add effect panel and set their strengths.",
                 "zonos3_catalog": control_catalog(),
             }),
             "use_model_defaults": ("BOOLEAN", {
                 "default": True,
-                "tooltip": "Use the model's effect envelope: full strength for 4 seconds, reduce over 1 second, then retain 35% of the steering influence.",
+                "tooltip": "Use the model's standard timing:\n\nFull strength for 4 seconds.\nReduce over 1 second.\nKeep 35% strength afterwards.",
             }),
             "full_strength_seconds": ("FLOAT", {
                 "default": 4.0, "min": 0.0, "max": 600.0, "step": 0.1,
-                "tooltip": "Generated-speech seconds at full effect strength before reduction begins. Restarts for every chunk or subtitle. This measures generated speech, not the reference recording.",
+                "tooltip": "How many seconds the effect stays at full strength before fading down.\n\nMeasured from the start of each generated chunk or subtitle.",
             }),
             "reduction_seconds": ("FLOAT", {
                 "default": 1.0, "min": 0.0, "max": 600.0, "step": 0.1,
-                "tooltip": "Generated-speech seconds spent reducing from full strength to remaining strength. 0 makes the change immediate.",
+                "tooltip": "How long the effect takes to fade down to the remaining strength.\n\n0: change immediately.",
             }),
             "remaining_strength_percent": ("FLOAT", {
                 "default": 35.0, "min": 0.0, "max": 100.0, "step": 1.0,
-                "tooltip": "Steering influence retained after reduction: 0% releases the effect, 100% keeps full strength. This is not perceived emotion intensity. Pace and whisper stay constant.",
+                "tooltip": "How much of the original effect remains after fading down.\n\n0%: remove the effect.\n100%: keep full strength.\n\nPace and whisper stay constant. This percentage controls the effect setting, not perceived emotion.",
             }),
             "control_guidance": ("FLOAT", {
                 "default": 1.0, "min": 0.0, "max": 5.0, "step": 0.1,
-                "tooltip": "Extra guidance for active delivery effects in embedding voice mode. 1 uses normal steering; it does not turn effects off. Other values run an extra model pass per frame. Unavailable in reference mode, with LACI, or with speaker guidance other than 1.",
+                "tooltip": "Extra guidance for the selected delivery effects.\n\n1: normal guidance; effects remain active.\nOther values: adjust guidance, with extra processing time.\n\nRequires embedding voice mode, LACI off and speaker guidance at 1.",
             }),
         })
         return {"required": {}, "optional": optional}
@@ -102,10 +102,9 @@ class Zonos3MiniDeliveryNode:
     FUNCTION = "create_steering"
     CATEGORY = "TTS Audio Suite/⚙️ Engines/ZONOS3-Mini"
     DESCRIPTION = (
-        "Steer how a line is delivered with ZONOS3-Mini's native hidden-state directions: projection, pace, "
-        "liveliness, mood and emotions. Works with both voice modes. Zyphra recommends moderate doses on the public "
-        "model: angry/happy 2-3, sad 4-6, calm 4, scared 8, confused 2. Connect to the delivery input of the "
-        "ZONOS3-Mini Engine node."
+        "Change how the voice speaks: emotion, energy, pace and delivery.\n\n"
+        "Connect to delivery on the ZONOS3-Mini Engine.\n"
+        "Works with both voice modes. Each emotion's tooltip includes the upstream suggested strength."
     )
 
     def create_steering(
