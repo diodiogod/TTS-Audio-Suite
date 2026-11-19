@@ -14,7 +14,7 @@ export function attachAllEventHandlers(
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize, setFontFamily,
     showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
-    inlineTagControls,
+    tagControls,
     openFindReplace, focusNextFindMatch, focusPreviousFindMatch
 ) {
     const {
@@ -59,7 +59,7 @@ export function attachAllEventHandlers(
             addEmotionTextBtn: addIndexTTSEmotionTextBtn,
         },
         numeric,
-    } = inlineTagControls;
+    } = tagControls;
 
     // Block ComfyUI shortcuts when editor is focused, but allow Enter, Alt, and Ctrl combinations
     editor.addEventListener("keydown", (e) => {

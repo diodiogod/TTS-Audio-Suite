@@ -147,7 +147,7 @@ See the [Sound Effects Guide](SOUND_EFFECTS_GUIDE.md) for pauses, crossfades, lo
 | `fmax_bucket` | — | int | 0-10 | Bandwidth conditioning (10 = unknown) |
 | `speaking_rate_bucket` | `rate_bucket` | int | 0-30 | Speaking-rate conditioning (30 = unknown) |
 
-**Steering** is under **Inline Tags → ZONOS3-Mini**. Use **Character → Add Parameter** for the generation settings above.
+In **Parameters**, choose **ZONOS3-Mini** under **Steering Engine**. Use **Add Parameter** for the generation settings above.
 
 | Control | Tags and ranges | Notes |
 |---------|-----------------|-------|
@@ -182,7 +182,7 @@ Extra control guidance requires an active delivery effect, embedding voice mode,
 | Text or preset | `[emotion:"Quiet grief"]` or `[emotion:restrained_anger]` | Use `{seg}` in quoted text to include the current segment in emotion analysis. |
 | Audio reference | `[Bob:emotion_ref\|sad:+0.25]` | The audio reference can blend with vector or text emotion. |
 
-Use one of named values, a full vector, or text emotion per segment. The editor’s **Inline Tags → IndexTTS-2** panel includes the radar, press-and-drag picker, and preset tools.
+Use one of named values, a full vector, or text emotion per segment. In **Parameters**, choose **IndexTTS-2** under **Steering Engine** for the radar, press-and-drag picker, and emotion presets.
 
 ---
 

@@ -1,7 +1,6 @@
 /**
  * 🏷️ Widget Inline Tags Section
- * Builds an engine-aware inline tag panel for Step Audio EditX, Higgs Audio v3,
- * CosyVoice3, and OmniVoice.
+ * Builds the engine panels for Inline Tags and Segment Tags.
  */
 
 import { api } from "/scripts/api.js";
@@ -596,74 +595,57 @@ function buildIndexTTSSection(state, storageKey) {
     };
 }
 
-export function buildInlineEditSection(state, storageKey, numericEngines, updateRangeFill) {
+function buildEngineSection(label, placeholder, engines) {
     const container = document.createElement("div");
     container.style.display = "flex";
     container.style.flexDirection = "column";
     container.style.gap = "8px";
     container.style.overflowY = "visible";
     container.style.flex = "0 0 auto";
-    container.style.paddingRight = "0";
 
-    const engineSection = document.createElement("div");
-    stylePanelContainer(engineSection);
-    const inlineNumericEngines = Object.entries(numericEngines)
-        .filter(([, engine]) => engine.parameters.some(parameter => parameter.group !== "Generation"));
-    const inlineEngineSelect = createSelect([
-        { value: "step_audio_editx", label: "Step Audio EditX" },
-        { value: "higgs_audio_v3", label: "Higgs Audio v3" },
-        { value: "cosyvoice3", label: "CosyVoice3" },
-        { value: "omnivoice", label: "OmniVoice" },
-        { value: "index_tts", label: "IndexTTS-2" },
-        ...inlineNumericEngines.map(([value, engine]) => ({ value, label: engine.label })),
-    ], "Select inline tag engine...", state.activeInlineTagEngine || "step_audio_editx");
-    inlineEngineSelect.addEventListener("change", () => {
-        state.activeInlineTagEngine = inlineEngineSelect.value;
-        updateVisiblePanel();
-        state.saveToLocalStorage(storageKey);
-    });
-    engineSection.append(
-        createPanelLabel("Tag Engine", "#d0d0d0"),
-        inlineEngineSelect
-    );
+    const enginePicker = document.createElement("div");
+    stylePanelContainer(enginePicker);
+    const select = createSelect(engines, placeholder);
+    select.setAttribute("aria-label", label);
+    enginePicker.append(createPanelLabel(label, "#d0d0d0"), select);
+    container.append(enginePicker, ...engines.map(engine => engine.panel));
+    const update = () => {
+        for (const { value, panel } of engines) panel.style.display = value === select.value ? "flex" : "none";
+    };
+    return { container, select, update };
+}
 
+export function buildTagEngineSections(state, storageKey, numericEngines, updateRangeFill) {
     const stepSection = buildStepSection(state, storageKey);
     const higgsSection = buildHiggsSection(state, storageKey);
     const cosySection = buildCosySection(state, storageKey);
     const omnivoiceSection = buildOmniVoiceSection(state, storageKey);
     const indexTTSSection = buildIndexTTSSection(state, storageKey);
 
-    const panels = {
-        step_audio_editx: stepSection.panel,
-        higgs_audio_v3: higgsSection.panel,
-        cosyvoice3: cosySection.panel,
-        omnivoice: omnivoiceSection.panel,
-        index_tts: indexTTSSection.panel,
-    };
+    const inline = buildEngineSection("Tag Engine", "Select inline tag engine...", [
+        { value: "step_audio_editx", label: "Step Audio EditX", panel: stepSection.panel },
+        { value: "higgs_audio_v3", label: "Higgs Audio v3", panel: higgsSection.panel },
+        { value: "cosyvoice3", label: "CosyVoice3", panel: cosySection.panel },
+        { value: "omnivoice", label: "OmniVoice", panel: omnivoiceSection.panel },
+    ]);
 
     const numeric = {};
+    const segmentEngines = [{ value: "index_tts", label: "IndexTTS-2", panel: indexTTSSection.panel }];
     const preferences = state.numericTagPreferences ??= {};
     const ui = { stylePanelContainer, createPanelLabel, createSelect, createButton, updateRangeFill };
-    for (const [key, engine] of inlineNumericEngines) {
-        const section = buildNumericEnginePanel(engine, ui, preferences[key] ??= {}, () => state.saveToLocalStorage(storageKey));
-        panels[key] = section.panel;
-        numeric[key] = section.controls;
+    for (const [value, engine] of Object.entries(numericEngines)) {
+        if (!engine.parameters.some(parameter => parameter.group !== "Generation")) continue;
+        const section = buildNumericEnginePanel(engine, ui, preferences[value] ??= {}, () => state.saveToLocalStorage(storageKey));
+        segmentEngines.push({ value, label: engine.label, panel: section.panel });
+        numeric[value] = section.controls;
     }
-
-    const updateVisiblePanel = () => {
-        const activeEngine = inlineEngineSelect.value || "step_audio_editx";
-        Object.entries(panels).forEach(([engineKey, panel]) => {
-            panel.style.display = engineKey === activeEngine ? "flex" : "none";
-        });
-    };
-
-    container.append(engineSection, ...Object.values(panels));
-    updateVisiblePanel();
+    const segment = buildEngineSection("Steering Engine", "Select an engine for steering...", segmentEngines);
 
     return {
-        inlineEditSection: container,
-        inlineTagControls: {
-            inlineEngineSelect,
+        inline,
+        segment,
+        tagControls: {
+            inlineEngineSelect: inline.select,
             step: stepSection.controls,
             higgs: higgsSection.controls,
             cosy: cosySection.controls,
@@ -671,6 +653,5 @@ export function buildInlineEditSection(state, storageKey, numericEngines, update
             indexTTS: indexTTSSection.controls,
             numeric,
         },
-        updateInlineEnginePanelVisibility: updateVisiblePanel,
     };
 }

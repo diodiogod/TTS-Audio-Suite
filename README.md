@@ -1141,12 +1141,12 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 
 **NEW in v4.12.0**: Fine-grained per-segment control over TTS generation parameters across all engines with an interactive tag editor!
 
-Beyond character switching and language control, you can now override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using inline tags. The new **🏷️ Multiline TTS Tag Editor** node makes building complex tags easier and more visual with:
+Use **Character** to choose the voice and language for a segment or load a preset. Use **Parameters** to adjust that segment's settings. The **🏷️ Multiline TTS Tag Editor** includes:
 - **Rich Text Editor**: Multiline editor with resizable font sizes (2-120px), multiple font families, and customizable UI scaling
 - **Visual Tag Management**: Character/language/parameter dropdowns for quick selection, inline tag validation with syntax checking
 - **Engine-Aware Inline Tags**: dedicated editor modes for Step Audio EditX, Higgs Audio v3, CosyVoice3, and OmniVoice
 - **One-Click Tag Swapping**: click a character, language, audio reference, parameter, or supported native inline tag to open an engine-aware replacement palette; click again or press-drag-release to apply
-- **IndexTTS-2 Emotion Editing**: insert vectors, named emotion values, presets, quoted text, and `{seg}` dynamic emotion controls directly from the Inline Tags panel
+- **Per-Segment Steering**: choose IndexTTS-2 or ZONOS3-Mini under Steering Engine on the Parameters tab to edit emotion vectors and other steering controls
 - **Safe Long-Tag Layout**: long bracket and angle tags wrap inside the editor instead of overflowing the text area; quoted emotion text remains directly editable
 - **Preset System**: Save and load up to 3 preset configurations for rapid tag reuse
 - **Keyboard Shortcuts**: Alt+L/C/P for tag insertion, Alt+1/2/3 for preset loading

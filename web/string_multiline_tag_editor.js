@@ -14,7 +14,7 @@ import { buildParameterSection } from "./widget-parameter-section.js";
 import { buildPresetSection } from "./widget-preset-system.js";
 import { attachAllEventHandlers } from "./widget-event-handlers.js";
 import { buildTabSystem } from "./widget-tabs.js";
-import { buildInlineEditSection } from "./widget-inline-edit-section.js";
+import { buildTagEngineSections } from "./widget-inline-edit-section.js";
 import { SRTTimingDragController, buildSRTTimingMarkup } from "./string_multiline_tag_editor_timing_drag.js";
 import { SRTCueEditController, buildSRTCueNumberMarkup } from "./string_multiline_tag_editor_srt_cue_ops.js";
 import { findTextMatches, replaceMatches } from "./string_multiline_tag_editor_find_replace.js";
@@ -97,7 +97,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
     let isConfigured = false; // Flag to know if onConfigure already loaded the state
     let hasSetInitialValue = false; // Track if we've set the initial workflow value
     let onConfigureCallCount = 0; // Track how many times onConfigure has been called
-    let syncInlineEngineSelection = () => {};
+    let syncTagSelections = () => {};
 
     // Create a temporary state to check default text
     const defaultState = new EditorState();
@@ -1522,7 +1522,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
         if (v !== undefined) {
             widget.value = v;
         }
-        syncInlineEngineSelection();
+        syncTagSelections();
     };
 
     // Hook into node's onConfigure to load workflow values
@@ -1535,6 +1535,10 @@ function addStringMultilineTagEditorWidget(node, schema) {
         if (info?.properties?.ttsTagEditorInlineEngine) {
             node.properties.ttsTagEditorInlineEngine = info.properties.ttsTagEditorInlineEngine;
             state.activeInlineTagEngine = info.properties.ttsTagEditorInlineEngine;
+        }
+        if (info?.properties?.ttsTagEditorSegmentEngine !== undefined) {
+            node.properties.ttsTagEditorSegmentEngine = info.properties.ttsTagEditorSegmentEngine;
+            state.activeSegmentTagEngine = info.properties.ttsTagEditorSegmentEngine;
         }
 
         // Load workflow value when onConfigure is called (user opened a file)
@@ -1557,21 +1561,22 @@ function addStringMultilineTagEditorWidget(node, schema) {
                 }
 
                 state.lastWorkflowValue = workflowValue;
-                setEditorText(state.text);
             } else {
                 // No localStorage or no history - just use workflow value
-                setEditorText(workflowValue);
                 state.text = workflowValue;
                 state.history = [{text: workflowValue, caretPos: 0}];
                 state.historyIndex = 0;
                 state.lastWorkflowValue = workflowValue;
             }
 
-            syncInlineEngineSelection();
+            syncTagSelections();
+            setEditorText(state.text);
             widget.value = state.text;
             historyStatus.textContent = state.getHistoryStatus();
             isConfigured = true; // Mark that we've configured from workflow
             hasSetInitialValue = true; // Mark that we've set the initial value from workflow
+        } else {
+            syncTagSelections();
         }
 
         return result;
@@ -1585,6 +1590,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
         const serialized = info || {};
         serialized.properties = serialized.properties || {};
         serialized.properties.ttsTagEditorInlineEngine = state.activeInlineTagEngine || node.properties?.ttsTagEditorInlineEngine || "step_audio_editx";
+        serialized.properties.ttsTagEditorSegmentEngine = state.activeSegmentTagEngine ?? "";
         if (this.widgets && this.widgets.length > 0) {
             serialized.widgets_values = this.widgets.map((w) => w.value);
         }
@@ -1639,42 +1645,44 @@ function addStringMultilineTagEditorWidget(node, schema) {
     formatBtn.classList.add("string-multiline-tag-editor-footer-btn");
     validateBtn.classList.add("string-multiline-tag-editor-footer-btn", "is-primary");
 
-    // Build inline edit section
-    const inlineEditData = buildInlineEditSection(state, storageKey, numericEngines, updateRangeFill);
-    const { inlineEditSection, inlineTagControls, updateInlineEnginePanelVisibility } = inlineEditData;
-    inlineEditSection.classList.add("string-multiline-tag-editor-inline-section");
-
-    syncInlineEngineSelection = () => {
-        const desiredEngine = state.activeInlineTagEngine || node.properties?.ttsTagEditorInlineEngine || "step_audio_editx";
-        state.activeInlineTagEngine = desiredEngine;
-        node.properties.ttsTagEditorInlineEngine = desiredEngine;
-        if (inlineTagControls.inlineEngineSelect.value !== desiredEngine) {
-            inlineTagControls.inlineEngineSelect.value = desiredEngine;
-        }
-        updateInlineEnginePanelVisibility?.();
-    };
-
-    inlineTagControls.inlineEngineSelect.addEventListener("change", () => {
-        const selectedEngine = inlineTagControls.inlineEngineSelect.value || "step_audio_editx";
-        state.activeInlineTagEngine = selectedEngine;
-        node.properties.ttsTagEditorInlineEngine = selectedEngine;
+    const { inline, segment, tagControls } = buildTagEngineSections(state, storageKey, numericEngines, updateRangeFill);
+    inline.container.classList.add("string-multiline-tag-editor-inline-section");
+    segment.container.classList.add("string-multiline-tag-editor-inline-section");
+    const { tabHeaders, characterContent, parameterContent, inlineEditContent, switchTab } = buildTabSystem(state, storageKey, () => {
+        sidebarScrollContent.scrollTop = 0;
+        requestAnimationFrame(updateSidebarScrollbar);
     });
 
-    // Build tab system
-    const tabData = buildTabSystem(state, storageKey);
-    const { tabContainer, charParamContent, inlineEditContent, switchTab } = tabData;
-    tabContainer.classList.add("string-multiline-tag-editor-tab-system");
-    charParamContent.classList.add("string-multiline-tag-editor-tab-content");
-    inlineEditContent.classList.add("string-multiline-tag-editor-tab-content");
+    const syncEnginePanels = () => {
+        inline.select.value ||= "step_audio_editx";
+        segment.select.value ||= "";
+        node.properties.ttsTagEditorInlineEngine = state.activeInlineTagEngine = inline.select.value;
+        node.properties.ttsTagEditorSegmentEngine = state.activeSegmentTagEngine = segment.select.value;
+        inline.update();
+        segment.update();
+    };
+    syncTagSelections = () => {
+        const inlineEngine = state.activeInlineTagEngine || node.properties.ttsTagEditorInlineEngine;
+        const segmentEngine = state.activeSegmentTagEngine ?? node.properties.ttsTagEditorSegmentEngine;
+        // Older workflows stored steering panel selections in the inline engine field.
+        const legacySteering = inlineEngine && [...segment.select.options].some(option => option.value === inlineEngine);
+        segment.select.value = segmentEngine || (legacySteering ? inlineEngine : "");
+        inline.select.value = legacySteering ? "step_audio_editx" : inlineEngine;
+        syncEnginePanels();
+        switchTab(legacySteering && !segmentEngine ? "parameters" : state.activeTab);
+    };
+    for (const select of [inline.select, segment.select]) {
+        select.addEventListener("change", () => {
+            syncEnginePanels();
+            state.saveToLocalStorage(storageKey);
+            requestAnimationFrame(updateSidebarScrollbar);
+        });
+    }
+    syncTagSelections();
 
-    // Assemble Character/Parameters tab
-    charParamContent.appendChild(charSection);
-    charParamContent.appendChild(langSection);
-    charParamContent.appendChild(paramSection);
-    charParamContent.appendChild(presetSection);
-
-    // Assemble Inline Tags tab
-    inlineEditContent.appendChild(inlineEditSection);
+    characterContent.append(charSection, langSection, presetSection);
+    parameterContent.append(paramSection, segment.container);
+    inlineEditContent.appendChild(inline.container);
 
     // Assemble header and shell
     topActions.appendChild(formatBtn);
@@ -1685,15 +1693,11 @@ function addStringMultilineTagEditorWidget(node, schema) {
 
     const sidebarHeader = document.createElement("div");
     sidebarHeader.className = "string-multiline-tag-editor-sidebar-header";
-    const tabHeaderStrip = tabContainer.firstElementChild;
-    if (tabHeaderStrip) {
-        sidebarHeader.appendChild(tabHeaderStrip);
-    }
+    sidebarHeader.appendChild(tabHeaders);
 
     // Assemble sidebar
     sidebar.appendChild(sidebarHeader);
-    sidebarScrollContent.appendChild(charParamContent);
-    sidebarScrollContent.appendChild(inlineEditContent);
+    sidebarScrollContent.append(characterContent, parameterContent, inlineEditContent);
     sidebar.appendChild(sidebarScrollContent);
     sidebar.appendChild(sidebarScrollbar);
 
@@ -1732,7 +1736,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
         formatBtn, validateBtn, fontFamilySelect, fontSizeInput, null, setFontSize, setFontFamily,
         showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
-        inlineTagControls,
+        tagControls,
         openFindReplace, focusNextFindMatch, focusPreviousFindMatch
     );
 
@@ -1801,7 +1805,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
         });
     };
 
-    for (const [key, { addVectorBtn }] of Object.entries(inlineTagControls.numeric)) {
+    for (const [key, { addVectorBtn }] of Object.entries(tagControls.numeric)) {
         if (!addVectorBtn) continue;
         const vector = numericEngines[key].vector;
         addVectorBtn.addEventListener("click", () => {
@@ -1832,7 +1836,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
 
     const isIndexVectorTag = tag => {
         if (!parseVectorTag(tag)) return false;
-        const numeric = numericEngines[inlineTagControls.inlineEngineSelect.value];
+        const numeric = numericEngines[segment.select.value];
         return !numeric || !findNumericTagParameter(numeric.parameters, tag.slice(1, tag.indexOf(":")));
     };
 
@@ -1857,7 +1861,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
             }
             const { openTagSwapPopup } = await import("./tag_swap_popup.js");
             const transaction = editorEventApi.beginExternalTransaction();
-            const engine = inlineTagControls.inlineEngineSelect.value || "step_audio_editx";
+            const engine = match.tag.startsWith("[") ? (segment.select.value || inline.select.value) : inline.select.value;
             const popup = openTagSwapPopup({
                 tag: match.tag,
                 cursorOffset: match.position - match.start,
@@ -1892,7 +1896,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
 
     const isQuotedEmotionTextTag = tag => /^\[emotion:["'][\s\S]*["']\]$/i.test(tag);
 
-    inlineTagControls.indexTTS.managePresetsBtn.addEventListener("click", () => {
+    tagControls.indexTTS.managePresetsBtn.addEventListener("click", () => {
         const position = getCaretPos();
         openEmotionPopupForRange(position, position, null, { showPresets: true });
     });
@@ -2335,7 +2339,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
                 key: "parameter-switching",
                 tabLabel: "Parameters",
                 title: "Parameter Switching Guide",
-                intro: "Override generation behavior per segment without changing node-level defaults.",
+                intro: "Use bracket tags to set generation and steering parameters for one segment.",
                 rows: [
                     { syntax: "[Alice|seed:42]", purpose: "Fix or vary randomness per segment", notes: "Keeps a stable seed for that section only." },
                     { syntax: "[Alice|temperature:0.7]", purpose: "Adjust expressive variation", notes: "Higher values are looser; lower values are more controlled." },
@@ -2498,13 +2502,13 @@ function addStringMultilineTagEditorWidget(node, schema) {
         auxiliaryContent.replaceChildren(libraryLayout);
     };
 
-    const activateTopView = (viewKey) => {
+    const activateTopView = (viewKey, { persist = true } = {}) => {
         topNavItems.forEach((item, key) => {
             item.classList.toggle("is-active", key === viewKey);
         });
 
         state.activeTopView = viewKey;
-        state.saveToLocalStorage(storageKey);
+        if (persist) state.saveToLocalStorage(storageKey);
 
         const isEditorView = viewKey === "editor";
         shellBody.style.display = isEditorView ? "flex" : "none";
@@ -2546,7 +2550,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
 
     // Initialize history display
     historyStatus.textContent = state.getHistoryStatus();
-    activateTopView(state.activeTopView || "editor");
+    activateTopView(state.activeTopView || "editor", { persist: false });
 
     editor.addEventListener("scroll", () => {
         updateEditorScrollbar();

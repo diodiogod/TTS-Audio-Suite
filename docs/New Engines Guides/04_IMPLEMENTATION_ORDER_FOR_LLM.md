@@ -96,13 +96,13 @@ Follow this order:
 
 ## Add the Engine to the Multiline TTS Tag Editor
 
-Review both tabs before adding a control. Use **Character → Add Parameter** for generation settings such as sampling. Reuse any shared entry already there. Use **Inline Tags** for speech cues and steering, grouped by what the user is trying to change. See ZONOS3-Mini for grouped numeric controls, IndexTTS-2 for emotion vectors, and CosyVoice3 for tags that wrap selected text.
+Use **Parameters** for settings that TTS Audio Suite applies per segment. Reuse **Add Parameter** entries for sampling and put emotion or delivery settings under **Steering Engine**. Use **Inline Tags** for engine-specific cues in the text. See ZONOS3-Mini for grouped numeric controls, IndexTTS-2 for emotion vectors, and CosyVoice3 for tags that wrap selected text.
 
 1. Register the tag, aliases, bounds, and supported engines in `utils/text/segment_parameters.py`. Use the same definitions to expose the control metadata from `nodes/text/tts_tag_editor_node.py`, as `tag_editor_parameters()` in `engines/zonos3_mini/steering_tags.py` does.
-2. Add one entry to `numericEngines` in `web/string_multiline_tag_editor.js`, with the engine's label and parameter catalog. Set each parameter's `group` to `Generation` for the Character tab or to the appropriate steering section for Inline Tags. The metadata supplies `tag`, `aliases`, `label`, `description`, `min`, `max`, `step`, `default`, `integer`, `slider`, and whether signed values are `relative` adjustments. The shared editor handles the panels, numeric validation, tag insertion, and quick swap. An optional `sections` entry can override section titles, colors, and hints.
+2. Add one entry to `numericEngines` in `web/string_multiline_tag_editor.js`, with the engine's label and parameter catalog. Set each parameter's `group` to `Generation` for **Add Parameter** or to the appropriate group under **Steering Engine**. The metadata supplies `tag`, `aliases`, `label`, `description`, `min`, `max`, `step`, `default`, `integer`, `slider`, and whether signed values are `relative` adjustments. The shared editor handles the panels, numeric validation, tag insertion, and quick swap. An optional `sections` entry can override section titles, colors, and hover hints.
 3. If the engine has a native emotion vector, add a `vector` profile with an axis list, parser, and serializer. Give the engine's vector a distinct tag when its axes differ from an existing vector. The editor uses the same radar, preview, cancel, and undo flow.
 
-Check that sample tags insert at the cursor, update an existing compound tag without disturbing its character or other settings, and reach the correct processor. Verify both tabs for duplicate controls and switch to another engine to check that its tag tools still work.
+Check that sample tags insert at the cursor, update an existing compound tag without disturbing its character or other settings, and reach the correct processor. Check for duplicate controls across the sidebar and switch to another engine to verify its tag tools.
 
 ## Live ComfyUI Validation Rule
 
