@@ -1,6 +1,7 @@
 import { isLanguageCode } from "./language-constants.js";
 import { TagUtilities } from "./tag-utilities.js";
 import { createLanguageGlobe, languageMeta, languageTileCode } from "./language-swap-globe.js";
+import { findNumericTagParameter, isNumericTagValue, validNumericTagValue } from "./numeric-tag-parameters.js";
 
 const COLORS = { character: "#46d6b1", language: "#56a8ff", reference: "#ff8f70", parameter: "#f4c45e" };
 const EMOTIONS = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"];
@@ -42,7 +43,7 @@ const ranges = (text, separator) => {
 };
 const replace = (text, start, end, value) => text.slice(0, start) + value + text.slice(end);
 
-function buildBracketSwap({ tag, cursorOffset, characterOptions, languageOptions, engine }) {
+function buildBracketSwap({ tag, cursorOffset, characterOptions, languageOptions, engine, numericParameters }) {
     const content = tag.slice(1, -1);
     const offset = Math.max(0, Math.min(content.length, cursorOffset - 1));
     const parts = ranges(content, "|");
@@ -55,14 +56,44 @@ function buildBracketSwap({ tag, cursorOffset, characterOptions, languageOptions
     const firstValue = firstColon < 0 ? "" : part.text.slice(firstColon + 1).trim();
     const numericIndexEmotion = engine === "index_tts" && EMOTIONS.includes(firstKey)
         && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(firstValue);
-    const parameterOnly = partIndex === 0 && firstColon >= 0
-        && (engineParameters.includes(firstKey) || (ALL_PARAMETERS.has(firstKey) && !EMOTIONS.includes(firstKey)) || numericIndexEmotion);
+    const numericParameter = numericParameters && findNumericTagParameter(numericParameters, firstKey);
+    const parameterOnly = partIndex === 0 && firstColon >= 0 && (numericParameters
+        ? numericParameter && isNumericTagValue(firstValue)
+        : engineParameters.includes(firstKey) || (ALL_PARAMETERS.has(firstKey) && !EMOTIONS.includes(firstKey)) || numericIndexEmotion);
     if (partIndex > 0 || parameterOnly) {
         const colon = part.text.indexOf(":");
         if (colon < 0) return null;
         const key = part.text.slice(0, colon).trim();
         const value = part.text.slice(colon + 1).trim();
         const editKey = offset - part.start <= colon;
+        if (numericParameter) {
+            const values = [value, numericParameter.min, numericParameter.default, numericParameter.max].map(String);
+            if (numericParameter.relative) {
+                values.push(...["+", "-"].flatMap(sign => [1, 2, numericParameter.max].map(amount => `${sign}${amount}`)));
+            }
+            const choices = editKey
+                ? numericParameters.map(parameter => ({ value: parameter.tag, label: parameter.tag }))
+                : [...new Set(values)]
+                    .filter(candidate => validNumericTagValue(numericParameter, candidate))
+                    .map(candidate => ({ value: candidate, label: candidate }));
+            return {
+                title: editKey ? "Swap parameter" : `Swap ${key}`,
+                current: editKey ? numericParameter.tag : value,
+                color: COLORS.parameter,
+                items: [...choices, { value: "__remove__", label: "×", remove: true }],
+                replace(candidate) {
+                    const remaining = parts.map(item => item.text);
+                    if (candidate === "__remove__") remaining.splice(partIndex, 1);
+                    else if (editKey) {
+                        const parameter = findNumericTagParameter(numericParameters, candidate);
+                        const operationChanges = /^[+-]/.test(value) && numericParameter.relative !== parameter.relative;
+                        const next = !operationChanges && validNumericTagValue(parameter, value) ? value : parameter.default;
+                        remaining[partIndex] = `${candidate}:${next}`;
+                    } else remaining[partIndex] = `${key}:${candidate}`;
+                    return remaining.length ? `[${remaining.join("|")}]` : "";
+                },
+            };
+        }
         let choices = editKey ? engineParameters : (VALUES[key.toLowerCase()] || [value]);
         if (!editKey && EMOTIONS.includes(key.toLowerCase())) {
             const sign = value.startsWith("-") ? "-" : value.startsWith("+") ? "+" : "";

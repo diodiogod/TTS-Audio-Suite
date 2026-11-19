@@ -35,7 +35,9 @@ The top bar includes four views:
 
 ## Basic Tag Editing
 
-Use the left panel to insert or modify tags without writing every bracket manually.
+- **Character** holds character and language controls and saved tag presets.
+- **Parameters** holds generation settings and IndexTTS-2 or ZONOS3-Mini steering. TTS Audio Suite applies these bracket tags to one segment.
+- **Inline Tags** holds engine-specific cues that go in the text.
 
 Common examples:
 

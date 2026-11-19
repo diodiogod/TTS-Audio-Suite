@@ -1,0 +1,8 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "source_index": 19,
+ "directions": {
+  "disfluent": {"file": "disfluent.npy", "kind": "axis"}
+ }
+}

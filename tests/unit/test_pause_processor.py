@@ -17,6 +17,52 @@ sys.path.insert(0, str(custom_node_root))
 os.environ.setdefault('COMFYUI_TESTING', '1')
 
 from utils.text.pause_processor import PauseTagProcessor
+from utils.audio.chunk_combiner import ChunkCombiner
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("texts", [
+    ["[pause:0.05s]", "Speech"],
+    ["Speech", "[wait:50ms]"],
+    ["[STOP:0.05]", "[pause:0.05s]", "Speech"],
+])
+@pytest.mark.parametrize("method", ["auto", "crossfade", "silence_padding"])
+def test_combiner_preserves_leading_trailing_and_consecutive_pauses(texts, method):
+    segments = [torch.zeros(1, 50) if text.startswith("[") else torch.ones(1, 1000) for text in texts]
+    audio, info = ChunkCombiner.combine_chunks(
+        segments, method=method, sample_rate=1000, text_chunks=texts, return_info=True
+    )
+
+    assert torch.equal(audio, torch.cat(segments, dim=-1))
+    assert info["junction_methods"] == ["concatenate"] * (len(segments) - 1)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("method, expected_join", [
+    ("auto", "crossfade"), ("crossfade", "crossfade"),
+    ("concatenate", "concatenate"), ("silence_padding", "silence"),
+])
+def test_pause_protection_keeps_normal_speech_join_method(method, expected_join):
+    segments = [torch.ones(1, 1000), torch.ones(1, 1000), torch.zeros(1, 50), torch.ones(1, 1000)]
+    texts = ["Alpha", "beta", "[pause:0.05s]", "gamma"]
+    audio, info = ChunkCombiner.combine_chunks(
+        segments, method=method, sample_rate=1000, text_chunks=texts, return_info=True
+    )
+    speech, _ = ChunkCombiner.combine_chunks(
+        segments[:2], method=method, sample_rate=1000, text_chunks=texts[:2], return_info=True
+    )
+
+    assert torch.equal(audio, torch.cat([speech, *segments[2:]], dim=-1))
+    assert info["junction_methods"] == [expected_join, "concatenate", "concatenate"]
+
+
+@pytest.mark.unit
+def test_pause_tag_inside_speech_is_not_a_pause_only_chunk():
+    _, info = ChunkCombiner.combine_chunks(
+        [torch.ones(1, 1000), torch.ones(1, 1000)], method="crossfade", sample_rate=1000,
+        text_chunks=["Speech [pause:0.05] text", "More speech"], return_info=True,
+    )
+    assert info["junction_methods"] == ["crossfade"]
 
 
 @pytest.mark.unit

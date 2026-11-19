@@ -1,0 +1,62 @@
+{
+ "3n_600k_sched600k_r4096": {
+  "key": "3n_600k_sched600k_r4096",
+  "codec": "opus_dual_3n_600k_sched600k_r4096_step600000",
+  "family": "dual",
+  "codebooks": 10,
+  "hop": 2940,
+  "frame_rate": 15.0,
+  "max_tokens": 450,
+  "codec_step": 600000,
+  "checkpoint": "hf://Zyphra/ZONOS3-Mini/autoencoder/generator.pt",
+  "checkpoint_sha256": "75a587a3eda9ca3d345f0c305756a7ff8619b01685c261b08ae243c69c2caf9a",
+  "teacher": "hf://Zyphra/ZONOS3-Mini/autoencoder/teacher",
+  "tag": "3n_600k_sched600k_r4096_attnres_800m50k",
+  "codebook_sizes": [
+   4096,
+   4096,
+   4096,
+   4096,
+   4096,
+   4096,
+   4096,
+   4096,
+   4096,
+   4096
+  ],
+  "silence_frame": [
+   1918,
+   746,
+   3544,
+   234,
+   1267,
+   2914,
+   3944,
+   2849,
+   326,
+   1337
+  ],
+  "decoder_default": "keep2_plain",
+  "decoders": {
+   "keep2_plain": {
+    "kind": "istft_mr",
+    "label": "Multi-resolution iSTFT head + linear STFT loss, KEEP-2 pruned decoder (istft_head_a_20261002/full-unfreezeall-mr-drop30-4x10-50k, job 73313, final step 50,000: decoder.0 keeps layers 0+31, decoder.2/4/6/8 keep 0+11, cold-crop recipe; release copy = step + trainable state); causal, fp32",
+    "campaign": "hf://Zyphra/ZONOS3-Mini/autoencoder/heads/keep2_plain",
+    "config": "config_full_unfreezeall_mr_drop30_4x10.json",
+    "checkpoint": "step_0050000.pt",
+    "expect_step": 50000,
+    "headroom_db": 3.0
+   },
+   "full_mr": {
+    "kind": "istft_mr",
+    "label": "Multi-resolution iSTFT head + linear STFT loss, decoder.0-8 unfrozen (istft_head_a_20261002/full-unfreezeall-mr-50k, final step 50,000; release copy = step + trainable state); causal, fp32",
+    "campaign": "hf://Zyphra/ZONOS3-Mini/autoencoder/heads/full_mr",
+    "config": "config_full_unfreezeall_mr.json",
+    "checkpoint": "step_0050000.pt",
+    "expect_step": 50000,
+    "headroom_db": 3.0
+   }
+  },
+  "_decoders_note": "the 600k conv-tail decoder of generator.pt is NOT used for decoding (its encoder/quantizer still initialise the kept decoder stages and encode reference clips)"
+ }
+}

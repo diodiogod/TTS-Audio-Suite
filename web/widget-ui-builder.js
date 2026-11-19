@@ -208,28 +208,30 @@ export function buildLanguageSection(state, storageKey) {
     langLabel.style.marginBottom = "5px";
     langLabel.style.fontSize = "11px";
 
+    const langRow = document.createElement("div");
+    Object.assign(langRow.style, { display: "flex", gap: "4px", marginBottom: "4px" });
+
     const langSelect = document.createElement("select");
-    langSelect.style.width = "100%";
-    langSelect.style.marginBottom = "4px";
+    langSelect.setAttribute("aria-label", "Language");
+    langSelect.style.flex = "1";
+    langSelect.style.minWidth = "0";
     langSelect.style.padding = "3px";
     langSelect.style.fontSize = "10px";
     langSelect.style.background = "#2a2a2a";
     langSelect.style.color = "#eee";
     langSelect.style.border = "1px solid #444";
     langSelect.innerHTML = "<option value=''>Select...</option>";
-    langSelect.style.display = "none";
 
     const langPickerBtn = document.createElement("button");
     langPickerBtn.type = "button";
     langPickerBtn.className = "tts-language-picker-trigger";
     langPickerBtn.setAttribute("aria-label", "Open language globe picker");
-    langPickerBtn.style.cssText = "width:100%;margin-bottom:4px;padding:5px 7px;display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;color:#eee;border:1px solid #444;border-radius:2px;font-size:10px;cursor:pointer";
-    const updatePickerLabel = () => {
-        langPickerBtn.innerHTML = langSelect.value
-            ? `<span>${langSelect.value.toUpperCase()}</span><span style="color:#56a8ff">🌐</span>`
-            : `<span>Select...</span><span style="color:#56a8ff">🌐</span>`;
-    };
-    updatePickerLabel();
+    langPickerBtn.title = "Choose a language on the globe";
+    langPickerBtn.textContent = "🌐";
+    Object.assign(langPickerBtn.style, {
+        flex: "0 0 auto", width: "28px", boxSizing: "border-box", padding: "0",
+        display: "grid", placeItems: "center", fontSize: "13px", cursor: "pointer",
+    });
 
     const populateLanguages = async () => {
         try {
@@ -246,7 +248,6 @@ export function buildLanguageSection(state, storageKey) {
                     });
                     // Restore saved language AFTER options are populated
                     langSelect.value = state.lastLanguage;
-                    updatePickerLabel();
                     console.log(`✅ Loaded ${data.languages.length} language codes`);
                 }
             }
@@ -263,7 +264,6 @@ export function buildLanguageSection(state, storageKey) {
             });
             // Restore saved language AFTER options are populated
             langSelect.value = state.lastLanguage;
-            updatePickerLabel();
         }
     };
 
@@ -272,7 +272,6 @@ export function buildLanguageSection(state, storageKey) {
     langSelect.addEventListener("change", () => {
         state.lastLanguage = langSelect.value;
         state.saveToLocalStorage(storageKey);
-        updatePickerLabel();
     });
 
     langPickerBtn.addEventListener("click", async () => {
@@ -300,10 +299,8 @@ export function buildLanguageSection(state, storageKey) {
     addLangBtn.style.border = "1px solid #555";
     addLangBtn.style.borderRadius = "2px";
 
-    langSection.appendChild(langLabel);
-    langSection.appendChild(langSelect);
-    langSection.appendChild(langPickerBtn);
-    langSection.appendChild(addLangBtn);
+    langRow.append(langSelect, langPickerBtn);
+    langSection.append(langLabel, langRow, addLangBtn);
 
     return { langSection, langSelect, addLangBtn };
 }

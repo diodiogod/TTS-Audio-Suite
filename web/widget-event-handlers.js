@@ -6,6 +6,7 @@
 
 import { TagUtilities } from "./tag-utilities.js";
 import { isLanguageCode } from "./language-constants.js";
+import { upsertTagParameter, validNumericTagValue } from "./numeric-tag-parameters.js";
 
 export function attachAllEventHandlers(
     editor, state, widget, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, getSelectionRange,
@@ -13,7 +14,7 @@ export function attachAllEventHandlers(
     paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
     formatBtn, validateBtn, fontFamilySelect, fontSizeInput, fontSizeDisplay, setFontSize, setFontFamily,
     showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
-    inlineTagControls,
+    tagControls,
     openFindReplace, focusNextFindMatch, focusPreviousFindMatch
 ) {
     const {
@@ -57,7 +58,8 @@ export function attachAllEventHandlers(
             emotionTextInput: indexTTSEmotionTextInput,
             addEmotionTextBtn: addIndexTTSEmotionTextBtn,
         },
-    } = inlineTagControls;
+        numeric,
+    } = tagControls;
 
     // Block ComfyUI shortcuts when editor is focused, but allow Enter, Alt, and Ctrl combinations
     editor.addEventListener("keydown", (e) => {
@@ -1324,7 +1326,48 @@ export function attachAllEventHandlers(
         insertOrReplaceIndexTTSTag(`[emotion:${quoted}]`);
     });
 
+    const captureParameterTagTarget = () => {
+        const text = getPlainText();
+        const selection = getSelection();
+        // Start inside a selected tag, or insert in front of selected speech.
+        const selectedTag = selection?.text.match(/^\s*\[/);
+        const position = selection ? selection.start + (selectedTag?.[0].length ?? 0) : getCaretPos();
+        return { text, position };
+    };
+
+    const insertParameterTag = (parameter, value, { text, position } = captureParameterTagTarget()) => {
+        if (text !== getPlainText()) return;
+        let standalonePause = false;
+        const update = TagUtilities.modifyTagContent(text, position, content => {
+            standalonePause = /^\s*(?:pause|wait|stop)\s*:/i.test(content);
+            return standalonePause ? content : upsertTagParameter(content, parameter, value);
+        });
+        if (update && !standalonePause) {
+            if (update.newText !== text) commitEditorTextChange(update.newText, update.newCaretPos);
+            return;
+        }
+
+        const tag = `[${parameter.tag}:${value}]`;
+        const insertion = update?.newCaretPos ?? position;
+        commitEditorTextChange(TagUtilities.insertTagAtPosition(text, tag, insertion), insertion + tag.length);
+    };
+
+    for (const card of Object.values(numeric).flatMap(engine => engine.cards)) {
+        card.addButton.addEventListener("click", () => {
+            const parameter = card.parameter();
+            const value = card.value();
+            if (!parameter) return;
+            if (!validNumericTagValue(parameter, value)) {
+                showNotification(`Enter a value from ${parameter.min} to ${parameter.max}.`, 2500);
+                return;
+            }
+            insertParameterTag(parameter, value);
+        });
+    }
+
     return {
+        captureParameterTagTarget,
+        insertParameterTag,
         beginExternalTransaction() {
             flushPendingHistory();
             return {

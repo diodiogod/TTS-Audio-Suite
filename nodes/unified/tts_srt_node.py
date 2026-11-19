@@ -242,6 +242,11 @@ Hello! This is unified SRT TTS with character switching.
                 stable_params['model_variant'] = config.get('model_variant', 'OmniVoice')
                 stable_params['dtype'] = config.get('dtype', 'auto')
 
+            if engine_type == "zonos3_mini":
+                stable_params['model_variant'] = config.get('model_variant', 'ZONOS3-Mini')
+                stable_params['dtype'] = config.get('dtype', 'auto')
+                stable_params['engine'] = config.get('engine', 'auto')
+
             if engine_type == "moss_tts":
                 stable_params['model_variant'] = config.get('model_variant', 'MOSS-TTS-Local-Transformer')
                 stable_params['multi_speaker_mode'] = config.get('multi_speaker_mode', 'Custom Character Switching')
@@ -701,6 +706,51 @@ Hello! This is unified SRT TTS with character switching.
                             raise InterruptedError("OmniVoice SRT processing interrupted by user")
 
                 engine_instance = OmniVoiceSRTWrapper(config)
+
+                import time
+                self._cached_engine_instances[cache_key] = {
+                    'instance': engine_instance,
+                    'timestamp': time.time()
+                }
+                return engine_instance
+
+            elif engine_type == "zonos3_mini":
+                zonos3_mini_srt_processor_path = os.path.join(nodes_dir, "zonos3_mini", "zonos3_mini_srt_processor.py")
+                zonos3_mini_srt_spec = importlib.util.spec_from_file_location("zonos3_mini_srt_processor_module", zonos3_mini_srt_processor_path)
+                zonos3_mini_srt_module = importlib.util.module_from_spec(zonos3_mini_srt_spec)
+                zonos3_mini_srt_spec.loader.exec_module(zonos3_mini_srt_module)
+
+                Zonos3MiniSRTProcessor = zonos3_mini_srt_module.Zonos3MiniSRTProcessor
+
+                class Zonos3MiniSRTWrapper:
+                    def __init__(self, config):
+                        self.config = config
+                        self.processor = Zonos3MiniSRTProcessor(self, config)
+
+                    def update_config(self, new_config):
+                        self.config = new_config.copy()
+                        self.processor.update_config(new_config)
+
+                    def process_with_error_handling(self, func):
+                        try:
+                            return func()
+                        except Exception as e:
+                            raise e
+
+                    def format_audio_output(self, audio_tensor, sample_rate):
+                        if audio_tensor.is_cuda:
+                            audio_tensor = audio_tensor.cpu()
+                        if audio_tensor.dim() == 1:
+                            audio_tensor = audio_tensor.unsqueeze(0).unsqueeze(0)
+                        elif audio_tensor.dim() == 2:
+                            audio_tensor = audio_tensor.unsqueeze(0)
+                        return {"waveform": audio_tensor, "sample_rate": sample_rate}
+
+                    def check_interrupt(self):
+                        if model_management.interrupt_processing:
+                            raise InterruptedError("ZONOS3-Mini SRT processing interrupted by user")
+
+                engine_instance = Zonos3MiniSRTWrapper(config)
 
                 import time
                 self._cached_engine_instances[cache_key] = {
@@ -1450,6 +1500,30 @@ Hello! This is unified SRT TTS with character switching.
                         'audio': audio_tensor,
                         'audio_path': audio_path,
                         'reference_text': reference_text if reference_text else "",
+                    }
+
+                result = engine_instance.processor.process_srt_content(
+                    srt_content=srt_content,
+                    voice_mapping=voice_mapping,
+                    seed=seed,
+                    timing_mode=timing_mode,
+                    timing_params=timing_params,
+                    enable_audio_cache=enable_audio_cache
+                )
+
+            elif engine_type == "zonos3_mini":
+                timing_params = {
+                    'fade_for_StretchToFit': fade_for_StretchToFit,
+                    'max_stretch_ratio': max_stretch_ratio,
+                    'min_stretch_ratio': min_stretch_ratio,
+                    'timing_tolerance': timing_tolerance,
+                }
+
+                voice_mapping = {}
+                if audio_tensor is not None or audio_path:
+                    voice_mapping['narrator'] = {
+                        'audio': audio_tensor,
+                        'audio_path': audio_path,
                     }
 
                 result = engine_instance.processor.process_srt_content(

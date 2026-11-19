@@ -23,7 +23,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 
 <!-- ENGINE_COMPARISON_START -->
 
-## Quick Engine Comparison — 19 Engines
+## Quick Engine Comparison — 20 Engines
 
 | Engine | Languages | Size | Key Features |
 |--------|-----------|------|--------------|
@@ -43,6 +43,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **DramaBox** | 🇺🇸 | ~16.4GB | Expressive scene prompting and stage directions, Native and SRT-aware duration targeting |
 | **OmniVoice** | 🌐 600+ languages | ~3.7GB | Inline non-verbal tags and pronunciation overrides, Reference-free voice design |
+| **ZONOS3-Mini** | 🌐 44 languages | ~10.3GB (+4GB full_mr) | Fast CUDA-graph inference, six-axis emotion vectors, voice and delivery steering, 30 built-in voices |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +18 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | Reference-free voice design with MOSS-VoiceGenerator, Native 1-5 speaker TTSD dialogue |
 | **MOSS-SoundEffect v2** | 🇺🇸​🇨🇳 | ~11.2GB | Durations up to 30 seconds, Native negative prompting, CFG, flow shift, and diffusion-step controls |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |
@@ -1140,12 +1141,12 @@ Use the new [Unified ✏️ ASR Transcribe + SRT Builder](example_workflows/Unif
 
 **NEW in v4.12.0**: Fine-grained per-segment control over TTS generation parameters across all engines with an interactive tag editor!
 
-Beyond character switching and language control, you can now override generation parameters (seed, temperature, CFG, speed, etc.) on a per-segment basis using inline tags. The new **🏷️ Multiline TTS Tag Editor** node makes building complex tags easier and more visual with:
+Use **Character** to choose the voice and language for a segment or load a preset. Use **Parameters** to adjust that segment's settings. The **🏷️ Multiline TTS Tag Editor** includes:
 - **Rich Text Editor**: Multiline editor with resizable font sizes (2-120px), multiple font families, and customizable UI scaling
 - **Visual Tag Management**: Character/language/parameter dropdowns for quick selection, inline tag validation with syntax checking
 - **Engine-Aware Inline Tags**: dedicated editor modes for Step Audio EditX, Higgs Audio v3, CosyVoice3, and OmniVoice
 - **One-Click Tag Swapping**: click a character, language, audio reference, parameter, or supported native inline tag to open an engine-aware replacement palette; click again or press-drag-release to apply
-- **IndexTTS-2 Emotion Editing**: insert vectors, named emotion values, presets, quoted text, and `{seg}` dynamic emotion controls directly from the Inline Tags panel
+- **Per-Segment Steering**: choose IndexTTS-2 or ZONOS3-Mini under Steering Engine on the Parameters tab to edit emotion vectors and other steering controls
 - **Safe Long-Tag Layout**: long bracket and angle tags wrap inside the editor instead of overflowing the text area; quoted emotion text remains directly editable
 - **Preset System**: Save and load up to 3 preset configurations for rapid tag reuse
 - **Keyboard Shortcuts**: Alt+L/C/P for tag insertion, Alt+1/2/3 for preset loading
@@ -1578,6 +1579,7 @@ For offline/manual setup:
 | DramaBox | `ComfyUI/models/TTS/dramabox/DramaBox/` | ✅ | ~16.4GB download; fast mode roughly 24GB VRAM; experimental FP8, staged, and sequential options can reduce VRAM, but no minimum GPU size is guaranteed; conditional LTX-2 Community License |
 | Fish Audio S2 Pro | `ComfyUI/models/TTS/fish_audio_s2_pro/` | ✅ | Official BF16 or optional community FP8 checkpoint; the official checkpoint can be quantized on load with BNB INT8/NF4; main T5 environment with process teardown for Clear VRAM; Fish Audio Research License |
 | OmniVoice | `ComfyUI/models/TTS/omnivoice/` | ✅ | Official OmniVoice model. Voice cloning in this suite requires explicit reference text. |
+| ZONOS3-Mini | `ComfyUI/models/TTS/zonos3_mini/` | ✅ | Native Zyphra/ZONOS3-Mini files, ~10.3GB; the full_mr decoder (+4GB) and the reference-mode encoder (+0.8GB) download on first use. No reference transcript needed. |
 
 *Generated from [tts_audio_suite_engines.yaml](docs/Dev%20reports/tts_audio_suite_engines.yaml).*
 

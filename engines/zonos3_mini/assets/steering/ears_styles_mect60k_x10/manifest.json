@@ -1,0 +1,12 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "source_index": 19,
+ "directions": {
+  "whisper": {"file": "whisper.npy", "kind": "named"},
+  "loud": {"file": "loud.npy", "kind": "named"},
+  "tempo": {"file": "tempo.npy", "kind": "axis"},
+  "pitch": {"file": "pitch.npy", "kind": "axis"},
+  "conversational": {"file": "conversational.npy", "kind": "axis"}
+ }
+}

@@ -1,0 +1,20 @@
+{
+  "description": "Request defaults and limits of every server and the studio (zonos3.generation). sample_rate: the API's audio rate (Hz). sampling: the v2 sampling defaults (servers/api/openapi.yaml repeats them; model/tests/test_generation.py keeps the two equal). silence_prefill_frames: the server default length (ZONOS3_SILENCE_PREFILL_FRAMES overrides it) and the longest a request may ask for. decode_context_frames: the reference tail decoded ahead of the stream when a request leaves decode_context_frames unset or 0. reference_max_frames: the reference prefix of the GGUF servers (60 s at the dual codec's 2940-sample hop; longer reference codes keep their first frames). max_frames: the GGUF servers' default frame budget (--max). audio_max_seconds: the longest reference clip, upload and speech-edit clip. stream_codebooks: the prefix stream's early partial-frame decode defaults (request fields stream_codebooks / stream_codebooks_scope): a frame is decoded once its first `default` codebooks arrived, for the `scope` chunks (first: the first chunk only; all: every chunk); default = n_codebooks decodes complete frames only. output_limit_dbfs: the knee k of the soft limiter every server applies after the decoder's output gain: samples at or below it pass unchanged, louder ones bend smoothly into full scale, sign(x) (k + (1 - k) tanh((|x| - k) / (1 - k))).",
+  "sample_rate": 44100,
+  "sampling": {
+    "temperature": 0.75,
+    "topk": 80,
+    "top_p": 0.69,
+    "min_p": 0.0,
+    "repetition_penalty": 2.4,
+    "repetition_window": 96,
+    "repetition_codebooks": 6
+  },
+  "silence_prefill_frames": {"default": 3, "max": 30},
+  "decode_context_frames": 30,
+  "reference_max_frames": 900,
+  "max_frames": 2000,
+  "audio_max_seconds": {"reference": 60, "upload": 600, "edit": 150},
+  "stream_codebooks": {"default": 1, "scope": "first"},
+  "output_limit_dbfs": -1.0
+}

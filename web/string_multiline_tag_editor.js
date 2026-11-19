@@ -14,11 +14,13 @@ import { buildParameterSection } from "./widget-parameter-section.js";
 import { buildPresetSection } from "./widget-preset-system.js";
 import { attachAllEventHandlers } from "./widget-event-handlers.js";
 import { buildTabSystem } from "./widget-tabs.js";
-import { buildInlineEditSection } from "./widget-inline-edit-section.js";
+import { buildTagEngineSections } from "./widget-inline-edit-section.js";
 import { SRTTimingDragController, buildSRTTimingMarkup } from "./string_multiline_tag_editor_timing_drag.js";
 import { SRTCueEditController, buildSRTCueNumberMarkup } from "./string_multiline_tag_editor_srt_cue_ops.js";
 import { findTextMatches, replaceMatches } from "./string_multiline_tag_editor_find_replace.js";
-import { openIndexTTSEmotionEditor, openIndexTTSEmotionPresetPicker, parseVectorTag, isEmotionTextTag } from "./index_tts_emotion_tag_popup.js";
+import { openEmotionVectorEditor, openIndexTTSEmotionEditor, openIndexTTSEmotionPresetPicker, parseVectorTag, isEmotionTextTag } from "./index_tts_emotion_tag_popup.js";
+import { createZonos3VectorProfile, ZONOS3_TAG_SECTIONS } from "./zonos3_tag_parameters.js";
+import { findNumericTagParameter } from "./numeric-tag-parameters.js";
 import { openCharacterAliasManager } from "./character_alias_manager_ui.js";
 
 
@@ -78,7 +80,13 @@ patchChangeTrackerUndoRedo();
 ensureTagEditorStylesheet();
 
 // Create the widget
-function addStringMultilineTagEditorWidget(node) {
+function addStringMultilineTagEditorWidget(node, schema) {
+    const zonos3Parameters = schema.zonos3_parameters ?? [];
+    const zonos3Vector = createZonos3VectorProfile(schema.zonos3_vector, zonos3Parameters);
+    const numericEngines = {
+        zonos3_mini: { label: "ZONOS3-Mini", parameters: zonos3Parameters, vector: zonos3Vector, sections: ZONOS3_TAG_SECTIONS },
+    };
+    const vectors = new Map(Object.values(numericEngines).filter(engine => engine.vector).map(({ vector }) => [vector.tag, vector]));
     // Use widget counter as fallback when node.id is -1 (not yet assigned)
     const uniqueId = node.id !== -1 ? node.id : `widget_${widgetCounter++}`;
     const storageKey = `string_multiline_tag_editor_${uniqueId}`;
@@ -89,7 +97,7 @@ function addStringMultilineTagEditorWidget(node) {
     let isConfigured = false; // Flag to know if onConfigure already loaded the state
     let hasSetInitialValue = false; // Track if we've set the initial workflow value
     let onConfigureCallCount = 0; // Track how many times onConfigure has been called
-    let syncInlineEngineSelection = () => {};
+    let syncTagSelections = () => {};
 
     // Create a temporary state to check default text
     const defaultState = new EditorState();
@@ -1514,7 +1522,7 @@ function addStringMultilineTagEditorWidget(node) {
         if (v !== undefined) {
             widget.value = v;
         }
-        syncInlineEngineSelection();
+        syncTagSelections();
     };
 
     // Hook into node's onConfigure to load workflow values
@@ -1527,6 +1535,10 @@ function addStringMultilineTagEditorWidget(node) {
         if (info?.properties?.ttsTagEditorInlineEngine) {
             node.properties.ttsTagEditorInlineEngine = info.properties.ttsTagEditorInlineEngine;
             state.activeInlineTagEngine = info.properties.ttsTagEditorInlineEngine;
+        }
+        if (info?.properties?.ttsTagEditorSegmentEngine !== undefined) {
+            node.properties.ttsTagEditorSegmentEngine = info.properties.ttsTagEditorSegmentEngine;
+            state.activeSegmentTagEngine = info.properties.ttsTagEditorSegmentEngine;
         }
 
         // Load workflow value when onConfigure is called (user opened a file)
@@ -1549,21 +1561,22 @@ function addStringMultilineTagEditorWidget(node) {
                 }
 
                 state.lastWorkflowValue = workflowValue;
-                setEditorText(state.text);
             } else {
                 // No localStorage or no history - just use workflow value
-                setEditorText(workflowValue);
                 state.text = workflowValue;
                 state.history = [{text: workflowValue, caretPos: 0}];
                 state.historyIndex = 0;
                 state.lastWorkflowValue = workflowValue;
             }
 
-            syncInlineEngineSelection();
+            syncTagSelections();
+            setEditorText(state.text);
             widget.value = state.text;
             historyStatus.textContent = state.getHistoryStatus();
             isConfigured = true; // Mark that we've configured from workflow
             hasSetInitialValue = true; // Mark that we've set the initial value from workflow
+        } else {
+            syncTagSelections();
         }
 
         return result;
@@ -1577,6 +1590,7 @@ function addStringMultilineTagEditorWidget(node) {
         const serialized = info || {};
         serialized.properties = serialized.properties || {};
         serialized.properties.ttsTagEditorInlineEngine = state.activeInlineTagEngine || node.properties?.ttsTagEditorInlineEngine || "step_audio_editx";
+        serialized.properties.ttsTagEditorSegmentEngine = state.activeSegmentTagEngine ?? "";
         if (this.widgets && this.widgets.length > 0) {
             serialized.widgets_values = this.widgets.map((w) => w.value);
         }
@@ -1608,7 +1622,11 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Parameter controls - dynamic parameter selector
     // Build parameter section
-    const paramData = buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus, editor);
+    const generation = Object.fromEntries(Object.values(numericEngines).map(({ label, parameters }) => [
+        label, parameters.filter(parameter => parameter.group === "Generation"),
+    ]));
+    const paramData = buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus, editor,
+        generation);
     const { paramSection, paramTypeSelect, paramInputWrapper, addParamBtn, createParamInput, getCurrentParamInput, setCurrentParamInput } = paramData;
     let currentParamInput = paramData.getCurrentParamInput();
     paramSection.classList.add("string-multiline-tag-editor-panel-section");
@@ -1627,42 +1645,44 @@ function addStringMultilineTagEditorWidget(node) {
     formatBtn.classList.add("string-multiline-tag-editor-footer-btn");
     validateBtn.classList.add("string-multiline-tag-editor-footer-btn", "is-primary");
 
-    // Build inline edit section
-    const inlineEditData = buildInlineEditSection(state, storageKey);
-    const { inlineEditSection, inlineTagControls, updateInlineEnginePanelVisibility } = inlineEditData;
-    inlineEditSection.classList.add("string-multiline-tag-editor-inline-section");
-
-    syncInlineEngineSelection = () => {
-        const desiredEngine = state.activeInlineTagEngine || node.properties?.ttsTagEditorInlineEngine || "step_audio_editx";
-        state.activeInlineTagEngine = desiredEngine;
-        node.properties.ttsTagEditorInlineEngine = desiredEngine;
-        if (inlineTagControls.inlineEngineSelect.value !== desiredEngine) {
-            inlineTagControls.inlineEngineSelect.value = desiredEngine;
-        }
-        updateInlineEnginePanelVisibility?.();
-    };
-
-    inlineTagControls.inlineEngineSelect.addEventListener("change", () => {
-        const selectedEngine = inlineTagControls.inlineEngineSelect.value || "step_audio_editx";
-        state.activeInlineTagEngine = selectedEngine;
-        node.properties.ttsTagEditorInlineEngine = selectedEngine;
+    const { inline, segment, tagControls } = buildTagEngineSections(state, storageKey, numericEngines, updateRangeFill);
+    inline.container.classList.add("string-multiline-tag-editor-inline-section");
+    segment.container.classList.add("string-multiline-tag-editor-inline-section");
+    const { tabHeaders, characterContent, parameterContent, inlineEditContent, switchTab } = buildTabSystem(state, storageKey, () => {
+        sidebarScrollContent.scrollTop = 0;
+        requestAnimationFrame(updateSidebarScrollbar);
     });
 
-    // Build tab system
-    const tabData = buildTabSystem(state, storageKey);
-    const { tabContainer, charParamContent, inlineEditContent, switchTab } = tabData;
-    tabContainer.classList.add("string-multiline-tag-editor-tab-system");
-    charParamContent.classList.add("string-multiline-tag-editor-tab-content");
-    inlineEditContent.classList.add("string-multiline-tag-editor-tab-content");
+    const syncEnginePanels = () => {
+        inline.select.value ||= "step_audio_editx";
+        segment.select.value ||= "";
+        node.properties.ttsTagEditorInlineEngine = state.activeInlineTagEngine = inline.select.value;
+        node.properties.ttsTagEditorSegmentEngine = state.activeSegmentTagEngine = segment.select.value;
+        inline.update();
+        segment.update();
+    };
+    syncTagSelections = () => {
+        const inlineEngine = state.activeInlineTagEngine || node.properties.ttsTagEditorInlineEngine;
+        const segmentEngine = state.activeSegmentTagEngine ?? node.properties.ttsTagEditorSegmentEngine;
+        // Older workflows stored steering panel selections in the inline engine field.
+        const legacySteering = inlineEngine && [...segment.select.options].some(option => option.value === inlineEngine);
+        segment.select.value = segmentEngine || (legacySteering ? inlineEngine : "");
+        inline.select.value = legacySteering ? "step_audio_editx" : inlineEngine;
+        syncEnginePanels();
+        switchTab(legacySteering && !segmentEngine ? "parameters" : state.activeTab);
+    };
+    for (const select of [inline.select, segment.select]) {
+        select.addEventListener("change", () => {
+            syncEnginePanels();
+            state.saveToLocalStorage(storageKey);
+            requestAnimationFrame(updateSidebarScrollbar);
+        });
+    }
+    syncTagSelections();
 
-    // Assemble Character/Parameters tab
-    charParamContent.appendChild(charSection);
-    charParamContent.appendChild(langSection);
-    charParamContent.appendChild(paramSection);
-    charParamContent.appendChild(presetSection);
-
-    // Assemble Inline Tags tab
-    inlineEditContent.appendChild(inlineEditSection);
+    characterContent.append(charSection, langSection, presetSection);
+    parameterContent.append(paramSection, segment.container);
+    inlineEditContent.appendChild(inline.container);
 
     // Assemble header and shell
     topActions.appendChild(formatBtn);
@@ -1673,15 +1693,11 @@ function addStringMultilineTagEditorWidget(node) {
 
     const sidebarHeader = document.createElement("div");
     sidebarHeader.className = "string-multiline-tag-editor-sidebar-header";
-    const tabHeaderStrip = tabContainer.firstElementChild;
-    if (tabHeaderStrip) {
-        sidebarHeader.appendChild(tabHeaderStrip);
-    }
+    sidebarHeader.appendChild(tabHeaders);
 
     // Assemble sidebar
     sidebar.appendChild(sidebarHeader);
-    sidebarScrollContent.appendChild(charParamContent);
-    sidebarScrollContent.appendChild(inlineEditContent);
+    sidebarScrollContent.append(characterContent, parameterContent, inlineEditContent);
     sidebar.appendChild(sidebarScrollContent);
     sidebar.appendChild(sidebarScrollbar);
 
@@ -1720,7 +1736,7 @@ function addStringMultilineTagEditorWidget(node) {
         paramTypeSelect, paramInputWrapper, addParamBtn, presetButtons, presetTitles, updatePresetGlows,
         formatBtn, validateBtn, fontFamilySelect, fontSizeInput, null, setFontSize, setFontFamily,
         showNotification, resizeDivider, sidebar, setSidebarWidth, setUIScale, setSidebarResizeActive,
-        inlineTagControls,
+        tagControls,
         openFindReplace, focusNextFindMatch, focusPreviousFindMatch
     );
 
@@ -1757,6 +1773,56 @@ function addStringMultilineTagEditorWidget(node) {
         });
     };
 
+    const findVectorComponent = (tag, offset = null, onlyProfile = null) => {
+        let start = 1;
+        for (const part of tag.slice(1, -1).split("|")) {
+            const colon = part.indexOf(":");
+            const end = start + part.length;
+            const profile = colon >= 0 && vectors.get(part.slice(0, colon).trim().toLowerCase());
+            if (profile && (!onlyProfile || profile === onlyProfile)
+                && (offset === null || (offset >= start && offset <= end))) {
+                return { start, end, profile, raw: part.slice(colon + 1).trim() };
+            }
+            start = end + 1;
+        }
+        return null;
+    };
+
+    const openVectorAt = (match, component, anchorRect) => {
+        const transaction = editorEventApi.beginExternalTransaction();
+        const start = match.start + component.start;
+        const end = match.start + component.end;
+        const apply = (tag, commit) => {
+            const value = tag.slice(1, -1);
+            const text = transaction.originalText.slice(0, start) + value + transaction.originalText.slice(end);
+            const update = commit ? editorEventApi.commitExternalTransaction : editorEventApi.previewExternalTransaction;
+            update(transaction, text, start + value.length);
+        };
+        openEmotionVectorEditor({
+            vectorProfile: component.profile, tag: component.raw, anchorRect,
+            onPreview: tag => apply(tag, false), onCommit: tag => apply(tag, true),
+            onCancel: () => editorEventApi.cancelExternalTransaction(transaction),
+        });
+    };
+
+    for (const [key, { addVectorBtn }] of Object.entries(tagControls.numeric)) {
+        if (!addVectorBtn) continue;
+        const vector = numericEngines[key].vector;
+        addVectorBtn.addEventListener("click", () => {
+            const target = editorEventApi.captureParameterTagTarget();
+            let existing = null;
+            TagUtilities.modifyTagContent(target.text, target.position, content => {
+                existing = findVectorComponent(`[${content}]`, null, vector);
+                return content;
+            });
+            openEmotionVectorEditor({
+                vectorProfile: vector, tag: existing?.raw,
+                onApply: tag => editorEventApi.insertParameterTag({ tag: vector.tag, aliases: [], vector: true },
+                    tag.slice(tag.indexOf(":") + 1, -1), target),
+            });
+        });
+    }
+
     const emotionTagAtCaret = () => {
         const text = getPlainText();
         const position = getCaretPos();
@@ -1766,6 +1832,12 @@ function addStringMultilineTagEditorWidget(node) {
         if (text.slice(start, position).includes("]") || text.slice(position, end).includes("[")) return null;
         const tag = text.slice(start, end + 1);
         return { text, position, start, end: end + 1, tag };
+    };
+
+    const isIndexVectorTag = tag => {
+        if (!parseVectorTag(tag)) return false;
+        const numeric = numericEngines[segment.select.value];
+        return !numeric || !findNumericTagParameter(numeric.parameters, tag.slice(1, tag.indexOf(":")));
     };
 
     const getSelectOptions = select => [...(select?.options || [])]
@@ -1789,13 +1861,15 @@ function addStringMultilineTagEditorWidget(node) {
             }
             const { openTagSwapPopup } = await import("./tag_swap_popup.js");
             const transaction = editorEventApi.beginExternalTransaction();
+            const engine = match.tag.startsWith("[") ? (segment.select.value || inline.select.value) : inline.select.value;
             const popup = openTagSwapPopup({
                 tag: match.tag,
                 cursorOffset: match.position - match.start,
                 anchorRect,
                 characterOptions: getSelectOptions(charSelect),
                 languageOptions: getSelectOptions(langSelect),
-                engine: inlineTagControls.inlineEngineSelect.value || "step_audio_editx",
+                engine,
+                numericParameters: numericEngines[engine]?.parameters,
                 holdPointerId,
                 onGestureEnd: releaseHoldSelection,
                 onSelect: replacement => {
@@ -1822,7 +1896,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     const isQuotedEmotionTextTag = tag => /^\[emotion:["'][\s\S]*["']\]$/i.test(tag);
 
-    inlineTagControls.indexTTS.managePresetsBtn.addEventListener("click", () => {
+    tagControls.indexTTS.managePresetsBtn.addEventListener("click", () => {
         const position = getCaretPos();
         openEmotionPopupForRange(position, position, null, { showPresets: true });
     });
@@ -1845,7 +1919,12 @@ function addStringMultilineTagEditorWidget(node) {
             ? target.getBoundingClientRect()
             : { left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY };
 
-        if (parseVectorTag(match.tag)) {
+        const vector = findVectorComponent(match.tag, match.position - match.start);
+        if (vector) {
+            openVectorAt(match, vector, anchorRect);
+            return;
+        }
+        if (isIndexVectorTag(match.tag)) {
             openEmotionPopupForRange(match.start, match.end, match.tag, {
                 anchorRect,
                 showPresets: false
@@ -1910,7 +1989,8 @@ function addStringMultilineTagEditorWidget(node) {
             const bracket = emotionTagAtCaret();
             const angle = angleTagAtCaret();
             const match = bracket || angle;
-            if (!match || (bracket && (parseVectorTag(match.tag) || isEmotionTextTag(match.tag)))) {
+            if (!match || (bracket && (isIndexVectorTag(match.tag) || isEmotionTextTag(match.tag)
+                || findVectorComponent(match.tag, match.position - match.start)))) {
                 cleanup();
                 return;
             }
@@ -2259,7 +2339,7 @@ function addStringMultilineTagEditorWidget(node) {
                 key: "parameter-switching",
                 tabLabel: "Parameters",
                 title: "Parameter Switching Guide",
-                intro: "Override generation behavior per segment without changing node-level defaults.",
+                intro: "Use bracket tags to set generation and steering parameters for one segment.",
                 rows: [
                     { syntax: "[Alice|seed:42]", purpose: "Fix or vary randomness per segment", notes: "Keeps a stable seed for that section only." },
                     { syntax: "[Alice|temperature:0.7]", purpose: "Adjust expressive variation", notes: "Higher values are looser; lower values are more controlled." },
@@ -2422,13 +2502,13 @@ function addStringMultilineTagEditorWidget(node) {
         auxiliaryContent.replaceChildren(libraryLayout);
     };
 
-    const activateTopView = (viewKey) => {
+    const activateTopView = (viewKey, { persist = true } = {}) => {
         topNavItems.forEach((item, key) => {
             item.classList.toggle("is-active", key === viewKey);
         });
 
         state.activeTopView = viewKey;
-        state.saveToLocalStorage(storageKey);
+        if (persist) state.saveToLocalStorage(storageKey);
 
         const isEditorView = viewKey === "editor";
         shellBody.style.display = isEditorView ? "flex" : "none";
@@ -2470,7 +2550,7 @@ function addStringMultilineTagEditorWidget(node) {
 
     // Initialize history display
     historyStatus.textContent = state.getHistoryStatus();
-    activateTopView(state.activeTopView || "editor");
+    activateTopView(state.activeTopView || "editor", { persist: false });
 
     editor.addEventListener("scroll", () => {
         updateEditorScrollbar();
@@ -2511,7 +2591,7 @@ app.registerExtension({
                 this.widgets.shift();
 
                 // Create our custom widget (becomes the FIRST widget now)
-                addStringMultilineTagEditorWidget(this);
+                addStringMultilineTagEditorWidget(this, nodeData.input.required.text[1]);
             };
         }
     }

@@ -1,0 +1,8 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "directions": {
+  "gender": {"file": "gender.npy", "kind": "axis"},
+  "age": {"file": "age.npy", "kind": "axis"}
+ }
+}

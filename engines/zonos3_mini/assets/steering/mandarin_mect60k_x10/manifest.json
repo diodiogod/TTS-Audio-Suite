@@ -1,0 +1,7 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "directions": {
+  "cmn": {"file": "cmn.npy", "kind": "named"}
+ }
+}

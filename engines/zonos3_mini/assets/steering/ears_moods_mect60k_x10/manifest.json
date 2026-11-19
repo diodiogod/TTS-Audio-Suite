@@ -1,0 +1,30 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "source_index": 19,
+ "directions": {
+  "angry": {"file": "angry.npy", "kind": "named"},
+  "sad": {"file": "sad.npy", "kind": "named"},
+  "happy": {"file": "happy.npy", "kind": "named"},
+  "fearful": {"file": "fearful.npy", "kind": "named"},
+  "disgusted": {"file": "disgusted.npy", "kind": "named"},
+  "surprised": {"file": "surprised.npy", "kind": "named"},
+  "adoring": {"file": "adoring.npy", "kind": "named"},
+  "confused": {"file": "confused.npy", "kind": "named"},
+  "content": {"file": "content.npy", "kind": "named"},
+  "cute": {"file": "cute.npy", "kind": "named"},
+  "desirous": {"file": "desirous.npy", "kind": "named"},
+  "disappointed": {"file": "disappointed.npy", "kind": "named"},
+  "distressed": {"file": "distressed.npy", "kind": "named"},
+  "embarrassed": {"file": "embarrassed.npy", "kind": "named"},
+  "ecstatic": {"file": "ecstatic.npy", "kind": "named"},
+  "guilty": {"file": "guilty.npy", "kind": "named"},
+  "interested": {"file": "interested.npy", "kind": "named"},
+  "pained": {"file": "pained.npy", "kind": "named"},
+  "proud": {"file": "proud.npy", "kind": "named"},
+  "realizing": {"file": "realizing.npy", "kind": "named"},
+  "relieved": {"file": "relieved.npy", "kind": "named"},
+  "serene": {"file": "serene.npy", "kind": "named"},
+  "scared": {"file": "scared.npy", "kind": "named"}
+ }
+}

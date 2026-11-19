@@ -135,67 +135,54 @@ See the [Sound Effects Guide](SOUND_EFFECTS_GUIDE.md) for pauses, crossfades, lo
 | `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
 | `inference_steps` | `steps` | int | 1-100 | Number of inference steps |
 
-#### IndexTTS 2 / 2.5
+#### ZONOS3-Mini
 | Parameter | Alias | Type | Range | Description |
 |-----------|-------|------|-------|-------------|
-| `cfg` | — | float | 0.0-20.0 | CFG strength |
 | `top_p` | `topp` | float | 0.0-1.0 | Nucleus sampling probability |
-| `top_k` | `topk` | int | 1-100 | Top-k sampling |
-| `emotion_alpha` | — | float | 0.0-1.0 | Shared audio/vector/text emotion intensity |
-| `duration_factor` | `dur_factor` | float | 0.5-2.0 | Official IndexTTS-2.5 internal feature-duration scaling; 0.5 shorter/faster, 2.0 longer/slower |
+| `top_k` | `topk` | int | 1-4096 | Top-k sampling |
+| `min_p` | — | float | 0.0-1.0 | Minimum probability relative to the top token |
+| `repetition_penalty` | `rep_penalty` | float | 0.5-3.0 | Audio repetition penalty |
+| `speaker_cfg_scale` | `speaker_cfg` | float | 0.0-5.0 | Speaker guidance (1 = off) |
+| `loudness_bucket` | — | int | 0-10 | Loudness conditioning (10 = unknown) |
+| `fmax_bucket` | — | int | 0-10 | Bandwidth conditioning (10 = unknown) |
+| `speaking_rate_bucket` | `rate_bucket` | int | 0-30 | Speaking-rate conditioning (30 = unknown) |
 
-`duration_factor` is a 2.5-only upstream parameter. It uses nearest-neighbor scaling inside the semantic length regulator after speech codes are generated. It is not natural prosody planning, exact-seconds targeting, waveform playback-speed control, or an inference-performance control. IndexTTS continues to use the suite's ordinary final timing modes in TTS SRT.
+In **Parameters**, choose **ZONOS3-Mini** under **Steering Engine**. Use **Add Parameter** for the generation settings above.
 
-Switching the engine node between IndexTTS-2 and IndexTTS-2.5 invalidates the cached Text/SRT processor and model identity. `language`, `duration_factor`, and `text_normalization` also participate in the generated-audio cache identity, so changing a supported 2.5 generation parameter cannot return audio produced with the previous setting.
-
-IndexTTS-2 also supports inline emotion controls. Named unsigned values replace
-that dimension; explicitly signed values adjust the connected vector:
-
-```text
-[sad:0.7|calm:0.2] Absolute values for this segment.
-[sad:+0.3|calm:-0.2] Adjust the connected vector for this segment.
-```
-
-All eight values can be supplied in the official order `happy, angry, sad,
-afraid, disgusted, melancholic, surprised, calm`:
-
-```text
-[vector:0,0,0.7,0,0,0.4,0,0.2] Absolute replacement.
-[vector:+0,+0,+0.3,+0,+0,+0,+0,-0.2] Relative adjustment.
-```
-
-Full relative vectors require an explicit sign on every value. Results are
-clamped to IndexTTS-2's supported range and revert to the connected vector at
-the next segment.
-
-Text emotion can use a saved preset or quoted text. `{seg}` is expanded with
-the current segment before QwenEmotion analysis:
+| Control | Tags and ranges | Notes |
+|---------|-----------------|-------|
+| Named emotion | `happy`, `angry` 0–6 · `confused` 0–4 · `sad`, `calm` 0–8 · `scared` 0–14 | `happy:2` sets the strength. `happy:+2` and `happy:-2` adjust it. |
+| Emotion vector | `zonos_vector` in order `happy, angry, confused, sad, calm, scared` | Sign all six values to adjust the connected settings. Unsigned values replace them. Named tags apply after the vector. |
+| Delivery and mood | `projection` −3 to 4 · `pace` −3 to 3 · `chatty` −5 to 5 · `hesitant` −8 to 20 · `lively` −16 to 16 · `valence`, `arousal` −6 to 6 | Signed values set the direction and strength. |
+| Voice characteristics | `gender`, `age`, `pitch`, `pitch_range` −3 to 3 · `deep`, `bright`, `husky`, `raspy`, `soft`, `authority` 0–6 · `room` −4 to 6 | Embedding voice mode. |
+| Accents | `*_accent` 0–2 · `mandarin_accent` 0–1.5 | Pick the accent in Voice Characteristics. |
+| Additional effects | Native IDs such as `emotions.proud` −50 to 50 | See the Additional Effects selector for the full list. |
+| Effect timing | `full_strength`, `reduction` 0–600 s · `remaining_strength` 0–100% · `control_guidance` 0–5 | Pace and whisper keep their strength throughout the segment. |
 
 ```text
-[emotion:restrained_anger] A saved preset.
-[emotion:"Quiet grief masking frustration"] A direct description.
-[emotion:"Infer nervous anticipation from this line: {seg}"] Dynamic analysis.
+[Alice|happy:+2|pace:-1] Increase happiness and slow the delivery.
+[Alice|zonos_vector:2,0,0,0,1,0] Set the six emotion strengths.
 ```
 
-Click a numeric emotion tag in the TTS Tag Editor to open a contextual radar
-directly beside that tag. The editor also creates and manages text
-presets in `models/TTS/IndexTTS/emotion_presets.json`.
+Extra control guidance requires an active delivery effect, embedding voice mode, LACI off, and speaker guidance at 1.
 
-IndexTTS-2 has separate engine inputs for these sources: connect vector or text
-emotion to `emotion_control` and audio emotion references to `emotion_audio`.
-Both may be connected simultaneously; IndexTTS-2 blends them during emotion
-conditioning. Inline vector/text controls override the connected vector/text
-values for their segment, while `[Character:emotion_ref]` selects a
-segment-local audio reference that can still blend with vector/text emotion.
-When an emotion control is inserted with the caret inside a character/audio tag,
-the editor appends or updates it as another pipe parameter, for example
-`[Bob:br_ivan_raiva3|sad:+0.25]`.
+#### IndexTTS 2 / 2.5
 
-The tag editor's quick-swap palette is engine-aware: parameter choices are
-filtered to the selected inline engine, while each engine's supported native
-emotion/style/prosody/sound tags use their own replacement choices. Named
-emotion presets can be swapped from the text; quoted `[emotion:"..."]` text is
-intentionally left as direct editable content rather than treated as a preset.
+| Parameter | Alias | Type | Range | Description |
+|-----------|-------|------|-------|-------------|
+| `top_p` | `topp` | float | 0–1 | Nucleus sampling probability |
+| `top_k` | `topk` | int | 1–4096 | Top-k sampling |
+| `emotion_alpha` | — | float | 0–1 | Audio, vector, and text emotion intensity |
+| `duration_factor` | `dur_factor` | float | 0.5–2.0 | IndexTTS-2.5 feature duration multiplier |
+
+| Emotion tag | Example | Behavior |
+|-------------|---------|----------|
+| Named strength | `[sad:0.7\|calm:-0.2]` | Unsigned values set the strength. Signed values adjust it. Results stay in 0–1.2. |
+| Full vector | `[vector:0,0,0.7,0,0,0.4,0,0.2]` | Order is `happy, angry, sad, afraid, disgusted, melancholic, surprised, calm`. Sign every value for a relative adjustment. |
+| Text or preset | `[emotion:"Quiet grief"]` or `[emotion:restrained_anger]` | Use `{seg}` in quoted text to include the current segment in emotion analysis. |
+| Audio reference | `[Bob:emotion_ref\|sad:+0.25]` | The audio reference can blend with vector or text emotion. |
+
+Use one of named values, a full vector, or text emotion per segment. In **Parameters**, choose **IndexTTS-2** under **Steering Engine** for the radar, press-and-drag picker, and emotion presets.
 
 ---
 

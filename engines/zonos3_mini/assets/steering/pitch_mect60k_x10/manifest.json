@@ -1,0 +1,8 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "directions": {
+  "pitch": {"file": "pitch.npy", "kind": "axis"},
+  "pitch_range": {"file": "pitch_range.npy", "kind": "axis"}
+ }
+}

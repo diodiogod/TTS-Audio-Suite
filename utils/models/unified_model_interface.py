@@ -1807,6 +1807,33 @@ def register_omnivoice_factory():
     unified_model_interface.register_model_factory("omnivoice", "tts", omnivoice_factory)
 
 
+def register_zonos3_mini_factory():
+    """Register ZONOS3-Mini model factory."""
+
+    def zonos3_mini_factory(config: ModelLoadConfig):
+        """Factory for ZONOS3-Mini (official fast engine or reference implementation) with ComfyUI integration."""
+        model_name = config.model_name or "ZONOS3-Mini"
+        device = config.device or "auto"
+        additional_params = config.additional_params or {}
+        dtype = additional_params.get("dtype", "auto")
+        engine_mode = additional_params.get("engine", "auto")
+
+        from engines.zonos3_mini.zonos3_mini_engine import Zonos3MiniEngine
+
+        print(f"🔄 Loading ZONOS3-Mini model via unified interface: {model_name}")
+        engine = Zonos3MiniEngine(
+            model_name=model_name,
+            device=device,
+            dtype=dtype,
+            engine=engine_mode,
+        )
+        engine._ensure_model_loaded()
+        print(f"✅ ZONOS3-Mini model '{model_name}' ready")
+        return engine
+
+    unified_model_interface.register_model_factory("zonos3_mini", "tts", zonos3_mini_factory)
+
+
 def register_qwen3_asr_factory():
     """Register Qwen3-ASR model factory"""
     def qwen3_asr_factory(config: ModelLoadConfig):
@@ -2020,6 +2047,7 @@ def initialize_all_factories():
     register_dots_tts_factory()
     register_dramabox_factory()
     register_omnivoice_factory()
+    register_zonos3_mini_factory()
     register_qwen3_asr_factory()
     register_qwen3_aligner_factory()
     register_granite_asr_factory()

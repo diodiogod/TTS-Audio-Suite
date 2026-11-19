@@ -1,0 +1,12 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "directions": {
+  "deep": {"file": "deep.npy", "kind": "named"},
+  "shrill": {"file": "shrill.npy", "kind": "named"},
+  "husky": {"file": "husky.npy", "kind": "named"},
+  "raspy": {"file": "raspy.npy", "kind": "named"},
+  "soft": {"file": "soft.npy", "kind": "named"},
+  "authoritative": {"file": "authoritative.npy", "kind": "named"}
+ }
+}

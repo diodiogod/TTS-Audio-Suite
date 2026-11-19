@@ -4,8 +4,12 @@ Extracted from the original nodes.py implementation
 """
 
 import re
+import textwrap
 import torch
 from typing import List
+
+
+MAX_CHARS_PER_CHUNK = 20_000
 
 
 class ImprovedChatterBoxChunker:
@@ -45,41 +49,30 @@ class ImprovedChatterBoxChunker:
             if not sentence:
                 continue
             
-            # If adding this sentence exceeds limit and we have content, start new chunk
-            if len(current_chunk) + len(sentence) + 1 > max_chars and current_chunk:
-                chunks.append(current_chunk.strip())
-                current_chunk = sentence
-            # If single sentence is too long, split it further
-            elif len(sentence) > max_chars:
-                # Add current chunk if not empty
+            # Check oversized sentences before packing them after an existing chunk.
+            if len(sentence) > max_chars:
                 if current_chunk:
-                    chunks.append(current_chunk.strip())
+                    chunks.append(current_chunk)
                     current_chunk = ""
-                
-                # Split long sentence by commas (Orpheus approach)
                 parts = re.split(r'(?<=,)\s+', sentence)
-                sub_chunk = ""
-                
-                for part in parts:
-                    if len(sub_chunk) + len(part) + 1 > max_chars:
-                        if sub_chunk:
-                            chunks.append(sub_chunk.strip())
-                            sub_chunk = part
-                        else:
-                            # Even single part is too long - split arbitrarily
-                            for i in range(0, len(part), max_chars):
-                                chunk_part = part[i:i+max_chars].strip()
-                                if chunk_part:
-                                    chunks.append(chunk_part)
-                    else:
-                        sub_chunk = sub_chunk + ", " + part if sub_chunk else part
-                
-                # Set remaining as current chunk
-                if sub_chunk:
-                    current_chunk = sub_chunk
             else:
-                # Normal sentence - add to current chunk
-                current_chunk = current_chunk + " " + sentence if current_chunk else sentence
+                parts = [sentence]
+
+            for part in parts:
+                if len(part) > max_chars:
+                    if current_chunk:
+                        chunks.append(current_chunk)
+                        current_chunk = ""
+                    # Prefer word boundaries; only split a word if it exceeds the limit itself.
+                    sub_chunks = textwrap.wrap(part, width=max_chars, break_on_hyphens=False)
+                    chunks.extend(sub_chunks[:-1])
+                    current_chunk = sub_chunks[-1]
+                elif current_chunk and len(current_chunk) + len(part) + 1 > max_chars:
+                    chunks.append(current_chunk)
+                    current_chunk = part
+                else:
+                    # Comma-separated parts already retain their punctuation.
+                    current_chunk = current_chunk + " " + part if current_chunk else part
         
         # Add final chunk
         if current_chunk.strip():
@@ -190,8 +183,8 @@ class ImprovedChatterBoxChunker:
         # Ensure reasonable bounds
         if max_chars < 100:
             max_chars = 100
-        elif max_chars > 2000:
-            max_chars = 2000
+        elif max_chars > MAX_CHARS_PER_CHUNK:
+            max_chars = MAX_CHARS_PER_CHUNK
         
         return max_chars
     

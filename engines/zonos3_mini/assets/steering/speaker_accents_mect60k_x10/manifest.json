@@ -1,0 +1,13 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "directions": {
+  "hin": {"file": "hin.npy", "kind": "named"},
+  "spa": {"file": "spa.npy", "kind": "named"},
+  "fra": {"file": "fra.npy", "kind": "named"},
+  "por": {"file": "por.npy", "kind": "named"},
+  "deu": {"file": "deu.npy", "kind": "named"},
+  "vie": {"file": "vie.npy", "kind": "named"},
+  "pol": {"file": "pol.npy", "kind": "named"}
+ }
+}

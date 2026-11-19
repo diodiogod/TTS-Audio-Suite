@@ -1,0 +1,14 @@
+{
+ "dim": 1024,
+ "space": "attnres_source",
+ "source_index": 19,
+ "directions": {
+  "valence": {"file": "valence.npy", "kind": "axis"},
+  "arousal": {"file": "arousal.npy", "kind": "axis"},
+  "dominance": {"file": "dominance.npy", "kind": "axis"},
+  "loudness": {"file": "loudness.npy", "kind": "axis"},
+  "tempo": {"file": "tempo.npy", "kind": "axis"},
+  "clarity": {"file": "clarity.npy", "kind": "axis"},
+  "articulation": {"file": "articulation.npy", "kind": "axis"}
+ }
+}

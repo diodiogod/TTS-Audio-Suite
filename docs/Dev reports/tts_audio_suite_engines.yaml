@@ -1500,6 +1500,82 @@ engines:
       speed_performance: { supported: true, notes: "Fast; upstream reports sub-realtime RTF" }
       reference_free_tts: { supported: true, notes: "(native default voice; instruct also works without narrator)" }
 
+  - id: zonos3-mini
+    name: ZONOS3-Mini
+    models: "ZONOS3-Mini"
+    size: "~10.3GB (+4GB full_mr)"
+    license: "Apache-2.0 weights, MIT code"
+    commercial: true
+    language_summary_compact: "🌐 44 languages"
+    language_summary_full: "44"
+
+    capabilities:
+      tts: true
+      srt: true
+      vc: false
+      asr: false
+      voice_design: false
+      training: false
+
+    special_features:
+      - "Fast CUDA-graph inference with Triton"
+      - "Six-axis emotion vectors and per-segment voice and delivery steering"
+      - "30 built-in voices"
+      - "LACI alignment correction for skipped or stalled text"
+    readme_key_features:
+      - "Fast CUDA-graph inference"
+      - "six-axis emotion vectors, voice and delivery steering, 30 built-in voices"
+
+    model_sources:
+      - component: "ZONOS3-Mini"
+        source_name: "Zyphra/ZONOS3-Mini"
+        source_url: "https://huggingface.co/Zyphra/ZONOS3-Mini"
+        size: "~10.3GB"
+        auto_download: true
+        notes: "Language model, shared autoencoder, speaker encoder and keep2_plain decoder; full_mr decoder (+4GB) and reference-mode encoder (+0.8GB) download on first use"
+
+    languages:
+      en: { supported: true, flag: "🇺🇸", notes: "(US and UK)" }
+      zh: { supported: true, flag: "🇨🇳", notes: "(Mandarin)" }
+      de: { supported: true, flag: "🇩🇪", notes: "" }
+      es: { supported: true, flag: "🇪🇸", notes: "" }
+      fr: { supported: true, flag: "🇫🇷", notes: "" }
+      it: { supported: true, flag: "🇮🇹", notes: "" }
+      ja: { supported: true, flag: "🇯🇵", notes: "" }
+      ko: { supported: true, flag: "🇰🇷", notes: "" }
+      ru: { supported: true, flag: "🇷🇺", notes: "" }
+      pt: { supported: true, flag: "🇵🇹", notes: "(official code is pt_br)" }
+      pl: { supported: true, flag: "🇵🇱", notes: "" }
+      hi: { supported: true, flag: "🇮🇳", notes: "" }
+      ar: { supported: true, flag: "🇦🇪", notes: "" }
+      tr: { supported: true, flag: "🇹🇷", notes: "" }
+      th: { supported: true, flag: "🇹🇭", notes: "" }
+      no: { supported: true, flag: "🇳🇴", notes: "" }
+      vi: { supported: true, flag: "🇻🇳", notes: "" }
+      hy: { supported: false, flag: "🇦🇲", notes: "" }
+      ka: { supported: true, flag: "🇬🇪", notes: "" }
+      da: { supported: true, flag: "🇩🇰", notes: "" }
+      fi: { supported: true, flag: "🇫🇮", notes: "" }
+      el: { supported: true, flag: "🇬🇷", notes: "" }
+      he: { supported: true, flag: "🇮🇱", notes: "" }
+      ms: { supported: true, flag: "🇲🇾", notes: "" }
+      nl: { supported: true, flag: "🇳🇱", notes: "" }
+      sv: { supported: true, flag: "🇸🇪", notes: "" }
+      sw: { supported: false, flag: "🇰🇪", notes: "" }
+
+    features:
+      voice_cloning: { supported: true, notes: "(speaker embedding or codec-reference mode)" }
+      reference_transcript: { requirement: not_used }
+      native_multi_speaker: { supported: false, notes: "" }
+      voice_conversion: { supported: false, notes: "" }
+      asr_transcribe: { supported: false, notes: "" }
+      emotion_control: { supported: true, notes: "(native steering directions: emotions, mood, delivery; also as per-segment tags)" }
+      native_long_form: { supported: true, notes: "(single takes of several minutes on both engines; the model context is 32768 rows at 15 audio frames per second. Suite chunking stays the default)" }
+      community_finetunes: { supported: false, notes: "" }
+      vram_efficient: { supported: "partial", notes: "(main env works; the shared 8GB autoencoder checkpoint is loaded for decoding)" }
+      speed_performance: { supported: true, notes: "Fast CUDA-graph engine (CUDA + Triton): about 30x real time on an RTX 4090; the plain-PyTorch reference implementation (CPU, float32) is several times slower" }
+      reference_free_tts: { supported: true, notes: "(30 built-in voices)" }
+
   - id: moss-tts
     name: MOSS-TTS
     models: "Local 1.7B, Delay 8B v1.5/1.0, LAION Voice Acting 8B community fine-tune, VoiceGenerator 1.7B, SoundEffect 8B v1, TTSD 8B"
@@ -2007,6 +2083,10 @@ readme_model_download_table:
     primary_model_path: "ComfyUI/models/TTS/omnivoice/"
     auto_download: "✅"
     notes: "Official OmniVoice model. Voice cloning in this suite requires explicit reference text."
+  - engine: "ZONOS3-Mini"
+    primary_model_path: "ComfyUI/models/TTS/zonos3_mini/"
+    auto_download: "✅"
+    notes: "Native Zyphra/ZONOS3-Mini files, ~10.3GB; the full_mr decoder (+4GB) and the reference-mode encoder (+0.8GB) download on first use. No reference transcript needed."
 
 model_layouts_markdown: |
   # Model Folder Layouts
@@ -2475,3 +2555,41 @@ model_layouts_markdown: |
   - Native sample rate is 24kHz.
   - The main OmniVoice model stays in the main Transformers 5 environment.
   - Voice cloning requires reference audio plus explicit reference text in this suite.
+
+  ## ZONOS3-Mini
+
+  ```text
+  ComfyUI/models/TTS/zonos3_mini/
+  └── ZONOS3-Mini/
+  ```
+
+  Model contents (the layout of the `Zyphra/ZONOS3-Mini` repository):
+
+  ```text
+  ComfyUI/models/TTS/zonos3_mini/ZONOS3-Mini/
+  ├── lm/zonos3_mini/
+  │   ├── model.pth                                   (1.77 GB)
+  │   ├── params.json
+  │   ├── tokenizer/superbpe8192.json
+  │   └── text_rows/pause_tokens_s5000.pt
+  ├── autoencoder/
+  │   ├── generator.pt                                (7.96 GB)
+  │   ├── heads/keep2_plain/
+  │   │   ├── config_full_unfreezeall_mr_drop30_4x10.json
+  │   │   └── step_0050000.pt                         (0.52 GB)
+  │   ├── heads/full_mr/                              (optional, decoder = full_mr)
+  │   │   ├── config_full_unfreezeall_mr.json
+  │   │   └── step_0050000.pt                         (4.01 GB)
+  │   └── teacher/                                    (optional, voice_mode = reference)
+  │       ├── config.json
+  │       └── model.safetensors                       (0.77 GB)
+  └── speaker_encoders/ownmect_s2/ckpt_0037.pth       (50 MB)
+  ```
+
+  Notes:
+
+  - Downloads into a dedicated `zonos3_mini/` folder; optional parts are fetched the first time they are selected.
+  - Other complete model folders placed under `zonos3_mini/` appear in the engine node as `local:<folder>`.
+  - Native sample rate is 44.1kHz.
+  - Runs in the main environment with Zyphra's bundled inference code. Fast requires `cuda:0`, bfloat16, and Triton (`triton-windows` on Windows). Start ComfyUI with `--disable-cuda-malloc` for Fast. Auto falls back to Reference when Fast is unavailable. Reference runs on CPU or CUDA.
+  - Voice cloning needs reference audio only; no reference transcript is used.

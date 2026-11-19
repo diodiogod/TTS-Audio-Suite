@@ -77,6 +77,13 @@ PARAMETER_ALIASES = {
     'top_k': 'top_k',
     'topk': 'top_k',
     'topp': 'top_p',
+    'min_p': 'min_p',
+    'speaker_cfg_scale': 'speaker_cfg_scale',
+    'speaker_cfg': 'speaker_cfg_scale',
+    'loudness_bucket': 'loudness_bucket',
+    'fmax_bucket': 'fmax_bucket',
+    'speaking_rate_bucket': 'speaking_rate_bucket',
+    'rate_bucket': 'speaking_rate_bucket',
     'audio_temp': 'audio_temperature',
     'audio_temperature': 'audio_temperature',
     'audio_top_p': 'audio_top_p',
@@ -117,11 +124,11 @@ PARAMETER_ENGINES = {
     'seed': {
         'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'cosyvoice', 'qwen3_tts',
-        'dots_tts', 'fish_audio_s2', 'omnivoice',
+        'dots_tts', 'fish_audio_s2', 'omnivoice', 'zonos3_mini',
         'echo_tts', 'moss_tts', 'moss_soundeffect_v2', 'dramabox'
     },
     'temperature': {
-        'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio',
+        'chatterbox', 'chatterbox_official_23lang', 'f5tts', 'higgs_audio', 'zonos3_mini',
         'higgs_audio_v3', 'vibevoice', 'index_tts', 'step_audio_editx', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
     },
     'cfg': {
@@ -219,10 +226,26 @@ PARAMETER_ENGINES = {
         'f5tts', 'cosyvoice', 'omnivoice'
     },
     'top_p': {
-        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2'
+        'higgs_audio', 'higgs_audio_v3', 'vibevoice', 'index_tts', 'qwen3_tts', 'moss_tts', 'fish_audio_s2',
+        'zonos3_mini'
     },
     'top_k': {
-        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts'
+        'higgs_audio', 'higgs_audio_v3', 'index_tts', 'qwen3_tts', 'moss_tts', 'zonos3_mini'
+    },
+    'min_p': {
+        'zonos3_mini'
+    },
+    'speaker_cfg_scale': {
+        'zonos3_mini'
+    },
+    'loudness_bucket': {
+        'zonos3_mini'
+    },
+    'fmax_bucket': {
+        'zonos3_mini'
+    },
+    'speaking_rate_bucket': {
+        'zonos3_mini'
     },
     'audio_temperature': {
         'moss_tts'
@@ -234,7 +257,7 @@ PARAMETER_ENGINES = {
         'moss_tts'
     },
     'repetition_penalty': {
-        'moss_tts', 'fish_audio_s2'
+        'moss_tts', 'fish_audio_s2', 'zonos3_mini'
     },
     'audio_repetition_penalty': {
         'moss_tts'
@@ -319,7 +342,12 @@ PARAMETER_VALIDATION = {
     'exaggeration': (float, 0.0, 2.0, "Voice emotion exaggeration (ChatterBox only)"),
     'speed': (float, 0.25, 3.0, "Speech speed multiplier"),
     'top_p': (float, 0.0, 1.0, "Nucleus sampling probability"),
-    'top_k': (int, 1, 100, "Top-k sampling"),
+    'top_k': (int, 1, 4096, "Top-k sampling"),
+    'min_p': (float, 0.0, 1.0, "ZONOS3-Mini minimum probability relative to the top token"),
+    'speaker_cfg_scale': (float, 0.0, 5.0, "ZONOS3-Mini speaker classifier-free guidance scale"),
+    'loudness_bucket': (int, 0, 10, "ZONOS3-Mini loudness conditioning bucket (10 = unknown)"),
+    'fmax_bucket': (int, 0, 10, "ZONOS3-Mini bandwidth conditioning bucket (10 = unknown)"),
+    'speaking_rate_bucket': (int, 0, 30, "ZONOS3-Mini speaking-rate conditioning bucket (30 = unknown)"),
     'audio_temperature': (float, 0.1, 2.5, "MOSS-TTS audio sampling temperature"),
     'audio_top_p': (float, 0.0, 1.0, "MOSS-TTS audio nucleus sampling probability"),
     'audio_top_k': (int, 1, 200, "MOSS-TTS audio top-k sampling"),
@@ -389,6 +417,11 @@ PARAMETER_NODE_KEYS = {
     'speed': 'speed',
     'top_p': 'top_p',
     'top_k': 'top_k',
+    'min_p': 'min_p',
+    'speaker_cfg_scale': 'speaker_cfg_scale',
+    'loudness_bucket': 'loudness_bucket',
+    'fmax_bucket': 'fmax_bucket',
+    'speaking_rate_bucket': 'speaking_rate_bucket',
     'audio_temperature': 'audio_temperature',
     'audio_top_p': 'audio_top_p',
     'audio_top_k': 'audio_top_k',
@@ -411,6 +444,29 @@ PARAMETER_NODE_KEYS = {
     'emotion_text_inline': 'emotion_text_inline',
     **{f'emotion_{name}_inline': f'emotion_{name}_inline' for name in INDEX_TTS_EMOTIONS},
 }
+
+
+# ZONOS3-Mini steering tags: the configuration nodes' sliders, additional effects and envelope
+# (engines/zonos3_mini/steering_tags.py). happy / angry / sad / calm reuse the emotion tags above.
+from engines.zonos3_mini.steering_tags import (
+    EMOTION_AXES as _ZONOS3_EMOTIONS, TAG_PARAMETERS as _ZONOS3_TAGS,
+    VECTOR_KEY as _ZONOS3_VECTOR_KEY, VECTOR_TAG as _ZONOS3_VECTOR_TAG,
+)
+
+PARAMETER_ALIASES[_ZONOS3_VECTOR_TAG] = _ZONOS3_VECTOR_KEY
+PARAMETER_ENGINES[_ZONOS3_VECTOR_KEY] = {'zonos3_mini'}
+PARAMETER_VALIDATION[_ZONOS3_VECTOR_KEY] = (str, None, None, "Ordered ZONOS3-Mini emotion vector")
+
+for _tag, (_canonical, _low, _high, _description) in _ZONOS3_TAGS.items():
+    if _tag in INDEX_TTS_EMOTIONS:
+        PARAMETER_ENGINES[PARAMETER_ALIASES[_tag]].add('zonos3_mini')
+        continue
+    if PARAMETER_ALIASES.setdefault(_tag, _canonical) != _canonical:
+        raise RuntimeError(f"ZONOS3-Mini tag '{_tag}' collides with an existing parameter alias")
+    PARAMETER_ENGINES[_canonical] = {'zonos3_mini'}
+    # Keep the sign on named emotions. Their bounds are checked when the segment baseline is known.
+    PARAMETER_VALIDATION[_canonical] = (str, None, None, _description) if _tag in _ZONOS3_EMOTIONS else (float, _low, _high, _description)
+    PARAMETER_NODE_KEYS[_canonical] = _canonical
 
 
 class ParameterValidator:
@@ -556,7 +612,7 @@ class SegmentParameterParser:
         tag_segments = []
         parameters = {}
 
-        for part in parts:
+        for index, part in enumerate(parts):
             part = part.strip()
             if not part:
                 continue
@@ -576,9 +632,14 @@ class SegmentParameterParser:
                 # A character may legitimately be named after an emotion. Only a
                 # numeric value turns [sad:...] into an inline vector control;
                 # [sad:audio_ref] must remain a character emotion-reference tag.
-                if key_stripped.lower() in INDEX_TTS_EMOTIONS and not re.fullmatch(
+                # The same holds for the ZONOS3-Mini steering tags ([Soft:audio_ref], [pace:Bob]).
+                zonos_numeric = (canonical_name or '').startswith('zonos3_') and canonical_name != _ZONOS3_VECTOR_KEY
+                if (key_stripped.lower() in INDEX_TTS_EMOTIONS or zonos_numeric) and not re.fullmatch(
                     r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)', value
                 ):
+                    if zonos_numeric and index > 0:
+                        logger.warning(f"⚠️ Invalid parameter: {key_stripped} requires a number, got {value!r}")
+                        continue
                     canonical_name = None
 
                 if canonical_name:

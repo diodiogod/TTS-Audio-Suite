@@ -90,9 +90,19 @@ Follow this order:
 12. Add generated audio cache where applicable.
 13. Add interrupt checks in long loops.
 14. Add progress feedback for long generation.
-15. Update docs/YAML metadata.
+15. Update docs/YAML metadata. Use the README **Key Features** cell for what sets the engine apart. Keep language counts, model size, and standard capabilities like voice cloning in their dedicated fields.
 16. Run automated and live ComfyUI validation. Use FL-MCP-assisted validation when it is installed and connected; otherwise perform the same checks manually. Follow `tests/FL_MCP_VALIDATION.md`.
 17. Run the required parity checklist.
+
+## Add the Engine to the Multiline TTS Tag Editor
+
+Use **Parameters** for settings that TTS Audio Suite applies per segment. Reuse **Add Parameter** entries for sampling and put emotion or delivery settings under **Steering Engine**. Use **Inline Tags** for engine-specific cues in the text. See ZONOS3-Mini for grouped numeric controls, IndexTTS-2 for emotion vectors, and CosyVoice3 for tags that wrap selected text.
+
+1. Register the tag, aliases, bounds, and supported engines in `utils/text/segment_parameters.py`. Use the same definitions to expose the control metadata from `nodes/text/tts_tag_editor_node.py`, as `tag_editor_parameters()` in `engines/zonos3_mini/steering_tags.py` does.
+2. Add one entry to `numericEngines` in `web/string_multiline_tag_editor.js`, with the engine's label and parameter catalog. Set each parameter's `group` to `Generation` for **Add Parameter** or to the appropriate group under **Steering Engine**. The metadata supplies `tag`, `aliases`, `label`, `description`, `min`, `max`, `step`, `default`, `integer`, `slider`, and whether signed values are `relative` adjustments. The shared editor handles the panels, numeric validation, tag insertion, and quick swap. An optional `sections` entry can override section titles, colors, and hover hints.
+3. If the engine has a native emotion vector, add a `vector` profile with an axis list, parser, and serializer. Give the engine's vector a distinct tag when its axes differ from an existing vector. The editor uses the same radar, preview, cancel, and undo flow.
+
+Check that sample tags insert at the cursor, update an existing compound tag without disturbing its character or other settings, and reach the correct processor. Check for duplicate controls across the sidebar and switch to another engine to verify its tag tools.
 
 ## Live ComfyUI Validation Rule
 

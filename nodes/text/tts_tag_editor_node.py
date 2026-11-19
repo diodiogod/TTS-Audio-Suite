@@ -24,9 +24,15 @@ class StringMultilineTagEditor:
 
     @classmethod
     def INPUT_TYPES(cls):
+        from engines.zonos3_mini.steering_tags import EMOTION_AXES, VECTOR_TAG, tag_editor_parameters
+
         return {
             "required": {
-                "text": ("STRING", {"default": ""}),
+                "text": ("STRING", {
+                    "default": "",
+                    "zonos3_parameters": tag_editor_parameters(),
+                    "zonos3_vector": {"tag": VECTOR_TAG, "axes": EMOTION_AXES},
+                }),
             },
             "optional": {}
         }

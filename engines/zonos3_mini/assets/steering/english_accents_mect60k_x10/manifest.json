@@ -1,0 +1,13 @@
+{
+ "dim": 192,
+ "space": "raw",
+ "directions": {
+  "british": {"file": "british.npy", "kind": "named"},
+  "american": {"file": "american.npy", "kind": "named"},
+  "scottish": {"file": "scottish.npy", "kind": "named"},
+  "irish": {"file": "irish.npy", "kind": "named"},
+  "australian": {"file": "australian.npy", "kind": "named"},
+  "indian": {"file": "indian.npy", "kind": "named"},
+  "welsh": {"file": "welsh.npy", "kind": "named"}
+ }
+}

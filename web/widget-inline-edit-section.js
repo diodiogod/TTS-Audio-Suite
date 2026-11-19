@@ -1,12 +1,13 @@
 /**
  * 🏷️ Widget Inline Tags Section
- * Builds an engine-aware inline tag panel for Step Audio EditX, Higgs Audio v3,
- * CosyVoice3, and OmniVoice.
+ * Builds the engine panels for Inline Tags and Segment Tags.
  */
 
 import { api } from "/scripts/api.js";
 import { TagUtilities } from "./tag-utilities.js";
 import { INDEX_TTS_EMOTION_VISUALS } from "./emotion_radar_canvas_widget.js";
+import { bindEmotionRadialPicker } from "./emotion-tag-radial-picker.js";
+import { buildNumericEnginePanel } from "./numeric-tag-editor-sections.js";
 
 const INDEX_TTS_EMOTIONS = ["happy", "angry", "sad", "afraid", "disgusted", "melancholic", "surprised", "calm"];
 const INDEX_TTS_RADIAL_EMOTIONS = ["happy", "surprised", "angry", "disgusted", "sad", "afraid", "calm", "melancholic"];
@@ -455,108 +456,6 @@ function buildOmniVoiceSection(state, storageKey) {
     };
 }
 
-function createIndexTTSRadialPicker(onPick) {
-    const button = createButton("Press + drag to pick emotion", "Drag toward an emotion; distance sets its magnitude");
-    button.style.background = `linear-gradient(90deg, ${INDEX_TTS_RADIAL_EMOTIONS.map(emotion => INDEX_TTS_EMOTION_COLORS[emotion]).join(", ")})`;
-
-    button.addEventListener("pointerdown", event => {
-        if (event.button !== 0) return;
-        event.preventDefault();
-        event.stopPropagation();
-
-        const size = 220;
-        const center = size / 2;
-        const maxRadius = 82;
-        const originX = event.clientX;
-        const originY = event.clientY;
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-        Object.assign(canvas.style, {
-            position: "fixed", left: `${originX - center}px`, top: `${originY - center}px`,
-            width: `${size}px`, height: `${size}px`, zIndex: "100002", pointerEvents: "none",
-            borderRadius: "50%", filter: "drop-shadow(0 8px 20px rgba(0,0,0,.85))"
-        });
-        document.body.appendChild(canvas);
-        const ctx = canvas.getContext("2d");
-        let selectedIndex = 0;
-        let magnitude = 0;
-
-        const draw = () => {
-            ctx.clearRect(0, 0, size, size);
-            const selectedEmotion = INDEX_TTS_RADIAL_EMOTIONS[selectedIndex];
-            const selectedColor = INDEX_TTS_EMOTION_COLORS[selectedEmotion];
-            ctx.fillStyle = "rgba(25,25,27,.96)";
-            ctx.beginPath();
-            ctx.arc(center, center, 104, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = selectedColor;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            const selectedAngle = selectedIndex * Math.PI / 4 - Math.PI / 2;
-            ctx.fillStyle = `${selectedColor}38`;
-            ctx.beginPath();
-            ctx.moveTo(center, center);
-            ctx.arc(center, center, 100, selectedAngle - Math.PI / 8, selectedAngle + Math.PI / 8);
-            ctx.closePath();
-            ctx.fill();
-
-            INDEX_TTS_RADIAL_EMOTIONS.forEach((emotion, index) => {
-                const angle = index * Math.PI / 4 - Math.PI / 2;
-                const x = center + Math.cos(angle) * maxRadius;
-                const y = center + Math.sin(angle) * maxRadius;
-                ctx.fillStyle = index === selectedIndex ? INDEX_TTS_EMOTION_COLORS[emotion] : "#aaa";
-                ctx.font = index === selectedIndex ? "bold 11px Arial" : "10px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(emotion, x, y);
-            });
-
-            ctx.fillStyle = selectedColor;
-            ctx.beginPath();
-            ctx.arc(center, center, 28, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = selectedEmotion === "happy" ? "#201b00" : "#f5f5f5";
-            ctx.font = "bold 12px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(magnitude.toFixed(2), center, center);
-        };
-
-        const update = pointerEvent => {
-            const dx = pointerEvent.clientX - originX;
-            const dy = pointerEvent.clientY - originY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            let angle = Math.atan2(dy, dx) + Math.PI / 2;
-            if (angle < 0) angle += Math.PI * 2;
-            selectedIndex = Math.round(angle / (Math.PI / 4)) % 8;
-            magnitude = Math.min(1.2, Math.max(0, distance / maxRadius * 1.2));
-            onPick(INDEX_TTS_RADIAL_EMOTIONS[selectedIndex], magnitude, false);
-            draw();
-        };
-
-        const finish = pointerEvent => {
-            update(pointerEvent);
-            window.removeEventListener("pointermove", update, true);
-            window.removeEventListener("pointerup", finish, true);
-            window.removeEventListener("pointercancel", cancel, true);
-            canvas.remove();
-            onPick(INDEX_TTS_RADIAL_EMOTIONS[selectedIndex], magnitude, true);
-        };
-        const cancel = () => {
-            window.removeEventListener("pointermove", update, true);
-            window.removeEventListener("pointerup", finish, true);
-            window.removeEventListener("pointercancel", cancel, true);
-            canvas.remove();
-        };
-        window.addEventListener("pointermove", update, true);
-        window.addEventListener("pointerup", finish, true);
-        window.addEventListener("pointercancel", cancel, true);
-        draw();
-    });
-    return button;
-}
-
 function buildIndexTTSSection(state, storageKey) {
     const section = document.createElement("div");
     Object.assign(section.style, { display: "flex", flexDirection: "column", gap: "8px" });
@@ -619,7 +518,9 @@ function buildIndexTTSSection(state, storageKey) {
         updateNamedSliderFill();
         saveNamedState();
     });
-    const radialPickerBtn = createIndexTTSRadialPicker((emotion, magnitude, isFinal) => {
+    const radialPickerBtn = createButton("Press + drag to pick emotion", "Drag toward an emotion. Distance sets its strength.");
+    const axes = INDEX_TTS_RADIAL_EMOTIONS.map(name => ({ name, max: 1.2, color: INDEX_TTS_EMOTION_COLORS[name] }));
+    bindEmotionRadialPicker(radialPickerBtn, axes, (emotion, magnitude, isFinal) => {
         namedEmotionSelect.value = emotion;
         namedValueInput.value = magnitude.toFixed(2);
         namedValueLabel.textContent = `Magnitude: ${magnitude.toFixed(2)} · ${emotion}`;
@@ -694,68 +595,63 @@ function buildIndexTTSSection(state, storageKey) {
     };
 }
 
-export function buildInlineEditSection(state, storageKey) {
+function buildEngineSection(label, placeholder, engines) {
     const container = document.createElement("div");
     container.style.display = "flex";
     container.style.flexDirection = "column";
     container.style.gap = "8px";
     container.style.overflowY = "visible";
     container.style.flex = "0 0 auto";
-    container.style.paddingRight = "0";
 
-    const engineSection = document.createElement("div");
-    stylePanelContainer(engineSection);
-    const inlineEngineSelect = createSelect([
-        { value: "step_audio_editx", label: "Step Audio EditX" },
-        { value: "higgs_audio_v3", label: "Higgs Audio v3" },
-        { value: "cosyvoice3", label: "CosyVoice3" },
-        { value: "omnivoice", label: "OmniVoice" },
-        { value: "index_tts", label: "IndexTTS-2" },
-    ], "Select inline tag engine...", state.activeInlineTagEngine || "step_audio_editx");
-    inlineEngineSelect.addEventListener("change", () => {
-        state.activeInlineTagEngine = inlineEngineSelect.value;
-        updateVisiblePanel();
-        state.saveToLocalStorage(storageKey);
-    });
-    engineSection.append(
-        createPanelLabel("Tag Engine", "#d0d0d0"),
-        inlineEngineSelect
-    );
+    const enginePicker = document.createElement("div");
+    stylePanelContainer(enginePicker);
+    const select = createSelect(engines, placeholder);
+    select.setAttribute("aria-label", label);
+    enginePicker.append(createPanelLabel(label, "#d0d0d0"), select);
+    container.append(enginePicker, ...engines.map(engine => engine.panel));
+    const update = () => {
+        for (const { value, panel } of engines) panel.style.display = value === select.value ? "flex" : "none";
+    };
+    return { container, select, update };
+}
 
+export function buildTagEngineSections(state, storageKey, numericEngines, updateRangeFill) {
     const stepSection = buildStepSection(state, storageKey);
     const higgsSection = buildHiggsSection(state, storageKey);
     const cosySection = buildCosySection(state, storageKey);
     const omnivoiceSection = buildOmniVoiceSection(state, storageKey);
     const indexTTSSection = buildIndexTTSSection(state, storageKey);
 
-    const panels = {
-        step_audio_editx: stepSection.panel,
-        higgs_audio_v3: higgsSection.panel,
-        cosyvoice3: cosySection.panel,
-        omnivoice: omnivoiceSection.panel,
-        index_tts: indexTTSSection.panel,
-    };
+    const inline = buildEngineSection("Tag Engine", "Select inline tag engine...", [
+        { value: "step_audio_editx", label: "Step Audio EditX", panel: stepSection.panel },
+        { value: "higgs_audio_v3", label: "Higgs Audio v3", panel: higgsSection.panel },
+        { value: "cosyvoice3", label: "CosyVoice3", panel: cosySection.panel },
+        { value: "omnivoice", label: "OmniVoice", panel: omnivoiceSection.panel },
+    ]);
 
-    const updateVisiblePanel = () => {
-        const activeEngine = inlineEngineSelect.value || "step_audio_editx";
-        Object.entries(panels).forEach(([engineKey, panel]) => {
-            panel.style.display = engineKey === activeEngine ? "flex" : "none";
-        });
-    };
-
-    container.append(engineSection, stepSection.panel, higgsSection.panel, cosySection.panel, omnivoiceSection.panel, indexTTSSection.panel);
-    updateVisiblePanel();
+    const numeric = {};
+    const segmentEngines = [{ value: "index_tts", label: "IndexTTS-2", panel: indexTTSSection.panel }];
+    const preferences = state.numericTagPreferences ??= {};
+    const ui = { stylePanelContainer, createPanelLabel, createSelect, createButton, updateRangeFill };
+    for (const [value, engine] of Object.entries(numericEngines)) {
+        if (!engine.parameters.some(parameter => parameter.group !== "Generation")) continue;
+        const section = buildNumericEnginePanel(engine, ui, preferences[value] ??= {}, () => state.saveToLocalStorage(storageKey));
+        segmentEngines.push({ value, label: engine.label, panel: section.panel });
+        numeric[value] = section.controls;
+    }
+    const segment = buildEngineSection("Steering Engine", "Select an engine for steering...", segmentEngines);
 
     return {
-        inlineEditSection: container,
-        inlineTagControls: {
-            inlineEngineSelect,
+        inline,
+        segment,
+        tagControls: {
+            inlineEngineSelect: inline.select,
             step: stepSection.controls,
             higgs: higgsSection.controls,
             cosy: cosySection.controls,
             omnivoice: omnivoiceSection.controls,
             indexTTS: indexTTSSection.controls,
+            numeric,
         },
-        updateInlineEnginePanelVisibility: updateVisiblePanel,
     };
 }

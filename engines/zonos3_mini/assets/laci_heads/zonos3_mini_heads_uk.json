@@ -1,0 +1,9 @@
+{
+ "frames_per_token": 2.036186020913594,
+ "heads": [
+  {"layer": 7, "head": 14, "radius": 8},
+  {"layer": 7, "head": 11, "radius": 8},
+  {"layer": 7, "head": 4, "radius": 5},
+  {"layer": 7, "head": 12, "radius": 8}
+ ]
+}

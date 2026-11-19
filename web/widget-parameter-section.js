@@ -5,8 +5,9 @@
  */
 
 import { TagUtilities } from "./tag-utilities.js";
+import { upsertTagParameter, validNumericTagValue } from "./numeric-tag-parameters.js";
 
-export function buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus, editor) {
+export function buildParameterSection(state, storageKey, getPlainText, setEditorText, getCaretPos, setCaretPos, widget, historyStatus, editor, engineParameters = {}) {
     const paramSection = document.createElement("div");
     paramSection.style.marginBottom = "8px";
     paramSection.style.paddingBottom = "8px";
@@ -39,7 +40,7 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
         <optgroup label="F5-TTS / Higgs">
             <option value="speed">Speed</option>
         </optgroup>
-        <optgroup label="Higgs / VibeVoice / IndexTTS">
+        <optgroup label="Higgs / VibeVoice / IndexTTS / ZONOS3">
             <option value="top_p">Top P</option>
             <option value="top_k">Top K</option>
         </optgroup>
@@ -82,6 +83,24 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
         template: { type: "text", default: 'A man speaks warmly, "{seg}"', placeholder: 'Example: A man speaks warmly, "{seg}"' }
     };
 
+    const numericParameters = new Map();
+    const existing = new Set([...paramTypeSelect.options].map(option => option.value));
+    for (const [engine, definitions] of Object.entries(engineParameters)) {
+        const group = document.createElement("optgroup");
+        group.label = engine;
+        for (const parameter of definitions) {
+            numericParameters.set(parameter.tag, parameter);
+            if (existing.has(parameter.tag)) {
+                paramConfig[parameter.tag].max = Math.max(paramConfig[parameter.tag].max, parameter.max);
+                continue;
+            }
+            group.appendChild(new Option(parameter.label, parameter.tag));
+            existing.add(parameter.tag);
+            paramConfig[parameter.tag] = { ...parameter, type: parameter.slider ? "slider" : "number" };
+        }
+        if (group.children.length) paramTypeSelect.appendChild(group);
+    }
+
     const createParamInput = (type) => {
         const wrapper = document.createElement("div");
         const config = paramConfig[type] || { type: "text" };
@@ -92,6 +111,7 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
             input.min = config.min;
             input.max = config.max;
             input.step = config.step;
+            if (config.description) input.title = config.description;
             input.placeholder = config.default.toString();
 
             // Restore saved value or use default
@@ -128,6 +148,7 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
             slider.max = config.max;
             slider.step = config.step;
             slider.value = initialValue;
+            if (config.description) slider.title = config.description;
             slider.style.width = "100%";
             slider.addEventListener("input", () => {
                 label.textContent = `${config.label}: ${slider.value}`;
@@ -220,6 +241,8 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
             return;
         }
 
+        const numericParameter = numericParameters.get(paramTypeSelect.value);
+        if (numericParameter && !validNumericTagValue(numericParameter, paramValue)) return;
         const paramStr = `${paramTypeSelect.value}:${paramValue}`;
         const text = getPlainText();
 
@@ -235,7 +258,12 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
         }
 
         // Try to modify existing tag
+        let standalonePause = false;
         const result = TagUtilities.modifyTagContent(text, caretPos, (tagContent) => {
+            if (numericParameter) {
+                standalonePause = /^\s*(?:pause|wait|stop)\s*:/i.test(tagContent);
+                return standalonePause ? tagContent : upsertTagParameter(tagContent, numericParameter, paramValue);
+            }
             const paramType = paramTypeSelect.value;
             const paramRegex = new RegExp(`${paramType}:[^|\\]]+`);
 
@@ -248,7 +276,7 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
             }
         });
 
-        if (result) {
+        if (result && !standalonePause) {
             // Modified existing tag
             setEditorText(result.newText);
             setTimeout(() => {
@@ -261,7 +289,10 @@ export function buildParameterSection(state, storageKey, getPlainText, setEditor
             const paramTag = `[${paramStr}]`;
             let newText, newCaretPos;
 
-            if (selection) {
+            if (standalonePause) {
+                newText = TagUtilities.insertTagAtPosition(text, paramTag, result.newCaretPos);
+                newCaretPos = result.newCaretPos + paramTag.length;
+            } else if (selection) {
                 // Selected text: insert tag at beginning of selection
                 newText = text.substring(0, selection.start) + paramTag + " " + text.substring(selection.start);
                 newCaretPos = selection.start + paramTag.length;

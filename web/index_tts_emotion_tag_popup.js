@@ -64,7 +64,7 @@ function button(label) {
     return element;
 }
 
-export async function openIndexTTSEmotionEditor({
+export async function openEmotionVectorEditor({
     tag = null,
     onApply,
     onPreview,
@@ -72,18 +72,27 @@ export async function openIndexTTSEmotionEditor({
     onCancel,
     anchorRect = null,
     showPresets = !anchorRect,
+    vectorProfile = null,
 }) {
-    const parsed = tag ? parseVectorTag(tag) : null;
-    const state = parsed || { values: Array(8).fill(0), signs: Array(8).fill(1), relative: false, named: false };
+    const axisNames = vectorProfile?.axes.map(axis => axis.name) ?? ORDER;
+    const axisColor = index => vectorProfile?.axes[index].color ?? COLORS[axisNames[index]] ?? "#666";
+    const axisMax = index => vectorProfile?.axes[index].max ?? 1.2;
+    const magnitude = (value, index) => Math.max(0, Math.min(axisMax(index), Number(value) || 0));
+    const parsed = tag ? (vectorProfile ? vectorProfile.parse(tag) : parseVectorTag(tag)) : null;
+    const state = parsed || { values: axisNames.map(() => 0), signs: axisNames.map(() => 1), relative: false, named: false };
     let editSign = 1;
     let closed = false;
     let previewFrame = null;
     let presets = {};
     try {
-        const response = await api.fetchApi(ENDPOINT);
-        presets = (await response.json()).presets || {};
+        if (vectorProfile) {
+            presets = Object.assign(Object.create(null), JSON.parse(localStorage.getItem(vectorProfile.presetStorageKey) || "{}"));
+        } else {
+            const response = await api.fetchApi(ENDPOINT);
+            presets = (await response.json()).presets || {};
+        }
     } catch (error) {
-        console.warn("Could not load IndexTTS emotion presets", error);
+        console.warn("Could not load emotion presets", error);
     }
 
     const overlay = document.createElement("div");
@@ -102,7 +111,7 @@ export async function openIndexTTSEmotionEditor({
         borderRadius: "10px", boxShadow: anchorRect ? "0 10px 38px rgba(0,0,0,.9), 0 0 14px rgba(69,183,209,.28)" : "0 18px 70px #000"
     });
     const title = document.createElement("h2");
-    title.textContent = "IndexTTS-2 Emotion Tag";
+    title.textContent = vectorProfile?.title ?? "IndexTTS-2 Emotion Tag";
     title.style.margin = "0 0 12px";
     title.style.fontSize = anchorRect ? "15px" : "24px";
     title.style.textAlign = anchorRect ? "center" : "left";
@@ -131,7 +140,7 @@ export async function openIndexTTSEmotionEditor({
         modeRow.replaceChildren(modeSwitch, sign, hint);
     }
 
-    const widgets = ORDER.map((name, index) => ({
+    const widgets = axisNames.map((name, index) => ({
         name,
         value: state.values[index],
         callback(value) {
@@ -144,9 +153,11 @@ export async function openIndexTTSEmotionEditor({
     const node = { widgets, graph: { setDirtyCanvas() { render(); } }, setDirtyCanvas() { render(); } };
     const radar = createEmotionRadarCanvasWidget(node, {
         modernControls: !anchorRect,
+        emotions: vectorProfile?.axes,
+        showNativeValues: Boolean(vectorProfile),
         getEmotionSign(emotionName) {
             if (!state.relative) return 1;
-            const index = ORDER.indexOf(emotionName);
+            const index = axisNames.indexOf(emotionName);
             return index >= 0 ? state.signs[index] : 1;
         }
     });
@@ -155,14 +166,14 @@ export async function openIndexTTSEmotionEditor({
     canvas.height = 350;
     Object.assign(canvas.style, { width: "100%", maxWidth: `${canvas.width}px`, height: "350px", display: "block", margin: "0 auto", borderRadius: "6px" });
     const valueGrid = document.createElement("div");
-    Object.assign(valueGrid.style, { display: "grid", gridTemplateColumns: anchorRect ? "repeat(4,minmax(60px,1fr))" : "repeat(4,minmax(120px,1fr))", gap: anchorRect ? "5px" : "7px", margin: "8px 0" });
-    const valueInputs = ORDER.map((name, index) => {
+    Object.assign(valueGrid.style, { display: "grid", gridTemplateColumns: `repeat(${vectorProfile ? 3 : 4},minmax(${anchorRect ? 60 : vectorProfile ? 95 : 120}px,1fr))`, gap: anchorRect ? "5px" : "7px", margin: "8px 0" });
+    const valueInputs = axisNames.map((name, index) => {
         const label = document.createElement("label");
         Object.assign(label.style, { display: "grid", gap: "3px", color: "#bbb", fontSize: anchorRect ? "10px" : "12px" });
         const nameElement = document.createElement("span");
-        nameElement.textContent = name;
+        nameElement.textContent = vectorProfile?.axes[index].label ?? name;
         if (!anchorRect) {
-            const color = COLORS[name] || "#666";
+            const color = axisColor(index);
             const dot = document.createElement("span");
             Object.assign(dot.style, { width: "9px", height: "9px", borderRadius: "50%", background: color, boxShadow: `0 0 7px ${color}88`, flex: "0 0 auto" });
             const nameRow = document.createElement("span");
@@ -180,27 +191,31 @@ export async function openIndexTTSEmotionEditor({
         const input = document.createElement("input");
         input.type = anchorRect ? "text" : "number";
         input.inputMode = "decimal";
+        input.setAttribute("aria-label", nameElement.textContent);
         if (!anchorRect) {
-            input.min = "-1.2";
-            input.max = "1.2";
-            input.step = "0.01";
+            input.min = -axisMax(index);
+            input.max = axisMax(index);
+            input.step = vectorProfile?.axes[index].step ?? 0.01;
         }
         Object.assign(input.style, { width: "100%", boxSizing: "border-box", padding: anchorRect ? "4px" : "5px", fontSize: anchorRect ? "11px" : "inherit", color: "#eee", background: "#151515", border: "1px solid #555", borderRadius: "4px" });
         input.addEventListener("input", () => {
             const rawText = input.value.trim();
             if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(rawText)) return;
             const raw = Number(rawText) || 0;
-            state.values[index] = number(Math.abs(raw));
+            state.values[index] = magnitude(vectorProfile && !state.relative ? raw : Math.abs(raw), index);
             state.signs[index] = rawText.startsWith("-") ? -1 : 1;
             widgets[index].value = state.values[index];
             schedulePreview();
             render();
         });
+        if (vectorProfile) input.addEventListener("blur", () => render());
         label.appendChild(input);
         valueGrid.appendChild(label);
         return input;
     });
-    const currentVectorTag = () => serializeVector(state.values, state.signs, state.relative, state.named);
+    const currentVectorTag = () => vectorProfile
+        ? vectorProfile.serialize(state.values, state.signs, state.relative)
+        : serializeVector(state.values, state.signs, state.relative, state.named);
     const schedulePreview = () => {
         if (!anchorRect || !onPreview || closed) return;
         if (previewFrame !== null) cancelAnimationFrame(previewFrame);
@@ -228,10 +243,13 @@ export async function openIndexTTSEmotionEditor({
             ? (anchorRect ? "Adjust connected vector" : "Adjusts the connected vector; click the sign to invert edits.")
             : (anchorRect ? "Replace vector" : "Replaces the connected vector.");
         valueInputs.forEach((input, index) => {
-            const magnitude = format(state.values[index]);
-            input.value = state.relative
-                ? `${state.signs[index] < 0 ? "-" : (anchorRect ? "+" : "")}${magnitude}`
-                : magnitude;
+            input.min = state.relative || !vectorProfile ? -axisMax(index) : 0;
+            const formatted = format(state.values[index]);
+            if (!vectorProfile || document.activeElement !== input) {
+                input.value = state.relative
+                    ? `${state.signs[index] < 0 ? "-" : (anchorRect ? "+" : "")}${formatted}`
+                    : formatted;
+            }
             input.style.borderColor = state.relative && state.signs[index] < 0 ? "#c8505b" : "#555";
         });
         const ctx = canvas.getContext("2d");
@@ -277,6 +295,10 @@ export async function openIndexTTSEmotionEditor({
     const insertPreset = button("Insert preset tag");
     const deletePreset = button("Delete preset");
     const persist = async () => {
+        if (vectorProfile) {
+            localStorage.setItem(vectorProfile.presetStorageKey, JSON.stringify(presets));
+            return;
+        }
         const response = await api.fetchApi(ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ presets }) });
         if (!response.ok) throw new Error(`Could not save IndexTTS emotion presets (${response.status})`);
         window.dispatchEvent(new CustomEvent("tts-audio-suite:index-tts-presets-changed", {
@@ -288,21 +310,23 @@ export async function openIndexTTSEmotionEditor({
         const preset = presets[presetSelect.value];
         presetName.value = presetSelect.value;
         presetDescription.value = preset?.description || "";
-        if (preset?.type === "vector" && Array.isArray(preset.values) && preset.values.length === 8) {
-            preset.values.forEach((value, index) => { state.values[index] = number(value); widgets[index].value = state.values[index]; });
-            state.relative = false;
+        if (preset?.type === "vector" && Array.isArray(preset.values) && preset.values.length === axisNames.length) {
+            preset.values.forEach((value, index) => { state.values[index] = magnitude(value, index); widgets[index].value = state.values[index]; });
+            state.relative = Boolean(vectorProfile && preset.relative);
+            state.signs = state.values.map((_, index) => state.relative && preset.signs?.[index] === -1 ? -1 : 1);
             render();
         }
     };
     const validName = name => /^[A-Za-z0-9_-]+$/.test(name);
-    const reopen = () => openIndexTTSEmotionEditor({ tag, onApply, anchorRect, showPresets });
+    const reopen = () => openEmotionVectorEditor({ tag: vectorProfile ? currentVectorTag() : tag, onApply, onPreview, onCommit, onCancel, anchorRect, showPresets, vectorProfile });
     savePreset.onclick = async () => { const name = presetName.value.trim(); const description = presetDescription.value.trim(); if (!validName(name) || !description) return; presets[name] = { type: "text", description }; await persist(); overlay.remove(); reopen(); };
     saveVectorPreset.onclick = async () => {
         const name = presetName.value.trim();
         if (!validName(name)) return;
         presets[name] = {
             type: "vector",
-            values: state.values.map(value => Number(Number(value).toFixed(2)))
+            values: state.values.map(value => Number(Number(value).toFixed(2))),
+            ...(vectorProfile ? { relative: state.relative, signs: state.signs.slice() } : {}),
         };
         await persist();
         overlay.remove();
@@ -313,7 +337,8 @@ export async function openIndexTTSEmotionEditor({
     insertPreset.onclick = () => {
         const preset = presets[presetSelect.value];
         if (!preset) return;
-        onApply(preset.type === "vector" ? serializeVector(preset.values, Array(8).fill(1), false, false) : `[emotion:${presetSelect.value}]`);
+        onApply(vectorProfile ? currentVectorTag()
+            : preset.type === "vector" ? serializeVector(preset.values, Array(8).fill(1), false, false) : `[emotion:${presetSelect.value}]`);
         overlay.remove();
     };
     presetBox.append(presetTitle, presetSelect, presetName, presetDescription, applyQuotedText, savePreset, saveVectorPreset, insertPreset, deletePreset);
@@ -332,7 +357,8 @@ export async function openIndexTTSEmotionEditor({
         const vectorTab = button("Vector Presets");
         const textTab = button("Text / Presets");
         [vectorTab, textTab].forEach(tab => Object.assign(tab.style, { padding: "6px 11px", fontSize: "11px" }));
-        presetTabs.append(vectorTab, textTab);
+        presetTabs.appendChild(vectorTab);
+        if (!vectorProfile) presetTabs.appendChild(textTab);
 
         const presetContent = document.createElement("div");
         Object.assign(presetContent.style, { padding: "11px", overflowY: "auto", minHeight: "0" });
@@ -440,9 +466,12 @@ export async function openIndexTTSEmotionEditor({
         overlay.remove();
     };
     cancel.onclick = () => anchorRect ? finishContextualEdit(false) : overlay.remove();
-    apply.onclick = () => { onApply(serializeVector(state.values, state.signs, state.relative, state.named)); overlay.remove(); };
+    apply.onclick = () => {
+        if (anchorRect) finishContextualEdit(true);
+        else { onApply(currentVectorTag()); overlay.remove(); }
+    };
     actions.append(cancel);
-    if (!anchorRect) actions.append(apply);
+    if (!anchorRect || vectorProfile) actions.append(apply);
     if (!anchorRect && showPresets) {
         Object.assign(panel.style, {
             width: "min(1080px,95vw)", padding: "0", background: "#111216",
@@ -454,7 +483,7 @@ export async function openIndexTTSEmotionEditor({
         title.style.margin = "0";
         title.style.fontSize = "21px";
         const subtitle = document.createElement("div");
-        subtitle.textContent = "Shape emotional tone with an 8-axis vector or reusable presets.";
+        subtitle.textContent = `Shape emotional tone with a ${axisNames.length}-axis vector or reusable presets.`;
         Object.assign(subtitle.style, { marginTop: "4px", color: "#858892", fontSize: "11px" });
         headingCopy.append(title, subtitle);
         const close = button("×");
@@ -587,4 +616,4 @@ export async function openIndexTTSEmotionPresetPicker({ presetName, anchorRect, 
     overlay.focus({ preventScroll: true });
 }
 
-export { parseVectorTag, isEmotionTextTag };
+export { openEmotionVectorEditor as openIndexTTSEmotionEditor, parseVectorTag, isEmotionTextTag };

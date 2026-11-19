@@ -200,8 +200,8 @@ not mutate the connected vector.
 
 The TTS Tag Editor provides the same interactive radar used by the IndexTTS-2
 Emotion Vectors node. Click an existing numeric emotion tag to open its radar
-as a contextual popover beside the tag. Create tags from **Inline Tags →
-IndexTTS-2**, and use **Manage Emotion Presets** in its Text Emotion section for
+as a contextual popover beside the tag. In **Parameters**, choose **IndexTTS-2**
+under **Steering Engine**. Use **Manage Emotion Presets** in the Text Emotion section for
 the preset library. Text and vector presets are stored in
 `models/TTS/IndexTTS/emotion_presets.json`.
 
@@ -209,9 +209,8 @@ Radar changes appear in the editor text immediately. Intermediate drag/input
 states are not added to undo history: closing the popover commits one undoable
 change, while Cancel or Escape restores the tag exactly as it was when opened.
 
-The editor's **Inline Tags** tab also includes an **IndexTTS-2** engine panel for
-inserting full absolute/delta vectors, named emotion values, saved text presets,
-quoted descriptions, and dynamic descriptions containing `{seg}`.
+The **IndexTTS-2** steering panel inserts absolute or relative vectors, named
+emotion values, presets, and quoted descriptions with optional `{seg}` expansion.
 
 Emotion controls can be composed directly on character tags: place the caret on
 `[Bob:audio_reference]` and add a vector or text emotion to append it as a pipe
