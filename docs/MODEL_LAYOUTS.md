@@ -500,5 +500,5 @@ Notes:
 - Downloads into a dedicated `zonos3_mini/` folder; optional parts are fetched the first time they are selected.
 - Other complete model folders placed under `zonos3_mini/` appear in the engine node as `local:<folder>`.
 - Native sample rate is 44.1kHz.
-- Runs in the main environment; the inference code is Zyphra's, bundled in `engines/zonos3_mini/vendor/`: their CUDA-graph engine (`engine: fast`, needs CUDA, bfloat16 and Triton; `triton-windows` on Windows) and their plain-PyTorch reference implementation (`engine: reference`). `auto` picks the fast one when it can.
+- Runs in the main environment with Zyphra's bundled inference code. Fast requires `cuda:0`, bfloat16, and Triton (`triton-windows` on Windows). Start ComfyUI with `--disable-cuda-malloc` for Fast. Auto falls back to Reference when Fast is unavailable. Reference runs on CPU or CUDA.
 - Voice cloning needs reference audio only; no reference transcript is used.
