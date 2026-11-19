@@ -448,7 +448,14 @@ PARAMETER_NODE_KEYS = {
 
 # ZONOS3-Mini steering tags: the configuration nodes' sliders, additional effects and envelope
 # (engines/zonos3_mini/steering_tags.py). happy / angry / sad / calm reuse the emotion tags above.
-from engines.zonos3_mini.steering_tags import TAG_PARAMETERS as _ZONOS3_TAGS
+from engines.zonos3_mini.steering_tags import (
+    EMOTION_AXES as _ZONOS3_EMOTIONS, TAG_PARAMETERS as _ZONOS3_TAGS,
+    VECTOR_KEY as _ZONOS3_VECTOR_KEY, VECTOR_TAG as _ZONOS3_VECTOR_TAG,
+)
+
+PARAMETER_ALIASES[_ZONOS3_VECTOR_TAG] = _ZONOS3_VECTOR_KEY
+PARAMETER_ENGINES[_ZONOS3_VECTOR_KEY] = {'zonos3_mini'}
+PARAMETER_VALIDATION[_ZONOS3_VECTOR_KEY] = (str, None, None, "Ordered ZONOS3-Mini emotion vector")
 
 for _tag, (_canonical, _low, _high, _description) in _ZONOS3_TAGS.items():
     if _tag in INDEX_TTS_EMOTIONS:
@@ -457,7 +464,8 @@ for _tag, (_canonical, _low, _high, _description) in _ZONOS3_TAGS.items():
     if PARAMETER_ALIASES.setdefault(_tag, _canonical) != _canonical:
         raise RuntimeError(f"ZONOS3-Mini tag '{_tag}' collides with an existing parameter alias")
     PARAMETER_ENGINES[_canonical] = {'zonos3_mini'}
-    PARAMETER_VALIDATION[_canonical] = (float, _low, _high, _description)
+    # Keep the sign on named emotions. Their bounds are checked when the segment baseline is known.
+    PARAMETER_VALIDATION[_canonical] = (str, None, None, _description) if _tag in _ZONOS3_EMOTIONS else (float, _low, _high, _description)
     PARAMETER_NODE_KEYS[_canonical] = _canonical
 
 
@@ -604,7 +612,7 @@ class SegmentParameterParser:
         tag_segments = []
         parameters = {}
 
-        for part in parts:
+        for index, part in enumerate(parts):
             part = part.strip()
             if not part:
                 continue
@@ -625,12 +633,13 @@ class SegmentParameterParser:
                 # numeric value turns [sad:...] into an inline vector control;
                 # [sad:audio_ref] must remain a character emotion-reference tag.
                 # The same holds for the ZONOS3-Mini steering tags ([Soft:audio_ref], [pace:Bob]).
-                if (
-                    key_stripped.lower() in INDEX_TTS_EMOTIONS
-                    or (canonical_name or '').startswith('zonos3_')
-                ) and not re.fullmatch(
+                zonos_numeric = (canonical_name or '').startswith('zonos3_') and canonical_name != _ZONOS3_VECTOR_KEY
+                if (key_stripped.lower() in INDEX_TTS_EMOTIONS or zonos_numeric) and not re.fullmatch(
                     r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)', value
                 ):
+                    if zonos_numeric and index > 0:
+                        logger.warning(f"⚠️ Invalid parameter: {key_stripped} requires a number, got {value!r}")
+                        continue
                     canonical_name = None
 
                 if canonical_name:

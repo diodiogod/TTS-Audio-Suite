@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
-import { createEmotionRadarCanvasWidget, INDEX_TTS_EMOTION_VISUALS } from "./emotion_radar_canvas_widget.js";
+import { createEmotionRadarCanvasWidget } from "./emotion_radar_canvas_widget.js";
+import { zonos3EmotionAxis } from "./zonos3_tag_parameters.js";
 import { installStyle, addPanel, element, numberRow, hideBackendWidget, setValue, connectedEngines, engineValue } from "./zonos3_steering_ui.js";
 import { createEffectsPanel } from "./zonos3_steering_effects.js";
 import { createEnvelopePanel } from "./zonos3_steering_envelope.js";
@@ -8,10 +9,6 @@ const VOICE = "Zonos3MiniVoiceCharacteristicsNode";
 const DELIVERY = "Zonos3MiniDeliveryNode";
 // Opposite placement is visual; every native effect remains independent.
 const RADAR_ORDER = ["happy", "angry", "confused", "sad", "calm", "scared"];
-const SHARED_EMOTIONS = { happy: "Happy", angry: "Angry", sad: "Sad", calm: "Calm", scared: "Afraid", confused: "Surprised" };
-const EMOTION_COLORS = Object.fromEntries(Object.entries(SHARED_EMOTIONS).map(([name, shared]) => [
-    name, INDEX_TTS_EMOTION_VISUALS.find(emotion => emotion.name === shared).color,
-]));
 
 function setup(node, nodeData) {
     if (node.zonos3UI) return;
@@ -50,10 +47,10 @@ function setup(node, nodeData) {
     const catalog = nodeData.input.optional.additional_effects?.[1]?.zonos3_catalog;
     let effects, envelope;
     if (!isVoice) {
-        const axes = RADAR_ORDER.map(name => [name, nodeData.input.optional[name][1]]).map(([name, def], index, all) => ({
-            name, label: def.zonos3.label, min: def.min, max: def.max, step: def.step,
-            angle: index * 2 * Math.PI / all.length, color: EMOTION_COLORS[name],
-        }));
+        const axes = RADAR_ORDER.map((name, index) => {
+            const definition = nodeData.input.optional[name][1];
+            return zonos3EmotionAxis(name, { ...definition, label: definition.zonos3.label }, index, RADAR_ORDER.length);
+        });
         node.widgets.push(createEmotionRadarCanvasWidget(node, {
             emotions: axes, centerX: 200, modernControls: true, showNativeValues: true,
             exportFilename: "zonos3_emotions.json",

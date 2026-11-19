@@ -816,6 +816,56 @@ def test_steering_tags_override_one_segment_and_restore_the_node_baseline(no_int
 
 
 @pytest.mark.unit
+def test_emotion_tags_replace_and_adjust_the_segment_vector(no_interrupt):
+    recording = RecordingAdapter()
+    baseline = {"emotions.happy": 5.0, "emotions.angry": 2.0, "emotions.sad": 4.0, "identity.gender": 1.0}
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(recording, {"language": "English (US)", "controls": baseline})
+    processor.process_text(
+        "[Alice|zonos_vector:0,2,3,0,1,10] Replace.\n"
+        "[Alice|zonos_vector:+2,-3,+.5,+0,+0,+9|happy:-1|calm:+3|scared:+6|pace:-1] Adjust.\n"
+        "[Alice] Restore.",
+        {}, seed=1, show_text_logging=False,
+    )
+    replaced, adjusted, restored = (call["config"]["controls"] for call in recording.calls)
+    assert replaced == {
+        "identity.gender": 1.0, "emotions.angry": 2.0, "emotions.confused": 3.0,
+        "emotions.serene": 1.0, "emotions.scared": 10.0,
+    }
+    assert adjusted == {
+        "identity.gender": 1.0, "emotions.happy": 5.0, "emotions.sad": 4.0,
+        "emotions.confused": 0.5, "emotions.serene": 3.0, "emotions.scared": 14.0,
+        **next(control[3] for control in DELIVERY if control[0] == "pace")(-1.0),
+    }
+    assert restored == baseline
+
+
+@pytest.mark.unit
+def test_emotion_tag_syntax_and_editor_groups():
+    from engines.zonos3_mini.steering_tags import VECTOR_KEY, apply_steering_tags, tag_editor_parameters
+    from utils.text.segment_parameters import ParameterValidator, SegmentParameterParser
+
+    for value, message in [("0,1", "requires 6 values"), ("0,+1,0,0,0,0", "explicit"), ("0,nan,0,0,0,0", "Invalid")]:
+        with pytest.raises(ValueError, match=message):
+            apply_steering_tags({VECTOR_KEY: value})
+    assert SegmentParameterParser.parse_tag_segments("Alice|pace:fast") == (["Alice"], {})
+
+    _, parameters = SegmentParameterParser.parse_tag_segments("Alice|zonos_vector:0,1,0,0,0,0|vector:0,1,0,0,0,0,0,0|confused:-1|happy:+0.5")
+    index = ParameterValidator.filter_parameters_for_engine(parameters, "index_tts", warn=False)
+    assert index == {"emotion_vector_inline": "0,1,0,0,0,0,0,0", "emotion_happy_inline": "+0.5"}
+    zonos = ParameterValidator.filter_parameters_for_engine(parameters, "zonos3_mini", warn=False)
+    assert zonos == {VECTOR_KEY: "0,1,0,0,0,0", "zonos3_confused": "-1", "emotion_happy_inline": "+0.5"}
+
+    editor = {parameter["tag"]: parameter for parameter in tag_editor_parameters()}
+    assert {tag for tag, parameter in editor.items() if parameter["group"] == "Generation"} == {
+        "seed", "temperature", "top_p", "top_k", "min_p", "repetition_penalty", "speaker_cfg_scale",
+        "loudness_bucket", "fmax_bucket", "speaking_rate_bucket",
+    }
+    assert editor["happy"]["relative"] and editor["happy"]["slider"]
+    assert editor["pace"]["group"] == "Prosody" and not editor["pace"]["relative"]
+    assert editor["emotions.proud"]["group"] == "Additional Effects" and not editor["emotions.proud"]["slider"]
+
+
+@pytest.mark.unit
 def test_steering_tag_changes_the_cache_key(adapter):
     adapter.update_config({"language": "English (US)", "controls": {"emotions.happy": 2.0}})
     adapter.generate_single("Same text.", None, seed=5)
