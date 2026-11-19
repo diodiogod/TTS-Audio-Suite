@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.11.0] - 2026-11-19
+
+### Added
+
+- Add ZONOS3-Mini to TTS Text and TTS SRT with 44.1 kHz output, 44 languages, 30 built-in voices, and voice cloning from reference audio. Thanks @Ryu1845 for the integration (#386).
+  - Choose Fast CUDA-graph inference or the Reference backend. Fast uses Triton and requires launching ComfyUI with `--disable-cuda-malloc`. Auto uses Reference when Fast is unavailable.
+  - Shape voice characteristics, delivery, and emotion with sliders, a six-axis radar, and an effect timing graph. Apply steering to individual segments with absolute or signed emotion tags.
+
+### Changed
+
+- Organize the Multiline TTS Tag Editor into Character, Parameters, and Inline Tags tabs. Character includes language selection and presets. Parameters includes IndexTTS-2 and ZONOS3-Mini steering, and Inline Tags contains engine-specific speech cues.
+- Allow up to 20,000 characters per TTS Text chunk, with a default of 400.
+
+### Fixed
+
+- Keep explicit pauses at the requested duration when combining chunks. Split long sentences and oversized words at the configured chunk limit.
+- Resolve `uk` to Ukrainian. Use `en-gb` for British English in ZONOS3-Mini.
+
 ## [5.10.9] - 2026-11-14
 
 ### Fixed
