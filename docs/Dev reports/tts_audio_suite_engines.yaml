@@ -1518,10 +1518,13 @@ engines:
       training: false
 
     special_features:
-      - "44.1 kHz output, 44 languages, cross-lingual cloning without a transcript"
+      - "Fast CUDA-graph inference with Triton"
+      - "Six-axis emotion vectors and per-segment voice and delivery steering"
       - "30 built-in voices"
-      - "Native steering: voice design (gender, age, pitch, texture, accents) and delivery/emotion sliders"
       - "LACI alignment correction for skipped or stalled text"
+    readme_key_features:
+      - "Fast CUDA-graph inference"
+      - "six-axis emotion vectors, voice and delivery steering, 30 built-in voices"
 
     model_sources:
       - component: "ZONOS3-Mini"

@@ -43,7 +43,7 @@ Subtitle workflows are still a core focus: the suite can transcribe to SRT, rebu
 | **Dots TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +13 | ~6GB | Official auto language detect / language control, SOAR and MeanFlow distilled variants |
 | **DramaBox** | 🇺🇸 | ~16.4GB | Expressive scene prompting and stage directions, Native and SRT-aware duration targeting |
 | **OmniVoice** | 🌐 600+ languages | ~3.7GB | Inline non-verbal tags and pronunciation overrides, Reference-free voice design |
-| **ZONOS3-Mini** | 🌐 44 languages | ~10.3GB (+4GB full_mr) | 44.1 kHz output, 44 languages, cross-lingual cloning without a transcript, 30 built-in voices |
+| **ZONOS3-Mini** | 🌐 44 languages | ~10.3GB (+4GB full_mr) | Fast CUDA-graph inference, six-axis emotion vectors, voice and delivery steering, 30 built-in voices |
 | **MOSS-TTS** | 🇺🇸​🇨🇳​🇩🇪​🇪🇸​🇫🇷​🇮🇹 +18 | ~8.5GB tokenizer + ~6.1GB/17GB/18GB model | Reference-free voice design with MOSS-VoiceGenerator, Native 1-5 speaker TTSD dialogue |
 | **MOSS-SoundEffect v2** | 🇺🇸​🇨🇳 | ~11.2GB | Durations up to 30 seconds, Native negative prompting, CFG, flow shift, and diffusion-step controls |
 | **RVC** | 🌐 Any | 100-300MB | Real-time VC, Integrated training workflow |

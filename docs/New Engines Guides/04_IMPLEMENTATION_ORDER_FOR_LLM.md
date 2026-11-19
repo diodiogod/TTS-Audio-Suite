@@ -90,7 +90,7 @@ Follow this order:
 12. Add generated audio cache where applicable.
 13. Add interrupt checks in long loops.
 14. Add progress feedback for long generation.
-15. Update docs/YAML metadata.
+15. Update docs/YAML metadata. Use the README **Key Features** cell for what sets the engine apart. Keep language counts, model size, and standard capabilities like voice cloning in their dedicated fields.
 16. Run automated and live ComfyUI validation. Use FL-MCP-assisted validation when it is installed and connected; otherwise perform the same checks manually. Follow `tests/FL_MCP_VALIDATION.md`.
 17. Run the required parity checklist.
 
