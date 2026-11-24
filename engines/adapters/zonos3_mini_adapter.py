@@ -200,6 +200,13 @@ class Zonos3MiniEngineAdapter:
         controls = {str(k): float(v) for k, v in (cfg.get("controls") or {}).items() if float(v) != 0.0}
         if controls:
             request["controls"] = controls
+        if cfg.get("control_spans"):
+            request.update(
+                control_spans=cfg["control_spans"],
+                control_span_follow="reading",
+                control_span_lead=0.0,
+                control_span_lag=0.0,
+            )
         for key in ("steer_hold", "steer_onset_seconds", "steer_ramp_seconds"):
             value = cfg.get(key)
             if value is not None and float(value) >= 0:

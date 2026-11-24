@@ -689,6 +689,16 @@ export function attachAllEventHandlers(
             return;
         }
 
+        if (state.activeSegmentTagEngine === "zonos3_mini") {
+            for (const [, words, rawStrength] of text.matchAll(TagUtilities.ZONOS_EMPHASIS_MARK)) {
+                const strength = Number(rawStrength);
+                if (!words.trim() || strength < 0 || strength > 6) {
+                    showNotification("❌ Use {words:strength} with a strength from 0 to 6.", 3000);
+                    return;
+                }
+            }
+        }
+
         const inlineSyntaxValidation = TagUtilities.validateInlineSyntax(text);
         if (!inlineSyntaxValidation.valid) {
             showNotification("❌ " + inlineSyntaxValidation.error, 3000);
@@ -1215,6 +1225,17 @@ export function attachAllEventHandlers(
         }
 
         wrapSelectionWithTag(tagName);
+    });
+
+    numeric.zonos3_mini?.emphasizeTextBtn?.addEventListener("click", () => {
+        const selection = getSelection();
+        const words = selection?.text || "words";
+        if (/[{}]/.test(words)) {
+            showNotification("Select spoken text without braces.", 2000);
+            return;
+        }
+        const mark = `{${words}:4.5}`;
+        insertTextSnippet(mark, { caretOffset: selection ? mark.length : 1 });
     });
 
     addOmniVoiceTagBtn.addEventListener("click", () => {

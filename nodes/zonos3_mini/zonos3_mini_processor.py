@@ -19,6 +19,7 @@ project_root = os.path.dirname(nodes_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from engines.zonos3_mini.emphasis_spans import EmphasisParser, project_emphasis_spans
 from engines.zonos3_mini.languages import DEFAULT_LANGUAGE, to_suite_language, to_zonos_language
 from engines.zonos3_mini.steering_tags import apply_steering_tags
 from utils.audio.chunk_timing import ChunkTimingHelper
@@ -155,14 +156,16 @@ class Zonos3MiniProcessor:
         show_text_logging: bool = True,
     ) -> List[Dict[str, Any]]:
         self._setup_character_parser(text)
+        emphasis = EmphasisParser()
+        marked_text = emphasis.prepare(text)
 
         narrator_info = voice_mapping.get("narrator", {})
         narrator_voice = narrator_info if isinstance(narrator_info, dict) else {"audio": narrator_info}
 
         base_config = self.config.copy()
-        segment_objects = character_parser.parse_text_segments(text, engine_type=self.ENGINE_TYPE)
+        segment_objects = character_parser.parse_text_segments(marked_text, engine_type=self.ENGINE_TYPE)
         if not segment_objects:
-            segment_objects = character_parser.parse_text_segments("narrator " + text, engine_type=self.ENGINE_TYPE)
+            segment_objects = character_parser.parse_text_segments("narrator " + marked_text, engine_type=self.ENGINE_TYPE)
 
         characters = list({seg.character for seg in segment_objects if seg.character})
         character_mapping = get_character_mapping(characters, engine_type="audio_only")
@@ -208,7 +211,8 @@ class Zonos3MiniProcessor:
                     voice_ref = {"audio_path": audio_path}
 
             def _append_text_item(text_content: str):
-                text_content = (text_content or "").strip()
+                marked_text, spans = emphasis.strip_tags(text_content)
+                text_content = marked_text.strip()
                 if not text_content:
                     return
                 if enable_chunking and len(text_content) > max_chars_per_chunk:
@@ -216,15 +220,16 @@ class Zonos3MiniProcessor:
                     print(f"📝 ZONOS3-Mini: chunking {len(text_content)} characters into {len(chunks)} chunks")
                 else:
                     chunks = [text_content]
-                for chunk in chunks:
-                    chunk = (chunk or "").strip()
-                    if not chunk:
-                        continue
+                chunk_spans = project_emphasis_spans(marked_text, chunks, spans)
+                for chunk, control_spans in zip(chunks, chunk_spans):
+                    config = current_config.copy()
+                    if control_spans:
+                        config["control_spans"] = control_spans
                     generation_items.append(
                         {
                             "kind": "text",
                             "text": chunk,
-                            "config": current_config.copy(),
+                            "config": config,
                             "seed": current_seed,
                             "voice_ref": voice_ref.copy() if isinstance(voice_ref, dict) else voice_ref,
                             "character_name": char_name,
@@ -244,6 +249,7 @@ class Zonos3MiniProcessor:
             else:
                 _append_text_item(segment_text)
 
+        emphasis.finish()
         return generation_items
 
     def process_text(
@@ -260,7 +266,7 @@ class Zonos3MiniProcessor:
         show_text_logging: bool = True,
     ) -> List[Dict[str, Any]]:
         del chunk_combination_method, silence_between_chunks_ms  # applied by combine_audio_segments
-        del apply_edit_postprocessing  # ZONOS3-Mini has no inline edit tags
+        del apply_edit_postprocessing  # ZONOS3-Mini word emphasis is applied during inference
         self._log_settings()
         generation_items = self._build_generation_items(
             text=text,
@@ -306,11 +312,20 @@ class Zonos3MiniProcessor:
                 )
                 if item["parameter_log"]:
                     print(f"🎛️ ZONOS3-Mini params: {item['parameter_log']}")
+                chunk_text = item["text"]
                 if item["show_text_logging"]:
-                    print(format_resolved_character_block(item["character_name"], item["text"], item["voice_ref"]))
+                    print(format_resolved_character_block(item["character_name"], chunk_text, item["voice_ref"]))
+
+                emphasis_labels = []
+                for span in item["config"].get("control_spans", ()):
+                    phrase = chunk_text[span["start"]:span["end"]]
+                    strength = span["controls"]["mood.arousal"]
+                    emphasis_labels.append(f"{phrase!r} (strength {strength:g})")
+                if emphasis_labels:
+                    print(f"🎯 ZONOS3-Mini word emphasis: {', '.join(emphasis_labels)}")
 
                 audio = self.adapter.generate_single(
-                    text=item["text"],
+                    text=chunk_text,
                     voice_ref=item["voice_ref"],
                     seed=item["seed"],
                     enable_audio_cache=enable_audio_cache,
@@ -322,7 +337,7 @@ class Zonos3MiniProcessor:
                     {
                         "waveform": audio.cpu(),
                         "sample_rate": self.SAMPLE_RATE,
-                        "text": item["text"],
+                        "text": chunk_text,
                     }
                 )
         finally:

@@ -166,6 +166,15 @@ In **Parameters**, choose **ZONOS3-Mini** under **Steering Engine**. Use **Add P
 
 Extra control guidance requires an active delivery effect, embedding voice mode, LACI off, and speaker guidance at 1.
 
+For **word emphasis**, select the words in the tag editor, then choose **Parameters → ZONOS3-Mini → Emphasize Text**. ZONOS3 applies the emphasis within the same take. The ComfyUI console shows the marked words and strength for each chunk.
+
+```text
+[Alice] Read this {now:1.5}.
+[Alice] Read {this part:4.5} first.
+```
+
+Strength is 0–6. The editor inserts 4.5. Works in TTS Text and TTS SRT. Keep each mark within one subtitle cue. ZONOS3 follows the reading position when the language has alignment data and estimates the timing from character positions otherwise.
+
 #### IndexTTS 2 / 2.5
 
 | Parameter | Alias | Type | Range | Description |

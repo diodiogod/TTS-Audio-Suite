@@ -874,3 +874,101 @@ def test_steering_tag_changes_the_cache_key(adapter):
     adapter.update_config({"language": "English (US)", "controls": {"emotions.sad": 2.0}})
     adapter.generate_single("Same text.", None, seed=5)
     assert len(adapter.engine.requests) == 3
+
+
+@pytest.mark.unit
+def test_word_emphasis_targets_the_final_text_without_creating_a_chunk(no_interrupt):
+    recording = RecordingAdapter()
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(recording, {"language": "English (US)"})
+    processor.process_text(
+        "[en-gb:Alice|seed:42] Red, red. Pick the {red:4.5} one.",
+        {}, seed=1, show_text_logging=False,
+    )
+
+    (call,) = recording.calls
+    assert call["text"] == "Red, red. Pick the red one."
+    assert call["seed"] == 42
+    assert call["config"]["language"] == "en_gb"
+    start = call["text"].rfind("red")
+    assert call["config"]["control_spans"] == [{
+        "start": start, "end": start + 3,
+        "controls": {"emphasis_nv_nodur.emphasis": 18.0, "mood.arousal": 4.5},
+    }]
+
+
+@pytest.mark.unit
+def test_word_emphasis_rebases_at_chunk_pause_and_speaker_boundaries(no_interrupt, capsys):
+    recording = RecordingAdapter()
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(recording, {"language": "English (US)"})
+    records = processor.process_text(
+        "[Alice] Start {red   green blue [pause:0.25] [de:Bob] gold:3} end.\nPlain.",
+        {}, seed=1, max_chars_per_chunk=10, show_text_logging=False,
+    )
+
+    assert [record["text"] for record in records] == ["Start red", "green blue", "[pause:0.250s]", "gold end.", "Plain."]
+    assert [
+        call["text"][span["start"]:span["end"]]
+        for call in recording.calls for span in call["config"].get("control_spans", [])
+    ] == ["red", "green blue", "gold"]
+    assert "control_spans" not in recording.calls[-1]["config"]
+    emphasis_logs = [line for line in capsys.readouterr().out.splitlines() if "word emphasis:" in line]
+    assert emphasis_logs == [
+        "🎯 ZONOS3-Mini word emphasis: 'red' (strength 3)",
+        "🎯 ZONOS3-Mini word emphasis: 'green blue' (strength 3)",
+        "🎯 ZONOS3-Mini word emphasis: 'gold' (strength 3)",
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("text, message", [
+    ("{word:7}", "between 0 and 6"),
+    ("{word:-1}", "between 0 and 6"),
+    ("{ :1.5}", "put words before the strength"),
+])
+def test_bad_word_emphasis_markup_fails_before_synthesis(no_interrupt, text, message):
+    recording = RecordingAdapter()
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(recording, {})
+    with pytest.raises(ValueError, match=message):
+        processor.process_text(text, {}, seed=1, show_text_logging=False)
+    assert recording.calls == []
+
+
+@pytest.mark.unit
+def test_word_emphasis_leaves_template_braces_and_zero_strength_unsteered(no_interrupt):
+    recording = RecordingAdapter()
+    processor = PROCESSOR_MODULE.Zonos3MiniProcessor(recording, {})
+    processor.process_text("Read {seg}, {{now:1.5}}, and {these words:0}.", {}, seed=1, show_text_logging=False)
+
+    (call,) = recording.calls
+    assert call["text"] == "Read {seg}, {{now:1.5}}, and these words."
+    assert "control_spans" not in call["config"]
+
+
+@pytest.mark.unit
+def test_word_emphasis_survives_srt_cleanup(no_interrupt, monkeypatch):
+    recording = RecordingAdapter()
+    monkeypatch.setattr(SRT_MODULE, "Zonos3MiniEngineAdapter", lambda config: recording)
+    processor = SRT_MODULE.Zonos3MiniSRTProcessor(None, {"language": "English (US)"})
+    srt = TWO_CUE_SRT.replace("Hello.", "Say {hello:3.5}.")
+    processor.process_srt_content(srt, {}, seed=10, timing_mode="pad_with_silence", timing_params={})
+
+    first, second = recording.calls
+    assert first["text"] == "Say hello."
+    assert first["config"]["control_spans"] == [{
+        "start": 4, "end": 9, "controls": {"emphasis_nv_nodur.emphasis": 14.0, "mood.arousal": 3.5},
+    }]
+    assert "control_spans" not in second["config"]
+
+
+@pytest.mark.unit
+def test_word_emphasis_request_and_cache_include_span_positions(adapter):
+    adapter.generate_single("Say this word.", None, seed=5)
+    controls = {"emphasis_nv_nodur.emphasis": 18.0, "mood.arousal": 4.5}
+    for start, end in [(4, 8), (4, 8), (9, 13)]:
+        adapter.update_config({"control_spans": [{"start": start, "end": end, "controls": controls}]})
+        adapter.generate_single("Say this word.", None, seed=5)
+
+    plain, first, second = adapter.engine.requests
+    assert "control_spans" not in plain
+    assert first["control_span_follow"] == second["control_span_follow"] == "reading"
+    assert first["control_spans"][0]["start"] == 4 and second["control_spans"][0]["start"] == 9

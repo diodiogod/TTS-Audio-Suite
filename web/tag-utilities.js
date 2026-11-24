@@ -4,6 +4,7 @@
  */
 
 export class TagUtilities {
+    static ZONOS_EMPHASIS_MARK = /(?<!\{)\{([^{}]+):[ \t]*([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))[ \t]*\}(?!\})/g;
     static STEP_PARALINGUISTIC_TAGS = new Set([
         "Laughter", "Breathing", "Sigh", "Uhm", "Surprise-oh", "Surprise-ah",
         "Surprise-wa", "Confirmation-en", "Question-ei", "Dissatisfaction-hnn",

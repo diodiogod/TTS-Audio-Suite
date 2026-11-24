@@ -636,6 +636,11 @@ export function buildTagEngineSections(state, storageKey, numericEngines, update
     for (const [value, engine] of Object.entries(numericEngines)) {
         if (!engine.parameters.some(parameter => parameter.group !== "Generation")) continue;
         const section = buildNumericEnginePanel(engine, ui, preferences[value] ??= {}, () => state.saveToLocalStorage(storageKey));
+        if (value === "zonos3_mini") {
+            const emphasizeTextBtn = createButton("Emphasize Text", "Apply ZONOS3-Mini word emphasis to the selected text");
+            section.panel.prepend(emphasizeTextBtn);
+            section.controls.emphasizeTextBtn = emphasizeTextBtn;
+        }
         segmentEngines.push({ value, label: engine.label, panel: section.panel });
         numeric[value] = section.controls;
     }

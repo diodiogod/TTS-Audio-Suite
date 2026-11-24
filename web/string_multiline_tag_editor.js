@@ -1249,6 +1249,12 @@ function addStringMultilineTagEditorWidget(node, schema) {
             '\x00TAG_START\x00$1\x00TAG_END\x00'
         );
 
+        if (state.activeSegmentTagEngine === "zonos3_mini") {
+            html = html.replace(TagUtilities.ZONOS_EMPHASIS_MARK, (mark, words) => (
+                `\x00TAG_START\x00{\x00TAG_END\x00${words}\x00TAG_START\x00${mark.slice(words.length + 1)}\x00TAG_END\x00`
+            ));
+        }
+
         const activeInlineEngine = state.activeInlineTagEngine || "step_audio_editx";
 
         // Highlight inline edit tags with engine-aware warnings.
@@ -1678,6 +1684,7 @@ function addStringMultilineTagEditorWidget(node, schema) {
             requestAnimationFrame(updateSidebarScrollbar);
         });
     }
+    segment.select.addEventListener("change", updateHighlights);
     syncTagSelections();
 
     characterContent.append(charSection, langSection, presetSection);
