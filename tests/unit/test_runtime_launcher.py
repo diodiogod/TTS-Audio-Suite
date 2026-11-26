@@ -52,13 +52,15 @@ def test_build_env_preserves_valid_pythonhashseed(monkeypatch, value):
 @pytest.mark.parametrize("profile_override", [False, True])
 def test_build_env_prioritizes_suite_over_bundled_modules(monkeypatch, tmp_path, root_present, profile_override):
     bundled = str(REPO_ROOT / "engines" / "step_audio_editx" / "step_audio_editx_impl")
+    video_dir = REPO_ROOT / "engines" / "video"
+    openseeface = video_dir / "openseeface"
     comfy = str(tmp_path / "ComfyUI")
     site_packages = str(tmp_path / "site-packages")
-    parent_paths = [bundled, comfy, site_packages]
+    parent_paths = [bundled, comfy, site_packages, str(video_dir / "providers" / ".." / "openseeface")]
     if root_present:
         parent_paths += [str(REPO_ROOT), str(REPO_ROOT / "utils" / "..")]
     monkeypatch.setattr(sys, "path", parent_paths.copy())
-    inherited = os.pathsep.join([bundled, str(REPO_ROOT / "utils" / ".."), site_packages])
+    inherited = os.pathsep.join([bundled, str(REPO_ROOT / "utils" / ".."), site_packages, str(openseeface)])
     monkeypatch.setenv("PYTHONPATH", inherited)
     monkeypatch.setattr(
         IsolatedRuntimeLauncher,
@@ -80,6 +82,7 @@ def test_build_env_prioritizes_suite_over_bundled_modules(monkeypatch, tmp_path,
     assert bundled in paths
     assert comfy in paths
     assert site_packages not in paths
+    assert os.path.normcase(os.path.realpath(openseeface)) not in normalized
     assert sys.path == parent_paths
 
 

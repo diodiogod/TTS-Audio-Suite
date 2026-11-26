@@ -43,7 +43,8 @@ class IsolatedRuntimeLauncher:
         current_pythonpath = profile.env_vars.get("PYTHONPATH", env.get("PYTHONPATH", ""))
         # Bundled engine directories can contain utils.py or other names that
         # shadow suite packages. Always resolve suite imports before those paths.
-        inherited_paths = [str(Path(__file__).resolve().parents[2])]
+        project_root = Path(__file__).resolve().parents[2]
+        inherited_paths = [str(project_root)]
         inherited_paths.extend(
             path for path in sys.path
             if self._should_inherit_pythonpath_entry(os.path.abspath(path))
@@ -54,6 +55,9 @@ class IsolatedRuntimeLauncher:
                 for path in current_pythonpath.split(os.pathsep)
                 if path and self._should_inherit_pythonpath_entry(os.path.abspath(path))
             )
+        # The video provider adds this directory for flat imports. Its model.py
+        # can shadow the module imported by nagisa during Qwen3-ASR startup.
+        openseeface_path = os.path.normcase(os.path.realpath(project_root / "engines" / "video" / "openseeface"))
         deduped_paths = []
         seen = set()
         for path in inherited_paths:
@@ -61,7 +65,7 @@ class IsolatedRuntimeLauncher:
             # before deduplication so '.' cannot replace the ComfyUI root.
             absolute_path = os.path.abspath(path)
             normalized = os.path.normcase(os.path.realpath(absolute_path))
-            if normalized in seen:
+            if normalized == openseeface_path or normalized in seen:
                 continue
             seen.add(normalized)
             deduped_paths.append(absolute_path)
