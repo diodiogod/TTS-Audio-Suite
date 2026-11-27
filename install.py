@@ -21,6 +21,7 @@ import hashlib
 import json
 import shutil
 import tempfile
+from importlib import metadata
 from pathlib import Path
 from typing import List, Optional
 
@@ -31,6 +32,9 @@ class TTSAudioInstaller:
     # Bump when the install procedure itself gains or changes dependencies.
     # This keeps normal ComfyUI patch updates on the fast path.
     INSTALL_STATE_VERSION = 3
+
+    # The fork fixes TorchAudio 2.11 compatibility in the Dots import check (#384).
+    DOTS_TTS_REVISION = "434e08e1a087553909cbb25e4df83b58ed027e4f"
 
     CORE_MODULE_CHECKS = (
         ("torch", "PyTorch"),
@@ -579,6 +583,20 @@ class TTSAudioInstaller:
                 digest.update(b"<dependency-version-scan-unavailable>")
         return digest.hexdigest()
 
+    def _dots_revision_is_current(self) -> bool:
+        try:
+            dist = metadata.distribution("dots.tts")
+            source = json.loads(dist.read_text("direct_url.json") or "{}")
+            return source.get("vcs_info", {}).get("commit_id") == self.DOTS_TTS_REVISION
+        except (metadata.PackageNotFoundError, OSError, ValueError, AttributeError):
+            return False
+
+    def _missing_engine_runtime_components(self, display_name, module_names):
+        missing = [name for name in module_names if not self.module_available(name)]
+        if display_name == "Dots TTS" and not missing and not self._dots_revision_is_current():
+            missing.append("patched Dots TTS revision")
+        return missing
+
     def _quick_installation_status(self):
         """Check the small set of entry points needed to trust the install marker."""
         missing = []
@@ -588,7 +606,7 @@ class TTSAudioInstaller:
 
         self.engine_validation_results = {}
         for display_name, module_names in self.ENGINE_RUNTIME_CHECKS:
-            available = all(self.module_available(module_name) for module_name in module_names)
+            available = not self._missing_engine_runtime_components(display_name, module_names)
             self.engine_validation_results[display_name] = available
             if not available:
                 missing.append(display_name)
@@ -1257,7 +1275,7 @@ class TTSAudioInstaller:
             )
 
     def install_dots_tts(self):
-        """Install official Dots TTS with minimal dependency impact."""
+        """Install the pinned Dots TTS runtime without changing its dependencies."""
         self.log("Installing Dots TTS engine", "INFO")
 
         dependency_probes = [
@@ -1279,21 +1297,16 @@ class TTSAudioInstaller:
                 continue
             self.run_pip_command(pip_args, description, ignore_errors=True)
 
-        if self.module_available("dots_tts.runtime") and self.module_available("tn.chinese.normalizer"):
-            self.log("dots_tts.runtime already satisfied - skipping", "SUCCESS")
+        if self.module_available("dots_tts.runtime") and self._dots_revision_is_current():
+            self.log("Patched Dots TTS runtime already installed - skipping", "SUCCESS")
             return
 
-        if self.check_package_installed("dots.tts") and self.module_available("dots_tts.runtime"):
-            self.log(
-                "Dots package is installed but its tn/WeTextProcessing prerequisite is unavailable; skipping rebuild",
-                "WARNING",
-            )
-            return
-
+        # The patched commit may have the same package version as an existing install.
         dots_install_args = [
             "install",
-            "git+https://github.com/rednote-hilab/dots.tts.git",
             "--no-deps",
+            "--force-reinstall",
+            f"git+https://github.com/diodiogod/dots.tts.git@{self.DOTS_TTS_REVISION}",
         ]
         if self.is_python_313:
             # Dots currently declares <3.13, although its source works in the
@@ -1307,7 +1320,7 @@ class TTSAudioInstaller:
 
         self.run_pip_command(
             dots_install_args,
-            "Installing official dots.tts from GitHub (--no-deps)",
+            "Installing patched Dots TTS from GitHub (--no-deps)",
             ignore_errors=True
         )
 
@@ -1754,7 +1767,7 @@ class TTSAudioInstaller:
         return ready
 
     def validate_installation(self):
-        """Validate package presence without importing heavyweight runtimes."""
+        """Validate packages without importing heavyweight runtimes."""
         self.log("Validating installation...", "INFO")
 
         validation_errors = []
@@ -1766,24 +1779,19 @@ class TTSAudioInstaller:
                 validation_errors.append(f"{display_name}: module is unavailable")
                 self.log(f"{display_name}: FAILED - module is unavailable", "ERROR")
 
-        # Validate actual runtime entry points instead of relying on package
-        # distribution metadata. This is intentionally presence-only.
+        # Check runtime entry points without importing them.
         for display_name, module_names in self.ENGINE_RUNTIME_CHECKS:
-            missing_modules = [
-                module_name
-                for module_name in module_names
-                if not self.module_available(module_name)
-            ]
-            available = not missing_modules
+            missing = self._missing_engine_runtime_components(display_name, module_names)
+            available = not missing
             self.engine_validation_results[display_name] = available
             if available:
                 self.log(f"{display_name} runtime: OK", "SUCCESS")
             else:
                 validation_errors.append(
-                    f"{display_name} runtime is unavailable ({', '.join(missing_modules)})"
+                    f"{display_name} runtime is unavailable ({', '.join(missing)})"
                 )
                 self.log(
-                    f"{display_name} runtime: FAILED ({', '.join(missing_modules)})",
+                    f"{display_name} runtime: FAILED ({', '.join(missing)})",
                     "ERROR",
                 )
 
@@ -1947,7 +1955,7 @@ def main():
             installer.install_onnxruntime_with_gpu_support()  # Install ONNX with GPU acceleration if available
             installer.install_vibevoice()  # Install VibeVoice with careful dependency management
             installer.install_echo_tts()  # Install Echo-TTS with minimal dependency impact
-            installer.install_dots_tts()  # Install official Dots TTS in the main environment first
+            installer.install_dots_tts()  # Install Dots TTS in the main environment
             installer.install_fish_audio_s2()  # Install Fish S2 without changing Torch/Transformers
             installer.install_f5tts_multilingual_support()  # Install phonemization for Polish/multilingual F5-TTS
             installer.install_indexts_text_processing()  # Install IndexTTS-2 text normalization with fallback
